@@ -28,7 +28,9 @@ job_runs() {
 }
 
 job_runs_match() {
-  job_runs "$1" | grep -Eq -- "$2"
+  # Sem pipe: com `pipefail`, o `grep -q` pode sair no primeiro acerto antes de o `yq` terminar de
+  # escrever; o SIGPIPE do `yq` vira status 141 e um FAIL falso.
+  grep -Eq -- "$2" <<<"$(job_runs "$1")"
 }
 
 # --- Gates do plano que o CI precisa rodar (plan-gates-missing-in-ci) --------------------------
