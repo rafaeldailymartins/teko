@@ -28,6 +28,7 @@ describe('perfil de plataforma', () => {
     expect(platformNetwork(env)).toEqual({
       trustProxy: ['172.30.0.0/24'],
       requestIdHeader: 'x-request-id',
+      eventLoopDelayGuard: true,
     })
     expect(platformShutdown(env)).toEqual({
       drainDelayMs: 2000,
@@ -62,14 +63,23 @@ describe('perfil de plataforma', () => {
 
   it('render: trustProxy medido no ensaio, sem request id externo, adapters de Node', () => {
     const env = parseEnv({ ...BASE, RUNTIME_TARGET: 'render', TRUST_PROXY: '1' })
-    expect(platformNetwork(env)).toEqual({ trustProxy: 1, requestIdHeader: null })
+    expect(platformNetwork(env)).toEqual({
+      trustProxy: 1,
+      requestIdHeader: null,
+      eventLoopDelayGuard: true,
+    })
     expect(platformShutdown(env).backgroundDrainMs).toBe(NODE_BACKGROUND_DRAIN_MS)
     expect(createPlatformAdapters(env, noop).clientIp.resolve(DIRECT).source).toBe('trusted_proxy')
   })
 
   it('vercel: 1 salto, x-vercel-id, 500 ms no SIGTERM e prazo pelo maxDuration', () => {
     const env = parseEnv({ ...BASE, RUNTIME_TARGET: 'vercel', FUNCTION_MAX_DURATION_S: '120' })
-    expect(platformNetwork(env)).toEqual({ trustProxy: 1, requestIdHeader: 'x-vercel-id' })
+    // Sem limite de atraso do event loop: o congelamento entre invocações contaria como atraso.
+    expect(platformNetwork(env)).toEqual({
+      trustProxy: 1,
+      requestIdHeader: 'x-vercel-id',
+      eventLoopDelayGuard: false,
+    })
     expect(platformShutdown(env)).toEqual(VERCEL_SHUTDOWN)
     expect(VERCEL_SHUTDOWN.graceMs).toBeLessThan(500)
     const adapters = createPlatformAdapters(env, noop)

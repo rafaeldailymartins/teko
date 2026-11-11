@@ -67,6 +67,15 @@ Opção escolhida: **Build Output API v3 montado a partir do bundle do tsdown**.
   `scripts/build-vercel-output.test.ts` exige `maxDuration` igual a `FUNCTION_MAX_DURATION_S` de
   `infra/vercel/env.*.json`. Os 120 s com `supportsCancellation: true` do plano só entram depois da
   conferência manual de desconexão do spike.
+- Na Vercel, o `under-pressure` roda sem o limite de atraso do event loop
+  (`maxEventLoopDelay: 0`, o "desligado" do plugin); no Render, na stack de CI e no local, o
+  limite de 1 s do plano continua. No primeiro deploy pelo Build Output API (run 42987608534), o
+  `https://teko-api-staging.vercel.app/healthz` respondeu 503 `service_paused` em sequência
+  depois de ~10 s de ociosidade: em Fluid compute a instância fica congelada entre invocações, o
+  timer de amostragem do plugin para, e o congelamento entra na medida como atraso, que só se
+  renova quando a instância fica acordada por um intervalo inteiro. Decisão do mantenedor em
+  2026-11-11; quem limita a carga na Vercel é a plataforma (concorrência do Fluid e as regras do
+  WAF).
 
 ### Consequências
 
@@ -79,6 +88,8 @@ Opção escolhida: **Build Output API v3 montado a partir do bundle do tsdown**.
 - Ruim: a Function leva o `node_modules` inteiro das dependências de produção (cerca de 40 MB
   descompactados na F1, contra o limite de 250 MB), sem o tree-shaking por arquivo que o
   `@vercel/nft` do builder faria.
+- Ruim: na Vercel, um event loop travado de verdade não vira 503 rápido; a requisição espera, e o
+  teto é o `maxDuration`.
 - Neutro: `framework`, `regions` e `fluid` do `vercel.json` continuam como documentação e segunda
   barreira; o que vale para a Function é a configuração do projeto e o `.vc-config.json`.
 

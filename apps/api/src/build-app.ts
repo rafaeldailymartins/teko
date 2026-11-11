@@ -78,7 +78,7 @@ export async function buildApp(deps: BuildAppDeps): Promise<FastifyInstance> {
   decorateContainer(app, deps.container)
   registerRequestIdHeader(app)
 
-  await registerUnderPressure(app)
+  await registerUnderPressure(app, { eventLoopDelayGuard: deps.http.eventLoopDelayGuard })
   await registerSecurityHeaders(app)
   registerApiCacheControl(app)
   if (deps.http.rateLimit !== undefined) {
