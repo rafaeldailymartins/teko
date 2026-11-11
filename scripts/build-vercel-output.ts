@@ -55,12 +55,12 @@ export const FUNCTION_NAME = 'index'
 export const HANDLER = 'server.mjs'
 
 /**
- * Duração máxima de uma invocação, em segundos. Precisa ser igual a `FUNCTION_MAX_DURATION_S` em
+ * Duração máxima de uma invocação, em segundos: o teto de 100 s do stream mais 20 s de reserva para
+ * a finalização (plano, Streaming). Precisa ser igual a `FUNCTION_MAX_DURATION_S` em
  * `infra/vercel/env.*.json` (a API calcula o prazo de cada invocação a partir dela); o teste
- * `scripts/build-vercel-output.test.ts` confere. Os 120 s com `supportsCancellation` do plano só
- * entram depois da conferência manual de desconexão do spike F1 (b).
+ * `scripts/build-vercel-output.test.ts` confere.
  */
-export const MAX_DURATION_S = 300
+export const MAX_DURATION_S = 120
 
 /** `.vc-config.json` da Function (Build Output API v3, launcher Node.js). */
 export const VC_CONFIG = {
@@ -74,6 +74,10 @@ export const VC_CONFIG = {
   // O SSE das perguntas (F4) precisa sair sem buffering.
   supportsResponseStreaming: true,
   maxDuration: MAX_DURATION_S,
+  // Sem isto, a Function não percebe o cliente indo embora: no spike F1 (b), um SSE de 60 s
+  // abandonado aos 15 s rodou até o fim; com isto, request.signal e o close da resposta
+  // dispararam aos 14,7 s (ADR 0003).
+  supportsCancellation: true,
 } as const
 
 /**

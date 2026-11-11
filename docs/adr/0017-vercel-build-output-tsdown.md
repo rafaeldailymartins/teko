@@ -77,6 +77,13 @@ Opção escolhida: **Build Output API v3 montado a partir do bundle do tsdown**.
   2026-11-11; quem limita a carga na Vercel é a plataforma (concorrência do Fluid e as regras do
   WAF).
 
+**Adendo (2026-11-11, rodada de stream do spike F1 (b)):** sem `supportsCancellation`, a Function
+não percebeu a desconexão (um SSE de 60 s abandonado aos 15 s rodou até o fim); com ele,
+`request.signal` e o `close` da resposta dispararam aos 14,7 s. Por isso o `.vc-config.json` passa a
+declarar `supportsCancellation: true` e `maxDuration: 120` (100 s de stream + 20 s de reserva), e
+`FUNCTION_MAX_DURATION_S` vai para `120` nos `env.*.json`, como o plano previa. Detalhes na
+[ADR 0003](0003-f1-spikes.md), "Spike (b)".
+
 ### Consequências
 
 - Bom: o artefato da Vercel é o mesmo bundle do Render, da stack de CI e do Docker; o Install e o

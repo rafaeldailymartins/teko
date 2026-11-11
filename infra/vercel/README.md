@@ -61,13 +61,12 @@ Aplicar nos dois projetos, no dashboard (Project Settings), e conferir todo mês
 - [ ] **Function Region:** `gru1` (também `"regions": ["gru1"]`). O Hobby permite uma região só.
 - [ ] Memória/CPU: o padrão do Hobby (2 GB / 1 vCPU, fixo). Com Fluid, memória não vai no
   `vercel.json`.
-- [ ] `maxDuration`: 300 s (o teto do Hobby), declarado no `.vc-config.json` da Function `index`
-  por `scripts/build-vercel-output.ts` (`MAX_DURATION_S`). O bloco `functions` do `vercel.json` não
-  vale para output pronto. A troca para `120` com `supportsCancellation: true` espera a conferência
-  manual de desconexão do spike F1 (b); quando vier, muda a constante do script e a env Config
-  `FUNCTION_MAX_DURATION_S` no mesmo PR (a API calcula o prazo de cada invocação a partir dela,
-  porque o `@vercel/functions` 3.7.6 não tem `getDeadline`, e o teste do script exige os dois
-  iguais).
+- [ ] `maxDuration`: 120 s (100 s de stream + 20 s de reserva), com `supportsCancellation: true`,
+  declarados no `.vc-config.json` da Function `index` por `scripts/build-vercel-output.ts`. O bloco
+  `functions` do `vercel.json` não vale para output pronto. A env Config `FUNCTION_MAX_DURATION_S`
+  acompanha o valor (a API calcula o prazo de cada invocação a partir dela, porque o
+  `@vercel/functions` 3.7.6 não tem `getDeadline`), e o teste do script exige os dois iguais. Sem
+  `supportsCancellation`, a Function não percebe a desconexão do cliente (spike F1 (b)).
 
 **Git**
 
@@ -206,15 +205,30 @@ registrado; o resto continua aberto:
   `service_paused` depois de ~10 s de ociosidade (o congelamento da instância Fluid conta como
   atraso do event loop). Na Vercel, o limite fica desligado (rafaeldailymartins/teko#8, ADR 0017);
   depois disso (run 42989881707), 13 de 13 respostas 200 com até 60 s de ociosidade entre elas;
-- [ ] SSE de 95 s com heartbeat de 15 s e primeiro byte atrasado em 30 s, sem corte nem buffering;
-- [ ] desconexão (`request.signal`, `close` do `request.raw`) com e sem `supportsCancellation`;
-- [ ] `waitUntil` depois da resposta, SIGTERM no scale-down e prazo de invocação calculado a partir
-  do `maxDuration`;
-- [ ] deploy e `promote` durante um stream ativo; `vercel rollback`/`promote` no Hobby;
-- [ ] Sensitive de teste visível em runtime e ausente do `.vercel/output` e do tarball;
+- [x] SSE de 95 s com heartbeat de 15 s e primeiro byte atrasado em 30 s, sem corte nem buffering:
+  `start` aos 30,2 s, heartbeats a cada 15 s e `end` aos 95,2 s (run 43007922090);
+- [x] desconexão: sem `supportsCancellation`, a Function não percebe (um SSE de 60 s abandonado aos
+  15 s rodou até o fim); com ele, `request.signal` e o `close` da resposta disparam aos 14,7 s.
+  `supportsCancellation: true` passou a ser o padrão do `.vc-config.json`;
+- [x] `waitUntil` depois da resposta: a tarefa terminou 1.501 ms depois de um 202 em 2 ms;
+- [ ] SIGTERM no scale-down: não apareceu nos logs da janela de 30 min (retenção curta do Hobby);
+  risco residual, coberto pelo teto de 450 ms do encerramento;
+- [x] `promote` de uma deployment de produção anterior durante um stream ativo: o stream terminou na
+  deployment de origem, e o promote de volta funcionou. Logo depois do "Success", o domínio ainda
+  pode servir a deployment anterior por um instante. `vercel rollback` não foi rodado;
+- [x] Sensitive de teste visível em runtime (`/api/_spike/runtime`, só o tamanho) e fora do output por
+  construção (o build não lê env da Vercel, e o pack recusa `.env*`);
 - [x] Deployment Protection: URL única sem bypass bloqueada (HTTP 302 para o login da Vercel) e
   domínio de produção público (200 sem bypass), no run 42987608534;
-- [ ] `trustProxy` de 1 salto: o `X-Forwarded-For` que chega ao servidor capturado tem só o IP do
-  cliente; `x-real-ip` e `x-forwarded-for` no caminho proxiado (spike c);
-- [ ] `x-nf-client-connection-ip`: a Netlify sobrescreve um valor enviado pelo cliente? Só então
-  `NETLIFY_CLIENT_IP_TRUSTED` (em `apps/api/src/config/platform.ts`) passa a `true`.
+- [x] `trustProxy` de 1 salto: a Vercel sobrescreve `x-forwarded-for` e `x-real-ip` com o IP de quem
+  conectou (um valor forjado some); no caminho proxiado, esse IP é o de saída da Netlify, que muda
+  a cada requisição (spike c, run 43009440530);
+- [x] `x-nf-client-connection-ip`: a Netlify sobrescreve o valor enviado pelo cliente, e uma chamada
+  direta à Vercel o deixa passar forjado. `NETLIFY_CLIENT_IP_TRUSTED` passou a `true`, valendo só
+  com `x-nf-sign` válido;
+- [x] `x-nf-sign`: presente e verificado com o `NETLIFY_PROXY_JWS_SECRET` (Sensitive aqui; variável
+  comum no site `tekoia`, porque o Netlify Free não tem escopo nem valor secreto). No alias
+  `develop`, `deploy_context` é `branch-deploy`. Sem cache na Netlify nem na Vercel, Cookie e
+  Set-Cookie passam, e o proxy soma 27 ms de mediana;
+- [ ] regras do WAF: ainda não aplicadas (`/api/v1/*` direto e sem assinatura dá 404, não 403); F7;
+- [ ] cold start (p95) e o pior caso de cold start + resume do Neon dentro dos 26 s do proxy: F2.

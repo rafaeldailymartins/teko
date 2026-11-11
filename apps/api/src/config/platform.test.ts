@@ -19,8 +19,23 @@ const DIRECT = {
 const noop = { onBackgroundFailure: () => {} }
 
 describe('perfil de plataforma', () => {
-  it('não confia no x-nf-client-connection-ip antes do spike F1 (c)', () => {
-    expect(NETLIFY_CLIENT_IP_TRUSTED).toBe(false)
+  it('confia no x-nf-client-connection-ip só com assinatura válida (spike F1 (c))', () => {
+    expect(NETLIFY_CLIENT_IP_TRUSTED).toBe(true)
+    const env = parseEnv({ ...BASE, RUNTIME_TARGET: 'vercel' })
+    const { clientIp } = createPlatformAdapters(env, noop)
+    const proxied = {
+      path: 'proxied',
+      headers: { 'x-nf-client-connection-ip': '203.0.113.20' },
+      forwardedIp: '35.170.138.45',
+    } as const
+    expect(clientIp.resolve({ ...proxied, signatureValid: true })).toEqual({
+      ip: '203.0.113.20',
+      source: 'netlify_proxy',
+    })
+    expect(clientIp.resolve({ ...proxied, signatureValid: false })).toEqual({
+      ip: null,
+      source: 'none',
+    })
   })
 
   it('node (CI e local): rede do Caddy, X-Request-Id do Caddy, drenagem do env', () => {

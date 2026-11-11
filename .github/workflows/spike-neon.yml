@@ -58,6 +58,12 @@ jobs:
             echo "::error title=spike-neon::Faltam segredos no environment 'staging': ${list%, }."
             exit 1
           fi
+          # Sem imprimir o valor: só o formato (o psql trata o que não é URI como nome de banco e
+          # tenta o socket local, como no primeiro dispatch).
+          if [[ "$APP_URL" != postgresql://* && "$APP_URL" != postgres://* ]]; then
+            echo "::error title=spike-neon::NEON_STAGING_APP_URL precisa começar com postgresql:// (sem aspas nem o comando psql na frente)."
+            exit 1
+          fi
           if [[ "$APP_URL" != *-pooler.* ]]; then
             echo "::error title=spike-neon::NEON_STAGING_APP_URL precisa usar o host -pooler do Neon."
             exit 1
@@ -78,20 +84,21 @@ jobs:
         env:
           APP_URL: ${{ secrets.NEON_STAGING_APP_URL }}
         run: |
+          note() { echo "$1"; echo "$1" >>"$GITHUB_STEP_SUMMARY"; }
           fail=0
           show="$(psql "$APP_URL" -X -A -t -c 'SHOW statement_timeout' -c 'SHOW idle_in_transaction_session_timeout' -c 'SELECT current_user' | paste -sd ' ' -)"
-          echo "- teko_app pelo pooler: statement_timeout, idle_in_transaction_session_timeout, usuário = \`${show}\`" >>"$GITHUB_STEP_SUMMARY"
+          note "- teko_app pelo pooler: statement_timeout, idle_in_transaction_session_timeout, usuário = \`${show}\`"
           [[ "$show" == "5s 5s teko_app" ]] || { echo "::error title=spike-neon::Os timeouts do role não valem pelo pooler (${show})."; fail=1; }
 
           # Acima do teto: o servidor cancela com 57014.
           sleep_err="$(psql "$APP_URL" -X -A -t -c 'SELECT pg_sleep(7)' 2>&1 >/dev/null || true)"
-          echo "- pg_sleep(7) pelo pooler: \`${sleep_err:-sem erro}\`" >>"$GITHUB_STEP_SUMMARY"
+          note "- pg_sleep(7) pelo pooler: \`${sleep_err:-sem erro}\`"
           grep -q 'statement timeout' <<<"$sleep_err" || { echo "::error title=spike-neon::pg_sleep(7) não caiu no statement_timeout."; fail=1; }
 
           # O mesmo timeout como parâmetro de conexão (options), que o plano diz que o pooler não aceita.
           sep='?'; [[ "$APP_URL" == *\?* ]] && sep='&'
           param_out="$(psql "${APP_URL}${sep}options=-c%20statement_timeout%3D1s" -X -A -t -c 'SHOW statement_timeout' 2>&1 || true)"
-          echo "- statement_timeout=1s como parâmetro de conexão pelo pooler: \`$(head -c 300 <<<"$param_out" | tr '\n' ' ')\`" >>"$GITHUB_STEP_SUMMARY"
+          note "- statement_timeout=1s como parâmetro de conexão pelo pooler: \`$(head -c 300 <<<"$param_out" | tr '\n' ' ')\`"
           exit "$fail"
 
       - name: Resume depois do scale-to-zero
@@ -100,21 +107,24 @@ jobs:
           APP_URL: ${{ secrets.NEON_STAGING_APP_URL }}
           NEON_API_KEY: ${{ secrets.NEON_API_KEY_STAGING }}
         run: |
+          note() { echo "$1"; echo "$1" >>"$GITHUB_STEP_SUMMARY"; }
           api() { curl -sS --fail-with-body -H "Authorization: Bearer ${NEON_API_KEY}" -H 'Accept: application/json' "https://console.neon.tech/api/v2$1"; }
-          project_id="$(api /projects | jq -r --arg name "$NEON_PROJECT_NAME" '.projects[] | select(.name == $name) | .id' | head -1)"
-          if [[ -z "$project_id" ]]; then
-            echo "::error title=spike-neon::Projeto Neon ${NEON_PROJECT_NAME} não encontrado com a NEON_API_KEY_STAGING."
-            exit 1
+          # Uma chave restrita ao projeto não lista projetos (404 em /projects). Sem o ID, a espera é
+          # fixa: o Neon Free suspende o compute com 5 min ociosos.
+          project_id="$(api /projects 2>/dev/null | jq -r --arg name "$NEON_PROJECT_NAME" '.projects[]? | select(.name == $name) | .id' | head -1 || true)"
+          current=desconhecido
+          if [[ -n "$project_id" ]]; then
+            state() { api "/projects/${project_id}/endpoints" | jq -r '[.endpoints[] | select(.type == "read_write") | .current_state] | first // "desconhecido"'; }
+            for _ in $(seq 1 20); do
+              current="$(state)"
+              [[ "$current" == idle ]] && break
+              sleep 30
+            done
+            note "- compute antes da medição (API do Neon): \`${current}\`"
+          else
+            note "- a NEON_API_KEY_STAGING não lista projetos (chave restrita ao projeto): espera fixa de 5,5 min sem tocar no banco"
+            sleep 330
           fi
-          state() { api "/projects/${project_id}/endpoints" | jq -r '[.endpoints[] | select(.type == "read_write") | .current_state] | first // "desconhecido"'; }
-          echo "estado inicial: $(state)"
-          # Free: suspende após 5 min ociosos. Espera até 10 min, consultando a cada 30 s.
-          for _ in $(seq 1 20); do
-            current="$(state)"
-            [[ "$current" == idle ]] && break
-            sleep 30
-          done
-          echo "- compute antes da medição: \`${current}\`" >>"$GITHUB_STEP_SUMMARY"
           measure() {
             local start end out rc=0
             start="$(date +%s%3N)"
@@ -124,9 +134,6 @@ jobs:
           }
           first="$(measure)"
           second="$(measure)"
-          {
-            echo "- primeira query depois do resume: \`${first}\`"
-            echo "- query seguinte: \`${second}\`"
-            echo "- o corte do proxy da Netlify é 26 s; a primeira query precisa caber nele junto com o cold start da Function"
-          } >>"$GITHUB_STEP_SUMMARY"
-          [[ "$current" == idle ]] || echo "::warning title=spike-neon::O compute não suspendeu dentro da espera; a medição pode não ter pego um resume."
+          note "- primeira query depois da ociosidade: \`${first}\`"
+          note "- query seguinte: \`${second}\`"
+          note "- o corte do proxy da Netlify é 26 s; a primeira query precisa caber nele junto com o cold start da Function"

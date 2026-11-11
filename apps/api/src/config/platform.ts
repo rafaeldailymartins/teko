@@ -28,11 +28,12 @@ import {
  */
 
 /**
- * `x-nf-client-connection-ip` só passa a valer quando o spike F1 (c) provar que a Netlify
- * sobrescreve o valor enviado pelo cliente. Até lá, no caminho proxiado, nenhum IP é confiável e a
- * chave de rate limit é a sessão. Mudar isto exige o resultado do spike registrado em `docs/adr/`.
+ * `x-nf-client-connection-ip` vale no caminho proxiado, e só com assinatura `x-nf-sign` válida: no
+ * spike F1 (c), a Netlify sobrescreveu um valor forjado pelo cliente com o IP real, enquanto a
+ * chamada direta à Vercel deixa o valor forjado passar (por isso a assinatura é obrigatória).
+ * Resultado registrado na ADR 0003.
  */
-export const NETLIFY_CLIENT_IP_TRUSTED = false
+export const NETLIFY_CLIENT_IP_TRUSTED = true
 
 /** Na Vercel, a borda sobrescreve `X-Forwarded-For`/`x-real-ip`: confia-se em exatamente 1 salto. */
 const VERCEL_TRUST_PROXY_HOPS = 1
