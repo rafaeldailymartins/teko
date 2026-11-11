@@ -485,8 +485,12 @@ jobs:
     needs: [scope, test, python]
     # Roda também quando test/python foram pulados (escopo sem pacote JS ou sem ingest), para que
     # todo PR receba o check do Sonar; não roda se um deles falhou ou foi cancelado.
+    # Em push, só em develop: o plano gratuito do SonarQube Cloud analisa apenas a branch principal
+    # do projeto (configurada lá como `develop`) e PRs; analisar `main` falha com "Organization is
+    # not allowed to access data from non main branches".
     if: >-
       ${{ !cancelled() && needs.scope.result == 'success'
+      && (github.event_name != 'push' || github.ref == 'refs/heads/develop')
       && contains(fromJSON('["success", "skipped"]'), needs.test.result)
       && contains(fromJSON('["success", "skipped"]'), needs.python.result) }}
     runs-on: ubuntu-24.04
