@@ -1,0 +1,139 @@
+# Spike F1 (c): proxy assinado da Netlify (alias develop do site tekoia) → teko-api-staging.
+#
+# Compara a mesma requisição feita direto no domínio de produção do teko-api-staging e pelo proxy
+# /api/* do alias develop, usando a rota temporária /api/_spike/echo (só existe em staging na
+# Vercel). Registra no resumo do job:
+#   - claims do x-nf-sign que a Netlify envia (deploy_context real do alias publicado pela CLI,
+#     iss, site_url, exp) e se a assinatura confere com o NETLIFY_PROXY_JWS_SECRET da API;
+#   - passagem de Cookie e Set-Cookie pelo proxy;
+#   - x-nf-client-connection-ip, x-real-ip e x-forwarded-for com valores forjados pelo cliente
+#     (a Netlify sobrescreve? a Vercel sobrescreve?);
+#   - ausência de cache na Netlify e na Vercel (duas chamadas, dois receivedAt);
+#   - regra 2 do WAF (chamada direta a /api/v1/* sem x-nf-sign) e o domínio de produção público;
+#   - latência extra Netlify → gru1 (mediana de /api/healthz direto e proxiado).
+#
+# Só `workflow_dispatch` e só no environment `staging`. Não publica nada: só faz requisições.
+name: Spike F1 (c) - proxy Netlify para Vercel
+
+on:
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: spike-proxy
+  cancel-in-progress: false
+
+jobs:
+  proxy:
+    name: proxy (develop--tekoia → teko-api-staging)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment: staging
+    permissions:
+      contents: read
+    env:
+      DIRECT: https://teko-api-staging.vercel.app
+      PROXIED: https://develop--tekoia.netlify.app
+      # Valores forjados pelo cliente (documentação, RFC 5737): se aparecerem na API, o salto
+      # anterior não sobrescreveu o header.
+      FORGED_NF_IP: 198.51.100.7
+      FORGED_XFF: 198.51.100.8
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          egress-policy: audit
+
+      - name: Eco direto e pelo proxy
+        run: |
+          echo_call() {
+            local base="$1" out="$2"
+            curl -sS --fail-with-body -D "${out}.headers" \
+              -H "x-nf-client-connection-ip: ${FORGED_NF_IP}" \
+              -H "x-forwarded-for: ${FORGED_XFF}" \
+              -H 'cookie: teko_c=1' \
+              "${base}/api/_spike/echo" >"$out"
+          }
+          echo_call "$DIRECT" "${RUNNER_TEMP}/direct.json"
+          echo_call "$PROXIED" "${RUNNER_TEMP}/proxied-1.json"
+          sleep 2
+          echo_call "$PROXIED" "${RUNNER_TEMP}/proxied-2.json"
+          for f in direct proxied-1 proxied-2; do
+            echo "== ${f}"
+            jq -c . "${RUNNER_TEMP}/${f}.json"
+            grep -iE '^(set-cookie|cache-control|cache-status|age|x-vercel-cache|x-vercel-id|x-nf-request-id):' "${RUNNER_TEMP}/${f}.json.headers" | sed 's/^set-cookie:.*/set-cookie: (presente)/I'
+          done
+
+          d="${RUNNER_TEMP}/direct.json"
+          p="${RUNNER_TEMP}/proxied-1.json"
+          header_of() { jq -r --arg h "$2" '.headers[$h] // "(ausente)"' "$1"; }
+          {
+            echo "## Spike F1 (c): proxy Netlify → Vercel"
+            echo
+            echo "| | direto (Vercel) | proxiado (Netlify → Vercel) |"
+            echo "| --- | --- | --- |"
+            for h in x-nf-client-connection-ip x-real-ip x-forwarded-for x-forwarded-host x-nf-request-id; do
+              echo "| \`${h}\` | \`$(header_of "$d" "$h")\` | \`$(header_of "$p" "$h")\` |"
+            done
+            echo "| \`request.ip\` | \`$(jq -r .ip "$d")\` | \`$(jq -r .ip "$p")\` |"
+            echo "| cookies recebidos | \`$(jq -c .cookieNames "$d")\` | \`$(jq -c .cookieNames "$p")\` |"
+            echo "| Set-Cookie na resposta | $(grep -qi '^set-cookie:' "${d}.headers" && echo sim || echo não) | $(grep -qi '^set-cookie:' "${p}.headers" && echo sim || echo não) |"
+            echo
+            echo "- x-nf-sign pelo proxy: \`$(jq -c '{present: .nfSign.present, verified: .nfSign.verified, claims: (.nfSign.claims // {} | del(.netlify_id))}' "$p")\`"
+            echo "- x-nf-sign direto: \`$(jq -c '.nfSign.present' "$d")\`"
+            echo "- forjados: x-nf-client-connection-ip \`${FORGED_NF_IP}\`, x-forwarded-for \`${FORGED_XFF}\`"
+            echo "- cache (duas chamadas pelo proxy): receivedAt \`$(jq -r .receivedAt "$p")\` e \`$(jq -r .receivedAt "${RUNNER_TEMP}/proxied-2.json")\`; cache-status \`$(grep -i '^cache-status:' "${RUNNER_TEMP}/proxied-2.json.headers" | tr -d '\r' | cut -d' ' -f2- || true)\`"
+          } >>"$GITHUB_STEP_SUMMARY"
+
+          fail=0
+          if [[ "$(jq -r .nfSign.present "$p")" != true ]]; then
+            echo "::error title=spike-proxy::A Netlify não enviou x-nf-sign pelo proxy (o redirect assinado do context-routing não está ativo ou falta o NETLIFY_PROXY_JWS_SECRET no site)."
+            fail=1
+          fi
+          if [[ "$(jq -r .nfSign.verified "$p")" == false ]]; then
+            echo "::error title=spike-proxy::O x-nf-sign não confere com o NETLIFY_PROXY_JWS_SECRET da API: os valores no site e na Vercel são diferentes."
+            fail=1
+          fi
+          if [[ "$(jq -r .receivedAt "$p")" == "$(jq -r .receivedAt "${RUNNER_TEMP}/proxied-2.json")" ]]; then
+            echo "::error title=spike-proxy::As duas chamadas pelo proxy devolveram a mesma resposta: há cache no caminho."
+            fail=1
+          fi
+          if ! jq -e '.cookieNames | index("teko_c")' "$p" >/dev/null; then
+            echo "::error title=spike-proxy::O Cookie do cliente não chegou à API pelo proxy."
+            fail=1
+          fi
+          if ! grep -qi '^set-cookie:' "${p}.headers"; then
+            echo "::error title=spike-proxy::O Set-Cookie da API não voltou pelo proxy."
+            fail=1
+          fi
+          exit "$fail"
+
+      - name: WAF e Deployment Protection
+        run: |
+          # Regra 2 do WAF (F7): /api/v1/* direto, sem x-nf-sign, deveria dar 403 quando aplicada.
+          waf="$(curl -sS -o /dev/null -w '%{http_code}' "${DIRECT}/api/v1/coverage")"
+          public="$(curl -sS -o /dev/null -w '%{http_code}' "${DIRECT}/healthz")"
+          proxied="$(curl -sS -o /dev/null -w '%{http_code}' "${PROXIED}/api/healthz")"
+          {
+            echo "- /api/v1/coverage direto sem x-nf-sign: HTTP \`${waf}\` (403 = regra 2 do WAF ativa; 404 = sem WAF, a rota não existe na F1)"
+            echo "- domínio de produção público: /healthz HTTP \`${public}\`; pelo proxy: /api/healthz HTTP \`${proxied}\`"
+          } >>"$GITHUB_STEP_SUMMARY"
+          [[ "$public" == 200 && "$proxied" == 200 ]]
+
+      - name: Latência extra Netlify → gru1
+        run: |
+          sample() {
+            local url="$1"
+            for _ in $(seq 1 15); do
+              curl -sS -o /dev/null -w '%{time_total}\n' "$url"
+            done | sort -n | awk '{a[NR] = $1} END {printf "%.0f %.0f %.0f", a[1] * 1000, a[int((NR + 1) / 2)] * 1000, a[NR] * 1000}'
+          }
+          # A primeira chamada de cada lado entra na amostra: com a instância fria, ela mostra o cold start.
+          read -r d_min d_med d_max < <(sample "${DIRECT}/api/healthz")
+          read -r p_min p_med p_max < <(sample "${PROXIED}/api/healthz")
+          {
+            echo "- latência /api/healthz (ms, 15 amostras do runner do GitHub, mín/mediana/máx): direto \`${d_min}/${d_med}/${d_max}\`, proxiado \`${p_min}/${p_med}/${p_max}\`; extra pela Netlify (mediana) \`$(( p_med - d_med ))\` ms"
+            echo "- o corte do proxy da Netlify é 26 s; a pior chamada proxiada levou \`${p_max}\` ms"
+          } >>"$GITHUB_STEP_SUMMARY"
+          (( p_max < 26000 ))

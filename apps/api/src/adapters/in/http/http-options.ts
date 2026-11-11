@@ -26,10 +26,29 @@ export interface HttpOptions {
   /** Swagger + Scalar em `/api/docs` (nunca em produção). */
   readonly docs: boolean
   /**
+   * Rotas `/api/_spike/*` dos spikes da F1 (SSE, eco do proxy, runtime, `waitUntil`). Só existem
+   * em staging na Vercel (`createHttpOptions`); ausente = não registradas.
+   */
+  readonly spike?: SpikeRouteOptions
+  /**
    * Rate limit de aplicação com store compartilhado (Postgres). Ausente = não registrado: a F1 não
    * tem store nem rotas transacionais, e memória local não limita nada com várias instâncias.
    */
   readonly rateLimit?: RateLimitOptions
+}
+
+/** O que as rotas de spike expõem do runtime; nunca valores de segredo. */
+export interface SpikeRouteOptions {
+  /** `process.version` do processo. */
+  readonly nodeVersion: string
+  /** `VERCEL_REGION` em runtime (`null` fora da Vercel). */
+  readonly region: string | null
+  /** `FUNCTION_MAX_DURATION_S` configurado. */
+  readonly maxDurationS: number
+  /** Tamanho da Sensitive de teste (`null` = ausente); o valor nunca sai do processo. */
+  readonly sensitiveLength: number | null
+  /** Segredo do proxy assinado da Netlify; ausente = o eco não verifica a assinatura. */
+  readonly proxySecret?: string
 }
 
 export interface RateLimitOptions {
