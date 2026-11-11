@@ -1,0 +1,49 @@
+# git-cliff: changelog a partir de Conventional Commits (versão única do produto, SemVer vX.Y.Z).
+[changelog]
+header = """
+# Changelog
+
+Todas as mudanças relevantes do Tekó. Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/)
+e versionamento em [SemVer](https://semver.org/lang/pt-BR/).\n
+"""
+body = """
+{% if version %}\
+## [{{ version | trim_start_matches(pat="v") }}] — {{ timestamp | date(format="%Y-%m-%d") }}
+{% else %}\
+## [não lançado]
+{% endif %}\
+{% for group, commits in commits | group_by(attribute="group") %}
+### {{ group | striptags | trim | upper_first }}
+{% for commit in commits %}
+- {% if commit.scope %}**{{ commit.scope }}:** {% endif %}{{ commit.message | upper_first }}\
+{% if commit.breaking %} (**BREAKING**){% endif %}\
+{% endfor %}
+{% endfor %}\n
+"""
+trim = true
+
+[git]
+conventional_commits = true
+filter_unconventional = true
+split_commits = false
+protect_breaking_commits = true
+filter_commits = false
+tag_pattern = "v[0-9]+\\.[0-9]+\\.[0-9]+"
+sort_commits = "oldest"
+commit_parsers = [
+  { message = "^feat", group = "<!-- 0 -->Novidades" },
+  { message = "^fix", group = "<!-- 1 -->Correções" },
+  { message = "^perf", group = "<!-- 2 -->Desempenho" },
+  { message = "^refactor", group = "<!-- 3 -->Refatoração" },
+  { message = "^docs", group = "<!-- 4 -->Documentação" },
+  { message = "^test", group = "<!-- 5 -->Testes" },
+  { message = "^(build|ci)", group = "<!-- 6 -->Build e CI" },
+  { message = "^chore\\(release\\)", skip = true },
+  { message = "^chore\\(deps\\)", group = "<!-- 7 -->Dependências" },
+  { message = "^chore", group = "<!-- 8 -->Manutenção" },
+  { body = ".*security", group = "<!-- 9 -->Segurança" },
+]
+
+[bump]
+features_always_bump_minor = true
+breaking_always_bump_major = false

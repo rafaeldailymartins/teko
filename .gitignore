@@ -1,0 +1,49 @@
+# Dependências
+node_modules/
+.pnpm-store/
+
+# Builds
+dist/
+/apps/web/out/
+.next/
+.turbo/
+*.tsbuildinfo
+next-env.d.ts
+
+# Testes e relatórios
+coverage/
+reports/
+.stryker-tmp/
+test-results/
+playwright-report/
+blob-report/
+.lighthouseci/
+
+# Python (tools/ingest)
+.venv/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+*.pyc
+.coverage
+.hypothesis/
+htmlcov/
+
+# Ambiente e segredos (nunca commitar)
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Netlify
+.netlify/
+
+# Vercel (vercel pull/build)
+.vercel/
+
+# Editores e SO
+.DS_Store
+Thumbs.db
+.idea/
+*.swp

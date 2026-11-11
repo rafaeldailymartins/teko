@@ -1,0 +1,21 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "ignoreFiles": [".semgrep/**"],
+  "workspaces": {
+    ".": {
+      "entry": ["scripts/*.ts!"]
+    },
+    "apps/api": {
+      "project": ["src/**/*.ts!", "test/**/*.ts"],
+      "ignoreDependencies": ["pino-pretty"]
+    },
+    "apps/web": {
+      "entry": ["app/**/*.{ts,tsx}!", "steiger.config.ts"],
+      "project": ["app/**/*.{ts,tsx}!", "src/**/*.{ts,tsx}!"]
+    },
+    "packages/shared": {
+      "entry": ["src/*/index.ts!"],
+      "project": ["src/**/*.ts!", "test/**/*.ts"]
+    }
+  }
+}

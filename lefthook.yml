@@ -1,0 +1,33 @@
+# Hooks locais (ver "Qualidade, testes e segurança > lefthook" no plano).
+# O CI repete todos estes gates; os hooks só antecipam o feedback.
+# Os binários são chamados direto de node_modules/.bin para funcionar mesmo sem `corepack enable`
+# (sem pnpm no PATH).
+pre-commit:
+  parallel: true
+  commands:
+    biome:
+      glob: "*.{js,ts,tsx,mjs,cjs,json,jsonc,css,md,yml,yaml}"
+      run: ./node_modules/.bin/biome check --staged --write --no-errors-on-unmatched --files-ignore-unknown=true
+      stage_fixed: true
+    gitleaks:
+      # gitleaks é um binário (não pacote npm). Se não estiver instalado, o CI (security.yml) cobre.
+      # Num script: o lefthook no Windows quebra comandos inline com aspas ou várias linhas.
+      run: sh scripts/hooks/gitleaks.sh
+    openspec:
+      glob: "openspec/**"
+      env:
+        OPENSPEC_TELEMETRY: "0"
+      run: ./node_modules/.bin/openspec validate --all --strict --no-interactive
+    lockfile:
+      glob: "pnpm-lock.yaml"
+      run: node scripts/check-lockfile.ts
+
+commit-msg:
+  commands:
+    commitlint:
+      run: ./node_modules/.bin/commitlint --edit {1}
+
+pre-push:
+  commands:
+    affected:
+      run: ./node_modules/.bin/turbo run typecheck test:unit --affected

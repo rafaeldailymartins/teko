@@ -1,0 +1,51 @@
+{
+  "name": "teko",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Tekó — assistente RAG sobre legislação fiscal brasileira com consciência de vigência",
+  "license": "MIT",
+  "type": "module",
+  "packageManager": "pnpm@12.18.0",
+  "engines": {
+    "node": ">=24.12.0 <25"
+  },
+  "scripts": {
+    "prepare": "lefthook install",
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "typecheck": "turbo run typecheck && tsc -p tsconfig.scripts.json",
+    "typecheck:scripts": "tsc -p tsconfig.scripts.json",
+    "test": "turbo run test:unit test:integration",
+    "test:unit": "turbo run test:unit",
+    "test:integration": "turbo run test:integration",
+    "test:mutation": "turbo run test:mutation",
+    "lint": "biome ci --error-on-warnings .",
+    "lint:fix": "biome check --write .",
+    "format": "biome format --write .",
+    "lint:deps": "turbo run lint:deps",
+    "lint:fsd": "turbo run lint:fsd",
+    "lint:monorepo": "sherif",
+    "knip": "knip && knip --production --include dependencies,unlisted,unresolved,binaries",
+    "type-coverage": "turbo run type-coverage",
+    "dup": "jscpd",
+    "spec:validate": "openspec validate --all --strict --no-interactive",
+    "check-lockfile": "node scripts/check-lockfile.ts",
+    "dev:secrets": "node scripts/dev-secrets.ts",
+    "changelog": "git-cliff --output CHANGELOG.md"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "catalog:",
+    "@commitlint/cli": "catalog:",
+    "@commitlint/config-conventional": "catalog:",
+    "@fission-ai/openspec": "catalog:",
+    "@types/node": "catalog:",
+    "@typescript/native": "catalog:",
+    "git-cliff": "catalog:",
+    "jscpd": "catalog:",
+    "knip": "catalog:",
+    "lefthook": "catalog:",
+    "sherif": "catalog:",
+    "turbo": "catalog:",
+    "typescript": "catalog:"
+  }
+}

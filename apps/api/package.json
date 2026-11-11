@@ -1,0 +1,59 @@
+{
+  "name": "@teko/api",
+  "version": "0.0.0",
+  "private": true,
+  "description": "API do Tekó: Fastify com toda a regra de negócio (arquitetura hexagonal)",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": "24.x"
+  },
+  "imports": {
+    "#domain/*": "./src/domain/*",
+    "#app/*": "./src/application/*",
+    "#adapters/*": "./src/adapters/*"
+  },
+  "scripts": {
+    "dev": "node --watch --env-file-if-exists=.env src/server.ts",
+    "build": "tsdown",
+    "start": "node dist/server.mjs",
+    "typecheck": "tsc -p tsconfig.json",
+    "test:unit": "vitest run --project unit --coverage",
+    "test:integration": "vitest run --project integration --outputFile.junit=reports/junit-integration.xml",
+    "test:mutation": "stryker run",
+    "lint:deps": "depcruise src --config .dependency-cruiser.cjs",
+    "type-coverage": "type-coverage --at-least 99 --strict --ignore-catch"
+  },
+  "dependencies": {
+    "@fastify/cors": "catalog:",
+    "@fastify/helmet": "catalog:",
+    "@fastify/rate-limit": "catalog:",
+    "@fastify/sensible": "catalog:",
+    "@fastify/swagger": "catalog:",
+    "@fastify/under-pressure": "catalog:",
+    "@scalar/fastify-api-reference": "catalog:",
+    "@teko/shared": "workspace:*",
+    "@vercel/functions": "catalog:",
+    "close-with-grace": "catalog:",
+    "fastify": "catalog:",
+    "fastify-type-provider-zod": "catalog:",
+    "pino": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@fast-check/vitest": "catalog:",
+    "@stryker-mutator/core": "catalog:",
+    "@stryker-mutator/typescript-checker": "catalog:",
+    "@stryker-mutator/vitest-runner": "catalog:",
+    "@types/node": "catalog:",
+    "@typescript/native": "catalog:",
+    "@vitest/coverage-v8": "catalog:",
+    "dependency-cruiser": "catalog:",
+    "fast-check": "catalog:",
+    "pino-pretty": "catalog:",
+    "tsdown": "catalog:",
+    "type-coverage": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

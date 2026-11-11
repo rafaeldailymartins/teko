@@ -1,0 +1,46 @@
+# Projeto pnpm ISOLADO para o Vercel CLI, com lockfile próprio.
+#
+# Por quê: desde ago/2026 a Vercel publica `vercel` e todos os `@vercel/*` via npm trusted
+# publishing (OIDC) SEM attestation de proveniência SLSA, que as versões até jul/2026 tinham.
+# O `trustPolicy: no-downgrade` (correto) bloqueia isso. Abrir essas exceções no workspace da
+# aplicação enfraqueceria a política para o código que roda em produção; aqui elas ficam
+# confinadas a uma ferramenta que só roda nos jobs de deploy do GitHub Actions e nunca é
+# empacotada no runtime. Detalhes e evidências: docs/adr/0002-supply-chain-pnpm.md.
+packages: []
+
+minimumReleaseAge: 10080
+trustPolicy: no-downgrade
+blockExoticSubdeps: true
+strictDepBuilds: true
+engineStrict: true
+pmOnFail: ignore
+
+trustPolicyExclude:
+  # Organização Vercel: trusted publisher (OIDC do GitHub) sem provenance desde ago/2026.
+  - vercel
+  - "@vercel/*"
+  # Linha antiga mantida em paralelo, publicada depois de versões mais novas com provenance.
+  - semver@6.3.1
+
+allowBuilds:
+  # Binários pré-compilados chegam como optionalDependencies; os scripts só validam/recompilam.
+  esbuild: false
+  koffi: false
+
+# Gerados por `pnpm audit --fix` em 2026-11-10: a árvore do CLI 65.11.0 tinha 43 vulnerabilidades
+# conhecidas (1 crítica, node-tar). Vários overrides cruzam major (minimatch, glob, undici,
+# @fastify/busboy); `vercel --version` funciona, e o spike F1 (b) valida `vercel build`/`deploy`.
+# O CI audita este lockfile (job audit) e falha com qualquer vulnerabilidade.
+overrides:
+  "@fastify/busboy@<3.2.2": ^3.2.2
+  ajv@>=7.0.0-alpha.0 <8.18.0: ^8.18.0
+  glob@>=9.0.0 <=14.0.1: ^14.0.2
+  js-yaml@>=4.0.0 <4.3.2: ^4.3.2
+  minimatch@>=7.0.0 <11.0.1: ^11.0.1
+  path-to-regexp@>=4.0.0 <6.3.0: ^6.3.0
+  path-to-regexp@>=8.0.0 <8.4.0: ^8.4.0
+  smol-toml@<=1.8.0: ^1.9.0
+  tar@<=7.5.20: ^7.5.21
+  undici@<6.28.1: ^6.28.1
+  undici@>=4.0.0 <6.29.1: ^6.29.1
+  zod@<4.6.6: ^4.6.6
