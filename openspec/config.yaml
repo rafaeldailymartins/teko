@@ -1,0 +1,66 @@
+schema: spec-driven
+
+context: |
+  Language: Portuguese (pt-BR)
+  All artifacts must be written in Portuguese (pt-BR).
+  Keep OpenSpec structural headings and SHALL/MUST keywords in English.
+
+  Produto
+  - Tekó (nome de origem tupi): assistente RAG de código aberto (MIT) sobre legislação fiscal
+    brasileira (EFD ICMS/IPI, EFD-REINF, RCTE/CTE e EFD-GO de Goiás) com consciência de vigência.
+  - Resolve uma data de referência (em geral o período de apuração), filtra a busca por vigência
+    em SQL (daterange), cita dispositivo, versão e intervalo de vigência, e recusa quando a data
+    está fora da cobertura indexada.
+  - "Tekó" é o nome em todo texto visível; identificadores técnicos usam ASCII minúsculo "teko"
+    (@teko/shared, teko-web, teko-api).
+  - Custo zero absoluto: só free tiers que param em vez de cobrar. Mantenedor solo.
+
+  Stack
+  - Monorepo pnpm 12 (catálogo estrito) + Turborepo, três pacotes JS: @teko/web, @teko/api,
+    @teko/shared. Node 24 LTS; scripts da raiz em TypeScript executados por type stripping.
+  - Web: Next.js 16 com export estático (0 functions, 0 edge) na Netlify, React 19, Tailwind 4,
+    next-intl (en, pt-BR), Feature-Sliced Design (steiger). Nenhuma lógica de negócio no front.
+  - API: Fastify 5 hexagonal (domain, application, adapters) como uma única Vercel Function
+    (Fluid compute, região gru1) no Vercel Hobby, em dois projetos (teko-api e teko-api-staging,
+    domínios *.vercel.app), sem integração Git: o CI faz vercel build, atesta o .vercel/output e
+    publica com vercel deploy --prebuilt + vercel promote. Plano B: Render Free com o mesmo
+    server.ts (ADR 0004). Chamadas curtas chegam pelo proxy assinado da Netlify (x-nf-sign, JWS
+    HS256); o stream vai direto à API com ticket de uso único.
+  - Supply chain: o catálogo do pnpm-workspace.yaml é a fonte da verdade das versões
+    (minimumReleaseAge de 7 dias, trustPolicy no-downgrade). @vercel/functions fixado em 3.7.6;
+    o Vercel CLI vive isolado em tools/vercel-cli (ADR 0002).
+  - Dados: Neon PostgreSQL 18 + pgvector (halfvec), busca híbrida RRF, Drizzle.
+  - IA: embeddings BGE-M3 (Workers AI); LLM Gemini free -> Groq (ZDR); PII redigida antes de
+    qualquer provedor. Observabilidade: OTel/Grafana, Langfuse Cloud, Sentry, PostHog.
+
+  Convenções
+  - TypeScript estrito (nodenext, noUncheckedIndexedAccess, exactOptionalPropertyTypes,
+    verbatimModuleSyntax, erasableSyntaxOnly: sem enums, namespaces nem parameter properties;
+    usar objetos "as const"). Imports relativos com extensão .ts.
+  - Biome é o único linter/formatter. Identificadores em inglês; comentários e docs em pt-BR.
+  - Git Flow (develop = staging, main = produção), squash em develop, merge commit em main.
+    Conventional Commits com os escopos do commitlint.config.mjs; DCO (git commit -s).
+  - Relógio fixo em 2026-11-10 em todos os testes.
+  - Saída longa de comandos vai para arquivo em diretório temporário fora do repositório
+    (TEKO_TMP), sempre com o código de saída impresso; nunca pipe para head/tail/tee.
+
+  Regra Context7 (obrigatória)
+  - Antes de escrever código, configuração ou workflow que dependa de biblioteca, framework,
+    CLI ou serviço, consultar a documentação atual via Context7 (resolve-library-id ->
+    query-docs). Toda versão fixada é conferida na fase que a introduz; divergências corrigem o
+    plano e a ADR no mesmo PR.
+
+rules:
+  proposal:
+    - Declarar o que fica fora de escopo e a fase do roteiro (F0 a F10) a que a mudança pertence.
+    - Citar as ADRs afetadas em docs/adr/.
+  specs:
+    - Cada requisito descreve um comportamento observável; cenários em WHEN/THEN testáveis.
+    - Datas de vigência em cenários usam o relógio fixo de 2026-11-10 quando relevante.
+  design:
+    - Incluir a seção "Fontes Context7" com o ID de cada biblioteca consultada, a versão
+      conferida e os tópicos lidos.
+    - Registrar alternativas consideradas e o motivo da escolha.
+  tasks:
+    - Cada tarefa diz como verificar a conclusão (comando, teste ou artefato).
+    - Testes e documentação entram no mesmo grupo da tarefa que os exige.
