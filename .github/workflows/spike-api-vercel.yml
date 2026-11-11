@@ -54,9 +54,11 @@ jobs:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
         run: |
           missing=()
           [[ -n "${VERCEL_TOKEN}" ]] || missing+=("segredo VERCEL_TOKEN")
+          [[ -n "${VERCEL_AUTOMATION_BYPASS_SECRET}" ]] || missing+=("segredo VERCEL_AUTOMATION_BYPASS_SECRET (Protection Bypass for Automation do projeto)")
           [[ -n "${VERCEL_ORG_ID}" ]] || missing+=("variável VERCEL_ORG_ID")
           [[ -n "${VERCEL_PROJECT_ID}" ]] || missing+=("variável VERCEL_PROJECT_ID (do projeto teko-api-staging)")
           if (( ${#missing[@]} > 0 )); then
@@ -165,9 +167,14 @@ jobs:
           VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
           DEPLOYMENT_URL: ${{ steps.deploy.outputs.url }}
+          BYPASS: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+        # `--token` vem antes do subcomando: o `vercel curl` repassa ao curl as opções que não são
+        # dele. O bypass é sempre o do environment; sem ele, o CLI gera um segredo novo no projeto.
         run: |
-          vercel curl /healthz --deployment "$DEPLOYMENT_URL" --token "${VERCEL_TOKEN}" -- --fail-with-body --include
-          vercel curl /api/healthz --deployment "$DEPLOYMENT_URL" --token "${VERCEL_TOKEN}" -- --fail-with-body --include
+          for path in /healthz /api/healthz; do
+            vercel --token "${VERCEL_TOKEN}" curl "$path" --deployment "$DEPLOYMENT_URL" \
+              --protection-bypass "${BYPASS}" -- --fail-with-body --include
+          done
 
       - name: URL única sem bypass não chega à API
         env:
@@ -190,6 +197,20 @@ jobs:
           DEPLOYMENT_URL: ${{ steps.deploy.outputs.url }}
         run: |
           vercel promote "$DEPLOYMENT_URL" --timeout=5m --token "${VERCEL_TOKEN}"
-          # Sem caminho absoluto, o vercel curl mira a deployment de produção atual do projeto.
-          vercel curl /healthz --token "${VERCEL_TOKEN}" -- --fail-with-body --include
           echo "- promovida: ${DEPLOYMENT_URL}" >>"$GITHUB_STEP_SUMMARY"
+          # O domínio de produção precisa ser público (proxy da Netlify, stream e preflight CORS
+          # chegam sem login): curl puro, sem o bypass.
+          vercel --token "${VERCEL_TOKEN}" api "/v9/projects/${VERCEL_PROJECT_ID}/domains" >"${RUNNER_TEMP}/domains.json"
+          mapfile -t domains < <(jq -r '.domains[].name' "${RUNNER_TEMP}/domains.json")
+          if (( ${#domains[@]} == 0 )); then
+            echo "::error title=spike-api-vercel::O projeto não tem domínio de produção."
+            exit 1
+          fi
+          for domain in "${domains[@]}"; do
+            status="$(curl -sS -o /dev/null -w '%{http_code}' "https://${domain}/healthz")"
+            echo "  - https://${domain}/healthz sem bypass: HTTP ${status}" >>"$GITHUB_STEP_SUMMARY"
+            if [[ "$status" != 200 ]]; then
+              echo "::error title=spike-api-vercel::https://${domain}/healthz respondeu ${status} sem bypass; o domínio de produção precisa ser público."
+              exit 1
+            fi
+          done
