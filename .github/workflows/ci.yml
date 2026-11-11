@@ -108,13 +108,10 @@ jobs:
       - name: Biome
         run: pnpm lint
 
-      - name: Lockfile em documento único
+      - name: Lockfiles em documento único (raiz e tools/vercel-cli)
+        # O script verifica uma lista fixa: o lockfile da raiz e o do projeto isolado
+        # tools/vercel-cli (lido pelo Dependabot e pelos jobs de deploy), sem argumentos.
         run: pnpm check-lockfile
-
-      - name: Lockfile do Vercel CLI (projeto isolado) em documento único
-        # tools/vercel-cli tem lockfile próprio, lido pelo Dependabot (ecossistema npm) e pelos
-        # jobs de deploy; a mesma regra do lockfile da raiz vale para ele.
-        run: node scripts/check-lockfile.ts tools/vercel-cli/pnpm-lock.yaml
 
       - name: Consistência do monorepo (sherif)
         run: pnpm lint:monorepo

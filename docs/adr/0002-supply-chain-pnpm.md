@@ -62,6 +62,9 @@ geram um `pnpm-lock.yaml` com dois documentos YAML que o grafo de dependências 
 qualquer separador de documento ou se o `package.json` declarar essas chaves; roda no pre-commit
 (lefthook) e no CI (`pnpm check-lockfile`).
 
+Adendo (2026-11-11): o script não aceita argumentos e verifica sempre a lista fixa
+`pnpm-lock.yaml` e `tools/vercel-cli/pnpm-lock.yaml`; nenhum caminho vem da linha de comando.
+
 ### Exceções
 
 | Exceção                                       | Detalhe                                                                                                                                                  | Revisão                                                                |

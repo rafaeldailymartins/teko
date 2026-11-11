@@ -10,7 +10,7 @@
  *   fora por construção, e qualquer `.env*` ou `project.json` DENTRO do output derruba o script;
  * - link simbólico que aponta para fora do output derruba o script;
  * - nenhum arquivo pode trazer uma env var conhecida já com valor (linha `NOME=` de dotenv ou chave
- *   JSON `"NOME": "..."`), para os nomes de Config e de Sensitive de `infra/vercel/env.*.json`;
+ *   JSON `"NOME": "..."`), para os nomes de Config e de Sensitive de `infra/vercel/env.<env>.json`;
  * - o gitleaks (`gitleaks dir`) varre o conteúdo e precisa terminar limpo.
  *
  * O tar é determinístico: GNU tar com `--sort=name`, `--mtime` fixo (`SOURCE_DATE_EPOCH`, ou 0),
@@ -18,17 +18,23 @@
  * caminhos dentro do tar começam em `output/`, para extrair com `tar -xzf <arquivo> -C .vercel`.
  *
  * Uso (no runner Ubuntu do Actions, depois do `vercel build`):
- *   node scripts/pack-vercel-output.ts --out dist/teko-api-output.tgz \
- *     [--vercel-dir .vercel] [--env-file infra/vercel/env.production.json] [--gitleaks gitleaks]
+ *   node scripts/pack-vercel-output.ts --env production|staging
  *
- * Argumentos (`scripts/lib/cli-guards.ts`): `--out`, `--vercel-dir` e `--env-file` são resolvidos
- * contra o cwd e precisam ficar dentro do repositório, com links resolvidos. `--gitleaks` aceita só
- * o nome `gitleaks` (procurado apenas em diretórios absolutos e protegidos do PATH) ou o caminho
- * absoluto de um binário que se chame `gitleaks` (`gitleaks.exe` no Windows), como o
- * `$RUNNER_TEMP/gitleaks` verificado por SHA-256 no CI. O `tar` também sai do PATH protegido.
+ * `--env` é o ÚNICO argumento, validado contra um conjunto constante; nenhum valor da linha de
+ * comando vira caminho nem argumento de processo. Tudo sai de constantes resolvidas a partir do
+ * próprio script (raiz do repositório) e do ambiente escolhido:
  *
- * Saída: o tarball, `<tarball>.sha256` (formato do `sha256sum`) e, com `GITHUB_OUTPUT`, as saídas
- * `tarball`, `sha256` e `bytes`. Não usa dependências: só o Node 24 (type stripping).
+ * - env vars conhecidas: `infra/vercel/env.<env>.json`;
+ * - build: o primeiro de `.vercel/output` e `apps/api/.vercel/output` que existir (com Root
+ *   Directory `apps/api`, o `vercel build` grava no segundo);
+ * - saída: `dist/vercel/<env>/output.tgz` e `dist/vercel/<env>/output.tgz.sha256` (formato do
+ *   `sha256sum`) e, com `GITHUB_OUTPUT`, as saídas `tarball`, `sha256` e `bytes`.
+ *
+ * `gitleaks` e `tar` são procurados só em diretórios absolutos e protegidos do PATH
+ * (`findOnSafePath`); no CI, o gitleaks verificado por SHA-256 vai para um diretório acrescentado ao
+ * `GITHUB_PATH`. `SOURCE_DATE_EPOCH`, se definida, precisa ser só dígitos. Argumento desconhecido,
+ * a mais ou `--env` fora do conjunto terminam com código 2; falha de empacotamento, com 1. Não usa
+ * dependências: só o Node 24 (type stripping).
  */
 import { spawnSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
@@ -43,20 +49,17 @@ import {
   writeFileSync,
 } from 'node:fs'
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path'
-import { env, exit } from 'node:process'
+import process, { env } from 'node:process'
 import { parseArgs } from 'node:util'
 import { gzipSync } from 'node:zlib'
-import {
-  compareCodeUnits,
-  findOnSafePath,
-  resolveAllowedExecutable,
-  resolveInsideRoot,
-} from './lib/cli-guards.ts'
+import { compareCodeUnits, findOnSafePath, resolveInsideRoot } from './lib/cli-guards.ts'
 
 const REPO_ROOT = resolve(import.meta.dirname, '..')
-const DEFAULT_ENV_FILES = ['env.production.json', 'env.staging.json'].map((name) =>
-  join(REPO_ROOT, 'infra', 'vercel', name),
-)
+/** Onde o `vercel build` grava o `.vercel/` (raiz do repositório ou Root Directory `apps/api`). */
+const VERCEL_DIR_CANDIDATES = [
+  join(REPO_ROOT, '.vercel'),
+  join(REPO_ROOT, 'apps', 'api', '.vercel'),
+]
 /** Nomes que nunca podem estar no output (dotenv do `vercel pull` e o link do projeto). */
 const FORBIDDEN_NAME = /^(?:\.env(?:\..*)?|project\.json)$/
 /**
@@ -67,38 +70,61 @@ const GENERIC_ENV_NAMES: ReadonlySet<string> = new Set(['NODE_ENV', 'LOG_LEVEL']
 /** Tamanho máximo de arquivo varrido em busca de env vars (bundles maiores são raros). */
 const MAX_SCAN_BYTES = 32 * 1024 * 1024
 
-class PackError extends Error {}
-
-interface Options {
-  readonly vercelDir: string
+/** Ambiente de deploy: tudo o que o script lê e escreve é derivado dele e da raiz. */
+interface Target {
+  readonly name: 'production' | 'staging'
+  readonly envFile: string
   readonly out: string
-  readonly envFiles: readonly string[]
-  readonly gitleaks: string
 }
 
-function parseOptions(): Options {
-  const { values } = parseArgs({
-    options: {
-      'vercel-dir': { type: 'string', default: '.vercel' },
-      out: { type: 'string' },
-      'env-file': { type: 'string', multiple: true },
-      gitleaks: { type: 'string', default: 'gitleaks' },
-    },
-    strict: true,
-  })
-  if (values.out === undefined) {
-    throw new PackError('--out <arquivo.tgz> é obrigatório')
-  }
-  // Todo caminho fica dentro do repositório (links resolvidos) e sai absoluto, então nunca vira
-  // opção do tar ou do gitleaks. O executável sai da allowlist (ver `resolveAllowedExecutable`).
+function target(name: Target['name']): Target {
   return {
-    vercelDir: resolveInsideRoot(REPO_ROOT, values['vercel-dir']),
-    out: resolveInsideRoot(REPO_ROOT, values.out),
-    envFiles: (values['env-file'] ?? DEFAULT_ENV_FILES).map((file) =>
-      resolveInsideRoot(REPO_ROOT, file),
-    ),
-    gitleaks: resolveAllowedExecutable(values.gitleaks, 'gitleaks'),
+    name,
+    envFile: join(REPO_ROOT, 'infra', 'vercel', `env.${name}.json`),
+    out: join(REPO_ROOT, 'dist', 'vercel', name, 'output.tgz'),
   }
+}
+
+/** Conjunto constante dos valores aceitos em `--env`. */
+const TARGETS: ReadonlyMap<string, Target> = new Map(
+  (['production', 'staging'] as const).map((name) => [name, target(name)]),
+)
+
+const USAGE = `uso: node scripts/pack-vercel-output.ts --env ${[...TARGETS.keys()].join('|')}`
+
+class PackError extends Error {}
+class UsageError extends Error {}
+
+function parseTarget(): Target {
+  let value: string | undefined
+  try {
+    value = parseArgs({
+      options: { env: { type: 'string' } },
+      strict: true,
+      allowPositionals: false,
+    }).values.env
+  } catch (error) {
+    throw new UsageError(error instanceof Error ? error.message : String(error))
+  }
+  // O valor da linha de comando só serve de chave: o que segue adiante é a constante do conjunto.
+  const selected = value === undefined ? undefined : TARGETS.get(value)
+  if (selected === undefined) {
+    throw new UsageError(
+      value === undefined ? '--env é obrigatório' : `--env ${JSON.stringify(value)} desconhecido`,
+    )
+  }
+  return selected
+}
+
+/** Primeiro `.vercel/` candidato com `output/`; os candidatos são constantes. */
+function findVercelDir(): string {
+  const found = VERCEL_DIR_CANDIDATES.find((dir) => existsSync(join(dir, 'output')))
+  if (found === undefined) {
+    const names = VERCEL_DIR_CANDIDATES.map((dir) => relative(REPO_ROOT, join(dir, 'output')))
+    throw new PackError(`nenhum ${names.join(' nem ')}; rode \`vercel build\` antes`)
+  }
+  // Defesa em profundidade: um link simbólico no lugar do `.vercel/` não sai do repositório.
+  return resolveInsideRoot(REPO_ROOT, found, REPO_ROOT)
 }
 
 interface Entry {
@@ -190,8 +216,9 @@ function assertNoEnvAssignments(entries: readonly Entry[], pattern: RegExp): voi
 }
 
 /**
- * `executable` é sempre um caminho absoluto já validado (`findOnSafePath` ou
- * `resolveAllowedExecutable`), e o spawn é sem shell, com argumentos em array.
+ * `executable` é sempre o caminho absoluto devolvido por `findOnSafePath` para um nome constante
+ * (`tar`, `gitleaks`); o spawn é sem shell, e os argumentos (array) saem só de constantes e de
+ * caminhos derivados da raiz do repositório.
  */
 function run(executable: string, args: readonly string[]): Buffer {
   const command = basename(executable)
@@ -206,14 +233,22 @@ function run(executable: string, args: readonly string[]): Buffer {
   return result.stdout
 }
 
-function runGitleaks(gitleaks: string, outputDir: string): void {
+function runGitleaks(outputDir: string): void {
   // --redact: o log do Actions nunca mostra o valor encontrado.
-  run(gitleaks, ['dir', outputDir, '--no-banner', '--redact', '--exit-code', '1'])
+  run(findOnSafePath('gitleaks'), ['dir', outputDir, '--no-banner', '--redact', '--exit-code', '1'])
 }
 
+/** `SOURCE_DATE_EPOCH` (segundos), só dígitos; ausente ou vazia vale 0. */
 function sourceDateEpoch(): number {
   const raw = env['SOURCE_DATE_EPOCH']
-  return raw !== undefined && /^\d+$/.test(raw) ? Number(raw) : 0
+  if (raw === undefined || raw === '') {
+    return 0
+  }
+  const seconds = /^\d{1,15}$/.test(raw) ? Number(raw) : Number.NaN
+  if (!Number.isSafeInteger(seconds)) {
+    throw new PackError('SOURCE_DATE_EPOCH precisa ser um inteiro de segundos (só dígitos)')
+  }
+  return seconds
 }
 
 function deterministicTar(vercelDir: string): Buffer {
@@ -238,37 +273,47 @@ function deterministicTar(vercelDir: string): Buffer {
 }
 
 function main(): void {
-  const options = parseOptions()
-  const outputDir = join(options.vercelDir, 'output')
+  const selected = parseTarget()
+  const vercelDir = findVercelDir()
+  const outputDir = join(vercelDir, 'output')
   if (!existsSync(join(outputDir, 'config.json'))) {
     throw new PackError(`${outputDir}/config.json não existe; rode \`vercel build\` antes`)
   }
 
   const entries = walk(outputDir)
   assertSymlinksInside(outputDir, entries)
-  assertNoEnvAssignments(entries, envAssignmentPattern(knownEnvNames(options.envFiles)))
-  runGitleaks(options.gitleaks, outputDir)
+  assertNoEnvAssignments(entries, envAssignmentPattern(knownEnvNames([selected.envFile])))
+  runGitleaks(outputDir)
 
-  const tarball = gzipSync(deterministicTar(options.vercelDir), { level: 9 })
+  const tarball = gzipSync(deterministicTar(vercelDir), { level: 9 })
   const sha256 = createHash('sha256').update(tarball).digest('hex')
-  mkdirSync(dirname(options.out), { recursive: true })
-  writeFileSync(options.out, tarball)
-  writeFileSync(`${options.out}.sha256`, `${sha256}  ${basename(options.out)}\n`)
+  // Defesa em profundidade: um link simbólico em `dist/` não leva a escrita para fora do repo.
+  const out = resolveInsideRoot(REPO_ROOT, selected.out, REPO_ROOT)
+  mkdirSync(dirname(out), { recursive: true })
+  writeFileSync(out, tarball)
+  writeFileSync(`${out}.sha256`, `${sha256}  ${basename(out)}\n`)
 
   const githubOutput = env['GITHUB_OUTPUT']
   if (githubOutput !== undefined && githubOutput !== '') {
     appendFileSync(
       githubOutput,
-      `tarball=${options.out}\nsha256=${sha256}\nbytes=${String(tarball.length)}\n`,
+      `tarball=${out}\nsha256=${sha256}\nbytes=${String(tarball.length)}\n`,
     )
   }
   const files = entries.filter((e) => e.kind === 'file').length
-  console.log(JSON.stringify({ tarball: options.out, sha256, bytes: tarball.length, files }))
+  console.log(
+    JSON.stringify({ env: selected.name, tarball: out, sha256, bytes: tarball.length, files }),
+  )
 }
 
 try {
   main()
 } catch (error) {
   console.error(`pack-vercel-output: ${error instanceof Error ? error.message : String(error)}`)
-  exit(1)
+  if (error instanceof UsageError) {
+    console.error(USAGE)
+  }
+  // `exitCode` em vez de `exit()`: no Windows, sair com a escrita no stderr ainda pendente aborta o
+  // Node (assert do libuv) e troca o código de saída.
+  process.exitCode = error instanceof UsageError ? 2 : 1
 }

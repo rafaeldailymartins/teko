@@ -4,7 +4,6 @@ import {
   chmodSync,
   mkdirSync,
   mkdtempSync,
-  readFileSync,
   realpathSync,
   rmSync,
   symlinkSync,
@@ -13,20 +12,15 @@ import {
 import { tmpdir } from 'node:os'
 import { delimiter, join, resolve } from 'node:path'
 import { after, before, describe, it } from 'node:test'
-import {
-  CliGuardError,
-  compareCodeUnits,
-  findOnSafePath,
-  resolveAllowedExecutable,
-  resolveInsideRoot,
-} from './cli-guards.ts'
+import { CliGuardError, compareCodeUnits, findOnSafePath, resolveInsideRoot } from './cli-guards.ts'
 
 /**
  * Guardas dos scripts da raiz (`scripts/*.ts`). Roda com o test runner nativo do Node 24
  * (`pnpm test:scripts` = `node --test`), sem pacote nem dependência: os scripts ficam fora dos três
  * pacotes do workspace, e o `turbo boundaries` proíbe que um pacote importe arquivos de fora dele.
- * Cobre os helpers de `cli-guards.ts` e, de ponta a ponta, a recusa de caminho fora do repositório e
- * de executável fora da allowlist nos próprios scripts.
+ * Cobre os helpers de `cli-guards.ts` e, de ponta a ponta, que os scripts não aceitam caminho
+ * nem executável na linha de comando: `check-lockfile` não aceita argumento algum e
+ * `pack-vercel-output` aceita só `--env production|staging`.
  */
 
 const REPO_ROOT = resolve(import.meta.dirname, '..', '..')
@@ -199,86 +193,44 @@ describe('findOnSafePath (S4036: PATH só com diretórios absolutos e protegidos
   })
 })
 
-describe('resolveAllowedExecutable (S8701/S8705: --gitleaks só da allowlist)', () => {
-  let bin: string
-  let gitleaks: string
-
-  before(() => {
-    bin = join(sandbox, 'gl-bin')
-    gitleaks = fakeExecutable(bin, `gitleaks${EXE}`)
-    fakeExecutable(bin, `evil${EXE}`)
+describe('scripts da raiz de ponta a ponta (S8707/S8701/S8705: sem caminho nem executável no argv)', () => {
+  it('check-lockfile sem argumentos verifica os lockfiles fixos e passa', () => {
+    const result = runScript('check-lockfile.ts', [])
+    assert.equal(result.status, 0, result.stderr)
+    assert.match(result.stderr, /check-lockfile: pnpm-lock\.yaml ok/)
+    assert.match(result.stderr, /check-lockfile: tools\/vercel-cli\/pnpm-lock\.yaml ok/)
   })
 
-  it('aceita o nome simples (resolvido no PATH seguro) e o caminho absoluto do binário', () => {
-    assert.equal(resolveAllowedExecutable('gitleaks', 'gitleaks', SEARCH(bin)), gitleaks)
-    assert.equal(resolveAllowedExecutable(gitleaks, 'gitleaks', SEARCH('')), gitleaks)
-  })
-
-  for (const [value, label] of [
-    ['evil', 'outro nome simples'],
-    ['./gitleaks', 'caminho relativo'],
-    ['gitleaks --config=/tmp/x', 'argumento embutido'],
-    ['gitleaks; rm -rf /', 'metacaractere de shell'],
-  ] as const) {
-    it(`recusa ${JSON.stringify(value)} (${label})`, () => {
-      assert.throws(() => resolveAllowedExecutable(value, 'gitleaks', SEARCH(bin)), CliGuardError)
+  for (const args of [
+    ['pnpm-lock.yaml'],
+    ['tools/vercel-cli/pnpm-lock.yaml'],
+    ['../pnpm-lock.yaml'],
+    ['--help'],
+  ]) {
+    it(`check-lockfile recusa qualquer argumento com código 2: ${JSON.stringify(args)}`, () => {
+      const result = runScript('check-lockfile.ts', args)
+      assert.equal(result.status, 2)
+      assert.match(result.stderr, /não aceita argumentos/)
     })
   }
 
-  it('recusa caminho absoluto de outro binário ou inexistente', () => {
-    assert.throws(
-      () => resolveAllowedExecutable(join(bin, `evil${EXE}`), 'gitleaks', SEARCH(bin)),
-      CliGuardError,
-    )
-    assert.throws(
-      () => resolveAllowedExecutable(join(bin, 'nao-existe', 'gitleaks'), 'gitleaks', SEARCH(bin)),
-      CliGuardError,
-    )
-  })
-
-  it('recusa link chamado gitleaks que aponta para outro binário', {
-    skip: IS_WINDOWS && 'symlink de arquivo exige privilégio no Windows',
-  }, () => {
-    const link = join(sandbox, 'gl-link')
-    mkdirSync(link)
-    symlinkSync(join(bin, 'evil'), join(link, 'gitleaks'))
-    assert.throws(
-      () => resolveAllowedExecutable(join(link, 'gitleaks'), 'gitleaks', SEARCH('')),
-      CliGuardError,
-    )
-  })
-})
-
-describe('scripts da raiz, de ponta a ponta', () => {
-  it('check-lockfile recusa um lockfile fora do repositório, mesmo válido', () => {
-    const outside = join(sandbox, 'lock-outside')
-    mkdirSync(outside)
-    writeFileSync(join(outside, 'pnpm-lock.yaml'), "lockfileVersion: '9.0'\n")
-    writeFileSync(join(outside, 'package.json'), '{}')
-    const result = runScript('check-lockfile.ts', [join(outside, 'pnpm-lock.yaml')])
-    assert.equal(result.status, 1)
-    assert.match(result.stderr, /fora do repositório/)
-    const relative = runScript('check-lockfile.ts', ['../pnpm-lock.yaml'])
-    assert.equal(relative.status, 1)
-    assert.match(relative.stderr, /fora do repositório/)
-  })
-
-  it('pack-vercel-output recusa --out fora do repositório antes de escrever qualquer coisa', () => {
-    const target = join(sandbox, 'escaped.tgz')
-    const result = runScript('pack-vercel-output.ts', ['--out', target])
-    assert.equal(result.status, 1)
-    assert.match(result.stderr, /fora do repositório/)
-    assert.throws(() => readFileSync(target))
-  })
-
-  it('pack-vercel-output recusa --gitleaks fora da allowlist', () => {
-    const result = runScript('pack-vercel-output.ts', [
-      '--out',
-      'dist/never.tgz',
-      '--gitleaks',
-      './evil',
-    ])
-    assert.equal(result.status, 1)
-    assert.match(result.stderr, /--gitleaks/)
-  })
+  for (const [args, message] of [
+    [[], /--env é obrigatório/],
+    [['--env', 'nope'], /--env "nope" desconhecido/],
+    [['--env', '../production'], /desconhecido/],
+    [['--env', 'production', 'extra'], /extra/],
+    [['--env', 'production', '--out', 'dist/x.tgz'], /--out/],
+    [['--env', 'production', '--gitleaks', 'gitleaks'], /--gitleaks/],
+    [['--env', 'production', '--vercel-dir', '.vercel'], /--vercel-dir/],
+  ] as const) {
+    it(`pack-vercel-output recusa ${JSON.stringify(args)} com código 2, antes de ler o build`, () => {
+      const result = runScript('pack-vercel-output.ts', args)
+      assert.equal(result.status, 2, result.stderr)
+      assert.match(result.stderr, message)
+      assert.match(
+        result.stderr,
+        /uso: node scripts\/pack-vercel-output\.ts --env production\|staging/,
+      )
+    })
+  }
 })

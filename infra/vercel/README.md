@@ -138,8 +138,14 @@ Fluxo do `deploy-api.yml` (`develop` → `teko-api-staging`; release em `main` �
 2. `vercel pull --yes --environment=production`;
 3. `vercel build --prod` (ou o Build Output API gerado pelo tsdown, se o spike F1 (b) escolher o
    fallback);
-4. `scripts/pack-vercel-output.ts`: tarball determinístico do `.vercel/output` (sem
-   `.vercel/.env*` nem `project.json`), com sha256;
+4. `node scripts/pack-vercel-output.ts --env production|staging`: tarball determinístico do
+   `.vercel/output` (sem `.vercel/.env*` nem `project.json`), com sha256. `--env` é o único
+   argumento; o resto é fixo: env vars de `infra/vercel/env.<env>.json`, build no primeiro de
+   `.vercel/output` e `apps/api/.vercel/output` que existir, saída em
+   `dist/vercel/<env>/output.tgz` e `output.tgz.sha256`, e as saídas `tarball`, `sha256` e
+   `bytes` no `GITHUB_OUTPUT`. `gitleaks` e `tar` saem só de diretórios absolutos e protegidos do
+   PATH, então o job instala o gitleaks verificado por SHA-256 num diretório que acrescenta ao
+   `GITHUB_PATH`;
 5. SBOM (syft) e Grype; `actions/attest` do tarball;
 6. migrações (`drizzle-kit migrate`, a partir da F2);
 7. `scripts/vercel-env-sync.ts` (F7);

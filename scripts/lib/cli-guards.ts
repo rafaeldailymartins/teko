@@ -1,17 +1,18 @@
 /**
- * Guardas dos argumentos de CLI dos scripts da raiz. Os scripts rodam no CI e em máquinas de dev
- * com argumentos que podem vir de um humano, de um workflow ou de um agente; nenhum argumento é
- * confiável:
+ * Guardas dos scripts da raiz. Os scripts rodam no CI e em máquinas de dev com argumentos que
+ * podem vir de um humano, de um workflow ou de um agente, e por isso nenhum caminho de arquivo nem
+ * executável vem da linha de comando: os scripts aceitam no máximo opções de um conjunto constante
+ * (ex.: `--env production|staging`), e todo caminho é uma constante derivada da raiz do
+ * repositório. Os helpers daqui são a defesa em profundidade sobre essas constantes:
  *
- * - caminho de arquivo: resolvido contra o cwd e aceito só se o caminho REAL (links simbólicos e
- *   junctions resolvidos) ficar dentro da raiz do repositório (`resolveInsideRoot`);
+ * - caminho de arquivo: aceito só se o caminho REAL (links simbólicos e junctions resolvidos)
+ *   ficar dentro da raiz do repositório (`resolveInsideRoot`);
  * - executável: nunca um nome que o sistema procure no PATH. `findOnSafePath` devolve o caminho
  *   absoluto achado só em diretórios absolutos do PATH (entradas relativas ou vazias resolveriam
  *   contra o cwd, e o Windows ainda procura no cwd antes do PATH) e, no POSIX, que não sejam
- *   graváveis por todos; `resolveAllowedExecutable` aplica uma allowlist de nome.
+ *   graváveis por todos.
  *
- * Os testes ficam em `apps/api/test/integration/root-scripts.test.ts` (projeto `integration` da
- * API, que o CI roda); os scripts da raiz não têm runner próprio.
+ * Os testes ficam em `scripts/lib/cli-guards.test.ts` (`pnpm test:scripts`).
  */
 import { accessSync, constants, lstatSync, realpathSync, statSync } from 'node:fs'
 import { dirname, isAbsolute, join, posix, relative, resolve, sep, win32 } from 'node:path'
@@ -143,45 +144,4 @@ export function findOnSafePath(name: string, search: ExecutableSearch = currentS
     }
   }
   throw new CliGuardError(`${name} não encontrado em nenhum diretório absoluto e protegido do PATH`)
-}
-
-/**
- * Allowlist de executável para uma opção de CLI (ex.: `--gitleaks`). Aceita só:
- * - exatamente `allowedName`, resolvido por `findOnSafePath`;
- * - um caminho absoluto cujo destino REAL (links resolvidos) se chame `allowedName` (`.exe` no
- *   Windows) e seja um arquivo executável — o caso do CI, que instala o binário verificado por
- *   SHA-256 em `$RUNNER_TEMP`, fora do PATH.
- * Qualquer outra coisa (outro nome, caminho relativo, argumentos embutidos) é recusada. Devolve o
- * caminho absoluto a executar com `spawn`/`execFile` sem shell.
- */
-export function resolveAllowedExecutable(
-  value: string,
-  allowedName: string,
-  search: ExecutableSearch = currentSearch(),
-): string {
-  if (value === allowedName) {
-    return findOnSafePath(allowedName, search)
-  }
-  const paths = search.platform === 'win32' ? win32 : posix
-  const refuse = (reason: string): CliGuardError =>
-    new CliGuardError(`--${allowedName}: ${JSON.stringify(value)} recusado (${reason})`)
-  if (!paths.isAbsolute(value)) {
-    throw refuse(`use "${allowedName}" (PATH) ou o caminho absoluto do binário`)
-  }
-  let real: string
-  try {
-    real = realpathSync.native(value)
-  } catch {
-    throw refuse('não existe')
-  }
-  const expected = executableFileName(allowedName, search.platform)
-  const actual = paths.basename(real)
-  const sameName =
-    search.platform === 'win32'
-      ? actual.toLowerCase() === expected.toLowerCase()
-      : actual === expected
-  if (!sameName || !isExecutableFile(real, search.platform)) {
-    throw refuse(`o binário precisa se chamar ${expected} e ser executável`)
-  }
-  return real
 }

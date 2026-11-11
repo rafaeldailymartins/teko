@@ -19,7 +19,8 @@ pre-commit:
         OPENSPEC_TELEMETRY: "0"
       run: ./node_modules/.bin/openspec validate --all --strict --no-interactive
     lockfile:
-      glob: "pnpm-lock.yaml"
+      # Sem argumentos: o script verifica sempre o lockfile da raiz e o de tools/vercel-cli.
+      glob: "{pnpm-lock.yaml,tools/vercel-cli/pnpm-lock.yaml}"
       run: node scripts/check-lockfile.ts
 
 commit-msg:
