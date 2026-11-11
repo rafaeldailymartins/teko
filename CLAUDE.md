@@ -22,11 +22,17 @@ docs, mensagens), seguindo o estilo do que já existe.
 
 Atualize esta seção no PR que fecha cada fase ou spike.
 
-- **F0 (contas e governança):** concluída. O `dependabot.yml` chegou a `develop` em 2026-11-11 e
-  ainda não abriu PR (`gh pr list --author app/dependabot --state all` vazio nessa data); a
-  primeira rodada é na segunda, 16/11, às 06:00 de Brasília. Conferir o primeiro PR
-  (`chore(deps): …`) quando vier.
-- **F1 (esqueleto, gates e spikes):** concluída em 2026-11-11, com a ADR 0003 `accepted`. Spikes:
+- **F0 (contas e governança):** concluída, menos um item do DoD. Repositório, rulesets, segurança,
+  App de release, environments, Scorecard (7,4) e `/healthz` dos dois projetos Vercel conferidos
+  em 2026-11-11. O spike de environments em `pull_request` mostrou que a regra é avaliada contra
+  `refs/pull/N/merge` (ADR 0024): o `release-rehearsal` passa a aceitar todas as branches no PR
+  que criar o `release-gate.yml`, com filtro por `github.head_ref`. Falta o primeiro PR do
+  Dependabot (`chore(deps): …`): a primeira rodada é na segunda, 16/11, às 06:00 de Brasília.
+  Quando vier, marcar a tarefa 3.7 e arquivar `bootstrap-repository-governance`.
+- **F1 (esqueleto, gates e spikes):** concluída em 2026-11-11, com a ADR 0003 `accepted` e as
+  mudanças `scaffold-monorepo` e `setup-quality-gates-ci` arquivadas. CI de PR em cerca de 4 min;
+  um segredo de teste reprova o `ci-gate`. O badge do Stryker fica "unknown" até o `mutation.yml`
+  da F2, e o da OpenSSF Best Practices depende do questionário do mantenedor. Spikes:
   - (a) web na Netlify: concluído. Site `tekoia` (time `rafael-daily-santos-martins`, a conta do
     token do CI), `tools/netlify-cli` isolado, `@netlify/plugin-nextjs` fixado no lockfile,
     proteção de visitantes desligada. A Netlify troca `/pt-BR/` por `/pt-br/`: tratar na F5.
@@ -40,8 +46,8 @@ Atualize esta seção no PR que fecha cada fase ou spike.
   - (d) pooler do Neon: concluído. Timeouts no role valem pelo pooler, que recusa
     `statement_timeout` como parâmetro de conexão; o resume cabe no corte de 26 s. O `pg` nunca
     teve proveniência: decidir o driver na F2, junto com o `attachDatabasePool`.
-  - (e) concluído; (g) parcial: as bibliotecas ainda não introduzidas são conferidas pelas fases
-    que as introduzem.
+  - (e) concluído; (g) concluído no escopo da F1 (inclusive as ferramentas de lint e CI): as
+    bibliotecas ainda não introduzidas são conferidas pelas fases que as introduzem.
   - (f) ingestão: concluído. Docling com TableFormer V1 `ACCURATE` (o V2 desmonta as tabelas de
     campos; Guia 3.2.4 inteiro em 71,7 min, 457 tabelas); WS de Tabelas Externas em TXT cp1252 com
     SHA-1 nos metadados; `bge-m3` com `[n, 1024]` e custo real em `meta.neurons`; red team sem

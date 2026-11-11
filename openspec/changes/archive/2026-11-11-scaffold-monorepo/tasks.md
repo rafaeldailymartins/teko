@@ -38,7 +38,7 @@ Nenhum resultado foi presumido.
 - [x] 4.4 Spike (d): Neon `-pooler` com timeouts por role, `attachDatabasePool` e reconexão após scale-to-zero (o `attachDatabasePool` fica para a F2, com a decisão do driver; ADR 0003)
 - [x] 4.5 Spike (e): exports `parseJsonEventStream` e `uiMessageChunkSchema` do `ai`, registrado na ADR 0003 (presentes em 7.0.162 e 7.0.169)
 - [x] 4.6 Spike (f): Docling ACCURATE contra V2 no Guia 3.2.4, formato do WS de Tabelas Externas, `bge-m3` com dimensão 1024 e plugins locais do promptfoo (ADR 0003, "Spike (f)")
-- [ ] 4.7 Spike (g): concluir a conferência via Context7 de todas as versões das tabelas de ferramentas e de stack e registrar na ADR 0003 (parcial: catálogo, proveniência, Vercel, uv, `ai`, OpenSpec, pnpm, Turborepo, Biome, imagens locais e, no spike (f), Docling, Workers AI e promptfoo; as bibliotecas ainda não introduzidas são conferidas pelas fases que as introduzem)
+- [x] 4.7 Spike (g): conferência via Context7 das versões das ferramentas e da stack introduzidas na F1, registrada na ADR 0003 (catálogo, proveniência, Vercel, uv, `ai`, OpenSpec, pnpm, Turborepo, Biome, imagens locais, ferramentas de lint e CI e, no spike (f), Docling, Workers AI e promptfoo). As bibliotecas ainda não introduzidas são conferidas pelas fases que as introduzem, como manda o roteiro
 - [x] 4.8 Ajustar plano e ADRs com as decisões dos spikes (allowlist de `deploy_context`, header de IP, formato do entrypoint e do build, glob de `supportsCancellation`, `trustProxy` da Vercel, versões) e passar a ADR 0003 a `accepted`
 
 ## Workflow follow-up
