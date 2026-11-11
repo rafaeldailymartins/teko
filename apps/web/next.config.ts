@@ -12,8 +12,16 @@ import createNextIntlPlugin from 'next-intl/plugin'
 
 const isDev = process.env.NODE_ENV === 'development'
 
-/** Variáveis que nunca podem vazar para o bundle, nem por valor nem por nome em `NEXT_PUBLIC_*`. */
-const SERVER_ONLY_SECRETS = ['GEMINI_API_KEY', 'OPENAI_API_KEY'] as const
+/**
+ * Variáveis que nunca podem vazar para o bundle, nem por valor nem por nome em `NEXT_PUBLIC_*`.
+ * O `NETLIFY_PROXY_JWS_SECRET` é variável comum no plano Free da Netlify (sem escopo nem valor
+ * secreto) e chega ao ambiente do build; o proxy assinado o lê, o bundle nunca.
+ */
+const SERVER_ONLY_SECRETS = [
+  'GEMINI_API_KEY',
+  'OPENAI_API_KEY',
+  'NETLIFY_PROXY_JWS_SECRET',
+] as const
 
 /** Contextos de deploy da Netlify em que o stream precisa de origem própria (ver netlify.toml). */
 const DEPLOY_CONTEXTS_REQUIRING_STREAM_ORIGIN = new Set(['production', 'develop'])
