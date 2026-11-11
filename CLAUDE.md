@@ -26,13 +26,16 @@ Atualize esta seção no PR que fecha cada fase ou spike.
   App de release, environments, Scorecard (7,4) e `/healthz` dos dois projetos Vercel conferidos
   em 2026-11-11. O spike de environments em `pull_request` mostrou que a regra é avaliada contra
   `refs/pull/N/merge` (ADR 0024): o `release-rehearsal` passa a aceitar todas as branches no PR
-  que criar o `release-gate.yml`, com filtro por `github.head_ref`. Falta o primeiro PR do
-  Dependabot (`chore(deps): …`): a primeira rodada é na segunda, 16/11, às 06:00 de Brasília.
-  Quando vier, marcar a tarefa 3.7 e arquivar `bootstrap-repository-governance`.
+  que criar o `release-gate.yml`, com filtro por `github.head_ref`. O environment `maintenance`
+  (só `develop`) foi criado em 2026-11-11. O `dependabot.yml` estava inválido (o GitHub recusa
+  `semver-*-days` no `cooldown` de `github-actions`) e nenhuma rodada tinha rodado; corrigido, com
+  uma checagem no `ci-config.test.sh`. Falta o primeiro PR do Dependabot (`chore(deps): …`):
+  quando vier, marcar a tarefa 3.7 e arquivar `bootstrap-repository-governance`.
 - **F1 (esqueleto, gates e spikes):** concluída em 2026-11-11, com a ADR 0003 `accepted` e as
   mudanças `scaffold-monorepo` e `setup-quality-gates-ci` arquivadas. CI de PR em cerca de 4 min;
   um segredo de teste reprova o `ci-gate`. O badge do Stryker fica "unknown" até o `mutation.yml`
-  da F2, e o da OpenSSF Best Practices depende do questionário do mantenedor. Spikes:
+  da F2. OpenSSF Best Practices no nível `passing` desde 2026-11-11 (projeto 16550; análise
+  dinâmica marcada `Unmet` até o ZAP da F8, e release notes `N/A` até a v0.1.0). Spikes:
   - (a) web na Netlify: concluído. Site `tekoia` (time `rafael-daily-santos-martins`, a conta do
     token do CI), `tools/netlify-cli` isolado, `@netlify/plugin-nextjs` fixado no lockfile,
     proteção de visitantes desligada. A Netlify troca `/pt-BR/` por `/pt-br/`: tratar na F5.

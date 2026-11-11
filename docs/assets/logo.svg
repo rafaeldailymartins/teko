@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-labelledby="title desc">
+  <title id="title">Tekó</title>
+  <desc id="desc">Um T cuja barra é uma linha do tempo com a data de referência em destaque e cuja haste brota uma folha: a lei certa para cada momento.</desc>
+  <defs>
+    <linearGradient id="fundo" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#005766"/>
+      <stop offset="1" stop-color="#003540"/>
+    </linearGradient>
+    <linearGradient id="folha" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0" stop-color="#38a37a"/>
+      <stop offset="1" stop-color="#7fd8c8"/>
+    </linearGradient>
+    <radialGradient id="brilho" cx="0.3" cy="0.2" r="0.9">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.16"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <rect width="256" height="256" rx="60" fill="url(#fundo)"/>
+  <rect width="256" height="256" rx="60" fill="url(#brilho)"/>
+  <circle cx="128" cy="132" r="92" fill="none" stroke="#ffffff" stroke-opacity="0.07" stroke-width="2"/>
+
+  <!-- Folhas que brotam da haste -->
+  <path d="M132 170 C132 136 154 114 192 110 C192 148 170 168 132 170 Z" fill="url(#folha)"/>
+  <path d="M136 164 C150 144 164 130 184 118" fill="none" stroke="#003540" stroke-opacity="0.35" stroke-width="3" stroke-linecap="round"/>
+  <path d="M124 196 C124 172 108 156 80 153 C80 180 96 195 124 196 Z" fill="url(#folha)" opacity="0.85"/>
+  <path d="M120 191 C110 177 100 167 87 160" fill="none" stroke="#003540" stroke-opacity="0.35" stroke-width="3" stroke-linecap="round"/>
+
+  <!-- Haste do T -->
+  <path d="M128 92 V206" stroke="#ffffff" stroke-width="16" stroke-linecap="round"/>
+
+  <!-- Barra do T: a linha do tempo da vigência -->
+  <path d="M54 82 H202" stroke="#ffffff" stroke-width="16" stroke-linecap="round"/>
+  <circle cx="74" cy="82" r="7" fill="#005766"/>
+  <circle cx="182" cy="82" r="7" fill="#005766"/>
+
+  <!-- Data de referência -->
+  <circle cx="128" cy="82" r="21" fill="#e0a53b" stroke="#ffffff" stroke-width="7"/>
+  <circle cx="128" cy="82" r="6" fill="#ffffff"/>
+</svg>

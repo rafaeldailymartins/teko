@@ -74,6 +74,23 @@ dependabot_dirs_exist() {
 }
 check "dependabot.yml sem diretórios inexistentes" dependabot_dirs_exist
 
+# --- Dependabot: `semver-*-days` só nos ecossistemas que aceitam (dependabot-invalid-cooldown) ---
+# O GitHub recusa o arquivo inteiro se github-actions, docker ou docker-compose trouxerem as
+# chaves `semver-*-days` no `cooldown`, e nenhuma atualização roda (doc: "SemVer-bump days
+# supported" na referência de opções do Dependabot).
+dependabot_cooldown_supported() {
+  local bad
+  bad="$(yq -r '.updates[]
+    | select(.["package-ecosystem"] == "github-actions" or .["package-ecosystem"] == "docker" or .["package-ecosystem"] == "docker-compose")
+    | select(.cooldown // {} | keys | any_c(test("^semver-")))
+    | .["package-ecosystem"]' .github/dependabot.yml)" || return 1
+  if [[ -n "$bad" ]]; then
+    echo "     cooldown com semver-*-days em: ${bad//$'\n'/, }"
+    return 1
+  fi
+}
+check "dependabot.yml sem semver-*-days onde o ecossistema não aceita" dependabot_cooldown_supported
+
 # --- Exclusões ancoradas: nada de `**/out/**` (unanchored-out-excludes-adapters-out) ------------
 no_unanchored_out_sonar() {
   ! grep -Eq '^\s*\*\*/out/\*\*' sonar-project.properties
