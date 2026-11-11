@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   DEFAULT_DRAIN_DELAY_MS,
   DEFAULT_SHUTDOWN_GRACE_MS,
+  DEFAULT_TRUST_PROXY,
   EnvValidationError,
   HOBBY_MAX_DURATION_S,
   parseEnv,
@@ -154,6 +155,41 @@ describe('parseEnv', () => {
       'GROQ_API_BASE: proibida (o host do provedor é fixo no código)',
       'OPENAI_BASE_URL: proibida (o host do provedor é fixo no código)',
     ])
+  })
+
+  it('lista as *_BASE_URL proibidas em ordem de unidade de código, sem depender de locale', () => {
+    const problems = problemsOf({
+      ...DEV_ENV,
+      OPENAI_x_BASE_URL: 'https://evil.example',
+      OPENAI_X_BASE_URL: 'https://evil.example',
+      GROQ_BASE_URL: 'https://evil.example',
+      GEMINI_BASE_URL: 'https://evil.example',
+    })
+    // localeCompare poria `OPENAI_x` antes de `OPENAI_X`; a ordem do log precisa ser estável.
+    expect(problems.map((problem) => problem.split(':')[0])).toEqual([
+      'GEMINI_BASE_URL',
+      'GROQ_BASE_URL',
+      'OPENAI_X_BASE_URL',
+      'OPENAI_x_BASE_URL',
+    ])
+  })
+
+  it('sem fatos injetados, confere a versão do próprio processo', () => {
+    const vercelProd = {
+      ...PROD_ENV,
+      RUNTIME_TARGET: 'vercel',
+      TRUST_PROXY: undefined,
+      VERCEL_REGION: 'gru1',
+    } as const
+    if (process.version.startsWith('v24.')) {
+      expect(parseEnv(vercelProd).RUNTIME_TARGET).toBe('vercel')
+    } else {
+      expect(() => parseEnv(vercelProd)).toThrow(/exige Node 24/)
+    }
+  })
+
+  it('a rede padrão do Caddy é o CIDR /24 da stack de CI e local', () => {
+    expect(DEFAULT_TRUST_PROXY).toBe('172.30.0.0/24')
   })
 
   it('exige grace >= 30 s e drenagem menor que o grace', () => {

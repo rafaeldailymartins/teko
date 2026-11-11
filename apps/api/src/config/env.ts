@@ -45,8 +45,17 @@ const EmbeddingsProvider = {
   Fake: 'fake',
 } as const
 
-/** Rede do Caddy da stack de CI (`infra/ci`) e do proxy local. */
-export const DEFAULT_TRUST_PROXY = '172.30.0.0/24'
+/**
+ * Rede Docker do Caddy da stack de CI (`infra/ci`) e do proxy local: a sub-rede privada que o
+ * compose fixa para o proxy, a única origem confiável de `X-Forwarded-For` nesses ambientes. É
+ * configuração, não um endereço de serviço: vale só em development e ci (`CADDY_NETWORK_APP_ENVS`)
+ * e é substituída por inteiro quando `TRUST_PROXY` está definida. Se a sub-rede do compose mudar,
+ * mude aqui.
+ */
+const CADDY_DOCKER_NETWORK = { address: [172, 30, 0, 0], prefixLength: 24 } as const
+
+/** `CADDY_DOCKER_NETWORK` em notação CIDR, o padrão do `trustProxy` em development e ci. */
+export const DEFAULT_TRUST_PROXY = `${CADDY_DOCKER_NETWORK.address.join('.')}/${String(CADDY_DOCKER_NETWORK.prefixLength)}`
 
 /**
  * Únicos ambientes em que `RUNTIME_TARGET` tem padrão (`node`) e em que o `trustProxy` pode cair
@@ -221,10 +230,21 @@ export class EnvValidationError extends Error {
   }
 }
 
+/**
+ * Ordem de unidade de código UTF-16 (a do `sort()` sem argumento), explícita: nomes de variável são
+ * identificadores, e a lista de problemas do boot não pode mudar com o locale ou o ICU do host.
+ */
+function compareCodeUnits(a: string, b: string): number {
+  if (a < b) {
+    return -1
+  }
+  return a > b ? 1 : 0
+}
+
 function forbiddenBaseUrlProblems(source: Readonly<Record<string, string | undefined>>): string[] {
   return Object.keys(source)
     .filter((key) => PROVIDER_BASE_URL_PATTERN.test(key) && source[key] !== undefined)
-    .sort()
+    .sort(compareCodeUnits)
     .map((key) => `${key}: proibida (o host do provedor é fixo no código)`)
 }
 
@@ -242,10 +262,15 @@ function runtimeProblems(env: Env, runtime: RuntimeFacts): string[] {
     : []
 }
 
+/** Fatos do processo atual (padrão de `parseEnv` fora dos testes). */
+function processRuntimeFacts(): RuntimeFacts {
+  return { nodeVersion: process.version }
+}
+
 /** Valida o ambiente. Lança `EnvValidationError` listando todas as variáveis com problema. */
 export function parseEnv(
   source: Readonly<Record<string, string | undefined>>,
-  runtime: RuntimeFacts = { nodeVersion: process.version },
+  runtime: RuntimeFacts = processRuntimeFacts(),
 ): Env {
   const result = envSchema.safeParse(source)
   const problems = forbiddenBaseUrlProblems(source)
