@@ -42,6 +42,11 @@ describe('fromPostgresRange', () => {
       from: '2020-01-01',
       to: '2021-01-01',
     })
+    expect(fromPostgresRange('\t[ " 2020-01-01 " ,\n"infinity" )\n')).toEqual({
+      from: '2020-01-01',
+      to: null,
+    })
+    expect(fromPostgresRange('["",""]')).toEqual({ from: null, to: null })
   })
 
   it('normaliza limites não canônicos para [)', () => {
@@ -84,16 +89,45 @@ describe('fromPostgresRange', () => {
   })
 
   it.each([
-    '',
-    '2020-01-01,2021-01-01',
-    '[2020-01-01;2021-01-01)',
     '[2020-02-30,2021-01-01)',
     '[2020-01-01,2021-13-01)',
     '[infinity,2021-01-01)',
     '[2020-01-01,-infinity)',
+    '[2020-01-01x,)',
+  ])('rejeita o limite inválido %j', (text) => {
+    expect(() => fromPostgresRange(text)).toThrow(
+      new RangeError(`Limite de daterange inválido em ${JSON.stringify(text)}`),
+    )
+  })
+
+  it.each([
+    '',
+    '2020-01-01,2021-01-01',
+    '[2020-01-01;2021-01-01)',
+    '<2020-01-01,2021-01-01)',
+    '[2020-01-01,2021-01-01>',
     '["2020-01-01,2021-01-01)',
+    '[2020-01-01,"2021-01-01)',
+    '["2020-01-01"",2021-01-01)',
+    '[2020-01-01",2021-01-01)',
+    '[",2021-01-01)',
+    '["2020-01-01"x,2021-01-01)',
+    '[2020-01-01,2021-01-01,)',
+    '[2020-01-01 2021-01-01)',
+    '[(2020-01-01,2021-01-01)',
+    '[2020-01-01,2021-01-01])',
+    '[2020-01-01,"[2021-01-01")',
+    '[2020-01-01,)x',
+    'x[2020-01-01,)',
+    '[2020-01-01,',
+    ',2021-01-01)',
+    '[,',
+    '[',
+    'empty x',
   ])('rejeita a sintaxe inválida %j', (text) => {
-    expect(() => fromPostgresRange(text)).toThrow(RangeError)
+    expect(() => fromPostgresRange(text)).toThrow(
+      new RangeError(`daterange inválido: ${JSON.stringify(text)}`),
+    )
   })
 
   test.prop([intervalArb])('ida e volta preserva o intervalo', (interval) => {
@@ -121,6 +155,9 @@ describe('datemultirange', () => {
     expect(fromPostgresMultirange('{}')).toEqual([])
     expect(fromPostgresMultirange(' { } ')).toEqual([])
     expect(fromPostgresMultirange('{empty}')).toEqual([])
+    expect(fromPostgresMultirange(' { EMPTY , [2020-01-01,) } ')).toEqual([
+      { from: '2020-01-01', to: null },
+    ])
   })
 
   it('canoniza a entrada e descarta ranges vazios', () => {
@@ -129,20 +166,112 @@ describe('datemultirange', () => {
     ).toEqual([{ from: '2020-01-01', to: '2022-01-01' }])
   })
 
+  it('aceita parênteses e colchetes não canônicos nos elementos', () => {
+    expect(fromPostgresMultirange('{(,2020-01-01), (2020-06-01,2020-12-31]}')).toEqual([
+      { from: null, to: '2020-01-01' },
+      { from: '2020-06-02', to: '2021-01-01' },
+    ])
+  })
+
   it.each([
     '[2020-01-01,2021-01-01)',
     '{,}',
-    '{R}',
     '{[2020-01-01,2021-01-01),}',
-    '{[2020-01-01,2021-01-01) [2022-01-01,)}',
-    '{[2020-01-01,2021-01-01) x}',
-    '{[2020-01-01;2021-01-01)}',
-    '{[2021-01-01,2020-01-01)}',
-  ])('rejeita %j', (text) => {
-    expect(() => fromPostgresMultirange(text)).toThrow(RangeError)
+    '{[2020-01-01,2021-01-01), }',
+    '{',
+    '}',
+    'x}',
+    '{x',
+    '{)}',
+    '{[2020-01-01,2021-01-01)',
+    '[2020-01-01,2021-01-01)}',
+    '{, [2020-01-01,2021-01-01)}',
+    '{[2020-01-01,2021-01-01),,[2022-01-01,)}',
+    '{[2020-01-01,2021-01-01)), [2022-01-01,)}',
+    '{([2020-01-01,2021-01-01)}',
+    '{[2020-01-01,2021-01-01}',
+  ])('rejeita a estrutura inválida %j', (text) => {
+    expect(() => fromPostgresMultirange(text)).toThrow(
+      new RangeError(`datemultirange inválido: ${JSON.stringify(text)}`),
+    )
+  })
+
+  it.each([
+    ['{R}', 'daterange inválido: "R"'],
+    ['{emptyx}', 'daterange inválido: "emptyx"'],
+    ['{empty empty}', 'daterange inválido: "empty empty"'],
+    [
+      '{[2020-01-01,2021-01-01) [2022-01-01,)}',
+      'daterange inválido: "[2020-01-01,2021-01-01) [2022-01-01,)"',
+    ],
+    ['{[2020-01-01,2021-01-01) x}', 'daterange inválido: "[2020-01-01,2021-01-01) x"'],
+    ['{[2020-01-01;2021-01-01)}', 'daterange inválido: "[2020-01-01;2021-01-01)"'],
+    [
+      '{[2021-01-01,2020-01-01)}',
+      'daterange com limite inferior maior que o superior: "[2021-01-01,2020-01-01)"',
+    ],
+  ])('rejeita o elemento inválido em %j', (text, message) => {
+    expect(() => fromPostgresMultirange(text)).toThrow(new RangeError(message))
   })
 
   test.prop([intervalListArb])('ida e volta devolve a forma canônica', (list) => {
     expect(fromPostgresMultirange(toPostgresMultirange(list))).toEqual(mergeIntervals(list))
+  })
+})
+
+/** Mede uma chamada síncrona; a entrada patológica tem de falhar rápido (sem backtracking). */
+function elapsedMs(run: () => unknown): number {
+  const start = performance.now()
+  try {
+    run()
+  } catch {
+    // o erro é esperado; só o tempo importa aqui
+  }
+  return performance.now() - start
+}
+
+describe('entradas patológicas (ReDoS)', () => {
+  const FAST_MS = 100
+
+  it.each([
+    ['espaços entre o colchete e o valor', `[${' '.repeat(50_000)}x`],
+    ['espaços dentro do range', `[${' '.repeat(100)}x${' '.repeat(100)}`],
+    ['aspas sem fechar', `["${'1'.repeat(200)}`],
+  ])('fromPostgresRange rejeita depressa: %s', (_, text) => {
+    expect(() => fromPostgresRange(text)).toThrow(RangeError)
+    expect(elapsedMs(() => fromPostgresRange(text))).toBeLessThan(FAST_MS)
+  })
+
+  it.each([
+    ['espaços entre o colchete e o valor', `{[${' '.repeat(50_000)}x}`],
+    ['colchetes abertos sem fechar', `{${'['.repeat(50_000)}}`],
+    ['parênteses abertos sem fechar', `{${'('.repeat(50_000)}`],
+    ['muitos elementos inválidos', `{${'x,'.repeat(25_000)}x}`],
+  ])('fromPostgresMultirange rejeita depressa: %s', (_, text) => {
+    expect(() => fromPostgresMultirange(text)).toThrow(RangeError)
+    expect(elapsedMs(() => fromPostgresMultirange(text))).toBeLessThan(FAST_MS)
+  })
+})
+
+describe('limites de tamanho', () => {
+  it('fromPostgresRange aceita até 256 caracteres e rejeita além disso', () => {
+    const padded = (length: number): string => {
+      const core = '[2020-01-01,2021-01-01)'
+      return core + ' '.repeat(length - core.length)
+    }
+    expect(fromPostgresRange(padded(256))).toEqual({ from: '2020-01-01', to: '2021-01-01' })
+    expect(() => fromPostgresRange(padded(257))).toThrow(RangeError)
+    expect(() => fromPostgresRange(padded(257))).toThrow(
+      new RangeError('daterange longo demais: 257 caracteres (máximo 256)'),
+    )
+  })
+
+  it('fromPostgresMultirange aceita até 64 KiB e rejeita além disso', () => {
+    const padded = (length: number): string => `{${' '.repeat(length - 2)}}`
+    expect(fromPostgresMultirange(padded(64 * 1024))).toEqual([])
+    expect(() => fromPostgresMultirange(padded(64 * 1024 + 1))).toThrow(RangeError)
+    expect(() => fromPostgresMultirange(padded(64 * 1024 + 1))).toThrow(
+      new RangeError('datemultirange longo demais: 65537 caracteres (máximo 65536)'),
+    )
   })
 })

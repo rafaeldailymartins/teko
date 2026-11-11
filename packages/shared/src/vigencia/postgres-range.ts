@@ -10,10 +10,39 @@ import { isNonEmptyInterval, mergeIntervals, type ValidityInterval } from './val
  * colchetes e parênteses, valores entre aspas e `infinity`/`-infinity`, e normaliza para `[)`.
  */
 
-const RANGE_PATTERN = /^\s*([[(])\s*("?)([^,"()[\]]*)\2\s*,\s*("?)([^,"()[\]]*)\4\s*([\])])\s*$/
-const RANGE_IN_MULTIRANGE = /[[(][^\])]*[\])]/g
-const EMPTY_ELEMENT = /\bempty\b/gi
-const MULTIRANGE_SKELETON = /^(?:R(?:,R)*)?$/
+/**
+ * Tetos de tamanho da entrada. Um `daterange` canônico tem no máximo 23 caracteres e um
+ * `datemultirange` real fica muito abaixo de 64 KiB; texto maior que isso não é um valor do banco,
+ * e recusá-lo de cara limita o custo de qualquer entrada não confiável.
+ */
+const MAX_RANGE_LENGTH = 256
+const MAX_MULTIRANGE_LENGTH = 64 * 1024
+
+/**
+ * Caracteres que nunca fazem parte de um valor de limite: delimitadores de range e aspas soltas.
+ * A vírgula fica de fora porque o separador já é tratado antes (um único por range).
+ */
+const FORBIDDEN_IN_BOUND = /["()[\]]/
+
+/** Delimitadores estruturais de um multirange; um caractere por vez, busca linear. */
+const MULTIRANGE_DELIMITERS = /[[\](),]/g
+
+const LOWER_BRACKETS = new Set(['[', '('])
+const UPPER_BRACKETS = new Set([']', ')'])
+
+function invalidRange(text: string): RangeError {
+  return new RangeError(`daterange inválido: ${JSON.stringify(text)}`)
+}
+
+function invalidMultirange(text: string): RangeError {
+  return new RangeError(`datemultirange inválido: ${JSON.stringify(text)}`)
+}
+
+function assertMaxLength(text: string, max: number, kind: string): void {
+  if (text.length > max) {
+    throw new RangeError(`${kind} longo demais: ${text.length} caracteres (máximo ${max})`)
+  }
+}
 
 /** `"[2020-01-01,2021-01-01)"`, `"[2020-01-01,)"`, `"(,2021-01-01)"` ou `"(,)"`. */
 export function toPostgresRange(interval: ValidityInterval): string {
@@ -21,8 +50,25 @@ export function toPostgresRange(interval: ValidityInterval): string {
   return `${lower},${interval.to ?? ''})`
 }
 
+/**
+ * Tira as aspas opcionais de um limite (`"2020-01-01"` ou `2020-01-01`, com espaços em volta).
+ * Aspas desbalanceadas ou delimitadores dentro do valor são sintaxe inválida.
+ */
+function unquoteBound(raw: string, text: string): string {
+  const trimmed = raw.trim()
+  const quoted = trimmed.startsWith('"')
+  if (quoted && (trimmed.length < 2 || !trimmed.endsWith('"'))) {
+    throw invalidRange(text)
+  }
+  const value = quoted ? trimmed.slice(1, -1) : trimmed
+  if (FORBIDDEN_IN_BOUND.test(value)) {
+    throw invalidRange(text)
+  }
+  return value
+}
+
 function parseBound(raw: string, side: 'lower' | 'upper', text: string): IsoDate | null {
-  const value = raw.trim()
+  const value = unquoteBound(raw, text).trim()
   const unbounded = side === 'lower' ? '-infinity' : 'infinity'
   if (value === '' || value.toLowerCase() === unbounded) {
     return null
@@ -40,14 +86,26 @@ function parseBound(raw: string, side: 'lower' | 'upper', text: string): IsoDate
  * inversão é erro (comparada nos valores brutos, antes da normalização) e não range vazio.
  */
 export function fromPostgresRange(text: string): ValidityInterval | null {
-  if (text.trim().toLowerCase() === 'empty') {
+  assertMaxLength(text, MAX_RANGE_LENGTH, 'daterange')
+  const trimmed = text.trim()
+  if (trimmed.toLowerCase() === 'empty') {
     return null
   }
-  const match = RANGE_PATTERN.exec(text)
-  if (match === null) {
-    throw new RangeError(`daterange inválido: ${JSON.stringify(text)}`)
+  // Leitura linear, sem regex: colchete, limite, uma única vírgula, limite, colchete.
+  const lowerBracket = trimmed.charAt(0)
+  const upperBracket = trimmed.charAt(trimmed.length - 1)
+  const inner = trimmed.slice(1, -1)
+  const comma = inner.indexOf(',')
+  const lowerRaw = inner.slice(0, comma)
+  const upperRaw = inner.slice(comma + 1)
+  if (
+    !LOWER_BRACKETS.has(lowerBracket) ||
+    !UPPER_BRACKETS.has(upperBracket) ||
+    comma === -1 ||
+    upperRaw.includes(',')
+  ) {
+    throw invalidRange(text)
   }
-  const [, lowerBracket, , lowerRaw = '', , upperRaw = '', upperBracket] = match
   let from = parseBound(lowerRaw, 'lower', text)
   let to = parseBound(upperRaw, 'upper', text)
   if (from !== null && to !== null && from > to) {
@@ -72,23 +130,53 @@ export function toPostgresMultirange(intervals: readonly ValidityInterval[]): st
 
 /** Lê um `datemultirange` textual e devolve a lista canônica (ordenada, disjunta, sem vazios). */
 export function fromPostgresMultirange(text: string): ValidityInterval[] {
+  assertMaxLength(text, MAX_MULTIRANGE_LENGTH, 'datemultirange')
   const trimmed = text.trim()
-  if (!(trimmed.startsWith('{') && trimmed.endsWith('}'))) {
-    throw new RangeError(`datemultirange inválido: ${JSON.stringify(text)}`)
+  // Um texto de um só caractere não começa com `{` e termina com `}` ao mesmo tempo.
+  if (!trimmed.startsWith('{') || !trimmed.endsWith('}')) {
+    throw invalidMultirange(text)
   }
   const body = trimmed.slice(1, -1)
-  const ranges = body.match(RANGE_IN_MULTIRANGE) ?? []
-  // Cada elemento (range ou `empty`) vira "R": o que sobra tem de ser uma lista "R,R,...".
-  const skeleton = body
-    .replace(RANGE_IN_MULTIRANGE, 'R')
-    .replace(EMPTY_ELEMENT, 'R')
-    .replaceAll(/\s/g, '')
-  const elements = ranges.length + (body.match(EMPTY_ELEMENT) ?? []).length
-  if (!MULTIRANGE_SKELETON.test(skeleton) || skeleton.replaceAll(',', '').length !== elements) {
-    throw new RangeError(`datemultirange inválido: ${JSON.stringify(text)}`)
+  if (body.trim() === '') {
+    return []
   }
-  const intervals = ranges
-    .map((range) => fromPostgresRange(range))
-    .filter((interval): interval is ValidityInterval => interval !== null)
+  // Uma única passada pelos delimitadores: cada vírgula fora de um range fecha um elemento, que é
+  // lido na hora (a primeira falha interrompe a leitura). Colchete aberto dentro de range, fechado
+  // fora dele ou range sem fechar são sintaxe inválida.
+  const intervals: ValidityInterval[] = []
+  let insideRange = false
+  let elementStart = 0
+  for (const { 0: char, index } of body.matchAll(MULTIRANGE_DELIMITERS)) {
+    if (LOWER_BRACKETS.has(char)) {
+      if (insideRange) {
+        throw invalidMultirange(text)
+      }
+      insideRange = true
+    } else if (UPPER_BRACKETS.has(char)) {
+      if (!insideRange) {
+        throw invalidMultirange(text)
+      }
+      insideRange = false
+    } else if (!insideRange) {
+      // O único delimitador que sobra é a vírgula; fora de um range, ela separa elementos.
+      pushElement(intervals, body.slice(elementStart, index), text)
+      elementStart = index + 1
+    }
+  }
+  if (insideRange) {
+    throw invalidMultirange(text)
+  }
+  pushElement(intervals, body.slice(elementStart), text)
   return mergeIntervals(intervals)
+}
+
+/** Lê um elemento do multirange (range ou `empty`); elemento em branco (`{,}`) é inválido. */
+function pushElement(intervals: ValidityInterval[], element: string, text: string): void {
+  if (element.trim() === '') {
+    throw invalidMultirange(text)
+  }
+  const interval = fromPostgresRange(element)
+  if (interval !== null) {
+    intervals.push(interval)
+  }
 }
