@@ -44,3 +44,7 @@ overrides:
   undici@<6.28.1: ^6.28.1
   undici@>=4.0.0 <6.29.1: ^6.29.1
   zod@<4.6.6: ^4.6.6
+  # `sandbox` (CLI do Vercel Sandbox) herdou no npm o nome de um pacote antigo com GHSA-fm4j-4xhm-xpwx
+  # e GHSA-gc25-3vc5-2jf9 (2020, todas as versões), que o OSV/Scorecard casam com o pacote novo.
+  # Não usamos `vercel sandbox`: o pacote sai da árvore em vez de virar exceção.
+  sandbox: "-"
