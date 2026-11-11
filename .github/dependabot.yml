@@ -71,6 +71,11 @@ updates:
       # (ADR 0002). Reavaliar quando a Vercel voltar a publicar attestations.
       - dependency-name: "@vercel/functions"
         versions: [">3.7.6"]
+      # A 2.2.2 saiu sem proveniência e o trustPolicy a recusa ("trust downgrade"); a falha derruba
+      # o job inteiro do npm da raiz e nenhum outro PR sai (ADR 0002). Só a versão exata: uma
+      # versão nova com proveniência ainda chega.
+      - dependency-name: lefthook
+        versions: ["2.2.2"]
 
   # Vercel CLI num projeto pnpm isolado, com lockfile e política de supply chain próprios
   # (tools/vercel-cli/pnpm-workspace.yaml; ver ADR 0002). Só os jobs de deploy o instalam.
