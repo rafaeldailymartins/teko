@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["node"],
+    // A API nunca é emitida pelo tsc (noEmit; o tsdown faz o bundle e o Node 24 roda o .ts direto
+    // em dev). Sem emissão, reescrever extensões não tem efeito, e manter a opção ligada proíbe
+    // `.ts` nos subpath imports (`#domain/*`, `#app/*`, `#adapters/*`), erro TS2877.
+    "rewriteRelativeImportExtensions": false
+  },
+  "include": ["src/**/*.ts", "test/**/*.ts", "*.config.ts"]
+}
