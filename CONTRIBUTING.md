@@ -233,6 +233,10 @@ Maintainer setup: add `SONAR_TOKEN` both as a repository secret and as a **Depen
 (Settings → Secrets and variables → Dependabot). Dependabot PRs only see Dependabot secrets;
 without it their Sonar analysis is skipped like a fork's.
 
+The SonarQube Cloud free plan analyzes only the project's main branch and pull requests. The
+project's main branch in SonarQube Cloud is `develop` (the GitHub default and integration branch),
+so on push the `sonar` job runs only for `develop`; pushes to `main` (releases) are not analyzed.
+
 ## Non-commercial posture
 
 The API runs on Vercel's Hobby plan, which is restricted to personal, non-commercial use. Do not
