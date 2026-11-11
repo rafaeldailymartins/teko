@@ -37,4 +37,19 @@ describe('buildApp', () => {
     expect(app.hasDecorator('rateLimit')).toBe(true)
     await app.close()
   })
+
+  it('registra as rotas de spike só quando o HttpOptions as traz', async () => {
+    const env = parseEnv({ APP_ENV: 'ci', WEB_ORIGIN: 'https://develop--tekoia.netlify.app' })
+    const spike = { nodeVersion: 'v24.0.0', region: null, maxDurationS: 300, sensitiveLength: null }
+    const route = { method: 'GET', url: '/api/_spike/runtime' } as const
+    const plain = await buildApp({ container: createContainer(env), http: createHttpOptions(env) })
+    const withSpike = await buildApp({
+      container: createContainer(env),
+      http: { ...createHttpOptions(env), spike },
+    })
+    expect(plain.hasRoute(route)).toBe(false)
+    expect(withSpike.hasRoute(route)).toBe(true)
+    await plain.close()
+    await withSpike.close()
+  })
 })

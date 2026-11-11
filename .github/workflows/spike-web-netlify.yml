@@ -93,19 +93,30 @@ jobs:
           NETLIFY_SITE_ID: ${{ steps.site.outputs.id }}
         run: |
           log="${RUNNER_TEMP}/deploy.log"
-          # O log do build vai para o stderr; o JSON do deploy, para o stdout. O log é gravado
-          # inteiro antes de ser lido e aparece no job com sucesso ou falha.
+          # Sem --json: com ele, o CLI 27.16.2 não imprime nada do build (o primeiro dispatch do
+          # spike perdeu o log). Saída inteira no arquivo, gravada antes de ser lida, e no job.
           rc=0
-          netlify deploy --build --context develop --alias develop --filter @teko/web --json \
-            >"${RUNNER_TEMP}/deploy.json" 2>"$log" || rc=$?
-          cat "$log" >&2
+          netlify deploy --build --context develop --alias develop --filter @teko/web \
+            >"$log" 2>&1 || rc=$?
+          cat "$log"
           if (( rc != 0 )); then
             echo "::error title=spike-web-netlify::netlify deploy terminou com código ${rc}."
             exit "$rc"
           fi
-          jq '{site_id, deploy_id, deploy_url}' "${RUNNER_TEMP}/deploy.json"
-          deploy_id="$(jq -r '.deploy_id' "${RUNNER_TEMP}/deploy.json")"
-          deploy_url="$(jq -r '.deploy_url' "${RUNNER_TEMP}/deploy.json")"
+          clean="${RUNNER_TEMP}/deploy.clean.log"
+          sed -e 's/\x1b\[[0-9;]*m//g' "$log" >"$clean"
+          # O ID sai da URL "Build logs" (…/deploys/<id>) ou da URL única (https://<id>--site); a
+          # URL do alias é fixa.
+          deploy_id="$(grep -aoE '/deploys/[0-9a-f]{24}' "$clean" | tail -1 | cut -d/ -f3 || true)"
+          if [[ -z "$deploy_id" ]]; then
+            deploy_id="$(grep -aoE 'https://[0-9a-f]{24}--' "$clean" | tail -1 | sed -E 's#https://([0-9a-f]{24})--#\1#' || true)"
+          fi
+          deploy_url="https://develop--${NETLIFY_SITE_NAME}.netlify.app"
+          if [[ -z "$deploy_id" ]]; then
+            echo "::error title=spike-web-netlify::Não achei o ID do deploy na saída do netlify deploy."
+            exit 1
+          fi
+          log="$clean"
           echo "id=${deploy_id}" >>"$GITHUB_OUTPUT"
           echo "url=${deploy_url}" >>"$GITHUB_OUTPUT"
           echo "- deploy: \`${deploy_id}\` em ${deploy_url}" >>"$GITHUB_STEP_SUMMARY"
@@ -150,14 +161,16 @@ jobs:
           DEPLOY_URL: ${{ steps.deploy.outputs.url }}
         run: |
           fail=0
+          # Público (sem a proteção de visitantes da conta) e servindo o export, seguindo os
+          # redirecionamentos: a Netlify troca /pt-BR/ por /pt-br/ (301), achado para o i18n da F5.
           for path in / /pt-BR/; do
-            status="$(curl -sS -o /dev/null -w '%{http_code}' "${DEPLOY_URL}${path}")"
-            echo "- ${DEPLOY_URL}${path}: HTTP ${status}" >>"$GITHUB_STEP_SUMMARY"
-            [[ "$status" =~ ^(200|301|302|308)$ ]] || fail=1
+            result="$(curl -sSL -o /dev/null -w '%{http_code} %{url_effective} %{num_redirects}' "${DEPLOY_URL}${path}")"
+            echo "- ${DEPLOY_URL}${path}: HTTP final, URL final e redirecionamentos: \`${result}\`" >>"$GITHUB_STEP_SUMMARY"
+            [[ "${result%% *}" == 200 ]] || fail=1
           done
-          # Headers do netlify.toml aplicados.
-          headers="$(curl -sS -D - -o /dev/null "${DEPLOY_URL}/pt-BR/")"
-          for header in strict-transport-security x-content-type-options content-security-policy; do
+          # Headers do netlify.toml aplicados na página final.
+          headers="$(curl -sSL -D - -o /dev/null "${DEPLOY_URL}/pt-BR/")"
+          for header in strict-transport-security x-content-type-options content-security-policy x-frame-options; do
             if ! grep -qi "^${header}:" <<<"$headers"; then
               echo "::error title=spike-web-netlify::Falta o header ${header} em ${DEPLOY_URL}/pt-BR/."
               fail=1

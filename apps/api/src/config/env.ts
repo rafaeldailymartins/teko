@@ -150,6 +150,13 @@ const envSchema = z
     DRAIN_DELAY_MS: z.coerce.number().int().min(0).max(60_000).default(DEFAULT_DRAIN_DELAY_MS),
     LLM_PROVIDER: llmProviderSchema.optional(),
     EMBEDDINGS_PROVIDER: z.enum(EmbeddingsProvider).optional(),
+    /**
+     * Segredo HS256 do proxy assinado da Netlify (`x-nf-sign`), o mesmo valor gravado no site.
+     * Na F1 só o eco de spike (`/api/_spike/echo`) o usa; o plugin `netlifySignature` chega na F4.
+     */
+    NETLIFY_PROXY_JWS_SECRET: z.string().min(32).optional(),
+    /** Sensitive de teste do spike F1 (b): o eco de runtime informa só se existe e o tamanho. */
+    TEKO_SPIKE_SENSITIVE: z.string().min(1).optional(),
   })
   .superRefine((env, ctx) => {
     const issue = (path: string, message: string): void => {
