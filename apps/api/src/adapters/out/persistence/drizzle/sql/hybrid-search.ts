@@ -1,0 +1,140 @@
+/**
+ * Busca híbrida numa só instrução (plano: "Busca híbrida (uma instrução, RRF k=60)").
+ *
+ * Parâmetros: $1 pergunta redigida, $2 vetor `halfvec(1024)` em texto (só no modo híbrido),
+ * $3 data de referência, $4 famílias, $5 `stable_key` citadas, $6 `review_status` permitidos,
+ * $7 limite.
+ *
+ * - O vetor entra direto no `ORDER BY` do braço semântico, para o planner usar o HNSW, e o filtro de
+ *   vigência, família e status fica no mesmo `WHERE`, para o iterative scan
+ *   (`hnsw.iterative_scan = relaxed_order`) devolver k linhas mesmo com filtro seletivo. O `dist + 0`
+ *   da numeração impede que o planner reaproveite a ordenação do índice fora do braço.
+ * - A citação prefere a versão de documento publicada cuja vigência contém $3; se não houver, usa o
+ *   snapshot publicado mais recente que contém o chunk (ex.: RCTE consolidado de 2026 citando a
+ *   redação de 2006). A vigência citada é sempre a do chunk.
+ * - A variante `lexical_only` (embedding indisponível) omite os CTEs `sem` e `semantic`.
+ */
+
+/** RRF k = 60 e 50 candidatos por braço (10 no braço exato). */
+export const RRF_K = 60
+export const ARM_LIMIT = 50
+const EXACT_LIMIT = 10
+/**
+ * O braço léxico ordena em dois estágios: os `LEXICAL_CANDIDATES` melhores por `ts_rank` (barato)
+ * e, entre eles, os 50 melhores por `ts_rank_cd` (densidade de cobertura, que favorece termos
+ * próximos, como pede o plano). Ordenar todas as linhas por `ts_rank_cd` custava ~140 ms sobre
+ * 16 mil casamentos no sql-perf de 100k chunks; o primeiro estágio custa ~40 ms (ADR 0010).
+ */
+const LEXICAL_CANDIDATES = 200
+
+/** `SET LOCAL` do braço vetorial (dentro da transação curta, compatível com o PgBouncer). */
+export const HNSW_SETTINGS = [
+  'SET LOCAL hnsw.iterative_scan = relaxed_order',
+  'SET LOCAL hnsw.ef_search = 100',
+  'SET LOCAL hnsw.max_scan_tuples = 20000',
+] as const
+
+const PUBLISHABLE_FILTER = `c.valid_during @> $3::date AND upper_inf(c.knowledge)
+    AND c.family = ANY($4::text[]) AND c.review_status = ANY($6::text[])`
+
+const COMMON_HEAD = `WITH tsq AS MATERIALIZED (
+  SELECT coalesce(string_agg(quote_literal(lexeme), ' | '), '')::tsquery AS q
+  FROM unnest(to_tsvector('pg_catalog.portuguese', public.immutable_unaccent($1::text)))),
+base AS NOT MATERIALIZED (SELECT c.* FROM corpus.chunks c WHERE ${PUBLISHABLE_FILTER}),
+lexical_candidates AS MATERIALIZED (
+  SELECT b.id, b.tsv FROM base b, tsq t WHERE b.tsv @@ t.q
+  ORDER BY ts_rank(b.tsv, t.q, 1 | 32) DESC, b.id LIMIT ${String(LEXICAL_CANDIDATES)}),
+lexical AS (
+  SELECT l.id, row_number() OVER (ORDER BY ts_rank_cd(l.tsv, t.q, 1 | 32) DESC, l.id) AS rnk
+  FROM lexical_candidates l, tsq t ORDER BY rnk LIMIT ${String(ARM_LIMIT)}),`
+
+const SEMANTIC_ARMS = `
+sem AS MATERIALIZED (
+  SELECT c.id, c.embedding <=> $2::halfvec(1024) AS dist FROM corpus.chunks c
+  WHERE c.embedding IS NOT NULL AND ${PUBLISHABLE_FILTER}
+  ORDER BY c.embedding <=> $2::halfvec(1024) LIMIT ${String(ARM_LIMIT)}),
+semantic AS (SELECT id, row_number() OVER (ORDER BY dist + 0, id) AS rnk FROM sem),`
+
+/**
+ * Braço da referência citada. A chave citada sempre entra (é a garantia do braço: "art. 76, § 6º"
+ * acha o § 6º mesmo sem casar por texto). Os descendentes dela entram só se já estão no braço
+ * léxico ou no semântico, e a ordem é a melhor posição em um desses braços (o dispositivo citado
+ * sem posição neles vai por último, pelo `sort_path`). Assim "R-4020" escopa a busca ao evento sem
+ * dar ao evento inteiro o voto do braço quando a pergunta é sobre um campo dele (ADR 0010).
+ */
+function exactArm(withSemantic: boolean): string {
+  const semanticPool = withSemantic ? 'UNION SELECT id FROM semantic' : ''
+  const semanticJoin = withSemantic ? 'LEFT JOIN semantic sr ON sr.id = e.id' : ''
+  const semanticRank = withSemantic ? 'sr.rnk' : 'NULL::bigint'
+  // O conjunto parte só de linhas pequenas: os chunks da chave citada (pelo índice único de
+  // stable_key, como no plano) e os candidatos que os outros braços já trouxeram.
+  return `
+exact_pool AS (
+  SELECT b.id FROM base b
+  JOIN corpus.provision_versions pv ON pv.id = b.provision_version_id
+  JOIN corpus.provisions p ON p.id = pv.provision_id
+  WHERE p.stable_key = ANY($5::text[])
+  UNION SELECT id FROM lexical ${semanticPool}),
+exact AS (
+  SELECT e.id, row_number() OVER (
+      ORDER BY coalesce(least(lr.rnk, ${semanticRank}), ${String(ARM_LIMIT + 1)}), p.sort_path, c.ordinal) AS rnk
+  FROM exact_pool e
+  JOIN corpus.chunks c ON c.id = e.id
+  JOIN corpus.provision_versions pv ON pv.id = c.provision_version_id
+  JOIN corpus.provisions p ON p.id = pv.provision_id
+  LEFT JOIN lexical lr ON lr.id = e.id
+  ${semanticJoin}
+  WHERE p.stable_key = ANY($5::text[])
+     OR EXISTS (SELECT 1 FROM unnest($5::text[]) AS k WHERE p.stable_key LIKE k || ':%')
+  ORDER BY rnk LIMIT ${String(EXACT_LIMIT)}),`
+}
+
+function fused(withSemantic: boolean): string {
+  const semanticUnion = withSemantic ? `UNION ALL SELECT id, rnk, 'sem' FROM semantic` : ''
+  return `
+fused AS (
+  SELECT id, sum(1.0 / (${String(RRF_K)} + rnk)) AS rrf,
+    min(rnk) FILTER (WHERE src = 'lex') AS lex_rank,
+    min(rnk) FILTER (WHERE src = 'sem') AS sem_rank,
+    min(rnk) FILTER (WHERE src = 'ref') AS ref_rank
+  FROM (SELECT id, rnk, 'lex' AS src FROM lexical ${semanticUnion}
+        UNION ALL SELECT id, rnk, 'ref' FROM exact) u
+  GROUP BY id)`
+}
+
+const TAIL = `
+SELECT c.id, p.stable_key, c.family, c.content, c.citation_label,
+       lower(c.valid_during) AS valid_from, upper(c.valid_during) AS valid_to,
+       dv.version_label, dv.id AS doc_version_id, d.title AS doc_title, d.source_url,
+       f.rrf::float8 AS rrf, f.lex_rank, f.sem_rank, f.ref_rank
+FROM fused f
+JOIN corpus.chunks c ON c.id = f.id
+JOIN corpus.provision_versions pv ON pv.id = c.provision_version_id
+JOIN corpus.provisions p ON p.id = pv.provision_id
+JOIN LATERAL (
+  SELECT dv.* FROM corpus.chunk_sources s
+  JOIN corpus.document_versions dv ON dv.id = s.document_version_id
+  WHERE s.chunk_id = c.id AND dv.status = 'published'
+  ORDER BY (dv.valid_during @> $3::date) DESC, dv.published_on DESC LIMIT 1) dv ON true
+JOIN corpus.documents d ON d.id = dv.document_id
+ORDER BY f.rrf DESC, c.id
+LIMIT $7::int`
+
+export const HYBRID_SEARCH_SQL = `${COMMON_HEAD}${SEMANTIC_ARMS}${exactArm(true)}${fused(true)}${TAIL}`
+
+/**
+ * Mesma consulta sem o braço vetorial. Mantém o placeholder $2 (`$2::text IS NULL`) para os
+ * parâmetros terem a mesma posição nas duas variantes.
+ */
+export const LEXICAL_ONLY_SQL = `${COMMON_HEAD.replace(
+  'WITH tsq AS MATERIALIZED (',
+  'WITH unused_vector AS (SELECT $2::text AS v), tsq AS MATERIALIZED (',
+)}${exactArm(false)}${fused(false)}${TAIL}`
+
+/** `[0.1,0.2,...]`, o formato de entrada do `halfvec`. */
+export function toVectorLiteral(vector: readonly number[]): string {
+  if (vector.some((value) => !Number.isFinite(value))) {
+    throw new RangeError('vetor com valor não finito')
+  }
+  return `[${vector.join(',')}]`
+}

@@ -1,0 +1,68 @@
+[
+  {
+    "family": "efd-icms-ipi",
+    "covered": [
+      {
+        "from": "2025-01-01",
+        "to": null
+      }
+    ],
+    "verifiedAt": "2026-11-10",
+    "gaps": []
+  },
+  {
+    "family": "efd-reinf",
+    "covered": [
+      {
+        "from": "2023-03-01",
+        "to": null
+      }
+    ],
+    "verifiedAt": "2026-11-10",
+    "gaps": []
+  },
+  {
+    "family": "rcte",
+    "covered": [
+      {
+        "from": "1998-01-01",
+        "to": null
+      }
+    ],
+    "verifiedAt": "2026-11-10",
+    "gaps": []
+  },
+  {
+    "family": "cte",
+    "covered": [
+      {
+        "from": "1997-01-01",
+        "to": null
+      }
+    ],
+    "verifiedAt": "2026-11-10",
+    "gaps": []
+  },
+  {
+    "family": "efd-go",
+    "covered": [
+      {
+        "from": "2025-10-02",
+        "to": null
+      }
+    ],
+    "verifiedAt": "2026-11-10",
+    "gaps": []
+  },
+  {
+    "family": "tabelas-go",
+    "covered": [
+      {
+        "from": "2009-01-01",
+        "to": null
+      }
+    ],
+    "verifiedAt": "2026-11-10",
+    "gaps": []
+  }
+]

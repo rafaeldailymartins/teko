@@ -1,8 +1,8 @@
 # Gates de qualidade. Em PR, roda chamado pelo pr-gate.yml (que passa o escopo afetado em
 # `inputs.affected`); em push para develop/main, recalcula o escopo sozinho.
 #
-# Ainda não estão aqui (entram nas fases que criam as ferramentas): Storybook (`vitest --project
-# storybook`), `migration-guard` e as retrieval evals (se `rag`/`ingest` afetados).
+# Desde a F2: `migration-guard` (PR em api) e as retrieval evals (se `rag`/`ingest` afetados).
+# Ainda não está aqui (entra na F5): Storybook (`vitest --project storybook`).
 name: CI
 
 on:
@@ -146,6 +146,9 @@ jobs:
       - name: Testes da configuração de CI
         run: bash .github/scripts/ci-config.test.sh
 
+      - name: Testes do migration-guard
+        run: bash .github/scripts/migration-guard.test.sh
+
       - name: actionlint
         env:
           ACTIONLINT_VERSION: 1.7.12
@@ -272,11 +275,14 @@ jobs:
   integration:
     name: integration
     needs: scope
-    if: fromJSON(needs.scope.outputs.json).api
+    # Em push roda sempre, como o `test`: o Sonar da branch precisa do lcov da integração (a
+    # persistência e a CLI só são exercitadas contra o Postgres). Sem mudança, sai do cache do Turbo.
+    if: github.event_name == 'push' || fromJSON(needs.scope.outputs.json).api
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     permissions:
       contents: read
+      id-token: write # Codecov via OIDC
     steps:
       - name: Harden runner
         uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
@@ -295,8 +301,35 @@ jobs:
         with:
           turbo-cache: "true"
 
-      - name: Testes de integração (Testcontainers no Docker do runner)
-        run: pnpm exec turbo run test:integration --affected
+      - name: Testes de integração com cobertura (Testcontainers no Docker do runner)
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          if [[ "$EVENT_NAME" == push ]]; then
+            pnpm exec turbo run test:integration
+          else
+            pnpm exec turbo run test:integration --affected
+          fi
+
+      - name: Guardar o lcov da integração para o job sonar
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: coverage-lcov-integration
+          path: apps/*/coverage-integration/lcov.info
+          if-no-files-found: ignore
+          retention-days: 1
+
+      - name: Enviar cobertura da integração ao Codecov
+        if: ${{ !cancelled() && github.event.pull_request.head.repo.fork != true }}
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
+        with:
+          use_oidc: true
+          fail_ci_if_error: true
+          handle_no_reports_found: true
+          disable_search: true
+          files: apps/api/coverage-integration/lcov.info
+          flags: api-integration
 
       - name: Salvar cache do Turbo
         if: github.event_name == 'push'
@@ -304,6 +337,104 @@ jobs:
         with:
           path: .turbo/cache
           key: ${{ steps.setup.outputs.turbo-cache-key }}
+
+  # Migrações expand/contract: DROP/RENAME só com o label `contract`; CONCURRENTLY e alteração de
+  # migração publicada nunca. Só em PR (em push a migração já passou pelo PR).
+  migration-guard:
+    name: migration-guard
+    needs: scope
+    if: github.event_name == 'pull_request' && fromJSON(needs.scope.outputs.json).api
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          egress-policy: audit
+
+      - name: Checkout (histórico completo para o diff contra a base)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Conferir as migrações do PR
+        env:
+          BASE: origin/${{ github.base_ref }}
+          LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
+        run: bash .github/scripts/migration-guard.sh
+
+  # Retrieval evals sem LLM (plano: Avaliação (a)): o RetrieveEvidence in-process contra um Postgres
+  # de serviço com a fixture única e o fake de embeddings em modo strict. Sem segredo nenhum, então
+  # roda também em PR de fork. Gate: evals/thresholds.json (recall@10, MRR, vigência, recusa...).
+  retrieval-evals:
+    name: retrieval-evals
+    needs: scope
+    if: fromJSON(needs.scope.outputs.json).rag || fromJSON(needs.scope.outputs.json).ingest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    services:
+      postgres:
+        # Mesma imagem do Testcontainers (test/setup/postgres.global.ts): pgvector 0.8.6 + PG 18.
+        image: pgvector/pgvector:0.8.6-pg18-trixie@sha256:78bf48b801e792f99e3ac62b5036fd3876e9be48afda16c1e331af1c75ceb2ff
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres-ci-only
+          POSTGRES_DB: teko
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d teko"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 30
+    env:
+      # Senha só do container efêmero do job (não é segredo de nenhum ambiente).
+      DATABASE_URL: postgresql://postgres:postgres-ci-only@localhost:5432/teko
+      EMBEDDINGS_PROVIDER: fake
+      EMBEDDINGS_FAKE_STRICT: "true"
+      EMBEDDINGS_FIXTURE_PATH: test/fixtures/corpus/embeddings.json.gz
+      PROMPTFOO_DISABLE_TELEMETRY: "1"
+      PROMPTFOO_DISABLE_SHARING: "1"
+      PROMPTFOO_DISABLE_REMOTE_GENERATION: "true"
+      PROMPTFOO_DISABLE_UPDATE: "1"
+      # Assert reprovado não derruba o passo (o gate é o check-thresholds); erro do provider, sim.
+      PROMPTFOO_FAILED_TEST_EXIT_CODE: "0"
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      - name: Migrar e gravar a fixture única
+        run: pnpm --filter @teko/api seed:fixtures
+
+      - name: Retrieval evals (promptfoo, provider in-process)
+        run: pnpm --filter @teko/api eval:retrieval
+
+      - name: Gate das retrieval evals (thresholds.json)
+        run: pnpm --filter @teko/api eval:retrieval:check
+
+      - name: Guardar o resultado das evals
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: retrieval-evals
+          path: apps/api/reports/retrieval-evals.json
+          if-no-files-found: ignore
+          retention-days: 14
 
   build:
     name: build
@@ -487,11 +618,11 @@ jobs:
   # chega aos rulesets pelo `ci-gate` do pr-gate.yml. O check "SonarQube Cloud Code Analysis" que o
   # App da SonarQube Cloud publica NÃO deve ser exigido nos rulesets: ele nunca aparece em PR de
   # fork (sem segredos) e, sem o SONAR_TOKEN nos segredos do Dependabot, nem nos do Dependabot.
-  # Escopo, exclusões e caminhos de cobertura ficam em sonar-project.properties. Espera test e
-  # python para importar o lcov e o coverage.xml.
+  # Escopo, exclusões e caminhos de cobertura ficam em sonar-project.properties. Espera test,
+  # integration e python para importar os lcov (unitário e integração) e o coverage.xml.
   sonar:
     name: sonar
-    needs: [scope, test, python]
+    needs: [scope, test, integration, python]
     # Roda também quando test/python foram pulados (escopo sem pacote JS ou sem ingest), para que
     # todo PR receba o check do Sonar; não roda se um deles falhou ou foi cancelado.
     # Em push, só em develop: o plano gratuito do SonarQube Cloud analisa apenas a branch principal
@@ -501,6 +632,7 @@ jobs:
       ${{ !cancelled() && needs.scope.result == 'success'
       && (github.event_name != 'push' || github.ref == 'refs/heads/develop')
       && contains(fromJSON('["success", "skipped"]'), needs.test.result)
+      && contains(fromJSON('["success", "skipped"]'), needs.integration.result)
       && contains(fromJSON('["success", "skipped"]'), needs.python.result) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 15
@@ -552,6 +684,14 @@ jobs:
           path: ${{ github.workspace }}
           merge-multiple: true
 
+      - name: Baixar o lcov da integração
+        if: steps.preflight.outputs.run == 'true' && needs.integration.result == 'success'
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: coverage-lcov-integration
+          path: ${{ github.workspace }}
+          merge-multiple: true
+
       - name: Baixar o coverage.xml do tools/ingest
         if: steps.preflight.outputs.run == 'true' && needs.python.result == 'success'
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
@@ -566,8 +706,8 @@ jobs:
           # O Vitest grava `SF:src/...` relativo ao pacote; o Sonar resolve caminhos relativos
           # contra a raiz do projeto. Caminhos absolutos ficam como estão.
           shopt -s nullglob
-          for lcov in apps/*/coverage/lcov.info packages/*/coverage/lcov.info; do
-            pkg="${lcov%/coverage/lcov.info}"
+          for lcov in apps/*/coverage/lcov.info apps/*/coverage-integration/lcov.info packages/*/coverage/lcov.info; do
+            pkg="${lcov%/coverage*/lcov.info}"
             sed -i -E "\#^SF:${pkg}/#! s#^SF:([^/])#SF:${pkg}/\1#" "$lcov"
             echo "${lcov}: $(grep -c '^SF:' "$lcov") arquivo(s)"
           done

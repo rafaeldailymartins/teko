@@ -77,9 +77,10 @@ describe('parseEnv', () => {
     expect(parseEnv(PROD_ENV).APP_ENV).toBe('production')
   })
 
-  it('ignora variáveis que a F1 não usa (DATABASE_URL, segredos...)', () => {
-    const env = parseEnv({ ...DEV_ENV, DATABASE_URL: 'postgres://x', BETTER_AUTH_SECRET: 's' })
-    expect(env).not.toHaveProperty('DATABASE_URL')
+  it('ignora variáveis que a API ainda não usa (segredos de fases seguintes)', () => {
+    const env = parseEnv({ ...DEV_ENV, BETTER_AUTH_SECRET: 's' })
+    expect(env).not.toHaveProperty('BETTER_AUTH_SECRET')
+    expect(env.DATABASE_URL).toBeUndefined()
   })
 
   it('exige APP_ENV e WEB_ORIGIN', () => {
@@ -122,6 +123,7 @@ describe('parseEnv', () => {
       APP_ENV: appEnv,
       LLM_PROVIDER: 'fake',
       EMBEDDINGS_PROVIDER: 'fake',
+      EMBEDDINGS_FIXTURE_PATH: 'test/fixtures/corpus/embeddings.json.gz',
       LOG_PRETTY: '1',
     })
     expect(problems).toEqual([
@@ -137,9 +139,89 @@ describe('parseEnv', () => {
       APP_ENV: 'ci',
       LLM_PROVIDER: 'fake',
       EMBEDDINGS_PROVIDER: 'fake',
+      EMBEDDINGS_FIXTURE_PATH: 'test/fixtures/corpus/embeddings.json.gz',
     })
     expect(env.LLM_PROVIDER).toBe('fake')
     expect(env.EMBEDDINGS_PROVIDER).toBe('fake')
+  })
+
+  describe('banco e embeddings (F2)', () => {
+    it('aceita DATABASE_URL postgres e aplica os padrões do pool e do RRF mínimo', () => {
+      const env = parseEnv({
+        ...DEV_ENV,
+        DATABASE_URL: 'postgresql://teko_app:x@localhost:5432/teko',
+        EMBEDDINGS_PROVIDER: 'fake',
+        EMBEDDINGS_FIXTURE_PATH: 'f.json.gz',
+      })
+      expect(env.DATABASE_URL).toBe('postgresql://teko_app:x@localhost:5432/teko')
+      expect(env.DATABASE_MAX_CONNECTIONS).toBe(5)
+      expect(env.EMBEDDINGS_FAKE_STRICT).toBe(false)
+      expect(env.MIN_EVIDENCE_RRF).toBe(0)
+      expect(
+        parseEnv({
+          ...DEV_ENV,
+          DATABASE_URL: 'postgres://h/db',
+          EMBEDDINGS_PROVIDER: 'fake',
+          EMBEDDINGS_FIXTURE_PATH: 'f',
+          EMBEDDINGS_FAKE_STRICT: 'true',
+          MIN_EVIDENCE_RRF: '0.02',
+          DATABASE_MAX_CONNECTIONS: '3',
+        }),
+      ).toMatchObject({
+        EMBEDDINGS_FAKE_STRICT: true,
+        MIN_EVIDENCE_RRF: 0.02,
+        DATABASE_MAX_CONNECTIONS: 3,
+      })
+    })
+
+    it.each(['mysql://h/db', 'http://h/db', 'postgresql//h'])(
+      'rejeita DATABASE_URL que não é postgres: %s',
+      (url) => {
+        expect(
+          problemsOf({
+            ...DEV_ENV,
+            DATABASE_URL: url,
+            EMBEDDINGS_PROVIDER: 'fake',
+            EMBEDDINGS_FIXTURE_PATH: 'f',
+          }),
+        ).toEqual(['DATABASE_URL: deve ser uma URL postgresql://'])
+      },
+    )
+
+    it('DATABASE_URL exige EMBEDDINGS_PROVIDER', () => {
+      expect(problemsOf({ ...DEV_ENV, DATABASE_URL: 'postgres://h/db' })).toEqual([
+        'EMBEDDINGS_PROVIDER: obrigatória com DATABASE_URL (a busca precisa de embeddings)',
+      ])
+    })
+
+    it('o fake exige a fixture; o Workers AI exige conta e token', () => {
+      expect(problemsOf({ ...DEV_ENV, EMBEDDINGS_PROVIDER: 'fake' })).toEqual([
+        'EMBEDDINGS_FIXTURE_PATH: obrigatória com EMBEDDINGS_PROVIDER=fake',
+      ])
+      expect(problemsOf({ ...DEV_ENV, EMBEDDINGS_PROVIDER: 'workers-ai' })).toEqual([
+        'CF_ACCOUNT_ID: obrigatória com EMBEDDINGS_PROVIDER=workers-ai',
+        'CF_AI_TOKEN: obrigatória com EMBEDDINGS_PROVIDER=workers-ai',
+      ])
+      const env = parseEnv({
+        ...DEV_ENV,
+        EMBEDDINGS_PROVIDER: 'workers-ai',
+        CF_ACCOUNT_ID: '0123456789abcdef0123456789abcdef',
+        CF_AI_TOKEN: 'token-de-teste-com-20-chars',
+      })
+      expect(env.EMBEDDINGS_PROVIDER).toBe('workers-ai')
+    })
+
+    it('valida o formato da conta, do token e os limites numéricos', () => {
+      expect(
+        problemsOf({
+          ...DEV_ENV,
+          CF_ACCOUNT_ID: 'xyz',
+          CF_AI_TOKEN: 'curto',
+          MIN_EVIDENCE_RRF: '2',
+          DATABASE_MAX_CONNECTIONS: '0',
+        }).map((p) => p.split(':')[0]),
+      ).toEqual(['DATABASE_MAX_CONNECTIONS', 'CF_ACCOUNT_ID', 'CF_AI_TOKEN', 'MIN_EVIDENCE_RRF'])
+    })
   })
 
   it('derruba o boot com *_BASE_URL de provedor, mas não com outros *_BASE_URL', () => {

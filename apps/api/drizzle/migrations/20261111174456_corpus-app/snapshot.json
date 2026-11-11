@@ -1,0 +1,4737 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "2c5b1f8a-63c9-4ae9-ae24-c22f5e1c549c",
+  "prevIds": [
+    "95b4559a-ec3f-416d-9788-cb755484a686"
+  ],
+  "footprints": [
+    {
+      "statementType": "create_schema",
+      "statementTarget": [
+        "schema",
+        "app"
+      ],
+      "writes": [
+        "s|sch|app",
+        "n|sch|app",
+        "e|sch|app"
+      ]
+    },
+    {
+      "statementType": "create_schema",
+      "statementTarget": [
+        "schema",
+        "corpus"
+      ],
+      "writes": [
+        "s|sch|corpus",
+        "n|sch|corpus",
+        "e|sch|corpus"
+      ]
+    },
+    {
+      "statementType": "create_table",
+      "statementTarget": [
+        "table",
+        "app",
+        "answer_cache"
+      ],
+      "writes": [
+        "s|tbl|app.answer_cache",
+        "n|tbl|app.answer_cache",
+        "e|tbl|app.answer_cache",
+        "n|rel|app.answer_cache",
+        "n|type|app.answer_cache",
+        "n|rel|app.answer_cache_pkey"
+      ],
+      "reads": [
+        "n|sch|app"
+      ]
+    },
+    {
+      "statementType": "create_table",
+      "statementTarget": [
+        "table",
+        "app",
+        "feedback"
+      ],
+      "writes": [
+        "s|tbl|app.feedback",
+        "n|tbl|app.feedback",
+        "e|tbl|app.feedback",
+        "n|rel|app.feedback",
+        "n|type|app.feedback",
+        "n|rel|app.feedback_pkey"
+      ],
+      "reads": [
+        "n|sch|app"
+      ]
+    },
+    {
+      "statementType": "create_table",
+      "statementTarget": [
+        "table",
+        "app",
+        "questions"
+      ],
+      "writes": [
+        "s|tbl|app.questions",
+        "n|tbl|app.questions",
+        "e|tbl|app.questions",
+        "n|rel|app.questions",
+        "n|type|app.questions",
+        "n|rel|app.questions_pkey"
+      ],
+      "reads": [
+        "n|sch|app"
+      ]
+    },
+    {
+      "statementType": "create_table",
+      "statementTarget": [
+        "table",
+        "app",
+        "rate_limits"
+      ],
+      "writes": [
+        "s|tbl|app.rate_limits",
+        "n|tbl|app.rate_limits",
+        "e|tbl|app.rate_limits",
+        "n|rel|app.rate_limits",
+        "n|type|app.rate_limits",
+        "n|rel|app.rate_limits_pkey"
+      ],
+      "reads": [
+        "n|sch|app"
+      ]
+    },
+    {
+      "statementType": "create_table",
+      "statementTarget": [
+        "table",
+        "app",
+        "usage_daily"
+      ],
+      "writes": [
+        "s|tbl|app.usage_daily",
+        "n|tbl|app.usage_daily",
+        "e|tbl|app.usage_daily",
+        "n|rel|app.usage_daily",
+        "n|type|app.usage_daily",
+        "n|rel|app.usage_daily_pkey"
+      ],
+      "reads": [
+        "n|sch|app"
+      ]
+    },
+    {
+      "statementType": "create_table",
+      "statementTarget": [
+        "table",
+        "corpus",
+        "amendments"
+      ],
+      "writes": [
+        "s|tbl|corpus.amendments",
+        "n|tbl|corpus.amendments",
+        "e|tbl|corpus.amendments",
+        "n|rel|corpus.amendments",
+        "n|type|corpus.amendments",
+        "n|rel|corpus.amendments_pkey"
+      ],
+      "reads": [
+        "n|sch|corpus"
+      ]
+    },
+    {
+      "statementType": "create_table",
+      "statementTarget": [
+        "table",
+        "corpus",
+        "chunk_sources"
+      ],
+      "writes": [
+        "s|tbl|corpus.chunk_sources",
+        "n|tbl|corpus.chunk_sources",
+        "e|tbl|corpus.chunk_sources",
+        "n|rel|corpus.chunk_sources",
+        "n|type|corpus.chunk_sources",
+        "n|rel|corpus.chunk_sources_pkey"
+      ],
+      "reads": [
+        "n|sch|corpus"
+      ]
+    },
+    {
+      "statementType": "create_table",
+      "statementTarget": [
+        "table",
+        "corpus",
+        "chunks"
+      ],
+      "writes": [
+        "s|tbl|corpus.chunks",
+        "n|tbl|corpus.chunks",
+        "e|tbl|corpus.chunks",
+        "n|rel|corpus.chunks",
+        "n|type|corpus.chunks",
+        "n|rel|corpus.chunks_pkey",
+        "n|rel|corpus.chunks_provision_version_ordinal"
+      ],
+      "reads": [
+        "n|sch|corpus"
+      ]
+    },
+    {
+      "statementType": "create_table",
+      "statementTarget": [
+        "table",
+        "corpus",
+        "corpus_versions"
+      ],
+      "writes": [
+        "s|tbl|corpus.corpus_versions",
+        "n|tbl|corpus.corpus_versions",
+        "e|tbl|corpus.corpus_versions",
+        "n|rel|corpus.corpus_versions",
+        "n|type|corpus.corpus_versions",
+        "n|rel|corpus.corpus_versions_pkey"
+      ],
+      "reads": [
+        "n|sch|corpus"
+      ]
+    },
+    {
+      "statementType": "create_table",
+      "statementTarget": [
+        "table",
+        "corpus",
+        "coverage"
+      ],
+      "writes": [
+        "s|tbl|corpus.coverage",
+        "n|tbl|corpus.coverage",
+        "e|tbl|corpus.coverage",
+        "n|rel|corpus.coverage",
+        "n|type|corpus.coverage",
+        "n|rel|corpus.coverage_pkey"
+      ],
+      "reads": [
+        "n|sch|corpus"
+      ]
+    },
+    {
+      "statementType": "create_table",
+      "statementTarget": [
+        "table",
+        "corpus",
+        "document_versions"
+      ],
+      "writes": [
+        "s|tbl|corpus.document_versions",
+        "n|tbl|corpus.document_versions",
+        "e|tbl|corpus.document_versions",
+        "n|rel|corpus.document_versions",
+        "n|type|corpus.document_versions",
+        "n|rel|corpus.document_versions_pkey",
+        "n|rel|corpus.document_versions_sha256_key"
+      ],
+      "reads": [
+        "n|sch|corpus"
+      ]
+    },
+    {
+      "statementType": "create_table",
+      "statementTarget": [
+        "table",
+        "corpus",
+        "documents"
+      ],
+      "writes": [
+        "s|tbl|corpus.documents",
+        "n|tbl|corpus.documents",
+        "e|tbl|corpus.documents",
+        "n|rel|corpus.documents",
+        "n|type|corpus.documents",
+        "n|rel|corpus.documents_pkey",
+        "n|rel|corpus.documents_slug_key"
+      ],
+      "reads": [
+        "n|sch|corpus"
+      ]
+    },
+    {
+      "statementType": "create_table",
+      "statementTarget": [
+        "table",
+        "corpus",
+        "embedding_cache"
+      ],
+      "writes": [
+        "s|tbl|corpus.embedding_cache",
+        "n|tbl|corpus.embedding_cache",
+        "e|tbl|corpus.embedding_cache",
+        "n|rel|corpus.embedding_cache",
+        "n|type|corpus.embedding_cache",
+        "n|rel|corpus.embedding_cache_pkey"
+      ],
+      "reads": [
+        "n|sch|corpus"
+      ]
+    },
+    {
+      "statementType": "create_table",
+      "statementTarget": [
+        "table",
+        "corpus",
+        "ingestion_runs"
+      ],
+      "writes": [
+        "s|tbl|corpus.ingestion_runs",
+        "n|tbl|corpus.ingestion_runs",
+        "e|tbl|corpus.ingestion_runs",
+        "n|rel|corpus.ingestion_runs",
+        "n|type|corpus.ingestion_runs",
+        "n|rel|corpus.ingestion_runs_pkey"
+      ],
+      "reads": [
+        "n|sch|corpus"
+      ]
+    },
+    {
+      "statementType": "create_table",
+      "statementTarget": [
+        "table",
+        "corpus",
+        "provision_labels"
+      ],
+      "writes": [
+        "s|tbl|corpus.provision_labels",
+        "n|tbl|corpus.provision_labels",
+        "e|tbl|corpus.provision_labels",
+        "n|rel|corpus.provision_labels",
+        "n|type|corpus.provision_labels",
+        "n|rel|corpus.provision_labels_pkey"
+      ],
+      "reads": [
+        "n|sch|corpus"
+      ]
+    },
+    {
+      "statementType": "create_table",
+      "statementTarget": [
+        "table",
+        "corpus",
+        "provision_versions"
+      ],
+      "writes": [
+        "s|tbl|corpus.provision_versions",
+        "n|tbl|corpus.provision_versions",
+        "e|tbl|corpus.provision_versions",
+        "n|rel|corpus.provision_versions",
+        "n|type|corpus.provision_versions",
+        "n|rel|corpus.provision_versions_pkey"
+      ],
+      "reads": [
+        "n|sch|corpus"
+      ]
+    },
+    {
+      "statementType": "create_table",
+      "statementTarget": [
+        "table",
+        "corpus",
+        "provisions"
+      ],
+      "writes": [
+        "s|tbl|corpus.provisions",
+        "n|tbl|corpus.provisions",
+        "e|tbl|corpus.provisions",
+        "n|rel|corpus.provisions",
+        "n|type|corpus.provisions",
+        "n|rel|corpus.provisions_pkey",
+        "n|rel|corpus.provisions_stable_key_key"
+      ],
+      "reads": [
+        "n|sch|corpus"
+      ]
+    },
+    {
+      "statementType": "create_table",
+      "statementTarget": [
+        "table",
+        "corpus",
+        "review_queue"
+      ],
+      "writes": [
+        "s|tbl|corpus.review_queue",
+        "n|tbl|corpus.review_queue",
+        "e|tbl|corpus.review_queue",
+        "n|rel|corpus.review_queue",
+        "n|type|corpus.review_queue",
+        "n|rel|corpus.review_queue_pkey"
+      ],
+      "reads": [
+        "n|sch|corpus"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "app",
+        "answer_cache",
+        "answer_cache_expires"
+      ],
+      "writes": [
+        "s|idx|app.answer_cache_expires",
+        "n|idx|app.answer_cache_expires",
+        "e|idx|app.answer_cache_expires",
+        "n|rel|app.answer_cache_expires"
+      ],
+      "reads": [
+        "n|tbl|app.answer_cache",
+        "n|sch|app",
+        "n|col|app.answer_cache.expires_at"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "app",
+        "questions",
+        "questions_user_created"
+      ],
+      "writes": [
+        "s|idx|app.questions_user_created",
+        "n|idx|app.questions_user_created",
+        "e|idx|app.questions_user_created",
+        "n|rel|app.questions_user_created"
+      ],
+      "reads": [
+        "n|tbl|app.questions",
+        "n|sch|app",
+        "n|col|app.questions.user_id",
+        "n|col|app.questions.created_at"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "app",
+        "questions",
+        "questions_conversation"
+      ],
+      "writes": [
+        "s|idx|app.questions_conversation",
+        "n|idx|app.questions_conversation",
+        "e|idx|app.questions_conversation",
+        "n|rel|app.questions_conversation"
+      ],
+      "reads": [
+        "n|tbl|app.questions",
+        "n|sch|app",
+        "n|col|app.questions.conversation_id"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "app",
+        "questions",
+        "questions_cache_key"
+      ],
+      "writes": [
+        "s|idx|app.questions_cache_key",
+        "n|idx|app.questions_cache_key",
+        "e|idx|app.questions_cache_key",
+        "n|rel|app.questions_cache_key"
+      ],
+      "reads": [
+        "n|tbl|app.questions",
+        "n|sch|app",
+        "n|col|app.questions.cache_key"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "app",
+        "rate_limits",
+        "rate_limits_expires"
+      ],
+      "writes": [
+        "s|idx|app.rate_limits_expires",
+        "n|idx|app.rate_limits_expires",
+        "e|idx|app.rate_limits_expires",
+        "n|rel|app.rate_limits_expires"
+      ],
+      "reads": [
+        "n|tbl|app.rate_limits",
+        "n|sch|app",
+        "n|col|app.rate_limits.expires_at"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "corpus",
+        "chunk_sources",
+        "chunk_sources_document_version"
+      ],
+      "writes": [
+        "s|idx|corpus.chunk_sources_document_version",
+        "n|idx|corpus.chunk_sources_document_version",
+        "e|idx|corpus.chunk_sources_document_version",
+        "n|rel|corpus.chunk_sources_document_version"
+      ],
+      "reads": [
+        "n|tbl|corpus.chunk_sources",
+        "n|sch|corpus",
+        "n|col|corpus.chunk_sources.document_version_id"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "corpus",
+        "chunks",
+        "chunks_tsv_gin"
+      ],
+      "writes": [
+        "s|idx|corpus.chunks_tsv_gin",
+        "n|idx|corpus.chunks_tsv_gin",
+        "e|idx|corpus.chunks_tsv_gin",
+        "n|rel|corpus.chunks_tsv_gin"
+      ],
+      "reads": [
+        "n|tbl|corpus.chunks",
+        "n|sch|corpus",
+        "n|col|corpus.chunks.tsv"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "corpus",
+        "chunks",
+        "chunks_embedding_hnsw"
+      ],
+      "writes": [
+        "s|idx|corpus.chunks_embedding_hnsw",
+        "n|idx|corpus.chunks_embedding_hnsw",
+        "e|idx|corpus.chunks_embedding_hnsw",
+        "n|rel|corpus.chunks_embedding_hnsw"
+      ],
+      "reads": [
+        "n|tbl|corpus.chunks",
+        "n|sch|corpus",
+        "n|col|corpus.chunks.embedding"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "corpus",
+        "chunks",
+        "chunks_family_valid_during_gist"
+      ],
+      "writes": [
+        "s|idx|corpus.chunks_family_valid_during_gist",
+        "n|idx|corpus.chunks_family_valid_during_gist",
+        "e|idx|corpus.chunks_family_valid_during_gist",
+        "n|rel|corpus.chunks_family_valid_during_gist"
+      ],
+      "reads": [
+        "n|tbl|corpus.chunks",
+        "n|sch|corpus",
+        "n|col|corpus.chunks.family",
+        "n|col|corpus.chunks.valid_during"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "corpus",
+        "document_versions",
+        "document_versions_document"
+      ],
+      "writes": [
+        "s|idx|corpus.document_versions_document",
+        "n|idx|corpus.document_versions_document",
+        "e|idx|corpus.document_versions_document",
+        "n|rel|corpus.document_versions_document"
+      ],
+      "reads": [
+        "n|tbl|corpus.document_versions",
+        "n|sch|corpus",
+        "n|col|corpus.document_versions.document_id"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "corpus",
+        "provision_labels",
+        "provision_labels_provision"
+      ],
+      "writes": [
+        "s|idx|corpus.provision_labels_provision",
+        "n|idx|corpus.provision_labels_provision",
+        "e|idx|corpus.provision_labels_provision",
+        "n|rel|corpus.provision_labels_provision"
+      ],
+      "reads": [
+        "n|tbl|corpus.provision_labels",
+        "n|sch|corpus",
+        "n|col|corpus.provision_labels.provision_id"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "corpus",
+        "provision_versions",
+        "provision_versions_provision"
+      ],
+      "writes": [
+        "s|idx|corpus.provision_versions_provision",
+        "n|idx|corpus.provision_versions_provision",
+        "e|idx|corpus.provision_versions_provision",
+        "n|rel|corpus.provision_versions_provision"
+      ],
+      "reads": [
+        "n|tbl|corpus.provision_versions",
+        "n|sch|corpus",
+        "n|col|corpus.provision_versions.provision_id"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "corpus",
+        "provisions",
+        "provisions_stable_key_trgm"
+      ],
+      "writes": [
+        "s|idx|corpus.provisions_stable_key_trgm",
+        "n|idx|corpus.provisions_stable_key_trgm",
+        "e|idx|corpus.provisions_stable_key_trgm",
+        "n|rel|corpus.provisions_stable_key_trgm"
+      ],
+      "reads": [
+        "n|tbl|corpus.provisions",
+        "n|sch|corpus",
+        "n|col|corpus.provisions.stable_key"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "corpus",
+        "provisions",
+        "provisions_document"
+      ],
+      "writes": [
+        "s|idx|corpus.provisions_document",
+        "n|idx|corpus.provisions_document",
+        "e|idx|corpus.provisions_document",
+        "n|rel|corpus.provisions_document"
+      ],
+      "reads": [
+        "n|tbl|corpus.provisions",
+        "n|sch|corpus",
+        "n|col|corpus.provisions.document_id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": [
+        "table",
+        "app",
+        "feedback"
+      ],
+      "writes": [
+        "s|fk|app.feedback.feedback_question_id_questions_id_fkey",
+        "n|fk|app.feedback.feedback_question_id_questions_id_fkey",
+        "e|fk|app.feedback.feedback_question_id_questions_id_fkey",
+        "n|con|app.feedback.feedback_question_id_questions_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|app.feedback",
+        "n|sch|app",
+        "n|tbl|app.questions",
+        "n|sch|app",
+        "n|col|app.feedback.question_id",
+        "n|col|app.questions.id",
+        "e|uniqueness|app.questions.id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": [
+        "table",
+        "corpus",
+        "chunk_sources"
+      ],
+      "writes": [
+        "s|fk|corpus.chunk_sources.chunk_sources_chunk_id_chunks_id_fkey",
+        "n|fk|corpus.chunk_sources.chunk_sources_chunk_id_chunks_id_fkey",
+        "e|fk|corpus.chunk_sources.chunk_sources_chunk_id_chunks_id_fkey",
+        "n|con|corpus.chunk_sources.chunk_sources_chunk_id_chunks_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|corpus.chunk_sources",
+        "n|sch|corpus",
+        "n|tbl|corpus.chunks",
+        "n|sch|corpus",
+        "n|col|corpus.chunk_sources.chunk_id",
+        "n|col|corpus.chunks.id",
+        "e|uniqueness|corpus.chunks.id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": [
+        "table",
+        "corpus",
+        "chunk_sources"
+      ],
+      "writes": [
+        "s|fk|corpus.chunk_sources.chunk_sources_document_version_id_document_versions_id_fkey",
+        "n|fk|corpus.chunk_sources.chunk_sources_document_version_id_document_versions_id_fkey",
+        "e|fk|corpus.chunk_sources.chunk_sources_document_version_id_document_versions_id_fkey",
+        "n|con|corpus.chunk_sources.chunk_sources_document_version_id_document_versions_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|corpus.chunk_sources",
+        "n|sch|corpus",
+        "n|tbl|corpus.document_versions",
+        "n|sch|corpus",
+        "n|col|corpus.chunk_sources.document_version_id",
+        "n|col|corpus.document_versions.id",
+        "e|uniqueness|corpus.document_versions.id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": [
+        "table",
+        "corpus",
+        "chunks"
+      ],
+      "writes": [
+        "s|fk|corpus.chunks.chunks_provision_version_id_provision_versions_id_fkey",
+        "n|fk|corpus.chunks.chunks_provision_version_id_provision_versions_id_fkey",
+        "e|fk|corpus.chunks.chunks_provision_version_id_provision_versions_id_fkey",
+        "n|con|corpus.chunks.chunks_provision_version_id_provision_versions_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|corpus.chunks",
+        "n|sch|corpus",
+        "n|tbl|corpus.provision_versions",
+        "n|sch|corpus",
+        "n|col|corpus.chunks.provision_version_id",
+        "n|col|corpus.provision_versions.id",
+        "e|uniqueness|corpus.provision_versions.id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": [
+        "table",
+        "corpus",
+        "corpus_versions"
+      ],
+      "writes": [
+        "s|fk|corpus.corpus_versions.corpus_versions_run_id_ingestion_runs_id_fkey",
+        "n|fk|corpus.corpus_versions.corpus_versions_run_id_ingestion_runs_id_fkey",
+        "e|fk|corpus.corpus_versions.corpus_versions_run_id_ingestion_runs_id_fkey",
+        "n|con|corpus.corpus_versions.corpus_versions_run_id_ingestion_runs_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|corpus.corpus_versions",
+        "n|sch|corpus",
+        "n|tbl|corpus.ingestion_runs",
+        "n|sch|corpus",
+        "n|col|corpus.corpus_versions.run_id",
+        "n|col|corpus.ingestion_runs.id",
+        "e|uniqueness|corpus.ingestion_runs.id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": [
+        "table",
+        "corpus",
+        "document_versions"
+      ],
+      "writes": [
+        "s|fk|corpus.document_versions.document_versions_document_id_documents_id_fkey",
+        "n|fk|corpus.document_versions.document_versions_document_id_documents_id_fkey",
+        "e|fk|corpus.document_versions.document_versions_document_id_documents_id_fkey",
+        "n|con|corpus.document_versions.document_versions_document_id_documents_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|corpus.document_versions",
+        "n|sch|corpus",
+        "n|tbl|corpus.documents",
+        "n|sch|corpus",
+        "n|col|corpus.document_versions.document_id",
+        "n|col|corpus.documents.id",
+        "e|uniqueness|corpus.documents.id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": [
+        "table",
+        "corpus",
+        "document_versions"
+      ],
+      "writes": [
+        "s|fk|corpus.document_versions.document_versions_ingestion_run_id_ingestion_runs_id_fkey",
+        "n|fk|corpus.document_versions.document_versions_ingestion_run_id_ingestion_runs_id_fkey",
+        "e|fk|corpus.document_versions.document_versions_ingestion_run_id_ingestion_runs_id_fkey",
+        "n|con|corpus.document_versions.document_versions_ingestion_run_id_ingestion_runs_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|corpus.document_versions",
+        "n|sch|corpus",
+        "n|tbl|corpus.ingestion_runs",
+        "n|sch|corpus",
+        "n|col|corpus.document_versions.ingestion_run_id",
+        "n|col|corpus.ingestion_runs.id",
+        "e|uniqueness|corpus.ingestion_runs.id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": [
+        "table",
+        "corpus",
+        "provision_labels"
+      ],
+      "writes": [
+        "s|fk|corpus.provision_labels.provision_labels_provision_id_provisions_id_fkey",
+        "n|fk|corpus.provision_labels.provision_labels_provision_id_provisions_id_fkey",
+        "e|fk|corpus.provision_labels.provision_labels_provision_id_provisions_id_fkey",
+        "n|con|corpus.provision_labels.provision_labels_provision_id_provisions_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|corpus.provision_labels",
+        "n|sch|corpus",
+        "n|tbl|corpus.provisions",
+        "n|sch|corpus",
+        "n|col|corpus.provision_labels.provision_id",
+        "n|col|corpus.provisions.id",
+        "e|uniqueness|corpus.provisions.id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": [
+        "table",
+        "corpus",
+        "provision_versions"
+      ],
+      "writes": [
+        "s|fk|corpus.provision_versions.provision_versions_provision_id_provisions_id_fkey",
+        "n|fk|corpus.provision_versions.provision_versions_provision_id_provisions_id_fkey",
+        "e|fk|corpus.provision_versions.provision_versions_provision_id_provisions_id_fkey",
+        "n|con|corpus.provision_versions.provision_versions_provision_id_provisions_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|corpus.provision_versions",
+        "n|sch|corpus",
+        "n|tbl|corpus.provisions",
+        "n|sch|corpus",
+        "n|col|corpus.provision_versions.provision_id",
+        "n|col|corpus.provisions.id",
+        "e|uniqueness|corpus.provisions.id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": [
+        "table",
+        "corpus",
+        "provision_versions"
+      ],
+      "writes": [
+        "s|fk|corpus.provision_versions.provision_versions_amendment_id_amendments_id_fkey",
+        "n|fk|corpus.provision_versions.provision_versions_amendment_id_amendments_id_fkey",
+        "e|fk|corpus.provision_versions.provision_versions_amendment_id_amendments_id_fkey",
+        "n|con|corpus.provision_versions.provision_versions_amendment_id_amendments_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|corpus.provision_versions",
+        "n|sch|corpus",
+        "n|tbl|corpus.amendments",
+        "n|sch|corpus",
+        "n|col|corpus.provision_versions.amendment_id",
+        "n|col|corpus.amendments.id",
+        "e|uniqueness|corpus.amendments.id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": [
+        "table",
+        "corpus",
+        "provisions"
+      ],
+      "writes": [
+        "s|fk|corpus.provisions.provisions_document_id_documents_id_fkey",
+        "n|fk|corpus.provisions.provisions_document_id_documents_id_fkey",
+        "e|fk|corpus.provisions.provisions_document_id_documents_id_fkey",
+        "n|con|corpus.provisions.provisions_document_id_documents_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|corpus.provisions",
+        "n|sch|corpus",
+        "n|tbl|corpus.documents",
+        "n|sch|corpus",
+        "n|col|corpus.provisions.document_id",
+        "n|col|corpus.documents.id",
+        "e|uniqueness|corpus.documents.id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": [
+        "table",
+        "corpus",
+        "provisions"
+      ],
+      "writes": [
+        "s|fk|corpus.provisions.provisions_parent_id_provisions_id_fkey",
+        "n|fk|corpus.provisions.provisions_parent_id_provisions_id_fkey",
+        "e|fk|corpus.provisions.provisions_parent_id_provisions_id_fkey",
+        "n|con|corpus.provisions.provisions_parent_id_provisions_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|corpus.provisions",
+        "n|sch|corpus",
+        "n|tbl|corpus.provisions",
+        "n|sch|corpus",
+        "n|col|corpus.provisions.parent_id",
+        "n|col|corpus.provisions.id",
+        "e|uniqueness|corpus.provisions.id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": [
+        "table",
+        "corpus",
+        "review_queue"
+      ],
+      "writes": [
+        "s|fk|corpus.review_queue.review_queue_run_id_ingestion_runs_id_fkey",
+        "n|fk|corpus.review_queue.review_queue_run_id_ingestion_runs_id_fkey",
+        "e|fk|corpus.review_queue.review_queue_run_id_ingestion_runs_id_fkey",
+        "n|con|corpus.review_queue.review_queue_run_id_ingestion_runs_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|corpus.review_queue",
+        "n|sch|corpus",
+        "n|tbl|corpus.ingestion_runs",
+        "n|sch|corpus",
+        "n|col|corpus.review_queue.run_id",
+        "n|col|corpus.ingestion_runs.id",
+        "e|uniqueness|corpus.ingestion_runs.id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": [
+        "table",
+        "corpus",
+        "review_queue"
+      ],
+      "writes": [
+        "s|fk|corpus.review_queue.review_queue_provision_id_provisions_id_fkey",
+        "n|fk|corpus.review_queue.review_queue_provision_id_provisions_id_fkey",
+        "e|fk|corpus.review_queue.review_queue_provision_id_provisions_id_fkey",
+        "n|con|corpus.review_queue.review_queue_provision_id_provisions_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|corpus.review_queue",
+        "n|sch|corpus",
+        "n|tbl|corpus.provisions",
+        "n|sch|corpus",
+        "n|col|corpus.review_queue.provision_id",
+        "n|col|corpus.provisions.id",
+        "e|uniqueness|corpus.provisions.id"
+      ]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "name": "app",
+        "entityType": "schemas"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "name": "corpus",
+        "entityType": "schemas"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "app",
+        "name": "answer_cache",
+        "isRlsEnabled": false,
+        "entityType": "tables"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "app",
+        "name": "feedback",
+        "isRlsEnabled": false,
+        "entityType": "tables"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "app",
+        "name": "questions",
+        "isRlsEnabled": false,
+        "entityType": "tables"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "app",
+        "name": "rate_limits",
+        "isRlsEnabled": false,
+        "entityType": "tables"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "app",
+        "name": "usage_daily",
+        "isRlsEnabled": false,
+        "entityType": "tables"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "name": "amendments",
+        "isRlsEnabled": false,
+        "entityType": "tables"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "name": "chunk_sources",
+        "isRlsEnabled": false,
+        "entityType": "tables"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "name": "chunks",
+        "isRlsEnabled": false,
+        "entityType": "tables"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "name": "corpus_versions",
+        "isRlsEnabled": false,
+        "entityType": "tables"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "name": "coverage",
+        "isRlsEnabled": false,
+        "entityType": "tables"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "name": "document_versions",
+        "isRlsEnabled": false,
+        "entityType": "tables"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "name": "documents",
+        "isRlsEnabled": false,
+        "entityType": "tables"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "name": "embedding_cache",
+        "isRlsEnabled": false,
+        "entityType": "tables"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "name": "ingestion_runs",
+        "isRlsEnabled": false,
+        "entityType": "tables"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "name": "provision_labels",
+        "isRlsEnabled": false,
+        "entityType": "tables"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "name": "provision_versions",
+        "isRlsEnabled": false,
+        "entityType": "tables"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "name": "provisions",
+        "isRlsEnabled": false,
+        "entityType": "tables"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "name": "review_queue",
+        "isRlsEnabled": false,
+        "entityType": "tables"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "app",
+        "table": "answer_cache",
+        "name": "cache_key",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "app",
+        "table": "answer_cache",
+        "name": "answer",
+        "type": "jsonb",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "app",
+        "table": "answer_cache",
+        "name": "corpus_version",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "app",
+        "table": "answer_cache",
+        "name": "created_at",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "now()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "app",
+        "table": "answer_cache",
+        "name": "expires_at",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "app",
+        "table": "feedback",
+        "name": "question_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "app",
+        "table": "feedback",
+        "name": "user_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "app",
+        "table": "feedback",
+        "name": "rating",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "app",
+        "table": "feedback",
+        "name": "reason",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "app",
+        "table": "feedback",
+        "name": "created_at",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "now()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "app",
+        "table": "questions",
+        "name": "id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "uuidv7()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "app",
+        "table": "questions",
+        "name": "user_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "app",
+        "table": "questions",
+        "name": "conversation_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "app",
+        "table": "questions",
+        "name": "question_redacted",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "app",
+        "table": "questions",
+        "name": "locale",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "app",
+        "table": "questions",
+        "name": "families",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 1,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "app",
+        "table": "questions",
+        "name": "reference_date",
+        "type": "date",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "app",
+        "table": "questions",
+        "name": "reference_source",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "app",
+        "table": "questions",
+        "name": "status",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "'pending'",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "app",
+        "table": "questions",
+        "name": "refusal_reason",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "app",
+        "table": "questions",
+        "name": "answer_md",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "app",
+        "table": "questions",
+        "name": "citations",
+        "type": "jsonb",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "app",
+        "table": "questions",
+        "name": "retrieval",
+        "type": "jsonb",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "app",
+        "table": "questions",
+        "name": "retrieval_mode",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "app",
+        "table": "questions",
+        "name": "provider",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "app",
+        "table": "questions",
+        "name": "model",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "app",
+        "table": "questions",
+        "name": "prompt_version",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "app",
+        "table": "questions",
+        "name": "corpus_version",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "app",
+        "table": "questions",
+        "name": "cache_key",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "app",
+        "table": "questions",
+        "name": "tokens_in",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "app",
+        "table": "questions",
+        "name": "tokens_out",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "app",
+        "table": "questions",
+        "name": "shadow_cost_usd",
+        "type": "numeric(10,6)",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "'0'",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "app",
+        "table": "questions",
+        "name": "ttft_ms",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "app",
+        "table": "questions",
+        "name": "latency_ms",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "app",
+        "table": "questions",
+        "name": "langfuse_trace_id",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "app",
+        "table": "questions",
+        "name": "stream_started_at",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "app",
+        "table": "questions",
+        "name": "created_at",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "now()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "app",
+        "table": "questions",
+        "name": "updated_at",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "now()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "app",
+        "table": "rate_limits",
+        "name": "key",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "app",
+        "table": "rate_limits",
+        "name": "window_start",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "app",
+        "table": "rate_limits",
+        "name": "count",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "0",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "app",
+        "table": "rate_limits",
+        "name": "expires_at",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "app",
+        "table": "usage_daily",
+        "name": "day",
+        "type": "date",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "app",
+        "table": "usage_daily",
+        "name": "scope",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "app",
+        "table": "usage_daily",
+        "name": "requests",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "0",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "app",
+        "table": "usage_daily",
+        "name": "tokens_in",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "0",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "app",
+        "table": "usage_daily",
+        "name": "tokens_out",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "0",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "app",
+        "table": "usage_daily",
+        "name": "neurons",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "0",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "app",
+        "table": "usage_daily",
+        "name": "langfuse_units",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "0",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "app",
+        "table": "usage_daily",
+        "name": "stream_seconds",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "0",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "amendments",
+        "name": "id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "uuidv7()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "amendments",
+        "name": "act_label",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "amendments",
+        "name": "act_kind",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "amendments",
+        "name": "act_date",
+        "type": "date",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "amendments",
+        "name": "effective",
+        "type": "daterange",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "amendments",
+        "name": "change_kind",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "amendments",
+        "name": "raw_note",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "chunk_sources",
+        "name": "chunk_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "chunk_sources",
+        "name": "document_version_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "chunks",
+        "name": "id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "uuidv7()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "chunks",
+        "name": "provision_version_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "chunks",
+        "name": "ordinal",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "chunks",
+        "name": "family",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "chunks",
+        "name": "jurisdiction",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "chunks",
+        "name": "citation_label",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "chunks",
+        "name": "heading_path",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "chunks",
+        "name": "content",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "chunks",
+        "name": "content_hash",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "chunks",
+        "name": "valid_during",
+        "type": "daterange",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "chunks",
+        "name": "knowledge",
+        "type": "daterange",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "chunks",
+        "name": "modality",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "chunks",
+        "name": "review_status",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "chunks",
+        "name": "corpus_version",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "chunks",
+        "name": "tsv",
+        "type": "tsvector",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": {
+          "as": "setweight(to_tsvector('pg_catalog.portuguese', public.immutable_unaccent(coalesce(\"corpus\".\"chunks\".\"heading_path\", ''))), 'A') || setweight(to_tsvector('pg_catalog.portuguese', public.immutable_unaccent(\"corpus\".\"chunks\".\"content\")), 'B')",
+          "type": "stored"
+        },
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "chunks",
+        "name": "embedding",
+        "type": "halfvec(1024)",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "chunks",
+        "name": "embedding_model",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "corpus_versions",
+        "name": "id",
+        "type": "serial",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "corpus_versions",
+        "name": "run_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "corpus_versions",
+        "name": "notes",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "corpus_versions",
+        "name": "created_at",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "now()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "coverage",
+        "name": "family",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "coverage",
+        "name": "jurisdiction",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "coverage",
+        "name": "covered",
+        "type": "datemultirange",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "coverage",
+        "name": "verified_at",
+        "type": "date",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "coverage",
+        "name": "corpus_version",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "coverage",
+        "name": "gaps",
+        "type": "datemultirange",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "'{}'",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "coverage",
+        "name": "gap_reason",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "document_versions",
+        "name": "id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "uuidv7()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "document_versions",
+        "name": "document_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "document_versions",
+        "name": "version_label",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "document_versions",
+        "name": "published_on",
+        "type": "date",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "document_versions",
+        "name": "valid_during",
+        "type": "daterange",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "document_versions",
+        "name": "consolidated_until",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "document_versions",
+        "name": "act_ref",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "document_versions",
+        "name": "sha256",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "document_versions",
+        "name": "blob_raw",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "document_versions",
+        "name": "blob_docling",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "document_versions",
+        "name": "status",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "'ingesting'",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "document_versions",
+        "name": "ingestion_run_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "document_versions",
+        "name": "created_at",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "now()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "documents",
+        "name": "id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "uuidv7()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "documents",
+        "name": "slug",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "documents",
+        "name": "family",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "documents",
+        "name": "jurisdiction",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "documents",
+        "name": "title",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "documents",
+        "name": "issuer",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "documents",
+        "name": "source_url",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "documents",
+        "name": "created_at",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "now()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "embedding_cache",
+        "name": "content_hash",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "embedding_cache",
+        "name": "model",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "embedding_cache",
+        "name": "embedding",
+        "type": "halfvec(1024)",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "embedding_cache",
+        "name": "created_at",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "now()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "ingestion_runs",
+        "name": "id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "uuidv7()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "ingestion_runs",
+        "name": "target",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "ingestion_runs",
+        "name": "git_sha",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "ingestion_runs",
+        "name": "status",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "ingestion_runs",
+        "name": "docs",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "0",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "ingestion_runs",
+        "name": "chunks_new",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "0",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "ingestion_runs",
+        "name": "neurons_est",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "0",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "ingestion_runs",
+        "name": "cu_seconds",
+        "type": "numeric(12,3)",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "ingestion_runs",
+        "name": "db_bytes",
+        "type": "bigint",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "ingestion_runs",
+        "name": "report",
+        "type": "jsonb",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "ingestion_runs",
+        "name": "started_at",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "now()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "ingestion_runs",
+        "name": "finished_at",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "provision_labels",
+        "name": "id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "uuidv7()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "provision_labels",
+        "name": "provision_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "provision_labels",
+        "name": "label",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "provision_labels",
+        "name": "valid_during",
+        "type": "daterange",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "provision_versions",
+        "name": "id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "uuidv7()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "provision_versions",
+        "name": "provision_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "provision_versions",
+        "name": "display_label",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "provision_versions",
+        "name": "valid_during",
+        "type": "daterange",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "provision_versions",
+        "name": "knowledge",
+        "type": "daterange",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "provision_versions",
+        "name": "modality",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "'mandatory'",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "provision_versions",
+        "name": "validity_basis",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "provision_versions",
+        "name": "retroactive",
+        "type": "boolean",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "false",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "provision_versions",
+        "name": "review_status",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "'auto'",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "provision_versions",
+        "name": "text",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "provision_versions",
+        "name": "structured",
+        "type": "jsonb",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "provision_versions",
+        "name": "amendment_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "provision_versions",
+        "name": "content_hash",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "provisions",
+        "name": "id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "uuidv7()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "provisions",
+        "name": "stable_key",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "provisions",
+        "name": "document_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "provisions",
+        "name": "kind",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "provisions",
+        "name": "parent_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "provisions",
+        "name": "sort_path",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "review_queue",
+        "name": "id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "uuidv7()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "review_queue",
+        "name": "run_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "review_queue",
+        "name": "provision_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "review_queue",
+        "name": "reason",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "review_queue",
+        "name": "raw_note",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "review_queue",
+        "name": "proposed",
+        "type": "daterange",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "review_queue",
+        "name": "status",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "'open'",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "review_queue",
+        "name": "created_at",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "now()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "app",
+        "table": "answer_cache",
+        "name": "answer_cache_expires",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "expires_at",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": false,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "app",
+        "table": "questions",
+        "name": "questions_user_created",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "user_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          },
+          {
+            "value": "created_at",
+            "isExpression": false,
+            "asc": false,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": false,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "app",
+        "table": "questions",
+        "name": "questions_conversation",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "conversation_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": false,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "app",
+        "table": "questions",
+        "name": "questions_cache_key",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "cache_key",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": false,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "app",
+        "table": "rate_limits",
+        "name": "rate_limits_expires",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "expires_at",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": false,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "chunk_sources",
+        "name": "chunk_sources_document_version",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "document_version_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": false,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "chunks",
+        "name": "chunks_tsv_gin",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "tsv",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": false,
+        "where": null,
+        "with": "",
+        "method": "gin",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "chunks",
+        "name": "chunks_embedding_hnsw",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "embedding",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": {
+              "name": "halfvec_cosine_ops",
+              "default": false
+            }
+          }
+        ],
+        "isUnique": false,
+        "where": null,
+        "with": "m=16, ef_construction=128",
+        "method": "hnsw",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "chunks",
+        "name": "chunks_family_valid_during_gist",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "family",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          },
+          {
+            "value": "valid_during",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": false,
+        "where": null,
+        "with": "",
+        "method": "gist",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "document_versions",
+        "name": "document_versions_document",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "document_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": false,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "provision_labels",
+        "name": "provision_labels_provision",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "provision_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": false,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "provision_versions",
+        "name": "provision_versions_provision",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "provision_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": false,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "provisions",
+        "name": "provisions_stable_key_trgm",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "stable_key",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": {
+              "name": "gin_trgm_ops",
+              "default": false
+            }
+          }
+        ],
+        "isUnique": false,
+        "where": null,
+        "with": "",
+        "method": "gin",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "provisions",
+        "name": "provisions_document",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "document_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": false,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "app",
+        "table": "feedback",
+        "name": "feedback_question_id_questions_id_fkey",
+        "nameExplicit": false,
+        "columns": [
+          "question_id"
+        ],
+        "schemaTo": "app",
+        "tableTo": "questions",
+        "columnsTo": [
+          "id"
+        ],
+        "onUpdate": "NO ACTION",
+        "onDelete": "CASCADE",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "chunk_sources",
+        "name": "chunk_sources_chunk_id_chunks_id_fkey",
+        "nameExplicit": false,
+        "columns": [
+          "chunk_id"
+        ],
+        "schemaTo": "corpus",
+        "tableTo": "chunks",
+        "columnsTo": [
+          "id"
+        ],
+        "onUpdate": "NO ACTION",
+        "onDelete": "CASCADE",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "chunk_sources",
+        "name": "chunk_sources_document_version_id_document_versions_id_fkey",
+        "nameExplicit": false,
+        "columns": [
+          "document_version_id"
+        ],
+        "schemaTo": "corpus",
+        "tableTo": "document_versions",
+        "columnsTo": [
+          "id"
+        ],
+        "onUpdate": "NO ACTION",
+        "onDelete": "NO ACTION",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "chunks",
+        "name": "chunks_provision_version_id_provision_versions_id_fkey",
+        "nameExplicit": false,
+        "columns": [
+          "provision_version_id"
+        ],
+        "schemaTo": "corpus",
+        "tableTo": "provision_versions",
+        "columnsTo": [
+          "id"
+        ],
+        "onUpdate": "NO ACTION",
+        "onDelete": "NO ACTION",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "corpus_versions",
+        "name": "corpus_versions_run_id_ingestion_runs_id_fkey",
+        "nameExplicit": false,
+        "columns": [
+          "run_id"
+        ],
+        "schemaTo": "corpus",
+        "tableTo": "ingestion_runs",
+        "columnsTo": [
+          "id"
+        ],
+        "onUpdate": "NO ACTION",
+        "onDelete": "NO ACTION",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "document_versions",
+        "name": "document_versions_document_id_documents_id_fkey",
+        "nameExplicit": false,
+        "columns": [
+          "document_id"
+        ],
+        "schemaTo": "corpus",
+        "tableTo": "documents",
+        "columnsTo": [
+          "id"
+        ],
+        "onUpdate": "NO ACTION",
+        "onDelete": "NO ACTION",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "document_versions",
+        "name": "document_versions_ingestion_run_id_ingestion_runs_id_fkey",
+        "nameExplicit": false,
+        "columns": [
+          "ingestion_run_id"
+        ],
+        "schemaTo": "corpus",
+        "tableTo": "ingestion_runs",
+        "columnsTo": [
+          "id"
+        ],
+        "onUpdate": "NO ACTION",
+        "onDelete": "NO ACTION",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "provision_labels",
+        "name": "provision_labels_provision_id_provisions_id_fkey",
+        "nameExplicit": false,
+        "columns": [
+          "provision_id"
+        ],
+        "schemaTo": "corpus",
+        "tableTo": "provisions",
+        "columnsTo": [
+          "id"
+        ],
+        "onUpdate": "NO ACTION",
+        "onDelete": "NO ACTION",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "provision_versions",
+        "name": "provision_versions_provision_id_provisions_id_fkey",
+        "nameExplicit": false,
+        "columns": [
+          "provision_id"
+        ],
+        "schemaTo": "corpus",
+        "tableTo": "provisions",
+        "columnsTo": [
+          "id"
+        ],
+        "onUpdate": "NO ACTION",
+        "onDelete": "NO ACTION",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "provision_versions",
+        "name": "provision_versions_amendment_id_amendments_id_fkey",
+        "nameExplicit": false,
+        "columns": [
+          "amendment_id"
+        ],
+        "schemaTo": "corpus",
+        "tableTo": "amendments",
+        "columnsTo": [
+          "id"
+        ],
+        "onUpdate": "NO ACTION",
+        "onDelete": "NO ACTION",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "provisions",
+        "name": "provisions_document_id_documents_id_fkey",
+        "nameExplicit": false,
+        "columns": [
+          "document_id"
+        ],
+        "schemaTo": "corpus",
+        "tableTo": "documents",
+        "columnsTo": [
+          "id"
+        ],
+        "onUpdate": "NO ACTION",
+        "onDelete": "NO ACTION",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "provisions",
+        "name": "provisions_parent_id_provisions_id_fkey",
+        "nameExplicit": false,
+        "columns": [
+          "parent_id"
+        ],
+        "schemaTo": "corpus",
+        "tableTo": "provisions",
+        "columnsTo": [
+          "id"
+        ],
+        "onUpdate": "NO ACTION",
+        "onDelete": "NO ACTION",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "review_queue",
+        "name": "review_queue_run_id_ingestion_runs_id_fkey",
+        "nameExplicit": false,
+        "columns": [
+          "run_id"
+        ],
+        "schemaTo": "corpus",
+        "tableTo": "ingestion_runs",
+        "columnsTo": [
+          "id"
+        ],
+        "onUpdate": "NO ACTION",
+        "onDelete": "NO ACTION",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "review_queue",
+        "name": "review_queue_provision_id_provisions_id_fkey",
+        "nameExplicit": false,
+        "columns": [
+          "provision_id"
+        ],
+        "schemaTo": "corpus",
+        "tableTo": "provisions",
+        "columnsTo": [
+          "id"
+        ],
+        "onUpdate": "NO ACTION",
+        "onDelete": "NO ACTION",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "app",
+        "table": "rate_limits",
+        "name": "rate_limits_pkey",
+        "columns": [
+          "key",
+          "window_start"
+        ],
+        "nameExplicit": false,
+        "entityType": "pks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "app",
+        "table": "usage_daily",
+        "name": "usage_daily_pkey",
+        "columns": [
+          "day",
+          "scope"
+        ],
+        "nameExplicit": false,
+        "entityType": "pks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "chunk_sources",
+        "name": "chunk_sources_pkey",
+        "columns": [
+          "chunk_id",
+          "document_version_id"
+        ],
+        "nameExplicit": false,
+        "entityType": "pks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "embedding_cache",
+        "name": "embedding_cache_pkey",
+        "columns": [
+          "content_hash",
+          "model"
+        ],
+        "nameExplicit": false,
+        "entityType": "pks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "app",
+        "table": "answer_cache",
+        "name": "answer_cache_pkey",
+        "columns": [
+          "cache_key"
+        ],
+        "nameExplicit": false,
+        "entityType": "pks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "app",
+        "table": "feedback",
+        "name": "feedback_pkey",
+        "columns": [
+          "question_id"
+        ],
+        "nameExplicit": false,
+        "entityType": "pks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "app",
+        "table": "questions",
+        "name": "questions_pkey",
+        "columns": [
+          "id"
+        ],
+        "nameExplicit": false,
+        "entityType": "pks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "amendments",
+        "name": "amendments_pkey",
+        "columns": [
+          "id"
+        ],
+        "nameExplicit": false,
+        "entityType": "pks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "chunks",
+        "name": "chunks_pkey",
+        "columns": [
+          "id"
+        ],
+        "nameExplicit": false,
+        "entityType": "pks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "corpus_versions",
+        "name": "corpus_versions_pkey",
+        "columns": [
+          "id"
+        ],
+        "nameExplicit": false,
+        "entityType": "pks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "coverage",
+        "name": "coverage_pkey",
+        "columns": [
+          "family"
+        ],
+        "nameExplicit": false,
+        "entityType": "pks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "document_versions",
+        "name": "document_versions_pkey",
+        "columns": [
+          "id"
+        ],
+        "nameExplicit": false,
+        "entityType": "pks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "documents",
+        "name": "documents_pkey",
+        "columns": [
+          "id"
+        ],
+        "nameExplicit": false,
+        "entityType": "pks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "ingestion_runs",
+        "name": "ingestion_runs_pkey",
+        "columns": [
+          "id"
+        ],
+        "nameExplicit": false,
+        "entityType": "pks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "provision_labels",
+        "name": "provision_labels_pkey",
+        "columns": [
+          "id"
+        ],
+        "nameExplicit": false,
+        "entityType": "pks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "provision_versions",
+        "name": "provision_versions_pkey",
+        "columns": [
+          "id"
+        ],
+        "nameExplicit": false,
+        "entityType": "pks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "provisions",
+        "name": "provisions_pkey",
+        "columns": [
+          "id"
+        ],
+        "nameExplicit": false,
+        "entityType": "pks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "review_queue",
+        "name": "review_queue_pkey",
+        "columns": [
+          "id"
+        ],
+        "nameExplicit": false,
+        "entityType": "pks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "chunks",
+        "name": "chunks_provision_version_ordinal",
+        "nameExplicit": true,
+        "columns": [
+          "provision_version_id",
+          "ordinal"
+        ],
+        "nullsNotDistinct": false,
+        "entityType": "uniques"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "document_versions",
+        "name": "document_versions_sha256_key",
+        "nameExplicit": false,
+        "columns": [
+          "sha256"
+        ],
+        "nullsNotDistinct": false,
+        "entityType": "uniques"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "documents",
+        "name": "documents_slug_key",
+        "nameExplicit": false,
+        "columns": [
+          "slug"
+        ],
+        "nullsNotDistinct": false,
+        "entityType": "uniques"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "provisions",
+        "name": "provisions_stable_key_key",
+        "nameExplicit": false,
+        "columns": [
+          "stable_key"
+        ],
+        "nullsNotDistinct": false,
+        "entityType": "uniques"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "app",
+        "table": "feedback",
+        "name": "feedback_rating",
+        "value": "\"rating\" IN ('up', 'down')",
+        "entityType": "checks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "app",
+        "table": "questions",
+        "name": "questions_status",
+        "value": "\"status\" IN ('pending', 'streaming', 'answered', 'refused', 'failed', 'aborted', 'expired')",
+        "entityType": "checks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "app",
+        "table": "questions",
+        "name": "questions_refusal_reason",
+        "value": "\"refusal_reason\" IS NULL OR \"refusal_reason\" IN ('out_of_coverage', 'no_evidence', 'model_insufficient', 'citation_invalid')",
+        "entityType": "checks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "chunks",
+        "name": "chunks_valid_during",
+        "value": "NOT isempty(\"valid_during\") AND NOT lower_inf(\"valid_during\")",
+        "entityType": "checks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "chunks",
+        "name": "chunks_jurisdiction",
+        "value": "\"jurisdiction\" IN ('BR', 'GO')",
+        "entityType": "checks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "coverage",
+        "name": "coverage_jurisdiction",
+        "value": "\"jurisdiction\" IN ('BR', 'GO')",
+        "entityType": "checks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "document_versions",
+        "name": "document_versions_status",
+        "value": "\"status\" IN ('ingesting', 'published', 'superseded', 'failed')",
+        "entityType": "checks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "documents",
+        "name": "documents_jurisdiction",
+        "value": "\"jurisdiction\" IN ('BR', 'GO')",
+        "entityType": "checks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "ingestion_runs",
+        "name": "ingestion_runs_status",
+        "value": "\"status\" IN ('running', 'succeeded', 'failed', 'budget_exhausted')",
+        "entityType": "checks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "ingestion_runs",
+        "name": "ingestion_runs_target",
+        "value": "\"target\" IN ('staging', 'production', 'fixture')",
+        "entityType": "checks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "provision_versions",
+        "name": "provision_versions_modality",
+        "value": "\"modality\" IN ('optional', 'mandatory')",
+        "entityType": "checks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "provision_versions",
+        "name": "provision_versions_review_status",
+        "value": "\"review_status\" IN ('auto', 'approved', 'pending', 'rejected')",
+        "entityType": "checks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "provision_versions",
+        "name": "provision_versions_validity_basis",
+        "value": "\"validity_basis\" IN ('legal_effect', 'leiaute_period', 'publication_approx', 'table_declared')",
+        "entityType": "checks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "provision_versions",
+        "name": "provision_versions_valid_during",
+        "value": "NOT isempty(\"valid_during\") AND NOT lower_inf(\"valid_during\")",
+        "entityType": "checks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "provision_versions",
+        "name": "provision_versions_knowledge",
+        "value": "NOT isempty(\"knowledge\")",
+        "entityType": "checks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "review_queue",
+        "name": "review_queue_status",
+        "value": "\"status\" IN ('open', 'resolved', 'dismissed')",
+        "entityType": "checks"
+      }
+    }
+  ]
+}

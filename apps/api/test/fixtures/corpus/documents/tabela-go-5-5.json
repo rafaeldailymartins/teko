@@ -1,0 +1,288 @@
+{
+  "slug": "tabela-go-5-5",
+  "family": "tabelas-go",
+  "title": "Tabela 5.5 da EFD ICMS/IPI - Goiás (Tabela de Tipos de Utilização dos Créditos Fiscais - ICMS)",
+  "issuer": "Secretaria de Estado da Economia de Goiás (publicada no WS de Tabelas Externas do SPED)",
+  "sourceUrl": "https://www.sped.fazenda.gov.br/spedtabelas/WsConsulta/obterTabela.ashx?idTabela=40&versao=5",
+  "versions": [
+    {
+      "key": "tabela-5-5-v5",
+      "versionLabel": "Tabela 5.5 (GO), versão 5 de 04/11/2024",
+      "publishedOn": "2024-11-04",
+      "validDuring": {
+        "from": "2024-11-04",
+        "to": null
+      },
+      "consolidatedUntil": null,
+      "actRef": null,
+      "sha256": "6baa95f7263b38bfa512750badfaca71db9f5a44d03e6d347d6b37432a9a414d"
+    }
+  ],
+  "provisions": [
+    {
+      "stableKey": "go:tabelas-go:tab:5-5",
+      "kind": "tabela",
+      "sortPath": "5-5",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.5",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.5 (GO)",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": null
+          },
+          "validityBasis": "table_declared",
+          "text": "5.5-  Tabela de Tipos de Utilização dos Créditos Fiscais - ICMS\nversão=5 TIPO_UTIL, DESC_TIPO, DT_INI, DT_FIM",
+          "documentVersions": ["tabela-5-5-v5"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-5:cod:GO01",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-5",
+      "sortPath": "5-5.GO01",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.5 > GO01",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.5 (GO), código GO01",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": null
+          },
+          "validityBasis": "table_declared",
+          "text": "GO01 - Dedução do ICMS normal",
+          "documentVersions": ["tabela-5-5-v5"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-5:cod:GO02",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-5",
+      "sortPath": "5-5.GO02",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.5 > GO02",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.5 (GO), código GO02",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": null
+          },
+          "validityBasis": "table_declared",
+          "text": "GO02 - Compensação de auto de infração",
+          "documentVersions": ["tabela-5-5-v5"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-5:cod:GO03",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-5",
+      "sortPath": "5-5.GO03",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.5 > GO03",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.5 (GO), código GO03",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": null
+          },
+          "validityBasis": "table_declared",
+          "text": "GO03 - Transferência de crédito",
+          "documentVersions": ["tabela-5-5-v5"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-5:cod:GO04",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-5",
+      "sortPath": "5-5.GO04",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.5 > GO04",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.5 (GO), código GO04",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": null
+          },
+          "validityBasis": "table_declared",
+          "text": "GO04 - Restituição de crédito em moeda",
+          "documentVersions": ["tabela-5-5-v5"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-5:cod:GO05",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-5",
+      "sortPath": "5-5.GO05",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.5 > GO05",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.5 (GO), código GO05",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": null
+          },
+          "validityBasis": "table_declared",
+          "text": "GO05 - Dedução do ICMS Substituição Tributária apurado no mês (Substituto)",
+          "documentVersions": ["tabela-5-5-v5"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-5:cod:GO06",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-5",
+      "sortPath": "5-5.GO06",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.5 > GO06",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.5 (GO), código GO06",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": null
+          },
+          "validityBasis": "table_declared",
+          "text": "GO06 - Compensação com documento de arrecadação (Substituição Tributária)",
+          "documentVersions": ["tabela-5-5-v5"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-5:cod:GO07",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-5",
+      "sortPath": "5-5.GO07",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.5 > GO07",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.5 (GO), código GO07",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": null
+          },
+          "validityBasis": "table_declared",
+          "text": "GO07 - Estorno de Crédito",
+          "documentVersions": ["tabela-5-5-v5"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-5:cod:GO08",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-5",
+      "sortPath": "5-5.GO08",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.5 > GO08",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.5 (GO), código GO08",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": null
+          },
+          "validityBasis": "table_declared",
+          "text": "GO08 - Dedução do ICMS Operações não Incentivadas - FOMENTAR/PRODUZIR",
+          "documentVersions": ["tabela-5-5-v5"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-5:cod:GO09",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-5",
+      "sortPath": "5-5.GO09",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.5 > GO09",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.5 (GO), código GO09",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": null
+          },
+          "validityBasis": "table_declared",
+          "text": "GO09 - Dedução do ICMS média - FOMENTAR/PRODUZIR",
+          "documentVersions": ["tabela-5-5-v5"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-5:cod:GO10",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-5",
+      "sortPath": "5-5.GO10",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.5 > GO10",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.5 (GO), código GO10",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": null
+          },
+          "validityBasis": "table_declared",
+          "text": "GO10 - Dedução do ICMS parcela não Financiada - FOMENTAR/PRODUZIR",
+          "documentVersions": ["tabela-5-5-v5"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-5:cod:GO11",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-5",
+      "sortPath": "5-5.GO11",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.5 > GO11",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.5 (GO), código GO11",
+          "validDuring": {
+            "from": "2022-01-01",
+            "to": null
+          },
+          "validityBasis": "table_declared",
+          "text": "GO11 - Ressarcimento.",
+          "documentVersions": ["tabela-5-5-v5"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-5:cod:GO12",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-5",
+      "sortPath": "5-5.GO12",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.5 > GO12",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.5 (GO), código GO12",
+          "validDuring": {
+            "from": "2023-10-01",
+            "to": null
+          },
+          "validityBasis": "table_declared",
+          "text": "GO12 - Compensação DARE de PROTEGE",
+          "documentVersions": ["tabela-5-5-v5"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-5:cod:GO13",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-5",
+      "sortPath": "5-5.GO13",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.5 > GO13",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.5 (GO), código GO13",
+          "validDuring": {
+            "from": "2024-10-01",
+            "to": null
+          },
+          "validityBasis": "table_declared",
+          "text": "GO13 - Compensação de contribuição ao FUNDEINFRA.",
+          "documentVersions": ["tabela-5-5-v5"]
+        }
+      ]
+    }
+  ]
+}

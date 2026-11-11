@@ -2,9 +2,11 @@ import { describe, expect, it, vi } from 'vitest'
 import { createLogger } from '#adapters/out/telemetry/logger.ts'
 import {
   createContainer,
+  createEmbeddings,
   createHttpOptions,
   createRuntime,
   logBackgroundFailure,
+  reviewStatusesFor,
 } from './composition-root.ts'
 import { parseEnv } from './config/env.ts'
 import { VERCEL_SHUTDOWN } from './config/platform.ts'
@@ -144,4 +146,66 @@ describe('createRuntime', () => {
     expect(shutdown).toEqual(VERCEL_SHUTDOWN)
     await app.close()
   })
+})
+
+const FAKE_EMBEDDINGS = {
+  EMBEDDINGS_PROVIDER: 'fake',
+  EMBEDDINGS_FIXTURE_PATH: 'test/fixtures/corpus/embeddings.json.gz',
+} as const
+
+describe('serviços do corpus (F2)', () => {
+  it('produção busca só auto e approved; staging inclui pending', () => {
+    expect(reviewStatusesFor('production')).toEqual(['auto', 'approved'])
+    expect(reviewStatusesFor('ci')).toEqual(['auto', 'approved'])
+    expect(reviewStatusesFor('staging')).toEqual(['auto', 'approved', 'pending'])
+  })
+
+  it('createEmbeddings escolhe o adapter do EMBEDDINGS_PROVIDER', () => {
+    expect(createEmbeddings(parseEnv(BASE))).toBeNull()
+    expect(createEmbeddings(parseEnv({ ...BASE, ...FAKE_EMBEDDINGS }))?.model).toBe(
+      '@cf/baai/bge-m3',
+    )
+    const workersAi = createEmbeddings(
+      parseEnv({
+        ...BASE,
+        EMBEDDINGS_PROVIDER: 'workers-ai',
+        CF_ACCOUNT_ID: '0123456789abcdef0123456789abcdef',
+        CF_AI_TOKEN: 'token-de-teste-com-20-chars',
+      }),
+    )
+    expect(workersAi?.dimensions).toBe(1024)
+  })
+
+  it('sem DATABASE_URL, a busca e a escrita do corpus ficam de fora', async () => {
+    const container = createContainer(parseEnv({ ...BASE, ...FAKE_EMBEDDINGS }))
+    expect(container.useCases.retrieval).toBeNull()
+    expect(container.useCases.writeCorpus).toBeNull()
+    expect(
+      container.useCases.resolveReferenceDate({
+        input: { periodoApuracao: '2026-10' },
+        source: 'default',
+        questionText: 'em 05/2006?',
+      }),
+    ).toMatchObject({ kind: 'resolved', reference: { value: '2006-05-01' } })
+    await container.close()
+  })
+
+  it.each(['node', 'vercel'])(
+    'com DATABASE_URL (%s), monta busca e escrita sem conectar e fecha o pool',
+    async (runtimeTarget) => {
+      const container = createContainer(
+        parseEnv({
+          ...BASE,
+          ...FAKE_EMBEDDINGS,
+          RUNTIME_TARGET: runtimeTarget,
+          DATABASE_URL: 'postgresql://teko_app:x@127.0.0.1:1/teko',
+        }),
+        { applicationName: 'teko-test' },
+      )
+      expect(container.useCases.retrieval).not.toBeNull()
+      expect(container.useCases.writeCorpus).not.toBeNull()
+      await expect(container.close()).resolves.toBeUndefined()
+      await expect(container.close()).resolves.toBeUndefined()
+    },
+  )
 })

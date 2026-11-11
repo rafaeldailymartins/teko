@@ -19,10 +19,17 @@
     "start": "node dist/server.mjs",
     "typecheck": "tsc -p tsconfig.json",
     "test:unit": "vitest run --project unit --coverage",
-    "test:integration": "vitest run --project integration --outputFile.junit=reports/junit-integration.xml",
+    "test:integration": "vitest run --project integration --coverage --outputFile.junit=reports/junit-integration.xml",
     "test:mutation": "stryker run",
     "lint:deps": "depcruise src --config .dependency-cruiser.cjs",
-    "type-coverage": "type-coverage --at-least 99 --strict --ignore-catch"
+    "type-coverage": "type-coverage --at-least 99 --strict --ignore-catch",
+    "cli": "node --env-file-if-exists=.env src/cli.ts",
+    "seed:fixtures": "node --env-file-if-exists=.env src/cli.ts seed-fixtures --migrate",
+    "fixtures:embed": "node --env-file-if-exists=.env evals/scripts/fixtures-embed.ts",
+    "db:generate": "drizzle-kit generate",
+    "test:sql-perf": "vitest run --project sql-perf",
+    "eval:retrieval": "promptfoo eval -c evals/retrieval/promptfooconfig.yaml --no-cache --no-write --no-progress-bar --no-table -o reports/retrieval-evals.json",
+    "eval:retrieval:check": "node evals/scripts/check-thresholds.ts reports/retrieval-evals.json retrieval"
   },
   "dependencies": {
     "@fastify/cors": "catalog:",
@@ -35,8 +42,10 @@
     "@teko/shared": "workspace:*",
     "@vercel/functions": "catalog:",
     "close-with-grace": "catalog:",
+    "drizzle-orm": "catalog:",
     "fastify": "catalog:",
     "fastify-type-provider-zod": "catalog:",
+    "pg": "catalog:",
     "pino": "catalog:",
     "zod": "catalog:"
   },
@@ -45,15 +54,20 @@
     "@stryker-mutator/core": "catalog:",
     "@stryker-mutator/typescript-checker": "catalog:",
     "@stryker-mutator/vitest-runner": "catalog:",
+    "@testcontainers/postgresql": "catalog:",
     "@types/node": "catalog:",
+    "@types/pg": "catalog:",
     "@typescript/native": "catalog:",
     "@vitest/coverage-v8": "catalog:",
     "dependency-cruiser": "catalog:",
+    "drizzle-kit": "catalog:",
     "fast-check": "catalog:",
     "pino-pretty": "catalog:",
+    "promptfoo": "catalog:",
     "tsdown": "catalog:",
     "type-coverage": "catalog:",
     "typescript": "catalog:",
-    "vitest": "catalog:"
+    "vitest": "catalog:",
+    "yaml": "catalog:"
   }
 }

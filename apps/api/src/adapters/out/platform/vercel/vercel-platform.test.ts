@@ -3,6 +3,7 @@ import {
   createVercelBackgroundTasks,
   createVercelClientIp,
   createVercelInvocationDeadline,
+  vercelAttachDatabasePool,
 } from './vercel-platform.ts'
 
 /** Contexto de requisição que o runtime da Vercel publica no `globalThis` (`@vercel/functions`). */
@@ -85,5 +86,20 @@ describe('createVercelBackgroundTasks', () => {
     const extend = vi.fn()
     createVercelBackgroundTasks(() => {}, extend).run('x', Promise.resolve(), { timeoutMs: 10 })
     expect(extend).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('vercelAttachDatabasePool', () => {
+  it('entrega o pool ao gancho da plataforma', () => {
+    const attach = vi.fn()
+    const pool = { options: { idleTimeoutMillis: 5000 }, on: vi.fn() }
+    vercelAttachDatabasePool(pool, attach)
+    expect(attach).toHaveBeenCalledWith(pool)
+  })
+
+  it('com o attachDatabasePool real, fora de uma invocação da Vercel, não falha', () => {
+    expect(() =>
+      vercelAttachDatabasePool({ options: { idleTimeoutMillis: 5000 }, on: vi.fn() }),
+    ).not.toThrow()
   })
 })

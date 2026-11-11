@@ -1,4 +1,4 @@
-import { ipAddress, waitUntil } from '@vercel/functions'
+import { attachDatabasePool, ipAddress, waitUntil } from '@vercel/functions'
 import type { BackgroundTaskFailure, BackgroundTasks } from '#app/ports/background-tasks.ts'
 import {
   type ClientIp,
@@ -28,6 +28,21 @@ export function createVercelBackgroundTasks(
   extendLifetime: (settled: Promise<void>) => void = waitUntil,
 ): BackgroundTasks {
   return createTrackedBackgroundTasks({ onFailure, extendLifetime })
+}
+
+/** Pool aceito pelo `attachDatabasePool` (o `pg.Pool` satisfaz). */
+export type AttachablePool = Parameters<typeof attachDatabasePool>[0]
+
+/**
+ * Mantém a instância viva só o bastante para fechar as conexões ociosas do pool antes de suspender
+ * (Fluid compute). Sem isso, conexões do `pg` ficam penduradas no PgBouncer do Neon entre
+ * invocações. Fora de uma invocação da Vercel é no-op.
+ */
+export function vercelAttachDatabasePool(
+  pool: AttachablePool,
+  attach: (pool: AttachablePool) => void = attachDatabasePool,
+): void {
+  attach(pool)
 }
 
 /** Adapta o objeto de headers do Node à interface `Headers.get` que o `@vercel/functions` espera. */

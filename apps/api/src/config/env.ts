@@ -39,11 +39,20 @@ export const RuntimeTarget = {
 } as const
 export type RuntimeTarget = (typeof RuntimeTarget)[keyof typeof RuntimeTarget]
 
-/** Provedores de embedding (F2/F3); só o valor `fake` é verificado na F1. */
-const EmbeddingsProvider = {
+/** Provedores de embedding: Workers AI (BGE-M3) ou o fake de fixture (só development e ci). */
+export const EmbeddingsProvider = {
   WorkersAi: 'workers-ai',
   Fake: 'fake',
 } as const
+export type EmbeddingsProvider = (typeof EmbeddingsProvider)[keyof typeof EmbeddingsProvider]
+
+/** Postgres: `postgresql://` ou `postgres://` (Neon `-pooler` com `teko_app` no runtime). */
+const postgresUrlSchema = z
+  .string()
+  .trim()
+  .refine((value) => /^postgres(?:ql)?:\/\//.test(value) && URL.canParse(value), {
+    error: 'deve ser uma URL postgresql://',
+  })
 
 /**
  * Rede Docker do Caddy da stack de CI (`infra/ci`) e do proxy local: a sub-rede privada que o
@@ -155,6 +164,25 @@ const envSchema = z
      * Gravado no staging desde o spike F1 (c); quem o usa é o plugin `netlifySignature`, na F4.
      */
     NETLIFY_PROXY_JWS_SECRET: z.string().min(32).optional(),
+    /**
+     * Postgres do runtime (Neon `-pooler`, role `teko_app`). Opcional até a F4, quando as rotas de
+     * pergunta passam a exigir o banco; sem ela, o container não monta a busca.
+     */
+    DATABASE_URL: postgresUrlSchema.optional(),
+    /** Conexões do pool por instância (Fluid compute: várias invocações na mesma instância). */
+    DATABASE_MAX_CONNECTIONS: z.coerce.number().int().min(1).max(20).default(5),
+    /** Fixture de embeddings do fake (`apps/api/test/fixtures/corpus/embeddings.json.gz`). */
+    EMBEDDINGS_FIXTURE_PATH: z.string().trim().min(1).optional(),
+    /** Fake em modo strict: um texto fora da fixture falha (evals e e2e). */
+    EMBEDDINGS_FAKE_STRICT: z.stringbool().default(false),
+    /** Conta e token (escopo Workers AI) do Cloudflare, para `EMBEDDINGS_PROVIDER=workers-ai`. */
+    CF_ACCOUNT_ID: z
+      .string()
+      .regex(/^[0-9a-f]{32}$/, { error: 'deve ter 32 dígitos hex' })
+      .optional(),
+    CF_AI_TOKEN: z.string().min(20).optional(),
+    /** Maior RRF abaixo do qual a pergunta é recusada como `no_evidence` sem chamar o LLM. */
+    MIN_EVIDENCE_RRF: z.coerce.number().min(0).max(1).default(0),
   })
   .superRefine((env, ctx) => {
     const issue = (path: string, message: string): void => {
@@ -178,6 +206,23 @@ const envSchema = z
         'RUNTIME_TARGET',
         'a variável de sistema VERCEL=1 está presente; exige RUNTIME_TARGET=vercel',
       )
+    }
+    if (env.DATABASE_URL !== undefined && env.EMBEDDINGS_PROVIDER === undefined) {
+      issue('EMBEDDINGS_PROVIDER', 'obrigatória com DATABASE_URL (a busca precisa de embeddings)')
+    }
+    if (
+      env.EMBEDDINGS_PROVIDER === EmbeddingsProvider.Fake &&
+      env.EMBEDDINGS_FIXTURE_PATH === undefined
+    ) {
+      issue('EMBEDDINGS_FIXTURE_PATH', 'obrigatória com EMBEDDINGS_PROVIDER=fake')
+    }
+    if (env.EMBEDDINGS_PROVIDER === EmbeddingsProvider.WorkersAi) {
+      if (env.CF_ACCOUNT_ID === undefined) {
+        issue('CF_ACCOUNT_ID', 'obrigatória com EMBEDDINGS_PROVIDER=workers-ai')
+      }
+      if (env.CF_AI_TOKEN === undefined) {
+        issue('CF_AI_TOKEN', 'obrigatória com EMBEDDINGS_PROVIDER=workers-ai')
+      }
     }
     if (!PRODUCTION_LIKE.has(env.APP_ENV)) {
       return

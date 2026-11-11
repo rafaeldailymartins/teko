@@ -13,11 +13,13 @@ import { defineConfig } from 'tsdown'
  *   faz type stripping dentro de `node_modules`, então ele precisa ser embutido no bundle
  *   (`deps.alwaysBundle`, incluindo os subpaths `@teko/shared/<x>`).
  * - Os subpath imports (`#domain/*`, `#app/*`, `#adapters/*`) são resolvidos pelo bundler.
- * - A entry `cli` (`dist/cli.mjs`) entra com os subcomandos de ingestão e manutenção (F3).
+ * - `cli` (`dist/cli.mjs`) é a CLI (`seed-fixtures` na F2; ingestão na F3; manutenção na F4).
+ *   Roda só no Actions e localmente, nunca na Vercel; as migrações ficam em `drizzle/migrations`.
  */
 export default defineConfig({
   entry: {
     server: 'src/server.ts',
+    cli: 'src/cli.ts',
   },
   format: 'esm',
   platform: 'node',

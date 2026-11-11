@@ -1,0 +1,22 @@
+# yaml-language-server: $schema=https://promptfoo.dev/config-schema.json
+# Retrieval evals (sem LLM): o provider chama o RetrieveEvidence in-process contra um Postgres com a
+# fixture única, com o fake de embeddings em modo strict. Roda no ci.yml (job `retrieval-evals`)
+# quando `rag` ou `ingest` são afetados; o gate é o `scripts/check-thresholds.ts`.
+#
+#   pnpm --filter @teko/api eval:retrieval
+description: Tekó — retrieval evals (fixture única)
+
+prompts:
+  - "{{question}}"
+
+providers:
+  - id: file://../providers/retrieval.ts
+    label: teko-retrieval
+
+tests: file://../datasets/golden-tests.ts
+
+evaluateOptions:
+  maxConcurrency: 4
+  cache: false
+
+sharing: false

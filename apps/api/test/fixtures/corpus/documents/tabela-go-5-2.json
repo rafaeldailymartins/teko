@@ -1,0 +1,594 @@
+{
+  "slug": "tabela-go-5-2",
+  "family": "tabelas-go",
+  "title": "Tabela 5.2 da EFD ICMS/IPI - Goiás (Tabela de Iinformações Adicionais da Apuração - Valores Declaratórios)",
+  "issuer": "Secretaria de Estado da Economia de Goiás (publicada no WS de Tabelas Externas do SPED)",
+  "sourceUrl": "https://www.sped.fazenda.gov.br/spedtabelas/WsConsulta/obterTabela.ashx?idTabela=38&versao=51",
+  "versions": [
+    {
+      "key": "tabela-5-2-v51",
+      "versionLabel": "Tabela 5.2 (GO), versão 51 de 21/09/2026",
+      "publishedOn": "2026-09-21",
+      "validDuring": {
+        "from": "2026-09-21",
+        "to": null
+      },
+      "consolidatedUntil": null,
+      "actRef": null,
+      "sha256": "63aeeeb1202d78e8cca7e107d4f911624f80d4d49a706d1bffd07fa8caa60977"
+    }
+  ],
+  "provisions": [
+    {
+      "stableKey": "go:tabelas-go:tab:5-2",
+      "kind": "tabela",
+      "sortPath": "5-2",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.2",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.2 (GO)",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": null
+          },
+          "validityBasis": "table_declared",
+          "text": "5.2 - Tabela de Iinformações Adicionais da Apuração - Valores Declaratórios\nversão=51 INF_ADIC, DESC_INF, DT_INI, DT_FIM",
+          "documentVersions": ["tabela-5-2-v51"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-2:cod:GO000001",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-2",
+      "sortPath": "5-2.GO000001",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.2 > GO000001",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.2 (GO), código GO000001",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": "2023-01-01"
+          },
+          "validityBasis": "table_declared",
+          "text": "GO000001 - 1. Saídas das Operações Incentivadas",
+          "documentVersions": ["tabela-5-2-v51"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-2:cod:GO000002",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-2",
+      "sortPath": "5-2.GO000002",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.2 > GO000002",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.2 (GO), código GO000002",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": "2023-01-01"
+          },
+          "validityBasis": "table_declared",
+          "text": "GO000002 - 2. Total das Saídas",
+          "documentVersions": ["tabela-5-2-v51"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-2:cod:GO000003",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-2",
+      "sortPath": "5-2.GO000003",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.2 > GO000003",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.2 (GO), código GO000003",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": "2023-01-01"
+          },
+          "validityBasis": "table_declared",
+          "text": "GO000003 - 3. Percentual das Saídas das Operações Incentivadas [(1/2)x100]",
+          "documentVersions": ["tabela-5-2-v51"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-2:cod:GO000004",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-2",
+      "sortPath": "5-2.GO000004",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.2 > GO000004",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.2 (GO), código GO000004",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": "2023-01-01"
+          },
+          "validityBasis": "table_declared",
+          "text": "GO000004 - 4. Créditos por Entradas",
+          "documentVersions": ["tabela-5-2-v51"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-2:cod:GO000005",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-2",
+      "sortPath": "5-2.GO000005",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.2 > GO000005",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.2 (GO), código GO000005",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": "2023-01-01"
+          },
+          "validityBasis": "table_declared",
+          "text": "GO000005 - 5. Outros Créditos",
+          "documentVersions": ["tabela-5-2-v51"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-2:cod:GO000006",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-2",
+      "sortPath": "5-2.GO000006",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.2 > GO000006",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.2 (GO), código GO000006",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": "2023-01-01"
+          },
+          "validityBasis": "table_declared",
+          "text": "GO000006 - 6. Estorno de Débitos",
+          "documentVersions": ["tabela-5-2-v51"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-2:cod:GO000007",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-2",
+      "sortPath": "5-2.GO000007",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.2 > GO000007",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.2 (GO), código GO000007",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": "2023-01-01"
+          },
+          "validityBasis": "table_declared",
+          "text": "GO000007 - 7. Saldo Credor do Período Anterior",
+          "documentVersions": ["tabela-5-2-v51"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-2:cod:GO000008",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-2",
+      "sortPath": "5-2.GO000008",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.2 > GO000008",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.2 (GO), código GO000008",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": "2023-01-01"
+          },
+          "validityBasis": "table_declared",
+          "text": "GO000008 - 8. Total dos Créditos do Período (4+5+6+7)",
+          "documentVersions": ["tabela-5-2-v51"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-2:cod:GO000009",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-2",
+      "sortPath": "5-2.GO000009",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.2 > GO000009",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.2 (GO), código GO000009",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": "2023-01-01"
+          },
+          "validityBasis": "table_declared",
+          "text": "GO000009 - 9. Crédito para Operações Incentivadas [(3x8)/100]",
+          "documentVersions": ["tabela-5-2-v51"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-2:cod:GO000010",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-2",
+      "sortPath": "5-2.GO000010",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.2 > GO000010",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.2 (GO), código GO000010",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": "2023-01-01"
+          },
+          "validityBasis": "table_declared",
+          "text": "GO000010 - 10. Crédito para Operações Não Incentivadas (8-9)",
+          "documentVersions": ["tabela-5-2-v51"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-2:cod:GO000011",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-2",
+      "sortPath": "5-2.GO000011",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.2 > GO000011",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.2 (GO), código GO000011",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": "2017-03-01"
+          },
+          "validityBasis": "table_declared",
+          "text": "GO000011 - 11. Débito do ICMS das Operações Incentivadas",
+          "documentVersions": ["tabela-5-2-v51"]
+        },
+        {
+          "displayLabel": "Tabela 5.2 (GO), código GO000011",
+          "validDuring": {
+            "from": "2017-03-01",
+            "to": "2023-01-01"
+          },
+          "validityBasis": "table_declared",
+          "text": "GO000011 - 11. Débito do ICMS das Operações Incentivadas (exceto o débito do item 11.1)",
+          "documentVersions": ["tabela-5-2-v51"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-2:cod:GO000012",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-2",
+      "sortPath": "5-2.GO000012",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.2 > GO000012",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.2 (GO), código GO000012",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": "2023-01-01"
+          },
+          "validityBasis": "table_declared",
+          "text": "GO000012 - 12. Outros Débitos das Operações Incentivadas",
+          "documentVersions": ["tabela-5-2-v51"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-2:cod:GO000013",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-2",
+      "sortPath": "5-2.GO000013",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.2 > GO000013",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.2 (GO), código GO000013",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": "2023-01-01"
+          },
+          "validityBasis": "table_declared",
+          "text": "GO000013 - 13. Estorno de Créditos das Operações Incentivadas",
+          "documentVersions": ["tabela-5-2-v51"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-2:cod:GO000014",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-2",
+      "sortPath": "5-2.GO000014",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.2 > GO000014",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.2 (GO), código GO000014",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": "2023-01-01"
+          },
+          "validityBasis": "table_declared",
+          "text": "GO000014 - 14. Crédito para Operações Incentivadas (9)",
+          "documentVersions": ["tabela-5-2-v51"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-2:cod:GO000015",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-2",
+      "sortPath": "5-2.GO000015",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.2 > GO000015",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.2 (GO), código GO000015",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": "2021-04-01"
+          },
+          "validityBasis": "table_declared",
+          "text": "GO000015 - 15. Deduções das Operações Incentivadas (Linha 14 do Quadro da Apuração dos Saldos - LRA)",
+          "documentVersions": ["tabela-5-2-v51"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-2:cod:GO000016",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-2",
+      "sortPath": "5-2.GO000016",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.2 > GO000016",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.2 (GO), código GO000016",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": "2023-01-01"
+          },
+          "validityBasis": "table_declared",
+          "text": "GO000016 - 16. Crédito Referente a Saldo Credor do Período das Operações Não Incentivadas (43)",
+          "documentVersions": ["tabela-5-2-v51"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-2:cod:GO000017",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-2",
+      "sortPath": "5-2.GO000017",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.2 > GO000017",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.2 (GO), código GO000017",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": "2017-03-01"
+          },
+          "validityBasis": "table_declared",
+          "text": "GO000017 - 17. Saldo Devedor do ICMS das Operações Incentivadas [(11+12+13)-(14+15+16)]",
+          "documentVersions": ["tabela-5-2-v51"]
+        },
+        {
+          "displayLabel": "Tabela 5.2 (GO), código GO000017",
+          "validDuring": {
+            "from": "2017-03-01",
+            "to": "2021-04-01"
+          },
+          "validityBasis": "table_declared",
+          "text": "GO000017 - 17. Saldo Devedor do ICMS das Operações Incentivadas [(11+11.1+12+13)-(14+15+16)]",
+          "documentVersions": ["tabela-5-2-v51"]
+        },
+        {
+          "displayLabel": "Tabela 5.2 (GO), código GO000017",
+          "validDuring": {
+            "from": "2021-04-01",
+            "to": "2023-01-01"
+          },
+          "validityBasis": "table_declared",
+          "text": "GO000017 - 17. Saldo Devedor do ICMS das Operações Incentivadas [(11+11.1+12+13)-(14+16)]",
+          "documentVersions": ["tabela-5-2-v51"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-2:cod:GO000018",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-2",
+      "sortPath": "5-2.GO000018",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.2 > GO000018",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.2 (GO), código GO000018",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": "2023-01-01"
+          },
+          "validityBasis": "table_declared",
+          "text": "GO000018 - 18. ICMS por Média",
+          "documentVersions": ["tabela-5-2-v51"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-2:cod:GO000019",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-2",
+      "sortPath": "5-2.GO000019",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.2 > GO000019",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.2 (GO), código GO000019",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": "2023-01-01"
+          },
+          "validityBasis": "table_declared",
+          "text": "GO000019 - 19. Deduções/Compensações - ICMS Média",
+          "documentVersions": ["tabela-5-2-v51"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-2:cod:GO000020",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-2",
+      "sortPath": "5-2.GO000020",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.2 > GO000020",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.2 (GO), código GO000020",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": "2023-01-01"
+          },
+          "validityBasis": "table_declared",
+          "text": "GO000020 - 20. Saldo do ICMS a Pagar por Média (18-19)",
+          "documentVersions": ["tabela-5-2-v51"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-2:cod:GO000021",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-2",
+      "sortPath": "5-2.GO000021",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.2 > GO000021",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.2 (GO), código GO000021",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": "2023-01-01"
+          },
+          "validityBasis": "table_declared",
+          "text": "GO000021 - 21. ICMS Base para Fomentar/Produzir (17-18)",
+          "documentVersions": ["tabela-5-2-v51"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-2:cod:GO000022",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-2",
+      "sortPath": "5-2.GO000022",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.2 > GO000022",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.2 (GO), código GO000022",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": "2023-01-01"
+          },
+          "validityBasis": "table_declared",
+          "text": "GO000022 - 22. Percentagem do Financiamento",
+          "documentVersions": ["tabela-5-2-v51"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-2:cod:GO000023",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-2",
+      "sortPath": "5-2.GO000023",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.2 > GO000023",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.2 (GO), código GO000023",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": "2023-01-01"
+          },
+          "validityBasis": "table_declared",
+          "text": "GO000023 - 23. ICMS Sujeito a Financiamento [(21x22)/100]",
+          "documentVersions": ["tabela-5-2-v51"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-2:cod:GO000024",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-2",
+      "sortPath": "5-2.GO000024",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.2 > GO000024",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.2 (GO), código GO000024",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": "2023-01-01"
+          },
+          "validityBasis": "table_declared",
+          "text": "GO000024 - 24. ICMS Excedente Não Sujeito ao Incentivo",
+          "documentVersions": ["tabela-5-2-v51"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-2:cod:GO000025",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-2",
+      "sortPath": "5-2.GO000025",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.2 > GO000025",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.2 (GO), código GO000025",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": "2023-01-01"
+          },
+          "validityBasis": "table_declared",
+          "text": "GO000025 - 25. ICMS Financiado (23-24)",
+          "documentVersions": ["tabela-5-2-v51"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-2:cod:GO000029",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-2",
+      "sortPath": "5-2.GO000029",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.2 > GO000029",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.2 (GO), código GO000029",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": "2021-04-01"
+          },
+          "validityBasis": "table_declared",
+          "text": "GO000029 - 29. Saldo Credor do Período - Op. incentivadas [(14+15)-(11+12+13)]",
+          "documentVersions": ["tabela-5-2-v51"]
+        },
+        {
+          "displayLabel": "Tabela 5.2 (GO), código GO000029",
+          "validDuring": {
+            "from": "2021-04-01",
+            "to": "2023-01-01"
+          },
+          "validityBasis": "table_declared",
+          "text": "GO000029 - 29. Saldo Credor do Período – Op. Incentivadas [(14)-(11+12+13)]",
+          "documentVersions": ["tabela-5-2-v51"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-2:cod:GO000030",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-2",
+      "sortPath": "5-2.GO000030",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.2 > GO000030",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.2 (GO), código GO000030",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": "2023-01-01"
+          },
+          "validityBasis": "table_declared",
+          "text": "GO000030 - 30. Saldo Credor do Período (Op. Incentivadas) Utilizado nas Operações Não Incentivadas",
+          "documentVersions": ["tabela-5-2-v51"]
+        }
+      ]
+    }
+  ]
+}

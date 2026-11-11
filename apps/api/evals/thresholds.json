@@ -1,0 +1,11 @@
+{
+  "$comment": "Gates das evals (plano: Avaliação). Média por métrica sobre os casos em que ela se aplica.",
+  "retrieval": {
+    "recall@10": 0.9,
+    "mrr": 0.7,
+    "vigencia": 1,
+    "recusa": 1,
+    "clarificacao": 1,
+    "data_referencia": 1
+  }
+}

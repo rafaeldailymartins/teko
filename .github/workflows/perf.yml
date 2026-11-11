@@ -1,0 +1,65 @@
+# Desempenho (plano: Qualidade > Performance e carga). Perfis:
+#   - `pr` (chamado pelo pr-gate.yml): `sql-perf` da busca híbrida sobre 100k chunks sintéticos
+#     (EXPLAIN com HNSW, GIN e GiST, sem Seq Scan em chunks; ANN filtrado com k linhas; mediana
+#     abaixo de 150 ms), se api ou rag afetados.
+# Entram nas fases que criam as ferramentas: Vitest bench, autocannon e k6 `smoke.ts` na stack de CI
+# (F4, se api), LHCI e route-budgets (F5, se web), e os perfis nightly/semanal/pré-release (k6
+# `load`, `spike`, `stress`, `soak`; F8).
+name: Perf
+
+on:
+  workflow_call:
+    inputs:
+      affected:
+        description: JSON do job `affected` do pr-gate.yml. Vazio = tudo.
+        type: string
+        required: false
+        default: ""
+      profile:
+        description: Perfil (`pr`).
+        type: string
+        required: false
+        default: pr
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: Perfil (`pr`).
+        type: choice
+        options: [pr]
+        default: pr
+
+permissions: {}
+
+concurrency:
+  group: perf-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  TURBO_TELEMETRY_DISABLED: "1"
+
+jobs:
+  sql-perf:
+    name: sql-perf
+    if: >-
+      ${{ inputs.profile == 'pr' && (inputs.affected == ''
+      || fromJSON(inputs.affected).api || fromJSON(inputs.affected).rag) }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      - name: sql-perf (Testcontainers, 100k chunks sintéticos)
+        run: pnpm --filter @teko/api test:sql-perf

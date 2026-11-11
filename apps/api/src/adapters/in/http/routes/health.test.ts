@@ -25,6 +25,11 @@ const container: Container = {
       calls += 1
       return { status, version: '0.1.0', gitSha: 'abc1234', env: AppEnv.Ci }
     },
+    resolveReferenceDate: () => {
+      throw new Error('fora do escopo deste teste')
+    },
+    retrieval: null,
+    writeCorpus: null,
   },
   backgroundTasks: { run: () => {}, pending: () => 0, drain: async () => 0 },
   clientIp: { resolve: () => ({ ip: null, source: 'none' }) },
