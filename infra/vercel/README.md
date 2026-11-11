@@ -25,6 +25,9 @@ A configuração do projeto que vive no repositório fica em `apps/api/vercel.js
 | `teko-api`         | `production`    | `https://teko-api.vercel.app`         | `teko-prod`    | `https://tekoia.netlify.app`          |
 | `teko-api-staging` | `staging`       | `https://teko-api-staging.vercel.app` | `teko-staging` | `https://develop--tekoia.netlify.app` |
 
+- `teko-api` criado em 2026-11-11 com as mesmas configurações do staging, e o nome
+  `teko-api.vercel.app` reservado por um deploy placeholder estático (só `/healthz`, sem a API).
+  Env vars, segredos e o environment `production` do GitHub chegam na F7.
 - Os dois ficam no time Hobby pessoal. Staging é um **projeto à parte**, não um Preview: cada
   projeto só recebe deploys `--prod`, e todas as env vars vão no ambiente Production do projeto.
 - Os nomes `*.vercel.app` são atribuídos por ordem de chegada no primeiro deploy (que é sempre de

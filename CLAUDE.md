@@ -35,14 +35,18 @@ Atualize esta seção no PR que fecha cada fase ou spike.
   - (c) proxy Netlify → Vercel: concluído. `x-nf-sign` verificado, `deploy_context=branch-deploy`
     no alias `develop`, `NETLIFY_CLIENT_IP_TRUSTED = true` (só com assinatura). No Netlify Free o
     `NETLIFY_PROXY_JWS_SECRET` é variável comum, com travas contra vazamento no bundle.
-  - (d) pooler do Neon: workflow `spike-neon.yml` pronto; falta o resultado. O `pg` nunca teve
-    proveniência: decidir o driver na F2, junto com o `attachDatabasePool`.
+  - (d) pooler do Neon: concluído. Timeouts no role valem pelo pooler, que recusa
+    `statement_timeout` como parâmetro de conexão; o resume cabe no corte de 26 s. O `pg` nunca
+    teve proveniência: decidir o driver na F2, junto com o `attachDatabasePool`.
   - (e) e (g) concluído e parcial; (f) ingestão real em PR separado, provavelmente com o token do
     Cloudflare Workers AI (embeddings BGE-M3).
   - As rotas `/api/_spike/*` (só staging na Vercel) saem quando os spikes fecharem. As env vars
     Config da F1 do `teko-api-staging` foram gravadas à mão (a F7 automatiza).
-  - Itens menores: o projeto `teko-api` (produção) ainda não existe na Vercel; o primeiro PR do
-    Dependabot (F0) ainda não veio (rodada semanal às segundas, com 7 dias de espera).
+  - Itens menores: o projeto `teko-api` (produção) existe e `teko-api.vercel.app` está reservado
+    por um placeholder (a API real e as env vars chegam na F7); o primeiro PR do Dependabot (F0)
+    ainda não veio (rodada semanal às segundas, com 7 dias de espera).
+  - Fora o (f) e a conferência do Dependabot, a F1 está fechada; a F2 pode começar quando o
+    mantenedor decidir.
 - **F2 em diante:** não começar antes de fechar as pendências da F1 (decisão do mantenedor).
 
 ## Como trabalhar
