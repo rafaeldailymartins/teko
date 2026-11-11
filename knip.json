@@ -6,7 +6,13 @@
       "entry": ["scripts/*.ts!", "scripts/**/*.test.ts"]
     },
     "apps/api": {
-      "project": ["src/**/*.ts!", "test/**/*.ts"],
+      "entry": [
+        "evals/providers/*.ts",
+        "evals/asserts/*.ts",
+        "evals/datasets/golden-tests.ts",
+        "evals/scripts/*.ts"
+      ],
+      "project": ["src/**/*.ts!", "test/**/*.ts", "evals/**/*.ts"],
       "ignoreDependencies": ["pino-pretty"]
     },
     "apps/web": {

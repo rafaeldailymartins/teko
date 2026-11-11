@@ -10,6 +10,12 @@
  */
 
 const TEST_FILE = '\\.test\\.ts$'
+/**
+ * Ferramentas fora da aplicação que montam peças como os testes: o provider das retrieval evals
+ * (`createContainer` in-process) e o `fixtures:embed` (adapters de embedding e hash). Nunca entram
+ * no bundle (o tsdown parte de `src/server.ts` e `src/cli.ts`).
+ */
+const EVALS = '^evals/'
 const SHARED = '(^|/)packages/shared/'
 /** @param {string} name */
 const npm = (name) => `(^|/)node_modules/${name}/`
@@ -66,7 +72,13 @@ module.exports = {
         'Só src/composition-root.ts instancia adapters de saída (e src/config/platform.ts, os de plataforma).',
       severity: 'error',
       from: {
-        pathNot: ['^src/composition-root\\.ts$', PLATFORM_CONFIG, '^src/adapters/out/', TEST_FILE],
+        pathNot: [
+          '^src/composition-root\\.ts$',
+          PLATFORM_CONFIG,
+          '^src/adapters/out/',
+          TEST_FILE,
+          EVALS,
+        ],
       },
       to: { path: '^src/adapters/out/' },
     },
@@ -81,7 +93,7 @@ module.exports = {
       name: 'composition-root-only-from-entrypoints',
       comment: 'A raiz de composição é importada só pelos entrypoints (server, cli).',
       severity: 'error',
-      from: { pathNot: ['^src/(server|cli)\\.ts$', TEST_FILE] },
+      from: { pathNot: ['^src/(server|cli)\\.ts$', TEST_FILE, EVALS] },
       to: { path: '^src/composition-root\\.ts$' },
     },
     {

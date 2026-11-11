@@ -1,0 +1,546 @@
+{
+  "slug": "tabela-go-5-3",
+  "family": "tabelas-go",
+  "title": "Tabela 5.3 da EFD ICMS/IPI - Goiás (Tabela de Ajustes e Informações de Valores Provenientes de Documento Fiscal)",
+  "issuer": "Secretaria de Estado da Economia de Goiás (publicada no WS de Tabelas Externas do SPED)",
+  "sourceUrl": "https://www.sped.fazenda.gov.br/spedtabelas/WsConsulta/obterTabela.ashx?idTabela=39&versao=47",
+  "versions": [
+    {
+      "key": "tabela-5-3-v47",
+      "versionLabel": "Tabela 5.3 (GO), versão 47 de 01/04/2026",
+      "publishedOn": "2026-04-01",
+      "validDuring": {
+        "from": "2026-04-01",
+        "to": null
+      },
+      "consolidatedUntil": null,
+      "actRef": null,
+      "sha256": "6cadd53cf2f44eb452c9da348c9845cb29372b5571c185b04a48086ce7ef2d9e"
+    }
+  ],
+  "provisions": [
+    {
+      "stableKey": "go:tabelas-go:tab:5-3",
+      "kind": "tabela",
+      "sortPath": "5-3",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.3",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.3 (GO)",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": null
+          },
+          "validityBasis": "table_declared",
+          "text": "5.3 - Tabela de Ajustes e Informações de Valores Provenientes de Documento Fiscal\nversão=47 COD_AJ, DESC_AJ, DT_INI, DT_FIM",
+          "documentVersions": ["tabela-5-3-v47"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-3:cod:GO00000038",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-3",
+      "sortPath": "5-3.GO00000038",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.3 > GO00000038",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.3 (GO), código GO00000038",
+          "validDuring": {
+            "from": "2020-10-01",
+            "to": null
+          },
+          "validityBasis": "table_declared",
+          "text": "GO00000038 - Crédito de ICMS ao destinatário de mercadoria, cujo recolhimento foi efetuado por armazém geral situado em UF diversa da localização do depositante, Oper. não Incentivadas PROGOIÁS/ FOMENTAR/ PRODUZIR – art. 6º, § 5º do Anexo XII do RCTE.",
+          "documentVersions": ["tabela-5-3-v47"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-3:cod:GO00000039",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-3",
+      "sortPath": "5-3.GO00000039",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.3 > GO00000039",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.3 (GO), código GO00000039",
+          "validDuring": {
+            "from": "2020-10-01",
+            "to": null
+          },
+          "validityBasis": "table_declared",
+          "text": "GO00000039 - Crédito de ICMS ao destinatário de mercadoria, cujo recolhimento foi efetuado por armazém geral situado em UF diversa da localização do depositante, Oper. Incentivadas PROGOIÁS/ FOMENTAR/ PRODUZIR – art. 6º, § 5º do Anexo XII do RCTE.",
+          "documentVersions": ["tabela-5-3-v47"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-3:cod:GO00009036",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-3",
+      "sortPath": "5-3.GO00009036",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.3 > GO00009036",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.3 (GO), código GO00009036",
+          "validDuring": {
+            "from": "2016-01-01",
+            "to": "2020-10-01"
+          },
+          "validityBasis": "table_declared",
+          "text": "GO00009036 - Crédito de ICMS na aquisição de optantes do Simples Nacional, relativa à operação com venda fora do estabelecimento, por meio de nota fiscal modelo 1 – art. 23 da LC 123/2006 e Protocolo 10/07, § 2º, II",
+          "documentVersions": ["tabela-5-3-v47"]
+        },
+        {
+          "displayLabel": "Tabela 5.3 (GO), código GO00009036",
+          "validDuring": {
+            "from": "2020-10-01",
+            "to": null
+          },
+          "validityBasis": "table_declared",
+          "text": "GO00009036 - Crédito de ICMS na aquisição de optantes do Simples Nacional, relativa à operação com venda fora do estabelecimento, por meio de nota fiscal modelo 1, Oper. Não Incentivadas PROGOIÁS/FOMENTAR/PRODUZIR – art. 23 da LC 123/2006 e Prot 10/07, § 2º, II.",
+          "documentVersions": ["tabela-5-3-v47"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-3:cod:GO00009037",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-3",
+      "sortPath": "5-3.GO00009037",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.3 > GO00009037",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.3 (GO), código GO00009037",
+          "validDuring": {
+            "from": "2020-10-01",
+            "to": null
+          },
+          "validityBasis": "table_declared",
+          "text": "GO00009037 - Crédito de ICMS na aquisição de optantes do Simples Nacional, relativa à operação com venda fora do estabelecimento, por meio de nota fiscal modelo 1, Oper.  Incentivadas PROGOIÁS/FOMENTAR/PRODUZIR – art. 23 da LC 123/2006 e Prot 10/07, § 2º, II.",
+          "documentVersions": ["tabela-5-3-v47"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-3:cod:GO10000034",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-3",
+      "sortPath": "5-3.GO10000034",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.3 > GO10000034",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.3 (GO), código GO10000034",
+          "validDuring": {
+            "from": "2013-12-01",
+            "to": "2022-01-02"
+          },
+          "validityBasis": "table_declared",
+          "text": "GO10000034 - Recebido em transf. o Cr. out. para a empresa industrial produtora de grupos geradores de energia elét., benef. do PRODUZIR, equiv. ao valor definido no art. 11, LX, c. -RCTE - Art. 11, LX, \"c\" e § 22-A, Anexo IX",
+          "documentVersions": ["tabela-5-3-v47"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-3:cod:GO10000037",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-3",
+      "sortPath": "5-3.GO10000037",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.3 > GO10000037",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.3 (GO), código GO10000037",
+          "validDuring": {
+            "from": "2023-04-01",
+            "to": null
+          },
+          "validityBasis": "table_declared",
+          "text": "GO10000037 - Crédito do ICMS Retido a maior – Diferença entre Bases de Cálculo - ART. 45, XI DO ANEXO VIII DO RCTE.",
+          "documentVersions": ["tabela-5-3-v47"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-3:cod:GO10009029",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-3",
+      "sortPath": "5-3.GO10009029",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.3 > GO10009029",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.3 (GO), código GO10009029",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": "2020-09-01"
+          },
+          "validityBasis": "table_declared",
+          "text": "GO10009029 - Crédito de ICMS informado em documento fiscal emitido pelo contribuinte optante do Simples Nacional, inclusive na devolução, nos termos do art. 23 da LC 123/06 - LC nº 123/2006 e Art. 2º da Resolução CGSN nº 53/08",
+          "documentVersions": ["tabela-5-3-v47"]
+        },
+        {
+          "displayLabel": "Tabela 5.3 (GO), código GO10009029",
+          "validDuring": {
+            "from": "2020-09-01",
+            "to": "2020-10-01"
+          },
+          "validityBasis": "table_declared",
+          "text": "GO10009029 - Crédito de ICMS informado em documento fiscal emitido pelo contribuinte optante do Simples Nacional, inclusive na devolução, nos termos do art. 23 da LC 123/06 - LC nº 123/2006 e Art. 2º da Resolução CGSN nº 53/08",
+          "documentVersions": ["tabela-5-3-v47"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-3:cod:GO10009035",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-3",
+      "sortPath": "5-3.GO10009035",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.3 > GO10009035",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.3 (GO), código GO10009035",
+          "validDuring": {
+            "from": "2015-12-01",
+            "to": "2019-10-01"
+          },
+          "validityBasis": "table_declared",
+          "text": "GO10009035 - Credito do ICMS recebido em transferência, ref. ao cr. outorgado p/ o estab. benef. do PRODUZIR/FOMENTAR que promover a industrial. de prod. comest. result. de abate de aves. RCTE - Art. 12, IX do Anexo IX",
+          "documentVersions": ["tabela-5-3-v47"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-3:cod:GO10109036",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-3",
+      "sortPath": "5-3.GO10109036",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.3 > GO10109036",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.3 (GO), código GO10109036",
+          "validDuring": {
+            "from": "2022-07-01",
+            "to": null
+          },
+          "validityBasis": "table_declared",
+          "text": "GO10109036 - Credito do ICMS recebido em transf., relacionado com op. ou prestação abrigada por benef. fiscal ou por tratamento trib. diferenciado previsto em lei específica, associados com o de manut. dos créditos pela entrada. Dec. 10089/22.",
+          "documentVersions": ["tabela-5-3-v47"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-3:cod:GO10900033",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-3",
+      "sortPath": "5-3.GO10900033",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.3 > GO10900033",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.3 (GO), código GO10900033",
+          "validDuring": {
+            "from": "2012-01-01",
+            "to": null
+          },
+          "validityBasis": "table_declared",
+          "text": "GO10900033 - Rec. em transf. saldo acumulado em decorrência do imposto retido na operação em que o remetente pratica alíquota superior à aplicável pelo destinatário da mercadoria sujeita à ST. -RCTE - Art. 45, IX e Art. 46, § 4º - Anexo VIII",
+          "documentVersions": ["tabela-5-3-v47"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-3:cod:GO10909030",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-3",
+      "sortPath": "5-3.GO10909030",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.3 > GO10909030",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.3 (GO), código GO10909030",
+          "validDuring": {
+            "from": "2011-11-01",
+            "to": "2019-12-01"
+          },
+          "validityBasis": "table_declared",
+          "text": "GO10909030 - Recebido em tranf - Saldo do Cr. out. p/ o industrial de veículo automotor benef. do PRODUZIR, que implantar ou ampliar estabel. em GO, equiv. a  R$20.000.000,00, em 20 parcelas mensais, iguais e sucessivas. -RCTE - Art. 11, LVII, \"c\" e § 22-A, Anexo IX",
+          "documentVersions": ["tabela-5-3-v47"]
+        },
+        {
+          "displayLabel": "Tabela 5.3 (GO), código GO10909030",
+          "validDuring": {
+            "from": "2019-12-01",
+            "to": "2022-01-02"
+          },
+          "validityBasis": "table_declared",
+          "text": "GO10909030 - Recebido em tranf - Saldo do Cr. out. p/ o industrial de veículo automotor benef. do PRODUZIR, que implantar ou ampliar estabel. em GO (condições conforme legislação) -RCTE - Art. 11, LVII, \"c\" e § 22-A, Anexo IX",
+          "documentVersions": ["tabela-5-3-v47"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-3:cod:GO10990001",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-3",
+      "sortPath": "5-3.GO10990001",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.3 > GO10990001",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.3 (GO), código GO10990001",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": null
+          },
+          "validityBasis": "table_declared",
+          "text": "GO10990001 - Rec. em transf. referente ao saldo credor acumulado pelo contribuinte enquadrado no Simples Nacional em função das op. não sujeitas a esse regime e do sdo cr do “obs”.Dec. 6.682/07 - Art. 3, II e § único",
+          "documentVersions": ["tabela-5-3-v47"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-3:cod:GO10990002",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-3",
+      "sortPath": "5-3.GO10990002",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.3 > GO10990002",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.3 (GO), código GO10990002",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": "2019-05-01"
+          },
+          "validityBasis": "table_declared",
+          "text": "GO10990002 - Rec. em transf. referente ao saldo remanescente do crédito relativo ao imposto retido por ST, após compensação prevista na IN, no encerramento das atividades do estabelecimento que está transferindo. - IN 877/2007-GSF, Art. 4, §2º",
+          "documentVersions": ["tabela-5-3-v47"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-3:cod:GO10990009",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-3",
+      "sortPath": "5-3.GO10990009",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.3 > GO10990009",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.3 (GO), código GO10990009",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": null
+          },
+          "validityBasis": "table_declared",
+          "text": "GO10990009 - Rec. em transf., relativo ao saldo acumulado do credito do imposto retido, apropriado para realizar operação com destino a contribuinte do imposto estabelecido em outra UF. - RCTE - Art. 45, II e Art. 46, § 4º - Anexo VIII",
+          "documentVersions": ["tabela-5-3-v47"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-3:cod:GO10990010",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-3",
+      "sortPath": "5-3.GO10990010",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.3 > GO10990010",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.3 (GO), código GO10990010",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": null
+          },
+          "validityBasis": "table_declared",
+          "text": "GO10990010 - Rec. em transf. relativo ao saldo acumulado do cr. do imposto retido pelo desfazimento do negócio ou devolução total ou parcial. - RCTE - Art. 45, VI e Art. 46 § 4º - Anexo VIII",
+          "documentVersions": ["tabela-5-3-v47"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-3:cod:GO10990011",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-3",
+      "sortPath": "5-3.GO10990011",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.3 > GO10990011",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.3 (GO), código GO10990011",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": null
+          },
+          "validityBasis": "table_declared",
+          "text": "GO10990011 - Rec. em transf. cr. acumulado decorrência op. interna realizada p/ contrib industr ou comerciante atacad c/ destino a empresa de constr civil, a órgão da adm pub direta ou a hospital e clínica de saúde - RCTE - Art. 45, X e Art. 46, § 4º - Anexo VIII",
+          "documentVersions": ["tabela-5-3-v47"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-3:cod:GO10990012",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-3",
+      "sortPath": "5-3.GO10990012",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.3 > GO10990012",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.3 (GO), código GO10990012",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": null
+          },
+          "validityBasis": "table_declared",
+          "text": "GO10990012 - Rec. em transf, relativo ao sdo do imp. retido acumul. durante o período de 3 meses consec. no mínimo, em função da sist. do regime de ST e da imposib. de compensação com déb. dec. de sua ativ. sujeita ao pgto normal do imp. - RCTE - Art. 49 - Anexo VIII",
+          "documentVersions": ["tabela-5-3-v47"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-3:cod:GO10990013",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-3",
+      "sortPath": "5-3.GO10990013",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.3 > GO10990013",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.3 (GO), código GO10990013",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": null
+          },
+          "validityBasis": "table_declared",
+          "text": "GO10990013 - Rec. em transf., relativo ao saldo acumulado pela operação e prestação de envio de mercadoria/serviço ao exterior. com remessa proporcional de exportação do montante no período da apuração. - RCTE - Art. 55",
+          "documentVersions": ["tabela-5-3-v47"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-3:cod:GO10990017",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-3",
+      "sortPath": "5-3.GO10990017",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.3 > GO10990017",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.3 (GO), código GO10990017",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": null
+          },
+          "validityBasis": "table_declared",
+          "text": "GO10990017 - Rec. em transf., relativo ao saldo credor permanente na escrita fiscal, decorrente de operação ou prestação sujeita a substituição tributária. (excluídas as situações especificas p/ o Art. 45 do anexo VIII). - RCTE - Art. 56, I, \"a\"",
+          "documentVersions": ["tabela-5-3-v47"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-3:cod:GO10990018",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-3",
+      "sortPath": "5-3.GO10990018",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.3 > GO10990018",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.3 (GO), código GO10990018",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": "2010-02-02"
+          },
+          "validityBasis": "table_declared",
+          "text": "GO10990018 - Rec. em transf. de cr. acumulado em decorrência de operação realizada com mercadoria abrigada por benefício fiscal, quando a legislação tributária permitir a manutenção dos créditos pelas entradas - RCTE - Art. 56, I, \"b\"",
+          "documentVersions": ["tabela-5-3-v47"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-3:cod:GO10990020",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-3",
+      "sortPath": "5-3.GO10990020",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.3 > GO10990020",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.3 (GO), código GO10990020",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": null
+          },
+          "validityBasis": "table_declared",
+          "text": "GO10990020 - Rec. em transf. cr. acumulado em decorrência aquis de insumo, mat-prima, mat de embal ou de prod intermediário correspondentes às op. praticadas p/ contrib substituído no âmbito de proj agro-industrial; - RCTE - Art. 56, II",
+          "documentVersions": ["tabela-5-3-v47"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-3:cod:GO10990025",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-3",
+      "sortPath": "5-3.GO10990025",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.3 > GO10990025",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.3 (GO), código GO10990025",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": "2017-01-01"
+          },
+          "validityBasis": "table_declared",
+          "text": "GO10990025 - Rec. em transf., pelas aquis. de matéria-prima/material secundário/de acondicionamento, por op. com o industrial de veículo automotor ST beneficiário dos cr. out. previstos no Art. 11 XXXVIII-Anexo IX RCTE. - RCTE - Art. 56, III e Art. 3, IV - IN 715/05.",
+          "documentVersions": ["tabela-5-3-v47"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-3:cod:GO10990026",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-3",
+      "sortPath": "5-3.GO10990026",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.3 > GO10990026",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.3 (GO), código GO10990026",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": null
+          },
+          "validityBasis": "table_declared",
+          "text": "GO10990026 - Rec. em transf., rel. à restituição de indéb. trib. decorr. de aquis. de merc. sujeita à ST, na impossibilidade de compens. com déb. devido por op. própria ou de sua respons. por ST, e desde que autorizado caso a caso pelo Sec. da Faz. - RCTE - Art. 56, V",
+          "documentVersions": ["tabela-5-3-v47"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-3:cod:GO10990027",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-3",
+      "sortPath": "5-3.GO10990027",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.3 > GO10990027",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.3 (GO), código GO10990027",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": null
+          },
+          "validityBasis": "table_declared",
+          "text": "GO10990027 - Rec. em transf., de outro estabelecimento da própria empresa nos casos em que o contribuinte possuir mais de um estabelecimento no estado. - RCTE - Art. 56-A",
+          "documentVersions": ["tabela-5-3-v47"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-3:cod:GO10991019",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-3",
+      "sortPath": "5-3.GO10991019",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.3 > GO10991019",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.3 (GO), código GO10991019",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": null
+          },
+          "validityBasis": "table_declared",
+          "text": "GO10991019 - Rec. em transf. cr. acumulado em decorrência da contratação de prest de serv de transp correspondentes às op. praticadas pelo contrib substituído no âmbito de proj agro-industrial; - RCTE - Art. 56, II",
+          "documentVersions": ["tabela-5-3-v47"]
+        }
+      ]
+    }
+  ]
+}

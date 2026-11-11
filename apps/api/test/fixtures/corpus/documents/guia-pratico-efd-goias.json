@@ -1,0 +1,288 @@
+{
+  "slug": "guia-pratico-efd-goias",
+  "family": "efd-go",
+  "title": "Guia Prático da Escrituração Fiscal Digital (EFD ICMS/IPI) de Goiás",
+  "issuer": "Secretaria de Estado da Economia de Goiás",
+  "sourceUrl": "https://goias.gov.br/economia/guia-pratico-efd-goias/",
+  "versions": [
+    {
+      "key": "efd-go-5.8",
+      "versionLabel": "Guia Prático da EFD de Goiás versão 5.8 (atualização de 02/10/2025)",
+      "publishedOn": "2025-10-02",
+      "validDuring": {
+        "from": "2025-10-02",
+        "to": "2026-03-16"
+      },
+      "consolidatedUntil": null,
+      "actRef": null,
+      "sha256": "4e67a85b1350220ccb81b3b9f03455ef359c80e1b8b0128cb4c773ffd5463d29"
+    },
+    {
+      "key": "efd-go-5.9",
+      "versionLabel": "Guia Prático da EFD de Goiás versão 5.9 (atualização de 16/03/2026)",
+      "publishedOn": "2026-03-16",
+      "validDuring": {
+        "from": "2026-03-16",
+        "to": null
+      },
+      "consolidatedUntil": null,
+      "actRef": null,
+      "sha256": "625f045550a1dfc6d38479a340103606e1c0b15c6cf55aea01cd65ba28c565c1"
+    }
+  ],
+  "provisions": [
+    {
+      "stableKey": "go:efd-go:item:1-1",
+      "kind": "topico",
+      "sortPath": "001.001",
+      "headingPath": "Guia Prático da EFD de Goiás > 1.1 Informações Adicionais Obrigatórias – Tabela 5.2",
+      "versions": [
+        {
+          "displayLabel": "Guia Prático da EFD de Goiás, item 1.1",
+          "validityBasis": "publication_approx",
+          "text": "1.1Informações Adicionais Obrigatórias – Tabela 5.2\nA tabela 5.2 – Tabela de informações adicionais da apuração, valores declaratórios de\nGoiás, possui diversos registros vinculados a situações específicas estabelecidas na legislação,\nporém as informações constantes desse título deverão ser prestadas mensalmente por todos os\ncontribuintes obrigados a EFD.\nDeverão ser informados todos os itens elencados abaixo, os quais foram descritos e\ncodificados na tabela 5.2. No arquivo da EFD, esses códigos são informados no registro E115:\nINFORMAÇÕES ADICIONAIS DA APURAÇÃO – VALORES DECLARATORIOS.\nNo período em que não houver informação a ser prestada para um desses\ndeterminados itens abaixo, o registro E115 com o correspondente código deverá ser informado\nna EFD e o campo “VL_INF_ADIC” preenchido com zero (0).\nCódigo Descrição\nGO000059 Disponibilidades (Caixa/Bancos) – Inicial\nO valor da soma dos saldos das contas Caixa e Bancos Conta Movimento, existente\nno início do período informado, (em caso de valor negativo na conta Banco Conta Movimento e\ninexistência de numerário em caixa, informar zero).\nGO000060 Disponibilidades (Caixa/Bancos) – Final\nO valor da soma dos saldos das contas Caixa e Bancos Conta Movimento, existente\nno final do período informado.\nGO000061 Número de Empregados – Inicial\nO número de empregados existente no estabelecimento, no início do período,\nconforme livro ou ficha de registro de empregados.\nGO000062 Número de Empregados – Final\nO número de empregados existente no estabelecimento, no final do período, conforme\nlivro ou ficha de registro de empregados.\nGO000063 Tipo de Escrita (1=contábil, 2=fiscal e 3=ambas)\nSelecionar o tipo de escrita utilizada pelo contribuinte, 1- para escrita contábil, 2 –\npara escrita fiscal ou 3- se possuir escritas contábil e fiscal.\nGO000064 Depósito Judicial\nDeve ser informado o valor do Depósito em Juízo, eventualmente efetuado pelo\ncontribuinte, em nome da Secretaria da Economia/GO.",
+          "validDuring": {
+            "from": "2025-10-02",
+            "to": null
+          },
+          "documentVersions": ["efd-go-5.8", "efd-go-5.9"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:efd-go:item:1-3",
+      "kind": "topico",
+      "sortPath": "001.003",
+      "headingPath": "Guia Prático da EFD de Goiás > 1.3 PROTEGE GOIÁS",
+      "versions": [
+        {
+          "displayLabel": "Guia Prático da EFD de Goiás, item 1.3",
+          "validityBasis": "publication_approx",
+          "text": "1.3 PROTEGE GOIÁS\nOs contribuintes que utilizam benefícios fiscais sujeitos à contribuição do PROTEGE\ndeverão informar mensalmente o valor total da contribuição ao Protege, no REGISTRO E115:\nINFORMAÇÕES ADCIONAIS DA APURAÇÃO – VALORES DECLARATORIOS se houverem\ncódigos específicos na tabela 5.2 – TABELA DE INFORMAÇÕES ADICIONAIS DA APURACÃO\n– VALORES DECLARATÓRIOS.\nA utilização dos benefícios fiscais contidos no Art. 1º, § 3º do anexo IX do RCTE é\ncondicionada a que o contribuinte contribua com o percentual ali indicado, a ser aplicado sobre o\nmontante da diferença, entre o valor do imposto calculado com aplicação da tributação integral e\no calculado com utilização de benefício fiscal, para o Fundo de Proteção Social do Estado de\nGoiás – PROTEGE GOIÁS (Lei nº 14.469/03, art. 9, II e § 4º) e efetuando o registro dos valores\nrecolhidos no REG E115: INFORMAÇÕES ADCIONAIS DA APURAÇÃO – VALORES\nDECLARATORIOS, conforme os códigos da tabela 5.2 – TABELA DE INFORMAÇÕES\nADICIONAIS DA APURACÃO – VALORES DECLARATÓRIOS.\nDeverá ser gerado o registro E115, com valor da contribuição e seu respectivo código,\nsomente no período em que houver utilização do benefício descrito na tabela 5.2.\nOs códigos do PROTEGE Goiás constam no Anexo II desse Guia.",
+          "validDuring": {
+            "from": "2025-10-02",
+            "to": null
+          },
+          "documentVersions": ["efd-go-5.8", "efd-go-5.9"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:efd-go:item:1-4",
+      "kind": "topico",
+      "sortPath": "001.004",
+      "headingPath": "Guia Prático da EFD de Goiás > 1.4 FUNDEINFRA",
+      "versions": [
+        {
+          "displayLabel": "Guia Prático da EFD de Goiás, item 1.4",
+          "validityBasis": "publication_approx",
+          "text": "1.4 FUNDEINFRA\nOs contribuintes que utilizam benefícios fiscais sujeitos à contribuição do\nFUNDEINFRA deverão informar mensalmente o valor total da contribuição ao FUNDEINFRA, no\nREGISTRO E115: INFORMAÇÕES ADCIONAIS DA APURAÇÃO – VALORES\nDECLARATÓRIOS com os códigos específicos na tabela 5.2 – TABELA DE INFORMAÇÕES\nADICIONAIS DA APURACÃO – VALORES DECLARATÓRIOS.\nO valor calculado conforme índices estabelecidos no Anexo Único do Decreto nº\n10.187/22, deverá ser informado no registro E115, com o valor da contribuição e seu respectivo\ncódigo. A informação será prestada somente no período em que houver a utilização de benefício\nfiscal que enseja o recolhimento.\nOs códigos do FUNDEINFRA Goiás constam no Anexo V desse Guia.",
+          "validDuring": {
+            "from": "2025-10-02",
+            "to": null
+          },
+          "documentVersions": ["efd-go-5.8", "efd-go-5.9"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:efd-go:item:1-5",
+      "kind": "topico",
+      "sortPath": "001.005",
+      "headingPath": "Guia Prático da EFD de Goiás > 1.5 ICMS DE IMPORTAÇÃO",
+      "versions": [
+        {
+          "displayLabel": "Guia Prático da EFD de Goiás, item 1.5",
+          "validityBasis": "publication_approx",
+          "text": "1.5 ICMS DE IMPORTAÇÃO\nOs contribuintes que importam mercadorias e possuem Termo de Acordo - TARE para\ndebitar o ICMS de importação na apuração do ICMS. Devem utilizar os seguintes códigos.\n TARE que autoriza o débito do ICMS de importação, sem parcelamento,\nutilizar o registro C197com o código da Tabela 5.3 na EFD, por meio dos\nseguintes códigos:\nGO40009034para ICMS Próprio ou Operações Não Incentivadas; e,\nGO40009035 para ICMS das Operações Incentivadas.\n TARE que autoriza o débito do ICMS de importação de forma parcelada,\nutilizar o registro E111 com o código da Tabela 5.1.1 na EFD, por meio dos\nseguintes códigos:\nGO000029 para ICMS Próprio ou Operações Não Incentivadas; e,\nGO000030 para ICMS das Operações Incentivadas.",
+          "validDuring": {
+            "from": "2025-10-02",
+            "to": null
+          },
+          "documentVersions": ["efd-go-5.8", "efd-go-5.9"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:efd-go:item:4-1",
+      "kind": "topico",
+      "sortPath": "004.001",
+      "headingPath": "Guia Prático da EFD de Goiás > 4.1 Registros Exigidos por Goiás",
+      "versions": [
+        {
+          "displayLabel": "Guia Prático da EFD de Goiás, item 4.1",
+          "validityBasis": "publication_approx",
+          "text": "4.1 Registros Exigidos por Goiás\nTodos os registros mencionados na Nota Técnica do ICMS/IPI estabelecida pelo Ato\nCotepe 44/18 e posteriores, considerados não obrigatórios, ou, que são de exigência específica\nde cada UF, conforme citação no Guia Prático da EFD (nacional), devem ser apresentados pelos\ncontribuintes goianos.\nO registro C173 passa a ser obrigatório à partir de 01/03/2023.\nA NFCom Modelo 62 deve ser escriturada chave a chave por meio dos registro D700 e\nD730.\nObservações:\n(1) Os registros, que dependem da tabela 5.7, não deverão ser informados na EFD de Goiás até que a\nmesma seja publicada.",
+          "validDuring": {
+            "from": "2025-10-02",
+            "to": null
+          },
+          "documentVersions": ["efd-go-5.8", "efd-go-5.9"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:efd-go:item:4-2",
+      "kind": "topico",
+      "sortPath": "004.002",
+      "headingPath": "Guia Prático da EFD de Goiás > 4.2 Registros Não Exigidos por Goiás",
+      "versions": [
+        {
+          "displayLabel": "Guia Prático da EFD de Goiás, item 4.2",
+          "validityBasis": "publication_approx",
+          "text": "4.2 Registros Não Exigidos por Goiás\nOs registros descritos abaixo não são exigidos por Goiás:\nRegistro Descrição\n1400 Informações sobre valor agregado\n1900 Indicador de sub-apuração do ICMS\n1910 Período da sub-apuração do ICMS\n1920 Sub-apuração do ICMS\n1921 Ajuste/benefício/incentivo da sub-apuração do ICMS\n1922 Informações adicionais dos ajustes da sub-apuração do ICMS\n1923 Informações adicionais dos ajustes da sub-apuração do ICMS -\nIdentificação dos documentos fiscais\n1925 Informações adicionais da sub-apuração do ICMS - Valores\ndeclaratórios\n1926 Obrigações do ICMS a recolher - Operações referentes à sub￾apuração do ICMS\n1960 GIAF 1 - Guia de informação e apuração de incentivos fiscais e\nfinanceiros: indústria (crédito presumido)\n1970 GIAF 3 - Guia de informação e apuração de incentivos fiscais e\nfinanceiros: importação (diferimento na entrada e crédito presumido\nna saída subsequente)\n1975 GIAF 3 - Guia de informação e apuração de incentivos fiscais e\nfinanceiros: importação (saídas internas por faixa de alíquota)\n1980 GIAF 4 - Guia de informação e apuração de incentivos fiscais e\nfinanceiros: central de distribuição (entradas/saídas)\nObservações:\n(1) Fica dispensado da apresentação do registro 0210 à partir de 01/01/2019 os\nestabelecimentos industriais classificados nas divisões 11, 12 e nos grupos 29.1, 29.2 e 29.3 da\nClassificação Nacional de Atividades Econômicas – CNAE, consoante IN 1.422/18- GSF.\nEsse registro foi excluído do leiaute da EFD a partir de janeiro de 2022.\n(2) O registro C173 deverá ser utilizado apenas para operações com medicamentos sujeitas à\nsubstituição tributária. Visto que no Estado de Goiás, os medicamentos não estão sujeitos à\nsubstituição tributária, esse registro não deve ser informado.\n(3) Fica dispensado da apresentação do registro C176 o contribuinte cujas operações estão\nsujeitas à sistemática do SCANC – programa de computador aprovado por Ato COTEPE/ICMS 47/03, e\nque se destina à apuração e demonstração dos valores de repasse, dedução, ressarcimento do ICMS,\nconforme cláusula vigésima terceira do Convênio ICMS 110/07.\n(4) A apresentação do registro C179 está dispensada na saída quando for emitido documento\nfiscal modelo 55 (Nota fiscal eletrônica – NF-e), tendo em vista ser filho do registro C170 (contém os\nitens do documento fiscal) que não será apresentado para essa mesma situação.\n(5) O registro 1400 fica dispensado a partir 01/01/2024.",
+          "validDuring": {
+            "from": "2025-10-02",
+            "to": null
+          },
+          "documentVersions": ["efd-go-5.8", "efd-go-5.9"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:efd-go:item:5",
+      "kind": "topico",
+      "sortPath": "005",
+      "headingPath": "Guia Prático da EFD de Goiás > 5 ABRANGÊNCIA DA OBRIGATORIEDADE DA EFD EM GOIÁS.",
+      "versions": [
+        {
+          "displayLabel": "Guia Prático da EFD de Goiás, item 5",
+          "validityBasis": "publication_approx",
+          "text": "5. ABRANGÊNCIA DA OBRIGATORIEDADE DA EFD EM GOIÁS.\nA obrigatoriedade da EFD abrange todos os estabelecimentos do contribuinte, que\npossuem o mesmo CNPJ base, localizados em Goiás (§ 2º, art. 356-D do RCTE).\nNOTA:Por força do art. 4º do Decreto nº 7.043, de 29.12.09, com vigência a partir da mesma data, o contribuinte\nque em 1º de setembro de 2009, era obrigado à EFD e se enquadrava na condição prevista neste parágrafo, pode\nefetuar a remessa, até o dia 30 de junho de 2010, do arquivo digital da EFD dos demais estabelecimentos não\nlistados em Ato COTEPE.\nNo caso de abertura de filial, a mesma está obrigada à EFD a partir do início de sua\natividade (§ 3º, art. 356-D do RCTE).\nDessa forma, caso o CNPJ da empresa esteja incluído na lista de obrigados à EFD,\ntodos os seus estabelecimentos estarão obrigados a entregar o arquivo da EFD, exceto o\nestabelecimento que, apesar de ser cadastrado na Secretaria da Economia/GO, não é\ncontribuinte do ICMS ou do IPI.\nPara um estabelecimento estar desobrigado da EFD, o sistema verifica, entre outras\ninformações, se todas as atividades constantes do cadastro da empresa, conforme definição do\nCNAE fiscal, são de não contribuintes do ICMS, por isso, são importantes os dados cadastrais\ndas empresas estarem atualizados.",
+          "validDuring": {
+            "from": "2025-10-02",
+            "to": null
+          },
+          "documentVersions": ["efd-go-5.8", "efd-go-5.9"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:efd-go:item:6",
+      "kind": "topico",
+      "sortPath": "006",
+      "headingPath": "Guia Prático da EFD de Goiás > 6 PRAZO DE ENTREGA DA EFD",
+      "versions": [
+        {
+          "displayLabel": "Guia Prático da EFD de Goiás, item 6",
+          "validityBasis": "publication_approx",
+          "text": "6. PRAZO DE ENTREGA DA EFD\nO arquivo digital da EFD deve ser enviado até o dia 15 (quinze) do mês subsequente\nao encerramento do mês da apuração (Art. 356-N do RCTE)",
+          "validDuring": {
+            "from": "2025-10-02",
+            "to": null
+          },
+          "documentVersions": ["efd-go-5.8", "efd-go-5.9"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:efd-go:item:7",
+      "kind": "topico",
+      "sortPath": "007",
+      "headingPath": "Guia Prático da EFD de Goiás > 7 RETIFICAÇÃO DO ARQUIVO DA EFD (EFD substituta)",
+      "versions": [
+        {
+          "displayLabel": "Guia Prático da EFD de Goiás, item 7",
+          "validityBasis": "publication_approx",
+          "text": "7. RETIFICAÇÃO DO ARQUIVO DA EFD (EFD substituta)\nDe acordo com a cláusula 13ª do Ajuste SINIEF 02/09, o contribuinte poderá retificar a\nEFD (Escrituração Fiscal Digital) até o último dia do terceiro mês subsequente ao encerramento\ndo mês da apuração, independentemente de autorização da administração tributária. Após esse\nprazo, a retificação só poderá ser efetuada mediante autorização da Secretaria da Economia, da\nReceita, Finanças ou Tributação do seu domicílio fiscal.\nO Estado de Goiás dispensou a autorização prévia de retificação da EFD por meio do\nDecreto nº 10.164 de 10 de novembro de 2022, observado o seguinte:\nRCTE, art. 356-O, § 5º Não produzirá efeitos a retificação de EFD:\nI - de período de apuração que tenha sido submetido ou esteja sob ação fiscal;\nII - cujo débito constante da EFD objeto da retificação tenha sido enviado para\ninscrição em Dívida Ativa, nos casos em que importe alteração desse débito;\nIII - transmitida em desacordo com as disposições desta cláusula.",
+          "validDuring": {
+            "from": "2025-10-02",
+            "to": null
+          },
+          "documentVersions": ["efd-go-5.8", "efd-go-5.9"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:efd-go:item:8",
+      "kind": "topico",
+      "sortPath": "008",
+      "headingPath": "Guia Prático da EFD de Goiás > 8 DISPENSA DE APRESENTAÇÃO DO ARQUIVO DO “SINTEGRA”",
+      "versions": [
+        {
+          "displayLabel": "Guia Prático da EFD de Goiás, item 8",
+          "validityBasis": "publication_approx",
+          "text": "8. DISPENSA DE APRESENTAÇÃO DO ARQUIVO DO “SINTEGRA”\nO contribuinte está dispensado da entrega do arquivo digital, conforme disposto no §\n2º do art. 1º do Anexo X, contendo o registro fiscal de todas as operações ou prestações\nefetuadas no período de apuração, no prazo estabelecido pela legislação tributária a partir de sua\ninclusão na obrigatoriedade da EFD e desde que não esteja omisso na entrega de nenhum\narquivo da EFD.\nNota: A Instrução Normativa 1024/2010, dispõe:\nArt. 1º O contribuinte obrigado à Escrituração Fiscal Digital – EFD -, ou que por ela fizer\nopção, fica dispensado da entrega do arquivo digital previsto no § 2º do art. 1º do Anexo X do\nRCTE.\nParágrafo único. O disposto no caput aplica-se ao contribuinte obrigado à EFD ou que por ela\ntenha optado, a partir de 1º de julho de 2010, em relação aos fatos geradores ocorridos a\npartir de 1º de janeiro de 2011.",
+          "validDuring": {
+            "from": "2025-10-02",
+            "to": null
+          },
+          "documentVersions": ["efd-go-5.8", "efd-go-5.9"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:efd-go:item:9",
+      "kind": "topico",
+      "sortPath": "009",
+      "headingPath": "Guia Prático da EFD de Goiás > 9 DISPENSA DA DECLARAÇÃO PERIÓDICA DE INFORMAÇÃO – DPI",
+      "versions": [
+        {
+          "displayLabel": "Guia Prático da EFD de Goiás, item 9",
+          "validityBasis": "publication_approx",
+          "text": "9. DISPENSA DA DECLARAÇÃO PERIÓDICA DE INFORMAÇÃO – DPI\nO contribuinte obrigado a EFD está dispensado da DPI, a partir de 01 janeiro de 2012,\nconforme art. 1º, § 2º, II da Instrução Normativa nº 1.020/2011-GSF.\n10. MERCADORIA SUBMETIDA AO REGIME DE SUBSTITUIÇÃO\nTRIBUTÁRIA – INVENTÁRIO E PAGAMENTO DO ICMS\nSempre que uma espécie de mercadoria for submetida ao regime de substituição\ntributária, ou, ocorrer aumento da carga tributária o atacadista, o distribuidor e o varejista,\nconforme previsão do art. 80 do Anexo VIII do Dec. Nº 4.852/97 (RCTE), deverá informar o\ninventário e o pagamento do ICMS devido de acordo com as orientações a seguir.",
+          "validDuring": {
+            "from": "2025-10-02",
+            "to": null
+          },
+          "documentVersions": ["efd-go-5.8", "efd-go-5.9"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:efd-go:item:14-1",
+      "kind": "topico",
+      "sortPath": "014.001",
+      "headingPath": "Guia Prático da EFD de Goiás > 14.1 Apuração do Diferencial de alíquotas,no prazo definido na legislação para a sua apuração",
+      "versions": [
+        {
+          "displayLabel": "Guia Prático da EFD de Goiás, item 14.1",
+          "validityBasis": "publication_approx",
+          "text": "14.1 Apuração do Diferencial de alíquotas,no prazo definido na legislação para a sua\napuração\nNesse caso, informar o valor do débito apurado no registro C197 (ajuste e\ninformações provenientes de documento fiscal), observando o preenchimento dos campos:\n• [COD_AJ] Código do ajuste da tabela 5.3, informar o código de outros débitos:\nCódigo Descrição Fundamento Legal\nGO40000029\nDébito do montante do imposto\ncorrespondente à diferença de\nalíquotas, apurado no prazo.\nRCTE – Art. 73, § 1º,\nObservação: código com vigência a partir de 1º de março de 2015, não estando disponível no PVA\nICMS/IPI para períodos anteriores.\n• [DESCR_COMPL_AJ] Descrição complementar do ajuste, preenchimento facultativo;\n• [COD_ITEM] Código do item (campo 02 do Registro 0200), informar o código do item para\nidentificar o produto o qual é devida a diferença de alíquota.\nObservação: Deve ser informado um Registro C197 para discriminar cada produto\nda nota fiscal que seja devida o diferencial de alíquotas. Ex. Se na nota fiscal\ntem um total de cinco produtos, sendo 2 sujeitos ao diferencial de alíquotas,\ndeverão ser informados apenas 02 Registros C197.\n• [VL_BC_ICMS] Base de cálculo do ICMS, não informar;\n• [ALIQ_ICMS] Alíquota do ICMS, não informar;\n• [VL_ICMS] Valor do ICMS, informar o valor do adicional de alíquota do produto (item).\n• [VL_OUTROS] Outros valores, não informar;\nComo o valor da diferença de alíquotas, lançado a débito por meio do ajuste, foi\nincorporado ao total dos débitos da apuração do ICMS – Operações Próprias, no caso de haver\n“valores do ICMS a recolher” (Registro E110) no final do período, não será emitido documento\nde arrecadação da receita estadual (DARE) específico para pagamento da “diferença de\nalíquotas”, mas apenas a emissão de DARE com código de receita “108”- ICMS NORMAL.\n14.2 Apuração do diferencial de alíquotas, após o prazo definido na legislação para a\nsua apuração (apuração extemporânea)\nNesse caso, a apuração da diferença de alíquota (lançamento do débito na EFD) foi\nrealizada em período de apuração posterior a ocorrência do fato gerador, sendo que o\ndocumento fiscal correspondente pode ter sido informado à época do fato gerador ou\nextemporaneamente.\nO valor do débito da diferença de alíquota será informado no:\nREGISTRO E111: AJUSTE/BENEFÍCIO/INCENTIVO DA APURAÇÃO DO ICMS,\nusando o seguinte código de ajuste de débito especial da apuração da tabela 5.1.1:\nGO050010\nDébito do montante do imposto correspondente\nà diferença de alíquotas, apurado após o prazo\n(apuração extemporânea).\n– RCTE – Art. 73, § 1º,\nI\nObservações:\nI. Código com vigência a partir de 1º de março de 2015, não estando disponível no PVA ICMS/IPI para\nperíodos anteriores.\nII. O valor deste ajuste deverá ser somado no campo [DEB_ESP] Valores recolhidos ou a recolher,\nextra-apuração do registro E110.\nCaso o valor apurado se refira a vários documentos fiscais, poderá ser informado o\nregistro E111 por DARE, identificando os documentos fiscais respectivos no REGISTRO E113:\nINFORMAÇÕES ADICIONAIS DOS AJUSTES DA APURAÇÃO DO ICMS– IDENTIFICAÇÃO\nDOS DOCUMENTOS FISCAIS, ou seja, para cada DARE haverá um registro E111 com o código\nGO050010.\nObservação: Não poderá ser emitido apenas um DARE para englobar vários documentos\nfiscais, no caso de se referirem a períodos de apuração distintos, pois os acréscimos legais\ndevem ser calculados por período de apuração, retroativos ao 1º dia do mês seguinte ao da\nocorrência do fato gerador do ICMS diferencial de alíquotas.\nInformar ainda os seguintes registros:\nREGISTRO E112: INFORMAÇÕES ADICIONAIS DOS AJUSTES DA APURAÇÃO DO\nICMS;\nInformar o nº do documento de arrecadação da receita estadual (DARE) no campo\n[NUM_DA].\nREGISTRO E113: INFORMAÇÕES ADICIONAIS DOS AJUSTES DA APURAÇÃO DO\nICMS – IDENTIFICAÇÃO DOS DOCUMENTOS FISCAIS.\nEste registro tem por objetivo identificar os documentos fiscais relacionados ao ajuste\ndo débito especial da diferença de alíquota. Para cada documento fiscal deverá existir\num registro E113.\nREGISTRO E116: OBRIGAÇÕES DO ICMS RECOLHIDO OU A RECOLHER –\nOPERAÇÕES PRÓPRIAS.\nDiscriminar os valores dos débitos especiais referentes à apuração da diferença de\nalíquota, observando o preenchimento dos seguintes campos:\n• [VL_OR] Valor da obrigação a recolher, informar o valor do débito especial da diferença de\nalíquota pago ou a pagar. A soma dos valores desse campo deve constar no campo\n[DEB_ESP] Valores recolhidos ou a recolher extra-apuração do registro E110.\n• [DT_VCTO] Data de vencimento da obrigação, informar o 1º dia do mês seguinte à entrada\nda mercadoria no Estado.\n• [COD_REC] Código da receita estadual, informar o código de detalhe da receita “108”.\n• [MÊS_REF] Mês de referência, informar a data (mês e ano) da entrada da mercadoria no\nEstado (fato gerador).\nObservação:\n Deverá ser informado, no mínimo, um registro E116 para cada código de detalhe da\nreceita do documento de arrecadação.\n O DARE recolhido deverá utilizar CÓDIGO DA RECEITA “108” e APURAÇÂO “040”.",
+          "validDuring": {
+            "from": "2025-10-02",
+            "to": null
+          },
+          "documentVersions": ["efd-go-5.8", "efd-go-5.9"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:efd-go:item:18",
+      "kind": "topico",
+      "sortPath": "018",
+      "headingPath": "Guia Prático da EFD de Goiás > 18 Adicional de 2 % na alíquota do ICMS – Escrituração e Pagamento.",
+      "versions": [
+        {
+          "displayLabel": "Guia Prático da EFD de Goiás, item 18",
+          "validityBasis": "publication_approx",
+          "text": "18. Adicional de 2 % na alíquota do ICMS – Escrituração e Pagamento.\nO contribuinte que efetuar o pagamento do adicional de 2% na alíquota do ICMS,\nprevisto no § 5º do art. 27 da Lei nº 11.651 (Código Tributário Estadual – CTE), de 26 de\ndezembro de 1991, deverá observar os procedimentos de escrituração fiscal deste item.\nOs procedimentos também se aplicam ao contribuinte localizado em outra unidade da\nfederação sujeito à EFD, no caso de realizar operação com produto alcançado pela alíquota\ninterna acrescida pelo adicional em operação sujeita a substituição tributária, e destinado para\ncontribuinte substituído em Goiás.",
+          "validDuring": {
+            "from": "2025-10-02",
+            "to": null
+          },
+          "documentVersions": ["efd-go-5.8", "efd-go-5.9"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:efd-go:item:18-1",
+      "kind": "topico",
+      "parent": "go:efd-go:item:18",
+      "sortPath": "018.001",
+      "headingPath": "Guia Prático da EFD de Goiás > 18.1 Escrituração do documento fiscal.",
+      "versions": [
+        {
+          "displayLabel": "Guia Prático da EFD de Goiás, item 18.1",
+          "validityBasis": "publication_approx",
+          "text": "18.1 Escrituração do documento fiscal.\nA escrituração dos documentos fiscais com o adicional na alíquota é efetuada\nnormalmente com a alíquota interna já acrescida (alíquota interna + o adicional de 2%), tanto na\nvenda, para efeito de débito de ICMS, quanto na aquisição, para efeito de crédito, sem nenhuma\nreferência ao adicional de 2%.\nPortanto, o ICMS destacado no documento fiscal, que constituirá débito para o\nemitente e crédito para o adquirente, é o resultado da aplicação da alíquota interna acrescida\nsobre o valor da base de cálculo do ICMS.\nO documento fiscal deve ser informado no registro apropriado de acordo com o seu\nmodelo. No caso de nota fiscal eletrônica - NF-e, Modelo 55, informar o documento no registro\nC100 (nota fiscal eletrônica, avulsa e de produtor) e os correspondentes registros filhos, sendo\nque os campos destinados ao ICMS serão informados conforme a operação estar sujeita ao\nICMS próprio ou da ST, conforme descrito a seguir:\n1) ICMS Próprio (Normal), nesse caso, informar os campos:\na) [VL_ICMS] Valor do ICMS (Próprio);\nb) [VL_BC_ICMS] Valor da base de cálculo do ICMS.\nObservação: O valor do ICMS lançado a débito será levado para a apuração do ICMS próprio\ndo período (Registro E110). Havendo valor de ICMS a recolher no período, o pagamento se\ndará por meio de DARE com código de detalhe da receita 108 – ICMS normal.\n2) ICMS Substituição tributária, no caso de venda, informar os campos:\na) [VL_ICMS_ST] Valor do ICMS retido por substituição tributária;\nb) [VL_BC_ICMS_ST] Valor da base de cálculo do ICMS substituição tributária.\nObservação: O valor do ICMS lançado a débito será levado para a apuração do ICMS ST do\nperíodo (Registro E210). Havendo valor de ICMS ST a recolher no período, o pagamento se\ndará por meio de DARE com código de detalhe da receita “124\" - ICMS Substituição pela\nOperação Posterior (saída), no caso de operação ou prestação interna, ou por GNRE com\ncódigo 100048, para contribuinte com inscrição de substituto tributário em Goiás, e código\n100099, para contribuinte sem inscrição de substituto tributário em Goiás.",
+          "validDuring": {
+            "from": "2025-10-02",
+            "to": null
+          },
+          "documentVersions": ["efd-go-5.8", "efd-go-5.9"]
+        }
+      ]
+    }
+  ]
+}

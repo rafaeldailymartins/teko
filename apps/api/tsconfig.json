@@ -8,5 +8,5 @@
     // `.ts` nos subpath imports (`#domain/*`, `#app/*`, `#adapters/*`), erro TS2877.
     "rewriteRelativeImportExtensions": false
   },
-  "include": ["src/**/*.ts", "test/**/*.ts", "*.config.ts"]
+  "include": ["src/**/*.ts", "test/**/*.ts", "evals/**/*.ts", "*.config.ts"]
 }

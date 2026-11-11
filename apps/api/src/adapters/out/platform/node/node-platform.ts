@@ -34,6 +34,9 @@ export function createNodeClientIp(options: { readonly trustNetlifyClientIp: boo
   }
 }
 
+/** Processo comum: o pool vive com o processo e fecha no encerramento gracioso. */
+export function nodeAttachDatabasePool(_pool: unknown): void {}
+
 /** Processo comum: nenhum prazo de invocação imposto pela plataforma. */
 export const nodeInvocationDeadline: InvocationDeadline = {
   deadlineFor: () => null,

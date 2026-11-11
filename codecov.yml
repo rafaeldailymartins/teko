@@ -1,0 +1,26 @@
+# Codecov (plano: Qualidade > Matriz de testes e Cobertura). Envio por OIDC no ci.yml: lcov dos
+# unitários por pacote, lcov da integração da API (flag api-integration) e coverage.xml do
+# tools/ingest (flag ingest).
+#
+# - patch: o código novo do PR precisa de 90% de cobertura (sem isto, a meta padrão é a cobertura
+#   inteira da base, que reprova qualquer PR grande abaixo de ~99%);
+# - project: a cobertura total pode cair até 1% em relação à base;
+# - flags com carryforward: um PR que não roda um job (ex.: sem mudança em tools/ingest) herda o
+#   último relatório daquela flag em vez de zerar a cobertura dela.
+coverage:
+  status:
+    project:
+      default:
+        target: auto
+        threshold: 1%
+    patch:
+      default:
+        target: 90%
+
+flag_management:
+  default_rules:
+    carryforward: true
+
+comment:
+  layout: "condensed_header, diff, flags"
+  require_changes: true

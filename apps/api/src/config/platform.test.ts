@@ -100,5 +100,13 @@ describe('perfil de plataforma', () => {
     const adapters = createPlatformAdapters(env, noop)
     expect(adapters.clientIp.resolve(DIRECT)).toEqual({ ip: '203.0.113.7', source: 'platform' })
     expect(adapters.invocationDeadline.deadlineFor(1_000)).toBe(121_000)
+    expect(() =>
+      adapters.attachDatabasePool({ options: { idleTimeoutMillis: 5000 }, on: () => {} }),
+    ).not.toThrow()
+  })
+
+  it('fora da Vercel o attachDatabasePool é no-op', () => {
+    const adapters = createPlatformAdapters(parseEnv(BASE), noop)
+    expect(adapters.attachDatabasePool({ options: {} })).toBeUndefined()
   })
 })

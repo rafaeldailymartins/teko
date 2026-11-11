@@ -61,6 +61,14 @@ check "python roda sempre em push (coverage.xml para o Sonar)" \
 check "ci-gate depende do workflow ci (que inclui o sonar)" \
   bash -c "yq -e '.jobs.\"ci-gate\".needs | contains([\"ci\"])' .github/workflows/pr-gate.yml >/dev/null"
 
+# --- Gates da F2: mutação, sql-perf, migration-guard e retrieval evals entram no ci-gate --------
+check "ci-gate depende de mutation e perf"   bash -c "yq -e '.jobs.\"ci-gate\".needs | contains([\"mutation\", \"perf\"])' .github/workflows/pr-gate.yml >/dev/null"
+check "lint roda os testes do migration-guard" job_runs_match lint 'bash .github/scripts/migration-guard.test.sh'
+check "migration-guard roda o script com os labels do PR" job_runs_match migration-guard 'bash .github/scripts/migration-guard.sh'
+check "retrieval-evals aplica o gate do thresholds.json" job_runs_match retrieval-evals 'eval:retrieval:check'
+check "retrieval-evals usa o fake de embeddings em modo strict"   bash -c "yq -e '.jobs.\"retrieval-evals\".env.EMBEDDINGS_FAKE_STRICT == \"true\"' .github/workflows/ci.yml >/dev/null"
+check "perf roda o sql-perf"   bash -c "yq -r '.jobs.\"sql-perf\".steps[].run // \"\"' .github/workflows/perf.yml | grep -q 'test:sql-perf'"
+
 # --- Dependabot só aponta para diretórios que existem (GHA-5) ----------------------------------
 dependabot_dirs_exist() {
   local dirs dir ok=0

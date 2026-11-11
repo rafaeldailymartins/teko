@@ -1,0 +1,104 @@
+# Testes de mutação (StrykerJS 10, vitest-runner + typescript-checker), break 70 em apps/api
+# (domain e application) e packages/shared. Plano: Qualidade > Cobertura, mutação e arquitetura.
+#
+# - PR (chamado pelo pr-gate.yml): `turbo run test:mutation --affected`, em modo incremental: o
+#   relatório incremental de develop (cache) faz o Stryker testar só os mutantes do código mudado.
+# - Nightly e dispatch: todos os pacotes, e o relatório incremental vira o cache da próxima rodada.
+#
+# O cache só é salvo fora de PR, para um PR não envenenar o relatório que os outros reaproveitam.
+# O reporter `dashboard` publica no Stryker Dashboard (badge do README) quando há
+# STRYKER_DASHBOARD_API_KEY; sem ele (fork, Dependabot), o Stryker só avisa e segue.
+name: Mutation
+
+on:
+  workflow_call:
+    inputs:
+      affected:
+        description: JSON do job `affected` do pr-gate.yml. Vazio = todos os pacotes.
+        type: string
+        required: false
+        default: ""
+    secrets:
+      STRYKER_DASHBOARD_API_KEY:
+        required: false
+  schedule:
+    - cron: "17 5 * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: mutation-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  TURBO_TELEMETRY_DISABLED: "1"
+  TURBO_SCM_BASE: ${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) || '' }}
+
+jobs:
+  stryker:
+    name: stryker
+    # Em PR, só com pacote JS afetado; no nightly e no dispatch, sempre.
+    if: inputs.affected == '' || fromJSON(inputs.affected).packages
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    permissions:
+      contents: read
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          egress-policy: audit
+
+      - name: Checkout (histórico completo para o --affected)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      - name: Restaurar relatórios incrementais do Stryker
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            apps/api/reports/stryker-incremental.json
+            packages/shared/reports/stryker-incremental.json
+          key: stryker-incremental-${{ github.sha }}
+          restore-keys: |
+            stryker-incremental-
+
+      - name: Stryker (pacotes afetados no PR, todos no nightly)
+        env:
+          STRYKER_DASHBOARD_API_KEY: ${{ secrets.STRYKER_DASHBOARD_API_KEY }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          if [[ "$EVENT_NAME" == pull_request ]]; then
+            pnpm exec turbo run test:mutation --affected --concurrency=1
+          else
+            pnpm exec turbo run test:mutation --concurrency=1 --force
+          fi
+
+      - name: Guardar o relatório HTML
+        if: ${{ !cancelled() }}
+        # Só diagnóstico: o gate é o passo do Stryker. Uma falha transitória da API de artifacts do
+        # GitHub (FinalizeArtifact devolvendo HTML, PR #24) não pode reprovar uma mutação aprovada.
+        continue-on-error: true
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: mutation-report
+          path: |
+            apps/api/reports/mutation/
+            packages/shared/reports/mutation/
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Salvar relatórios incrementais (só fora de PR)
+        if: ${{ !cancelled() && github.event_name != 'pull_request' }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            apps/api/reports/stryker-incremental.json
+            packages/shared/reports/stryker-incremental.json
+          key: stryker-incremental-${{ github.sha }}

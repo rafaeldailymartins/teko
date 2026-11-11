@@ -4,10 +4,11 @@
 # job `affected`, e os jobs não afetados terminam como `skipped`. Cada workflow entra aqui na fase
 # que o cria (ver "CI/CD, Git Flow e ambientes > Workflows" no plano):
 #   - F1: ci.yml, security.yml (este arquivo)
-#   - e2e.yml (se web/api afetados), mutation.yml (Stryker incremental), perf.yml (perfil `pr`)
-#     e evals.yml (perfil `pr`, se llm afetado) entram nas fases que os criam. Ao adicionar um
-#     deles: (1) novo job com `uses:` e `with: { affected: ... }`; (2) incluí-lo em `needs` do
-#     `ci-gate`; (3) se o job inteiro puder ser pulado por um `if:`, incluí-lo em `allowed-skips`.
+#   - F2: mutation.yml (Stryker incremental) e perf.yml (perfil `pr`: sql-perf)
+#   - e2e.yml (se web/api afetados) e evals.yml (perfil `pr`, se llm afetado) entram nas fases
+#     que os criam. Ao adicionar um deles: (1) novo job com `uses:` e `with: { affected: ... }`;
+#     (2) incluí-lo em `needs` do `ci-gate`; (3) se o job inteiro puder ser pulado por um `if:`,
+#     incluí-lo em `allowed-skips`.
 name: PR gate
 
 on:
@@ -84,10 +85,31 @@ jobs:
     permissions:
       contents: read
 
+  mutation:
+    name: mutation
+    needs: affected
+    uses: ./.github/workflows/mutation.yml
+    permissions:
+      contents: read
+    with:
+      affected: ${{ needs.affected.outputs.json }}
+    secrets:
+      STRYKER_DASHBOARD_API_KEY: ${{ secrets.STRYKER_DASHBOARD_API_KEY }}
+
+  perf:
+    name: perf
+    needs: affected
+    uses: ./.github/workflows/perf.yml
+    permissions:
+      contents: read
+    with:
+      affected: ${{ needs.affected.outputs.json }}
+      profile: pr
+
   ci-gate:
     name: ci-gate
     if: always()
-    needs: [affected, ci, security]
+    needs: [affected, ci, security, mutation, perf]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions: {}
@@ -101,7 +123,7 @@ jobs:
         uses: re-actors/alls-green@b5b5b37504aa4183270bd3d855c52a67f212be35 # v1.3.0
         with:
           jobs: ${{ toJSON(needs) }}
-          # Jobs que podem terminar como `skipped` sem reprovar o gate. Na F1 nenhum job deste
-          # workflow é condicional (o filtro por escopo acontece dentro de ci.yml); os workflows
-          # condicionais das próximas fases (e2e, mutation, perf, evals) entram nesta lista.
+          # Jobs que podem terminar como `skipped` sem reprovar o gate. Nenhum job deste workflow é
+          # condicional: o filtro por escopo acontece dentro de ci.yml, mutation.yml e perf.yml. Os
+          # que vierem com `if:` aqui (e2e, evals) entram nesta lista.
           allowed-skips: "[]"

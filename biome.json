@@ -117,7 +117,14 @@
       }
     },
     {
-      "includes": ["scripts/**", "**/*.config.ts", "**/*.config.mjs"],
+      "includes": [
+        "scripts/**",
+        "**/*.config.ts",
+        "**/*.config.mjs",
+        "apps/api/src/cli.ts",
+        "apps/api/evals/scripts/**",
+        "apps/api/test/sql-perf/**"
+      ],
       "linter": {
         "rules": {
           "suspicious": { "noConsole": "off" }

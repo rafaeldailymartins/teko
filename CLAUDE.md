@@ -65,7 +65,18 @@ Atualize esta seção no PR que fecha cada fase ou spike.
   - Riscos residuais, registrados na ADR 0003: SIGTERM e cold start não medidos com rigor;
     `attachDatabasePool` e driver do Postgres na F2 (o `pg` nunca teve proveniência); WAF na F7;
     `/pt-br/` minúsculo na F5.
-- **F2 em diante:** a F2 começa quando o mantenedor decidir.
+- **F2 (domínio de vigência, schema e busca híbrida):** concluída em 2026-11-11 (mudanças arquivadas
+  `add-validity-domain`, `add-corpus-schema`, `add-hybrid-search`; ADRs 0009 e 0010). Driver `pg`
+  8.23.1, exceção de proveniência no ADR 0002 (nenhum driver Postgres do npm tem), junto com
+  Testcontainers, `yaml` e os overrides de `glob`/`basic-ftp` da árvore do promptfoo. Fixture
+  única com textos reais (1.574 chunks, vetores BGE-M3 reais em `embeddings.json.gz`; regenerar
+  com `pnpm --filter @teko/api fixtures:embed` e as credenciais do `tools/ingest/.env`) e golden
+  de 50 casos revisado pelo mantenedor em 2026-11-11. Retrieval evals: recall@10
+  0,925, MRR 0,771, demais 1,00; `sql-perf` em ~120–135 ms. Roles do Neon criados em 2026-11-11
+  com `scripts/neon-roles.ts` (`teko_watch` no staging; `teko_app` e `teko_watch` na produção),
+  com as URLs `-pooler` em `maintenance` e `corpus-watch`; nenhuma migração rodou ainda nos
+  projetos reais (a primeira é do `deploy-api.yml`, F7). Ver `docs/runbooks/neon-roles.md`.
+- **F3 em diante:** a F3 começa quando o mantenedor decidir.
 
 ## Como trabalhar
 

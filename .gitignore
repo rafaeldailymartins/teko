@@ -12,6 +12,7 @@ next-env.d.ts
 
 # Testes e relatórios
 coverage/
+coverage-integration/
 reports/
 .stryker-tmp/
 test-results/

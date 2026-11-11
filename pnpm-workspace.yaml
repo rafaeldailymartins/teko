@@ -22,6 +22,12 @@ allowBuilds:
   # Só compilam do fonte quando falta o binário pré-compilado (que chega como optionalDependency).
   "@parcel/watcher": false
   "@swc/core": false
+  # Testcontainers (só testes): ssh2 e cpu-features compilam aceleradores nativos opcionais (via dockerode;
+  # o ssh2 tem fallback em JS) e o postinstall do protobufjs (via @grpc/grpc-js) só confere o CLI dele.
+  cpu-features: false
+  ssh2: false
+  protobufjs: false
+  esbuild: false
 
 # Correções de vulnerabilidades transitivas (versões exatas, maduras). Revisar a cada atualização
 # do pacote que as puxa; remover quando o upstream já trouxer a versão corrigida.
@@ -32,9 +38,26 @@ overrides:
   qs@<6.16.1: 6.17.1
   # GHSA-g3hv-75wg-m249 (moderate). Via @stryker-mutator/core (minimatch 10.2.6); cruza major.
   minimatch@>=7.0.0 <11.0.1: 11.0.4
+  # GHSA de AbortSignal no glob >=9 <=14.0.1 (moderate). Só em devDependencies de teste e eval:
+  # testcontainers > archiver > archiver-utils (glob ^10, usa `sync` em CommonJS, mantido no 14) e
+  # promptfoo (usa glob/globSync, idem).
+  archiver-utils>glob: 14.0.3
+  promptfoo>glob: 14.0.3
+  # Negação de serviço no parser de listagem do basic-ftp <=6.2.0 (high). Via promptfoo > proxy-agent >
+  # pac-proxy-agent > get-uri (só eval; o Tekó não usa FTP nem PAC).
+  get-uri>basic-ftp: 6.2.5
   # sharp é opcional do Next (otimização de imagens), sem uso no export estático (images.unoptimized).
   # Removido: traz binários libvips sob LGPL-3.0, fora da allowlist de licenças do dependency-review.
   next>sharp: "-"
+  # Opcionais do promptfoo sem uso nas evals (o provider é próprio, in-process; geração vai por
+  # Gemini/Groq, que o promptfoo chama por HTTP). Removidos porque trazem licenças fora da
+  # allowlist: sharp (libvips LGPL-3.0), pdf-parse (@napi-rs/canvas, CC-BY-SA-3.0),
+  # @aws/bedrock-token-generator (sem licença detectada) e @modelcontextprotocol/server-filesystem
+  # (sem arquivo de licença no tarball).
+  promptfoo>sharp: "-"
+  promptfoo>pdf-parse: "-"
+  promptfoo>@aws/bedrock-token-generator: "-"
+  promptfoo>@modelcontextprotocol/server-filesystem: "-"
 
 catalog:
   # Ferramentas da raiz
@@ -81,6 +104,17 @@ catalog:
   pino-pretty: 13.2.0
   close-with-grace: 2.5.0
   "@vercel/functions": 3.7.6 # última com provenance SLSA + trusted publisher; 3.9+ sem provenance (ADR 0002)
+
+  # Banco (F2). Nenhum driver Postgres do npm é publicado com proveniência: pg e Testcontainers são
+  # exceções da regra de proveniência do repositório, documentadas no ADR 0002 (o trustPolicy
+  # no-downgrade só recusa a perda de proveniência, não a ausência).
+  drizzle-orm: 1.0.0-rc.5
+  drizzle-kit: 1.0.0-rc.5
+  pg: 8.23.1
+  "@types/pg": 8.23.1
+  "@testcontainers/postgresql": 12.2.1
+  promptfoo: 0.125.1
+  yaml: 2.9.1 # já vinha na árvore (promptfoo e outros); lê o golden.yaml nas evals e nos testes
 
   # Web
   next: 16.4.5

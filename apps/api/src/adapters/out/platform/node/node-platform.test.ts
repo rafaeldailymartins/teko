@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import {
   createNodeBackgroundTasks,
   createNodeClientIp,
+  nodeAttachDatabasePool,
   nodeInvocationDeadline,
 } from './node-platform.ts'
 
@@ -52,5 +53,11 @@ describe('createNodeBackgroundTasks', () => {
     expect(tasks.pending()).toBe(1)
     await tasks.drain(1_000)
     expect(onFailure).toHaveBeenCalledWith(expect.objectContaining({ outcome: 'failed' }))
+  })
+})
+
+describe('nodeAttachDatabasePool', () => {
+  it('não faz nada: o pool vive com o processo', () => {
+    expect(nodeAttachDatabasePool({})).toBeUndefined()
   })
 })

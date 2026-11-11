@@ -1,0 +1,11 @@
+{
+  "$comment": "Perguntas usadas pelos testes de integração (e, a partir da F4, pelo e2e) além das do golden. O fixtures:embed grava o embedding de cada uma; com o fake em modo strict, pergunta fora desta lista e do golden falha o teste.",
+  "questions": [
+    "Qual valor mínimo aplicado no GOYAZES ou no PROESPORTE permitia ao Secretário da Fazenda definir prazos diversos de pagamento do ICMS?",
+    "O que diz o art. 76, § 6º do RCTE?",
+    "Qual o prazo de pagamento do ICMS na importação?",
+    "Qual o prazo de pagamento do ICMS nas operações com regime especial?",
+    "Qual a MVA da substituição tributária de cimento no Anexo VIII?",
+    "goyazes proesporte secretario fazenda prazos diversos"
+  ]
+}

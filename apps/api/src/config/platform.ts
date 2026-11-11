@@ -1,12 +1,15 @@
 import {
   createNodeBackgroundTasks,
   createNodeClientIp,
+  nodeAttachDatabasePool,
   nodeInvocationDeadline,
 } from '#adapters/out/platform/node/node-platform.ts'
 import {
+  type AttachablePool,
   createVercelBackgroundTasks,
   createVercelClientIp,
   createVercelInvocationDeadline,
+  vercelAttachDatabasePool,
 } from '#adapters/out/platform/vercel/vercel-platform.ts'
 import type { BackgroundTaskFailure, BackgroundTasks } from '#app/ports/background-tasks.ts'
 import type { ClientIp } from '#app/ports/client-ip.ts'
@@ -24,7 +27,7 @@ import {
  * `adapters/out/platform`. O mesmo `server.ts` roda nas três; nada fora daqui (e da raiz de
  * composição) sabe em qual está.
  *
- * O `attachDatabasePool` (só na Vercel) entra aqui com o pool do Postgres, na F2.
+ * O `attachDatabasePool` só age na Vercel; nas demais plataformas o pool vive com o processo.
  */
 
 /**
@@ -118,6 +121,8 @@ export interface PlatformAdapters {
   readonly backgroundTasks: BackgroundTasks
   readonly clientIp: ClientIp
   readonly invocationDeadline: InvocationDeadline
+  /** Registra o pool do Postgres na plataforma (`attachDatabasePool` na Vercel). */
+  readonly attachDatabasePool: (pool: AttachablePool) => void
 }
 
 export interface PlatformDeps {
@@ -131,11 +136,15 @@ export function createPlatformAdapters(env: Env, deps: PlatformDeps): PlatformAd
       backgroundTasks: createVercelBackgroundTasks(deps.onBackgroundFailure),
       clientIp: createVercelClientIp(ipOptions),
       invocationDeadline: createVercelInvocationDeadline(env.FUNCTION_MAX_DURATION_S * 1000),
+      attachDatabasePool: (pool) => {
+        vercelAttachDatabasePool(pool)
+      },
     }
   }
   return {
     backgroundTasks: createNodeBackgroundTasks(deps.onBackgroundFailure),
     clientIp: createNodeClientIp(ipOptions),
     invocationDeadline: nodeInvocationDeadline,
+    attachDatabasePool: nodeAttachDatabasePool,
   }
 }

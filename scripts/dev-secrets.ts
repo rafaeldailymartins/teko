@@ -1,7 +1,8 @@
 /**
  * Gera os segredos de desenvolvimento local (`pnpm dev:secrets`).
  *
- * - `apps/api/.env`: segredos da API (proxy assinado de dev, Better Auth, DATABASE_URL).
+ * - `apps/api/.env`: segredos da API (proxy assinado de dev, Better Auth, DATABASE_URL) e o
+ *   provedor de embeddings local (fake sobre a fixture).
  * - `infra/local/.env`: interpolação do `infra/local/compose.yaml` (Postgres, JWS do Caddy, Langfuse).
  *
  * Regras:
@@ -217,6 +218,10 @@ function main(): void {
         () =>
           `postgres://teko:${infraValue('POSTGRES_PASSWORD')}@127.0.0.1:${infraValue('TEKO_PG_PORT')}/teko`,
       ],
+      // Não são segredos: com DATABASE_URL, a API exige um provedor de embeddings, e o local usa o
+      // fake sobre a fixture única (o `pnpm --filter @teko/api seed:fixtures` grava o corpus).
+      ['EMBEDDINGS_PROVIDER', () => 'fake'],
+      ['EMBEDDINGS_FIXTURE_PATH', () => 'test/fixtures/corpus/embeddings.json.gz'],
       ['DEV_PROXY_JWS_SECRET', () => hex(32)],
       ['BETTER_AUTH_SECRET', () => hex(32)],
       ['LANGFUSE_BASE_URL', () => 'http://localhost:3100'],

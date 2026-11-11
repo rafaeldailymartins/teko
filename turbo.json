@@ -72,7 +72,7 @@
     },
     "test:integration": {
       "inputs": ["$TURBO_DEFAULT$", "!**/*.md"],
-      "outputs": ["reports/**"],
+      "outputs": ["reports/**", "coverage-integration/**"],
       "env": ["TESTCONTAINERS_*", "DOCKER_HOST"],
       "dependsOn": ["transit"]
     },

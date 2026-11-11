@@ -1,0 +1,1591 @@
+{
+  "slug": "tabela-go-5-1-1",
+  "family": "tabelas-go",
+  "title": "Tabela 5.1.1 da EFD ICMS/IPI - Goiás (Tabela de Códigos de Ajustes da Apuração do ICMS)",
+  "issuer": "Secretaria de Estado da Economia de Goiás (publicada no WS de Tabelas Externas do SPED)",
+  "sourceUrl": "https://www.sped.fazenda.gov.br/spedtabelas/WsConsulta/obterTabela.ashx?idTabela=37&versao=151",
+  "versions": [
+    {
+      "key": "tabela-5-1-1-v151",
+      "versionLabel": "Tabela 5.1.1 (GO), versão 151 de 08/07/2026",
+      "publishedOn": "2026-07-08",
+      "validDuring": {
+        "from": "2026-07-08",
+        "to": null
+      },
+      "consolidatedUntil": null,
+      "actRef": null,
+      "sha256": "6dab80030aeb4c55ebe7c3e45f9d1c05b0a557243319cc602dcffc847dda38ad"
+    }
+  ],
+  "provisions": [
+    {
+      "stableKey": "go:tabelas-go:tab:5-1-1",
+      "kind": "tabela",
+      "sortPath": "5-1-1",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.1.1",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.1.1 (GO)",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": null
+          },
+          "validityBasis": "table_declared",
+          "text": "5.1.1- Tabela de Códigos de Ajustes da Apuração do ICMS\nversão=151 COD_AJUR, DESC_AJUR, DT_INI, DT_FIM",
+          "documentVersions": ["tabela-5-1-1-v151"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-1-1:cod:GO000001",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-1-1",
+      "sortPath": "5-1-1.GO000001",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.1.1 > GO000001",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.1.1 (GO), código GO000001",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": "2024-07-01"
+          },
+          "validityBasis": "table_declared",
+          "text": "GO000001 - Débito referente ao valor compensado do ICMS de substituição tributária.",
+          "documentVersions": ["tabela-5-1-1-v151"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-1-1:cod:GO000002",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-1-1",
+      "sortPath": "5-1-1.GO000002",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.1.1 > GO000002",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.1.1 (GO), código GO000002",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": "2024-07-01"
+          },
+          "validityBasis": "table_declared",
+          "text": "GO000002 - Débito referente ao valor da restituição de crédito de ICMS normal, concedida mediante processo (recebimento em moeda)",
+          "documentVersions": ["tabela-5-1-1-v151"]
+        },
+        {
+          "displayLabel": "Tabela 5.1.1 (GO), código GO000002",
+          "validDuring": {
+            "from": "2024-07-01",
+            "to": null
+          },
+          "validityBasis": "table_declared",
+          "text": "GO000002 - Débito referente ao valor da restituição de crédito de ICMS normal, concedida mediante processo (recebimento em moeda). Art. 486 do RCTE.",
+          "documentVersions": ["tabela-5-1-1-v151"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-1-1:cod:GO000003",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-1-1",
+      "sortPath": "5-1-1.GO000003",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.1.1 > GO000003",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.1.1 (GO), código GO000003",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": "2014-12-01"
+          },
+          "validityBasis": "table_declared",
+          "text": "GO000003 - Baixa do cr. relativo ao valor adicional de 2% na alíquota de ICMS, utilizado para abater o ICMS Subst. Tributária. PROTEGE. - CTE - Art. 27, § 5º e IN 784/06 Art. 6",
+          "documentVersions": ["tabela-5-1-1-v151"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-1-1:cod:GO000004",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-1-1",
+      "sortPath": "5-1-1.GO000004",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.1.1 > GO000004",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.1.1 (GO), código GO000004",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": "2015-07-01"
+          },
+          "validityBasis": "table_declared",
+          "text": "GO000004 - Débito referente ao estorno do cheque-moradia por saldo insuficiente no campo \"Observações\" do RAICMS - IN 575/02-GSF - Art. 1, § 3º, II",
+          "documentVersions": ["tabela-5-1-1-v151"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-1-1:cod:GO000005",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-1-1",
+      "sortPath": "5-1-1.GO000005",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.1.1 > GO000005",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.1.1 (GO), código GO000005",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": "2018-07-31"
+          },
+          "validityBasis": "table_declared",
+          "text": "GO000005 - ICMS debitado qdo, conf. TARE, o imposto devido por ST pelas op anteriores seja apurado junt c/ aquele devido pela op saída própria do estab eleito substituto, resultando um só déb por período nas aquisições - RCTE - Art. 14, § Único - Anexo VIII",
+          "documentVersions": ["tabela-5-1-1-v151"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-1-1:cod:GO000006",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-1-1",
+      "sortPath": "5-1-1.GO000006",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.1.1 > GO000006",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.1.1 (GO), código GO000006",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": null
+          },
+          "validityBasis": "table_declared",
+          "text": "GO000006 - ICMS debitado na saída de mercadoria remetida sem destinatário certo, por qualquer meio de transporte, para realização de operação fora do estabelecimento - RCTE - Art. 28, § 2º - Anexo XII",
+          "documentVersions": ["tabela-5-1-1-v151"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-1-1:cod:GO000007",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-1-1",
+      "sortPath": "5-1-1.GO000007",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.1.1 > GO000007",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.1.1 (GO), código GO000007",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": null
+          },
+          "validityBasis": "table_declared",
+          "text": "GO000007 - Déb. do imposto relativo ao frete, quando não tiver integrado a base de cálculo para efeito de retenção, exceto quanto ao veículo automotor, apurado conforme Art. 42 do Anexo VIII do RCTE - RCTE - Art. 42, I, \"a\" e § Único - Anexo VIII",
+          "documentVersions": ["tabela-5-1-1-v151"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-1-1:cod:GO000008",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-1-1",
+      "sortPath": "5-1-1.GO000008",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.1.1 > GO000008",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.1.1 (GO), código GO000008",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": null
+          },
+          "validityBasis": "table_declared",
+          "text": "GO000008 - Débito do imposto relativo a embalagem ou acondicionamento, quando não tiver integrado a base de cálculo para efeito de retenção, apurado conforme Art. 42 do Anexo VIII do RCTE - RCTE - Art. 42, II e § Único - Anexo VIII",
+          "documentVersions": ["tabela-5-1-1-v151"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-1-1:cod:GO000009",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-1-1",
+      "sortPath": "5-1-1.GO000009",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.1.1 > GO000009",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.1.1 (GO), código GO000009",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": null
+          },
+          "validityBasis": "table_declared",
+          "text": "GO000009 - Déb. do imposto relativo a determinadas merc. não sujeita ao regime de ST, qdo comercializada ou fornecida de forma associada a uma mercadoria submetida a este regime. - RCTE - Art. 42, III e § Único - Anexo VIII",
+          "documentVersions": ["tabela-5-1-1-v151"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-1-1:cod:GO000010",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-1-1",
+      "sortPath": "5-1-1.GO000010",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.1.1 > GO000010",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.1.1 (GO), código GO000010",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": null
+          },
+          "validityBasis": "table_declared",
+          "text": "GO000010 - Déb. do imp. qdo o contrib estabel neste estado adquirir merc. suj. ao regime de ST de contrib com med. judicial liminar, ou de contrib sediado em UF com denúncia de conv ou protoc - RCTE - Art. 42, IV; § Único e Art. 34, § Único, II, \"a\", 2 - Anexo VIII",
+          "documentVersions": ["tabela-5-1-1-v151"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-1-1:cod:GO000011",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-1-1",
+      "sortPath": "5-1-1.GO000011",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.1.1 > GO000011",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.1.1 (GO), código GO000011",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": "2013-08-01"
+          },
+          "validityBasis": "table_declared",
+          "text": "GO000011 - Comp. ICMS devido ST com o saldo credor acumulado - operação com destino a contribuinte do imposto estabelecido em outra UF e alcançada pela substituição tributária - RCTE - Art. 45, II e Art. 46, § 4º - Anexo VIII",
+          "documentVersions": ["tabela-5-1-1-v151"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-1-1:cod:GO000012",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-1-1",
+      "sortPath": "5-1-1.GO000012",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.1.1 > GO000012",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.1.1 (GO), código GO000012",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": "2016-10-01"
+          },
+          "validityBasis": "table_declared",
+          "text": "GO000012 - Baixa pela restituição do saldo credor acumulado - operação com destino a contribuinte do imposto estabelecido em outra UF e alcançada pela substituição tributária - RCTE - Art. 45, II e Art. 46, § 4º - Anexo VIII",
+          "documentVersions": ["tabela-5-1-1-v151"]
+        },
+        {
+          "displayLabel": "Tabela 5.1.1 (GO), código GO000012",
+          "validDuring": {
+            "from": "2016-10-01",
+            "to": "2024-07-01"
+          },
+          "validityBasis": "table_declared",
+          "text": "GO000012 - Baixa pela restituição do saldo credor acumulado - operação com destino a outra unidade da Federação e alcançada pela substituição tributária. -RCTE - Art. 45, II e Art.  46, § 4º - Anexo VIII",
+          "documentVersions": ["tabela-5-1-1-v151"]
+        },
+        {
+          "displayLabel": "Tabela 5.1.1 (GO), código GO000012",
+          "validDuring": {
+            "from": "2024-07-01",
+            "to": null
+          },
+          "validityBasis": "table_declared",
+          "text": "GO000012 - Baixa pela restituição do saldo credor acumulado (em moeda), mediante processo, em virtude de oper. com destino a outra UF  alcançada pela substituição tributária. Art. 45, II e Art.  46, § 4º IIIdo  Anexo VIII do RCTE.",
+          "documentVersions": ["tabela-5-1-1-v151"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-1-1:cod:GO000013",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-1-1",
+      "sortPath": "5-1-1.GO000013",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.1.1 > GO000013",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.1.1 (GO), código GO000013",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": "2024-07-01"
+          },
+          "validityBasis": "table_declared",
+          "text": "GO000013 - Baixa pela restituição do saldo credor acumulado - desfazimento do negócio ou devolução total ou parcial. - RCTE - Art. 45, VI e Art. 46, § 4º - Anexo VIII",
+          "documentVersions": ["tabela-5-1-1-v151"]
+        },
+        {
+          "displayLabel": "Tabela 5.1.1 (GO), código GO000013",
+          "validDuring": {
+            "from": "2024-07-01",
+            "to": null
+          },
+          "validityBasis": "table_declared",
+          "text": "GO000013 - Baixa pela restituição do saldo credor acumulado (em moeda), mediante processo, em razão do desfazimento do negócio ou devolução total/ parcial. Art. 45, VI e Art. 46, § 4º III do Anexo VIII do RCTE.",
+          "documentVersions": ["tabela-5-1-1-v151"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-1-1:cod:GO000014",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-1-1",
+      "sortPath": "5-1-1.GO000014",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.1.1 > GO000014",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.1.1 (GO), código GO000014",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": "2013-08-01"
+          },
+          "validityBasis": "table_declared",
+          "text": "GO000014 - Comp. ICMS devido ST com o saldo credor acumulado - desfazimento do negócio ou devolução total ou parcial. - RCTE - Art. 45, VI e Art. 46, § 4º - Anexo VIII",
+          "documentVersions": ["tabela-5-1-1-v151"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-1-1:cod:GO000015",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-1-1",
+      "sortPath": "5-1-1.GO000015",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.1.1 > GO000015",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.1.1 (GO), código GO000015",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": "2013-08-01"
+          },
+          "validityBasis": "table_declared",
+          "text": "GO000015 - Comp. ICMS dev. por ST com saldo credor acumulado - op interna realizada p/ contrib industr ou comerciante atac. c/ destino a empresa de const. civil, a órgão da adm pub direta/hospital e clínica de saúde - RCTE - Art. 45, X e Art. 46, § 4º - Anexo VIII",
+          "documentVersions": ["tabela-5-1-1-v151"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-1-1:cod:GO000016",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-1-1",
+      "sortPath": "5-1-1.GO000016",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.1.1 > GO000016",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.1.1 (GO), código GO000016",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": "2024-07-01"
+          },
+          "validityBasis": "table_declared",
+          "text": "GO000016 - Baixa pela restituição do saldo credor acumul - op interna realizada p/ contrib. indust. ou comerciante atac. c/ destino a empresa de const. civil, a órgão da adm pub. direta ou hospital e clínica de saúde - RCTE - Art. 45, X e Art. 46, § 4º - Anexo VIII",
+          "documentVersions": ["tabela-5-1-1-v151"]
+        },
+        {
+          "displayLabel": "Tabela 5.1.1 (GO), código GO000016",
+          "validDuring": {
+            "from": "2024-07-01",
+            "to": null
+          },
+          "validityBasis": "table_declared",
+          "text": "GO000016 - Baixa pela rest. sd. credor acum(em moeda), por processo, na op interna por cont. ind/com. atac. c/ dest a empresa de c.civil, a o. da adm pub. direta, hosp/clínica de saúde e, cia. est. de saneamento. Art. 45, X e Art. 46, § 4º III do Anexo VIII do RCTE.",
+          "documentVersions": ["tabela-5-1-1-v151"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-1-1:cod:GO000017",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-1-1",
+      "sortPath": "5-1-1.GO000017",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.1.1 > GO000017",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.1.1 (GO), código GO000017",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": "2013-08-01"
+          },
+          "validityBasis": "table_declared",
+          "text": "GO000017 - ICMS déb. p/ compensar saldo credor ICMS acumulado, c/ imposto devido título de retido na fonte, relativo a nova aquis de mercadoria sujeito a ST, cuja responsabilidade pela apuração e pgto é do próprio adq. - RCTE - Art. 49, § 1º, I, \"b\" - Anexo VIII",
+          "documentVersions": ["tabela-5-1-1-v151"]
+        },
+        {
+          "displayLabel": "Tabela 5.1.1 (GO), código GO000017",
+          "validDuring": {
+            "from": "2013-08-01",
+            "to": null
+          },
+          "validityBasis": "table_declared",
+          "text": "GO000017 - Baixa do saldo credor acumulado por 3 meses consecutivos, no mínimo, em função da sistemática do regime da subst. tributária p/ compensar c/ ICMS ST cuja responsab. pela apuração e pgto. é do próprio adq. -RCTE - Art. 49, § 1º, I, \"b\" - Anexo VIII",
+          "documentVersions": ["tabela-5-1-1-v151"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-1-1:cod:GO000018",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-1-1",
+      "sortPath": "5-1-1.GO000018",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.1.1 > GO000018",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.1.1 (GO), código GO000018",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": "2024-07-01"
+          },
+          "validityBasis": "table_declared",
+          "text": "GO000018 - Compensação de Auto de Infração. - RCTE - Art. 494",
+          "documentVersions": ["tabela-5-1-1-v151"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-1-1:cod:GO000019",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-1-1",
+      "sortPath": "5-1-1.GO000019",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.1.1 > GO000019",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.1.1 (GO), código GO000019",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": "2015-03-01"
+          },
+          "validityBasis": "table_declared",
+          "text": "GO000019 - Débito do montante do imposto correspondente à diferença de alíquotas - RCTE - Art. 73, § 1º, I",
+          "documentVersions": ["tabela-5-1-1-v151"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-1-1:cod:GO000020",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-1-1",
+      "sortPath": "5-1-1.GO000020",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.1.1 > GO000020",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.1.1 (GO), código GO000020",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": "2021-01-01"
+          },
+          "validityBasis": "table_declared",
+          "text": "GO000020 - Débito, mediante TARE, correspondente ao imposto devido na importação do exterior - RCTE - Art. 73, § 3º",
+          "documentVersions": ["tabela-5-1-1-v151"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-1-1:cod:GO000021",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-1-1",
+      "sortPath": "5-1-1.GO000021",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.1.1 > GO000021",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.1.1 (GO), código GO000021",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": "2011-07-01"
+          },
+          "validityBasis": "table_declared",
+          "text": "GO000021 - ICMS debitado pelo contrib. substituído que mantiver estoque de mercadoria sujeito à ST e destinada à comercialização, e para a qual ocorra aumento da carga tributária na operação interna - RCTE - Art. 80, § Único - Anexo VIII",
+          "documentVersions": ["tabela-5-1-1-v151"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-1-1:cod:GO000022",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-1-1",
+      "sortPath": "5-1-1.GO000022",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.1.1 > GO000022",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.1.1 (GO), código GO000022",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": "2024-07-01"
+          },
+          "validityBasis": "table_declared",
+          "text": "GO000022 - Débito referente ao valor à aplicação da alíquota própria sobre a entrada de mercadorias para as empresas que possuam TARE e que devam a ter a sua saída lançada em outros débitos - TARE 093/01-GSF",
+          "documentVersions": ["tabela-5-1-1-v151"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-1-1:cod:GO000023",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-1-1",
+      "sortPath": "5-1-1.GO000023",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.1.1 > GO000023",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.1.1 (GO), código GO000023",
+          "validDuring": {
+            "from": "2010-11-01",
+            "to": "2013-05-01"
+          },
+          "validityBasis": "table_declared",
+          "text": "GO000023 - Cessão onerosa de meios das redes de telecomunicações. A tomadora do serviço fica obrigada ao recolhimento do imposto incidente sobre a cessão dos meios de rede na prestação de serviço a usuário final -RCTE - Art. 9º, § 4º, I do Anexo XIII",
+          "documentVersions": ["tabela-5-1-1-v151"]
+        },
+        {
+          "displayLabel": "Tabela 5.1.1 (GO), código GO000023",
+          "validDuring": {
+            "from": "2013-05-01",
+            "to": null
+          },
+          "validityBasis": "table_declared",
+          "text": "GO000023 - A tomadora do serviço fica obrigada ao recolhimento do imposto incidente sobre a cessão dos meios de rede na prestação de serviço a usuário final RCTE - Art. 9º-C, I, do Anexo XIII",
+          "documentVersions": ["tabela-5-1-1-v151"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-1-1:cod:GO000024",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-1-1",
+      "sortPath": "5-1-1.GO000024",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.1.1 > GO000024",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.1.1 (GO), código GO000024",
+          "validDuring": {
+            "from": "2010-11-01",
+            "to": "2013-05-01"
+          },
+          "validityBasis": "table_declared",
+          "text": "GO000024 - Cessão onerosa de meios das redes de telecomunicações. A tomadora do serviço fica obrigada ao recolhimento do imposto incidente sobre a cessão dos meios de rede no consumo próprio -RCTE - Art. 9º, § 4º, II do Anexo XIII",
+          "documentVersions": ["tabela-5-1-1-v151"]
+        },
+        {
+          "displayLabel": "Tabela 5.1.1 (GO), código GO000024",
+          "validDuring": {
+            "from": "2013-05-01",
+            "to": null
+          },
+          "validityBasis": "table_declared",
+          "text": "GO000024 - A tomadora do serviço fica obrigada ao recolhimento do imposto incidente sobre a cessão dos meios de rede no consumo próprio RCTE - Art. 9º- C, II, do Anexo XIII",
+          "documentVersions": ["tabela-5-1-1-v151"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-1-1:cod:GO000025",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-1-1",
+      "sortPath": "5-1-1.GO000025",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.1.1 > GO000025",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.1.1 (GO), código GO000025",
+          "validDuring": {
+            "from": "2013-08-01",
+            "to": "2024-07-01"
+          },
+          "validityBasis": "table_declared",
+          "text": "GO000025 - Baixa do saldo credor do imposto em decorrência da aplicação dos incisos II, VI, IX e X do art. 45 do anexo VIII, para compensação do imposto devido por sub. tribut., na aq. interestadual de mercadoria da ST. RCTE – Art. 46, §§ 4º, I e 5º – Anexo VIII",
+          "documentVersions": ["tabela-5-1-1-v151"]
+        },
+        {
+          "displayLabel": "Tabela 5.1.1 (GO), código GO000025",
+          "validDuring": {
+            "from": "2024-07-01",
+            "to": null
+          },
+          "validityBasis": "table_declared",
+          "text": "GO000025 - Baixa sd credor do imp. em decorrência da aplic. dos incisos II, VI, IX, X e XI do art. 45 do anexo VIII, para comp. com o imposto devido por op. própria ou de sua responsabilidade por substituição tributária. Art. 46, §§ 4º, I e 5º do Anexo VIII do RCTE.",
+          "documentVersions": ["tabela-5-1-1-v151"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-1-1:cod:GO000026",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-1-1",
+      "sortPath": "5-1-1.GO000026",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.1.1 > GO000026",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.1.1 (GO), código GO000026",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": "2016-01-01"
+          },
+          "validityBasis": "table_declared",
+          "text": "GO000026 - Estorno de crédito no caso da empresa que utilizar o crédito outorgado, previsto no inciso XXXI do Art. 11 do Anexo IX do RCTE, em valor superior ao que fizer jus no período. RCTE - Art. 11, XXXI, alínea “e” do Anexo IX",
+          "documentVersions": ["tabela-5-1-1-v151"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-1-1:cod:GO000027",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-1-1",
+      "sortPath": "5-1-1.GO000027",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.1.1 > GO000027",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.1.1 (GO), código GO000027",
+          "validDuring": {
+            "from": "2016-01-01",
+            "to": "2019-01-01"
+          },
+          "validityBasis": "table_declared",
+          "text": "GO000027 - Débitos transferidos da Apuração do DIFAL (EC 87/15), Origem Goiás (Registro E300=GO), para a Apuração do ICMS Operações Próprias (Registro E110), por meio do ajuste de estorno de débito GO230000. EC 87/15 e art. 12, Anexo XV do RCTE.",
+          "documentVersions": ["tabela-5-1-1-v151"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-1-1:cod:GO000028",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-1-1",
+      "sortPath": "5-1-1.GO000028",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.1.1 > GO000028",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.1.1 (GO), código GO000028",
+          "validDuring": {
+            "from": "2017-03-01",
+            "to": "2020-10-01"
+          },
+          "validityBasis": "table_declared",
+          "text": "GO000028 - ICMS-ST sobre a prestação de serviço de transporte para beneficiária de incentivo fiscal para o qual haja previsão de lançamento do tributo  na Apuração de ICMS das operações próprias – Art. 3º, parág. único, IN 1.298/2016.",
+          "documentVersions": ["tabela-5-1-1-v151"]
+        },
+        {
+          "displayLabel": "Tabela 5.1.1 (GO), código GO000028",
+          "validDuring": {
+            "from": "2020-10-01",
+            "to": null
+          },
+          "validityBasis": "table_declared",
+          "text": "GO000028 - ICMS-ST sobre a prestação de serviço de transporte para beneficiária de incentivo fiscal para o qual haja previsão de lançamento do tributo na Apuração de ICMS das operações próprias – Art. 3º, parág. único, IN 1.298/2016.",
+          "documentVersions": ["tabela-5-1-1-v151"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-1-1:cod:GO000029",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-1-1",
+      "sortPath": "5-1-1.GO000029",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.1.1 > GO000029",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.1.1 (GO), código GO000029",
+          "validDuring": {
+            "from": "2020-10-01",
+            "to": "2020-10-02"
+          },
+          "validityBasis": "table_declared",
+          "text": "GO000029 - Débito parcelado consoante TARE, correspondente ao imposto devido na importação do exterior Operações Não Incentivadas PROGOIÁS/FOMENTAR/PRODUZIR - RCTE - Art. 73, § 3º.",
+          "documentVersions": ["tabela-5-1-1-v151"]
+        },
+        {
+          "displayLabel": "Tabela 5.1.1 (GO), código GO000029",
+          "validDuring": {
+            "from": "2020-10-02",
+            "to": null
+          },
+          "validityBasis": "table_declared",
+          "text": "GO000029 - Débito parcelado consoante TARE, correspondente ao imposto devido na importação do exterior ICMS Próprio/ Operações Não Incentivadas PROGOIÁS/FOMENTAR/PRODUZIR - RCTE - Art. 73, § 3º.",
+          "documentVersions": ["tabela-5-1-1-v151"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-1-1:cod:GO000030",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-1-1",
+      "sortPath": "5-1-1.GO000030",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.1.1 > GO000030",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.1.1 (GO), código GO000030",
+          "validDuring": {
+            "from": "2020-10-01",
+            "to": null
+          },
+          "validityBasis": "table_declared",
+          "text": "GO000030 - Débito parcelado consoante TARE, correspondente ao imposto devido na importação do exterior Operações Incentivadas PROGOIÁS/FOMENTAR/PRODUZIR - RCTE - Art. 73, § 3º",
+          "documentVersions": ["tabela-5-1-1-v151"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-1-1:cod:GO000031",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-1-1",
+      "sortPath": "5-1-1.GO000031",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.1.1 > GO000031",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.1.1 (GO), código GO000031",
+          "validDuring": {
+            "from": "2022-01-01",
+            "to": null
+          },
+          "validityBasis": "table_declared",
+          "text": "GO000031 - Débito lançado na apuração pelo produtor detentor de TARE, correspondente ao valor do imposto nas operações com B100 – RCTE, Anexo XII, Art. 262, I, “a”.",
+          "documentVersions": ["tabela-5-1-1-v151"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-1-1:cod:GO000032",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-1-1",
+      "sortPath": "5-1-1.GO000032",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.1.1 > GO000032",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.1.1 (GO), código GO000032",
+          "validDuring": {
+            "from": "2019-07-01",
+            "to": null
+          },
+          "validityBasis": "table_declared",
+          "text": "GO000032 - Baixa por restituição do saldo credor acum. (em moeda), mediante processo, na oper. em que o remetente pratica alíquota superior à aplicável pelo destinatário da mercadoria.Art. 45, IX e Art. 46, § 4º, III do Anexo VIII do RCTE.",
+          "documentVersions": ["tabela-5-1-1-v151"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-1-1:cod:GO000033",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-1-1",
+      "sortPath": "5-1-1.GO000033",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.1.1 > GO000033",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.1.1 (GO), código GO000033",
+          "validDuring": {
+            "from": "2019-07-01",
+            "to": null
+          },
+          "validityBasis": "table_declared",
+          "text": "GO000033 - Baixa por restituição do saldo credor acum. (em moeda), mediante processo, na oper. em que a BC presumida util. no cálculo do ICMS retido for maior que a BC da op. efet. realizada com o cons. final Art. 45, XI e Art. 46, § 4º, III do Anexo VIII do RCTE.",
+          "documentVersions": ["tabela-5-1-1-v151"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-1-1:cod:GO000034",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-1-1",
+      "sortPath": "5-1-1.GO000034",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.1.1 > GO000034",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.1.1 (GO), código GO000034",
+          "validDuring": {
+            "from": "2019-09-01",
+            "to": null
+          },
+          "validityBasis": "table_declared",
+          "text": "GO000034 - Débito de ICMS calculado sobre o total de entradas do mês, relativo a Operações de fornecimento de mercadorias com prest. de serviços de máquinas e equipamentos eletrônicos, TARE 052/02 - GSF. Art. 520 do RCTE.",
+          "documentVersions": ["tabela-5-1-1-v151"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-1-1:cod:GO000035",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-1-1",
+      "sortPath": "5-1-1.GO000035",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.1.1 > GO000035",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.1.1 (GO), código GO000035",
+          "validDuring": {
+            "from": "2024-10-01",
+            "to": null
+          },
+          "validityBasis": "table_declared",
+          "text": "GO000035 - Débito de ICMS de operações incentivadas para contribuintes do FOMENTAR/PRODUZIR/PROGOIÁS de documento fiscal extemporâneo ou complementar extemporâneo registrado na EFD e cujo DARE foi pago. Art. 141, §2º, II do RCTE e Parecer 216/2024-GEOT.",
+          "documentVersions": ["tabela-5-1-1-v151"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-1-1:cod:GO009999",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-1-1",
+      "sortPath": "5-1-1.GO009999",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.1.1 > GO009999",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.1.1 (GO), código GO009999",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": "2010-08-01"
+          },
+          "validityBasis": "table_declared",
+          "text": "GO009999 - Código genérico em função da inexistência de código específico previsto na tabela. ICMS Próprio",
+          "documentVersions": ["tabela-5-1-1-v151"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-1-1:cod:GO010001",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-1-1",
+      "sortPath": "5-1-1.GO010001",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.1.1 > GO010001",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.1.1 (GO), código GO010001",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": "2010-08-02"
+          },
+          "validityBasis": "table_declared",
+          "text": "GO010001 - Ref. ao cr out pelo equip do ECF em que o contrib. q cesse o uso do ECF, em pzo. inf a 2 anos, a contar do início de sua efetiva utiliz, no mesmo per. de apur. em que ocorrer a cess de uso ou em desacor. com a leg especif. - IN 495/01-GSF - Art. 7, I e II",
+          "documentVersions": ["tabela-5-1-1-v151"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-1-1:cod:GO010002",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-1-1",
+      "sortPath": "5-1-1.GO010002",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.1.1 > GO010002",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.1.1 (GO), código GO010002",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": "2010-08-02"
+          },
+          "validityBasis": "table_declared",
+          "text": "GO010002 - Ref. cr. out. pela adquis. equip e software neces. p/integr da oper com cartão de cr ou déb. ao ECF, em que o contrib. deixar de op c/cartão de cr ou déb, em prazo inf. a 2 anos, a contar do início de sua efetiva utiliz. - IN 571/02-GSF - Art. 8, I e II",
+          "documentVersions": ["tabela-5-1-1-v151"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-1-1:cod:GO010003",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-1-1",
+      "sortPath": "5-1-1.GO010003",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.1.1 > GO010003",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.1.1 (GO), código GO010003",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": "2015-12-01"
+          },
+          "validityBasis": "table_declared",
+          "text": "GO010003 - Ref. a utiliz da red de b. de cálc prev no inc VIII do Art. 8º, An IX-RCTE. O benef pode ser utiliz, desde q, no final do per de apur, o contrib efetue o estorno do corresp cr. de ICMS q tenha sido aprov em perc sup a 7% - IN 899/08-GSF - Art. 2º, § 1º",
+          "documentVersions": ["tabela-5-1-1-v151"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-1-1:cod:GO010004",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-1-1",
+      "sortPath": "5-1-1.GO010004",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.1.1 > GO010004",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.1.1 (GO), código GO010004",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": "2017-02-01"
+          },
+          "validityBasis": "table_declared",
+          "text": "GO010004 - Ref. à entrada de mercadoria recebida em devolução, o contribuinte deve estornar o crédito do imposto apropriado em função de benefício fiscal relacionado à operação de saída. - Parecer nº 600/05 GOT",
+          "documentVersions": ["tabela-5-1-1-v151"]
+        },
+        {
+          "displayLabel": "Tabela 5.1.1 (GO), código GO010004",
+          "validDuring": {
+            "from": "2017-02-01",
+            "to": "2017-02-03"
+          },
+          "validityBasis": "table_declared",
+          "text": "GO010004 - Ref. à entrada de mercadoria recebida em devolução, o contribuinte deve estornar o crédito do imposto apropriado em função de benefício fiscal relacionado à operação de saída. -Parecer nº 600/05 GOT",
+          "documentVersions": ["tabela-5-1-1-v151"]
+        },
+        {
+          "displayLabel": "Tabela 5.1.1 (GO), código GO010004",
+          "validDuring": {
+            "from": "2021-01-01",
+            "to": "2023-09-01"
+          },
+          "validityBasis": "table_declared",
+          "text": "GO010004 - Ref. à entrada de mercadoria recebida em devolução, o contribuinte deve estornar o crédito do imposto apropriado em função de benefício fiscal relacionado à operação de saída. - Parecer nº 600/05 GOT",
+          "documentVersions": ["tabela-5-1-1-v151"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-1-1:cod:GO010005",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-1-1",
+      "sortPath": "5-1-1.GO010005",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.1.1 > GO010005",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.1.1 (GO), código GO010005",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": null
+          },
+          "validityBasis": "table_declared",
+          "text": "GO010005 - Ref. à decisão de restituição de ICMS denegatória do pagamento do mesmo, referente à substituição tributária e cujo fato gerador não se realizou e que foi aproveitado nos termos do Art. 49, II do CTE - RCTE - Art. 42, II",
+          "documentVersions": ["tabela-5-1-1-v151"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-1-1:cod:GO010006",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-1-1",
+      "sortPath": "5-1-1.GO010006",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.1.1 > GO010006",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.1.1 (GO), código GO010006",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": null
+          },
+          "validityBasis": "table_declared",
+          "text": "GO010006 - Ref. à decisão denegatória de aprov de cr. prop ao imp estornado ou não creditado em op. ou prest. anteriores, de oper. tributada realizada com prod. agrop, ..., e esta por sua vez, antecedida de oper. ou prest tributada - RCTE - Art. 50, § 2º",
+          "documentVersions": ["tabela-5-1-1-v151"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-1-1:cod:GO010007",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-1-1",
+      "sortPath": "5-1-1.GO010007",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.1.1 > GO010007",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.1.1 (GO), código GO010007",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": null
+          },
+          "validityBasis": "table_declared",
+          "text": "GO010007 - Ref. ao vl. corresp à dif. constatada resultar cr. sup. para o estab. remetente, entre o valor corresp à dif. apurada, do confronto entre o cr. e o déb. do icms, na hip de transf. Inter. de bem integrado ao at. imob. - RCTE - Art. 11, II, “c” - ANEXO IX",
+          "documentVersions": ["tabela-5-1-1-v151"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-1-1:cod:GO010008",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-1-1",
+      "sortPath": "5-1-1.GO010008",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.1.1 > GO010008",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.1.1 (GO), código GO010008",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": null
+          },
+          "validityBasis": "table_declared",
+          "text": "GO010008 - Ref. ao vl. corresp. à dif. constatada resultar cr. sup. para o estab. remetente, entre o valor corresp. à dif. apurada, do confronto entre o cr. e o déb. do icms, na hip. de transf. Inter.l de material de uso/consumo - RCTE - Art. 11, II, “c” - ANEXO IX",
+          "documentVersions": ["tabela-5-1-1-v151"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-1-1:cod:GO010009",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-1-1",
+      "sortPath": "5-1-1.GO010009",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.1.1 > GO010009",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.1.1 (GO), código GO010009",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": "2022-01-01"
+          },
+          "validityBasis": "table_declared",
+          "text": "GO010009 - Ref. ao valor integral do cr. out. para o estab. Fab. ou revendedor de combustível, ao valor equivalente ao da aquisição de equip. medidor eletrônico de vazão - RCTE - Art. 11, XIV, \"g\" e \"j\" 1 e 2 - Anexo IX",
+          "documentVersions": ["tabela-5-1-1-v151"]
+        },
+        {
+          "displayLabel": "Tabela 5.1.1 (GO), código GO010009",
+          "validDuring": {
+            "from": "2022-01-01",
+            "to": "2022-01-02"
+          },
+          "validityBasis": "table_declared",
+          "text": "GO010009 - Ref. ao valor integral do cr. out. para o estab. Fab. ou rev. de combustível, ao valor equivalente ao da aquisição de equip. medidor eletrônico de vazão - RCTE - Art. 11, XIV, \"g\" e \"j\" 1 e 2 - Anexo IX. Mantido nas situações do art 2º do Dec. 10008/21.",
+          "documentVersions": ["tabela-5-1-1-v151"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-1-1:cod:GO010010",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-1-1",
+      "sortPath": "5-1-1.GO010010",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.1.1 > GO010010",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.1.1 (GO), código GO010010",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": null
+          },
+          "validityBasis": "table_declared",
+          "text": "GO010010 - Ref. ao cr. correspondente à respectiva entrada, qdo o estabelecimento da construtora que efetuar venda ao público, realizar remessa para a obra que executar, - RCTE - Art. 28 § único - Anexo XIII",
+          "documentVersions": ["tabela-5-1-1-v151"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-1-1:cod:GO010011",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-1-1",
+      "sortPath": "5-1-1.GO010011",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.1.1 > GO010011",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.1.1 (GO), código GO010011",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": null
+          },
+          "validityBasis": "table_declared",
+          "text": "GO010011 - Referente ao estorno de crédito, mediante Notificação Fiscal, sem prejuízo da aplicação de penalidade cabível, desde que não tenha havido omissão do pagamento do imposto - RCTE - Art. 445-A",
+          "documentVersions": ["tabela-5-1-1-v151"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-1-1:cod:GO010012",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-1-1",
+      "sortPath": "5-1-1.GO010012",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.1.1 > GO010012",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.1.1 (GO), código GO010012",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": null
+          },
+          "validityBasis": "table_declared",
+          "text": "GO010012 - Ref. à decisão denegatória de aproveitamento de crédito perda ou extravio da 1ª (primeira) via do documento fiscal respectivo - RCTE - Art. 53, § 3º",
+          "documentVersions": ["tabela-5-1-1-v151"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-1-1:cod:GO010013",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-1-1",
+      "sortPath": "5-1-1.GO010013",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.1.1 > GO010013",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.1.1 (GO), código GO010013",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": null
+          },
+          "validityBasis": "table_declared",
+          "text": "GO010013 - Ref. às entradas recebidas em transf e qdo a base de cálc. utilizada na operação subsequente for inferior à da respectiva transf. - RCTE - Art. 58, § 2º",
+          "documentVersions": ["tabela-5-1-1-v151"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-1-1:cod:GO010014",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-1-1",
+      "sortPath": "5-1-1.GO010014",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.1.1 > GO010014",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.1.1 (GO), código GO010014",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": null
+          },
+          "validityBasis": "table_declared",
+          "text": "GO010014 - Ref. serviço transporte cuja entradas recebidas em transf e qdo a bc utilizada na op subseqüente for inferior à da respectiva transf - RCTE - Art. 58, § 2º e Art. 61",
+          "documentVersions": ["tabela-5-1-1-v151"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-1-1:cod:GO010015",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-1-1",
+      "sortPath": "5-1-1.GO010015",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.1.1 > GO010015",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.1.1 (GO), código GO010015",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": "2011-07-01"
+          },
+          "validityBasis": "table_declared",
+          "text": "GO010015 - Ref. entrada serv comunic cuja saída ou prest serv seja isenta ou não-trib ou seja utiliz como insumo proces industr ou prest serv, cuja saída prod result ou serv prest for isento ou não trib. - RCTE - Art. 58, I, \"a\" e \"c\", 1 e Art. 61",
+          "documentVersions": ["tabela-5-1-1-v151"]
+        },
+        {
+          "displayLabel": "Tabela 5.1.1 (GO), código GO010015",
+          "validDuring": {
+            "from": "2011-07-01",
+            "to": null
+          },
+          "validityBasis": "table_declared",
+          "text": "GO010015 - Ref. à entrada de serviço de comunic cuja saída ou prest de serviço seja isenta ou não-trib; ou for integrado ou consumido em processo de produção ou industr, quando a saída da merc result for isenta ou não-trib -RCTE - Art. 58, I,  \"a\" e \"c\", 1 e Art. 61",
+          "documentVersions": ["tabela-5-1-1-v151"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-1-1:cod:GO010016",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-1-1",
+      "sortPath": "5-1-1.GO010016",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.1.1 > GO010016",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.1.1 (GO), código GO010016",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": "2011-07-01"
+          },
+          "validityBasis": "table_declared",
+          "text": "GO010016 - Ref. serviço transporte cuja saída ou prest serv seja isenta ou não-trib ou seja utiliz como insumo proces de industr ou prest de serv, cuja saída prod result ou serv prestado for isento ou não trib - RCTE - Art. 58, I, \"a\" e \"c\", 1 e Art. 61",
+          "documentVersions": ["tabela-5-1-1-v151"]
+        },
+        {
+          "displayLabel": "Tabela 5.1.1 (GO), código GO010016",
+          "validDuring": {
+            "from": "2011-07-01",
+            "to": null
+          },
+          "validityBasis": "table_declared",
+          "text": "GO010016 - Ref. ao serviço de transporte cuja saída ou prest de serv seja isenta ou não-trib; ou for integrado ou consumido em processo de produção ou industr, quando a saída da mercadoria resultante for isenta ou não-trib  -RCTE - Art. 58, I, \"a\" e \"c\", 1 e Art. 61",
+          "documentVersions": ["tabela-5-1-1-v151"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-1-1:cod:GO010017",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-1-1",
+      "sortPath": "5-1-1.GO010017",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.1.1 > GO010017",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.1.1 (GO), código GO010017",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": "2011-07-01"
+          },
+          "validityBasis": "table_declared",
+          "text": "GO010017 - Ref. entrada energia elét cuja saída ou prest serv seja isenta ou não-tributada ou em que seja utiliz como insumo e cuja saída do prod result ou do serv prest for isento ou não tributado - RCTE - Art. 58, I, \"a\" e \"c\", item 1 e Art. 61",
+          "documentVersions": ["tabela-5-1-1-v151"]
+        },
+        {
+          "displayLabel": "Tabela 5.1.1 (GO), código GO010017",
+          "validDuring": {
+            "from": "2011-07-01",
+            "to": null
+          },
+          "validityBasis": "table_declared",
+          "text": "GO010017 - Ref. à entrada de energia elét cuja saída ou prest de serviço seja isenta ou não-trib; ou for integrada ou consumida em processo de produção ou industr, quando a saída da merc result for isenta ou não-trib -RCTE - Art. 58, I, \"a\" e \"c\", item 1 e Art.  61",
+          "documentVersions": ["tabela-5-1-1-v151"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-1-1:cod:GO010018",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-1-1",
+      "sortPath": "5-1-1.GO010018",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.1.1 > GO010018",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.1.1 (GO), código GO010018",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": null
+          },
+          "validityBasis": "table_declared",
+          "text": "GO010018 - Ref. à entrada de serviço de comunicação cuja saída ou prestação de serviço seja contemplada com redução de base de cálculo, hipótese em que o estorno é proporcional a essa redução; - RCTE - Art. 58, I, \"b\" e Art. 61",
+          "documentVersions": ["tabela-5-1-1-v151"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-1-1:cod:GO010019",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-1-1",
+      "sortPath": "5-1-1.GO010019",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.1.1 > GO010019",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.1.1 (GO), código GO010019",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": null
+          },
+          "validityBasis": "table_declared",
+          "text": "GO010019 - Ref. à entrada e que tenha sido utiliz no consumo do próprio estabel., relativa e proporc. à parcela das oper. ou prest. isentas ou não-tribut., considerando-se as saídas e as prest. com destino ao exterior como sendo tributadas - RCTE - Art. 58, I, \"e\"",
+          "documentVersions": ["tabela-5-1-1-v151"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-1-1:cod:GO010020",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-1-1",
+      "sortPath": "5-1-1.GO010020",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.1.1 > GO010020",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.1.1 (GO), código GO010020",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": null
+          },
+          "validityBasis": "table_declared",
+          "text": "GO010020 - Ref. serv transp cuja entrada e que tenha sido utiliz no uso ou consumo final do próprio estab, e houver saída ou prest isen ou não trib, na prop que estas saídas ou prest represent total saídas e prest no mesmo período - RCTE - Art. 58, I, \"e\" e Art. 61",
+          "documentVersions": ["tabela-5-1-1-v151"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-1-1:cod:GO010021",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-1-1",
+      "sortPath": "5-1-1.GO010021",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.1.1 > GO010021",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.1.1 (GO), código GO010021",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": "2011-07-01"
+          },
+          "validityBasis": "table_declared",
+          "text": "GO010021 - Ref. entrada em que seja utilizada como insumo processo industr ou prest serv, e houver saída ou prest isentas ou não trib e sendo impossível determinar a qual delas corresponde a mercad ou o serviço. - RCTE - Art. 58, I, “ c”, 2",
+          "documentVersions": ["tabela-5-1-1-v151"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-1-1:cod:GO010022",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-1-1",
+      "sortPath": "5-1-1.GO010022",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.1.1 > GO010022",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.1.1 (GO), código GO010022",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": null
+          },
+          "validityBasis": "table_declared",
+          "text": "GO010022 - Ref. à entrada de mercadoria ou bem cuja saída ou prestação de serviço seja isenta ou não-tributada - RCTE - Art. 58, I, “a”",
+          "documentVersions": ["tabela-5-1-1-v151"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-1-1:cod:GO010023",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-1-1",
+      "sortPath": "5-1-1.GO010023",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.1.1 > GO010023",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.1.1 (GO), código GO010023",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": "2020-10-01"
+          },
+          "validityBasis": "table_declared",
+          "text": "GO010023 - Ref. à entrada cuja saída ou prestação de serviço seja contemplada com redução de base de cálculo, hipótese em que o estorno é proporcional a essa redução. - RCTE - Art. 58, I, “b” e §4º",
+          "documentVersions": ["tabela-5-1-1-v151"]
+        },
+        {
+          "displayLabel": "Tabela 5.1.1 (GO), código GO010023",
+          "validDuring": {
+            "from": "2020-10-01",
+            "to": null
+          },
+          "validityBasis": "table_declared",
+          "text": "GO010023 - Ref. à entrada DE MERCADORIA cuja saída ou prestação de serviço seja contemplada com redução de base de cálculo, hipótese em que o estorno é proporcional a essa redução. - RCTE - Art. 58, I, “b” e §4º",
+          "documentVersions": ["tabela-5-1-1-v151"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-1-1:cod:GO010024",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-1-1",
+      "sortPath": "5-1-1.GO010024",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.1.1 > GO010024",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.1.1 (GO), código GO010024",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": null
+          },
+          "validityBasis": "table_declared",
+          "text": "GO010024 - Ref. a prestação de serviço de transporte correspondente seja contemplada com redução de base de cálculo, hipótese em que o estorno é proporcional a essa redução. - RCTE - Art. 58, I, “b” e §4º, Art. 61",
+          "documentVersions": ["tabela-5-1-1-v151"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-1-1:cod:GO010025",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-1-1",
+      "sortPath": "5-1-1.GO010025",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.1.1 > GO010025",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.1.1 (GO), código GO010025",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": null
+          },
+          "validityBasis": "table_declared",
+          "text": "GO010025 - Ref. à entrada de energia elétrica cuja saída ou prestação de serviço seja contemplada com redução de base de cálculo, hipótese em que o estorno é proporcional a essa redução. - RCTE - Art. 58, I, “b” e §4º, Art. 61",
+          "documentVersions": ["tabela-5-1-1-v151"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-1-1:cod:GO010026",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-1-1",
+      "sortPath": "5-1-1.GO010026",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.1.1 > GO010026",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.1.1 (GO), código GO010026",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": null
+          },
+          "validityBasis": "table_declared",
+          "text": "GO010026 - Ref. à entrada em que seja integrada ou consumida em processo de produção, industrialização e cuja saída da mercadoria resultante for isenta ou não tributada - RCTE - Art. 58, I, “c”, 1",
+          "documentVersions": ["tabela-5-1-1-v151"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-1-1:cod:GO010027",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-1-1",
+      "sortPath": "5-1-1.GO010027",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.1.1 > GO010027",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.1.1 (GO), código GO010027",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": "2011-07-01"
+          },
+          "validityBasis": "table_declared",
+          "text": "GO010027 - Ref. à entrada em que seja utilizada como insumo em processo de produção, industr ou prest de serv, e cuja saída do prod result ou do serv prestado for isento ou não tributado - RCTE - Art. 58, I, “c”, 1",
+          "documentVersions": ["tabela-5-1-1-v151"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-1-1:cod:GO010028",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-1-1",
+      "sortPath": "5-1-1.GO010028",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.1.1 > GO010028",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.1.1 (GO), código GO010028",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": "2011-07-01"
+          },
+          "validityBasis": "table_declared",
+          "text": "GO010028 - Ref. à entrada em que seja integrada ou consumida em processo de industrialização, e houver saída ou prest isentas ou não trib e sendo impossível determinar a qual delas corresponde a mercadoria - RCTE - Art. 58, I, “c”, 2",
+          "documentVersions": ["tabela-5-1-1-v151"]
+        },
+        {
+          "displayLabel": "Tabela 5.1.1 (GO), código GO010028",
+          "validDuring": {
+            "from": "2011-07-01",
+            "to": "2020-10-01"
+          },
+          "validityBasis": "table_declared",
+          "text": "GO010028 - Ref. à entrada em que seja integrada ou consumida em processo de industrialização, e houver saída isenta ou não tributada e sendo impossível determinar a qual delas corresponde a mercadoria -RCTE - Art. 58, I, “c”, 2",
+          "documentVersions": ["tabela-5-1-1-v151"]
+        },
+        {
+          "displayLabel": "Tabela 5.1.1 (GO), código GO010028",
+          "validDuring": {
+            "from": "2020-10-01",
+            "to": null
+          },
+          "validityBasis": "table_declared",
+          "text": "GO010028 - Ref. a entrada que seja integrada ou cons. em proc. de ind. e houver saída isenta ou não trib. sendo imp. det. a qual delas EQUIV a merc, na prop. que estas saídas ou prest. repres. do total das saídas e prest. no mesmo período - RCTE - Art. 58, I, “c”, 2.",
+          "documentVersions": ["tabela-5-1-1-v151"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-1-1:cod:GO010029",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-1-1",
+      "sortPath": "5-1-1.GO010029",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.1.1 > GO010029",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.1.1 (GO), código GO010029",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": "2011-07-01"
+          },
+          "validityBasis": "table_declared",
+          "text": "GO010029 - Ref. à entrada de mercadoria e integrada ao ativo imobilizado do estabelecimento, e houver perecimento, sinistro, furto, roubo ou deterioração do bem, para bens adquiridos até 31.12.00 - RCTE - Art. 58, I, “d”, 2",
+          "documentVersions": ["tabela-5-1-1-v151"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-1-1:cod:GO010030",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-1-1",
+      "sortPath": "5-1-1.GO010030",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.1.1 > GO010030",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.1.1 (GO), código GO010030",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": "2011-07-01"
+          },
+          "validityBasis": "table_declared",
+          "text": "GO010030 - Ref. à entrada de mercadoria e integrada ao ativo imobilizado do estabelecimento, e houver saída de produto ou mercadoria isentos ou não tributados, para bens adquiridos até 31.12.00 - RCTE - Art. 58, I, “d”, 1",
+          "documentVersions": ["tabela-5-1-1-v151"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-1-1:cod:GO010031",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-1-1",
+      "sortPath": "5-1-1.GO010031",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.1.1 > GO010031",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.1.1 (GO), código GO010031",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": "2011-07-01"
+          },
+          "validityBasis": "table_declared",
+          "text": "GO010031 - Ref. ao serviço de transporte cuja entrada de mercadoria e integrada ao ativo imobilizado do estabelecimento, e houver saída de produto ou mercadoria isentos ou não tributados - RCTE - Art. 58, I, “d”, 1 e Art. 61",
+          "documentVersions": ["tabela-5-1-1-v151"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-1-1:cod:GO010032",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-1-1",
+      "sortPath": "5-1-1.GO010032",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.1.1 > GO010032",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.1.1 (GO), código GO010032",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": "2011-07-01"
+          },
+          "validityBasis": "table_declared",
+          "text": "GO010032 - Ref. entrada utiliz no uso ou consumo final do próprio estabel., e houver saída ou prest isentas ou não trib, na prop. em que estas saídas ou prest represent do total das saídas e prest no mesmo período (apl. a partir de 01.01.03) - RCTE - Art. 58, I, “e”",
+          "documentVersions": ["tabela-5-1-1-v151"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-1-1:cod:GO010033",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-1-1",
+      "sortPath": "5-1-1.GO010033",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.1.1 > GO010033",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.1.1 (GO), código GO010033",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": "2011-07-01"
+          },
+          "validityBasis": "table_declared",
+          "text": "GO010033 - Ref. entrada serviço comunicação em que seja utilizada como insumo em processo industr ou prest serv, e houver saída ou prest isentas ou não trib e impossível determinar a qual corresp a mercad ou o serviço - RCTE - Art. 58, I,” c”, 2 e Art. 61",
+          "documentVersions": ["tabela-5-1-1-v151"]
+        },
+        {
+          "displayLabel": "Tabela 5.1.1 (GO), código GO010033",
+          "validDuring": {
+            "from": "2011-07-01",
+            "to": null
+          },
+          "validityBasis": "table_declared",
+          "text": "GO010033 - Ref.  à entrada de serviço de comunicação em que seja integrada ou consumida em processo de industr, e houver saída isenta/não trib e sendo impossível determinar a qual delas corresponde a mercadoria -RCTE - Art. 58, I,” c”, 2 e Art. 61;CTE Art. 61, § 3º",
+          "documentVersions": ["tabela-5-1-1-v151"]
+        }
+      ]
+    },
+    {
+      "stableKey": "go:tabelas-go:tab:5-1-1:cod:GO010034",
+      "kind": "codigo",
+      "parent": "go:tabelas-go:tab:5-1-1",
+      "sortPath": "5-1-1.GO010034",
+      "headingPath": "Tabelas da EFD ICMS/IPI de Goiás > Tabela 5.1.1 > GO010034",
+      "versions": [
+        {
+          "displayLabel": "Tabela 5.1.1 (GO), código GO010034",
+          "validDuring": {
+            "from": "2009-01-01",
+            "to": "2011-07-01"
+          },
+          "validityBasis": "table_declared",
+          "text": "GO010034 - Ref. ao serviço transporte entrada seja utilizada como insumo processo industr ou prest serv, e houver saída ou prest isentas ou não trib e sendo impossível determinar a qual delas corresp mercad ou o serv - RCTE - Art. 58, I,” c”, 2 e Art. 61",
+          "documentVersions": ["tabela-5-1-1-v151"]
+        },
+        {
+          "displayLabel": "Tabela 5.1.1 (GO), código GO010034",
+          "validDuring": {
+            "from": "2011-07-01",
+            "to": null
+          },
+          "validityBasis": "table_declared",
+          "text": "GO010034 - Ref.  ao serviço de transporte cuja entrada seja integrada ou consumida em processo de industr, e houver saída isenta ou não trib e sendo impossível determinar a qual delas corresponde a mercadoria -RCTE - Art. 58, I,” c”, 2 e Art. 61;CTE Art. 61, § 3º",
+          "documentVersions": ["tabela-5-1-1-v151"]
+        }
+      ]
+    }
+  ]
+}
