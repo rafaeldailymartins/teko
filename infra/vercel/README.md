@@ -192,15 +192,28 @@ registrado; o resto continua aberto:
 - [x] Install/Build Command: sem efeito, porque a Vercel não constrói mais nada (no run
   42980171686, o `vercel build` reaproveitou a instalação do CI: "Done in 2ms using pnpm
   v12.18.0");
-- [ ] `engines.node` 24.x efetivo, `VERCEL_REGION=gru1` em runtime e o nome da Function (para o
-  glob de `functions` no `vercel.json`);
+- [x] `engines.node` 24.x efetivo, `VERCEL_REGION=gru1` em runtime e o nome da Function: **sim**
+  (run 42987608534). O `/healthz` responde 200 com `env: staging`, o que só acontece com as travas
+  de boot de Node `v24.*` e `VERCEL_REGION=gru1` satisfeitas; `vercel inspect` mostra
+  `λ index (8.54MB) [gru1]`. A Function é `index` (`.vc-config.json` com `nodejs24.x`), e
+  `maxDuration`/`supportsCancellation` vão no `.vc-config.json`, não no `vercel.json`;
+- [x] env vars do `teko-api-staging`: o projeto não tinha nenhuma. As Config da F1 de
+  `env.staging.json` (`APP_ENV`, `NODE_ENV`, `RUNTIME_TARGET`, `WEB_ORIGIN`,
+  `FUNCTION_MAX_DURATION_S`, `LOG_LEVEL`) foram **gravadas à mão no spike** (2026-11-11, Config de
+  Production, `vercel env add --no-sensitive`), com aval do mantenedor; nenhuma Sensitive. O
+  `scripts/vercel-env-sync.ts` da F7 assume isso. O `teko-api` (produção) ainda não existe;
+- [x] `under-pressure` na Vercel: com `maxEventLoopDelay: 1000`, o domínio de produção ficou em 503
+  `service_paused` depois de ~10 s de ociosidade (o congelamento da instância Fluid conta como
+  atraso do event loop). Na Vercel, o limite fica desligado (rafaeldailymartins/teko#8, ADR 0017);
+  depois disso (run 42989881707), 13 de 13 respostas 200 com até 60 s de ociosidade entre elas;
 - [ ] SSE de 95 s com heartbeat de 15 s e primeiro byte atrasado em 30 s, sem corte nem buffering;
 - [ ] desconexão (`request.signal`, `close` do `request.raw`) com e sem `supportsCancellation`;
 - [ ] `waitUntil` depois da resposta, SIGTERM no scale-down e prazo de invocação calculado a partir
   do `maxDuration`;
 - [ ] deploy e `promote` durante um stream ativo; `vercel rollback`/`promote` no Hobby;
 - [ ] Sensitive de teste visível em runtime e ausente do `.vercel/output` e do tarball;
-- [ ] Deployment Protection: URL única sem bypass bloqueada, domínio de produção público;
+- [x] Deployment Protection: URL única sem bypass bloqueada (HTTP 302 para o login da Vercel) e
+  domínio de produção público (200 sem bypass), no run 42987608534;
 - [ ] `trustProxy` de 1 salto: o `X-Forwarded-For` que chega ao servidor capturado tem só o IP do
   cliente; `x-real-ip` e `x-forwarded-for` no caminho proxiado (spike c);
 - [ ] `x-nf-client-connection-ip`: a Netlify sobrescreve um valor enviado pelo cliente? Só então

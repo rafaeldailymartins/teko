@@ -25,9 +25,13 @@ Atualize esta seção no PR que fecha cada fase ou spike.
 - **F0 (contas e governança):** concluída. Falta só conferir o primeiro PR do Dependabot
   (`chore(deps): …`).
 - **F1 (esqueleto, gates e spikes):** esqueleto, gates e CI em `develop`. Spikes pendentes:
-  - (b) API na Vercel: o builder zero-config mantém imports `.ts` no `server.js` e a Function cai
-    com `ERR_MODULE_NOT_FOUND`. Vale o fallback do plano: o tsdown gera o Build Output API
-    (`.vercel/output`) e o CI pula o `vercel build`.
+  - (b) API na Vercel: deploy e `/healthz` concluídos (ADR 0003, "Spike (b)"). O zero-config
+    quebrava no boot; a API vai pelo Build Output API montado do bundle do tsdown
+    (`scripts/build-vercel-output.ts`, ADR 0017), Function `index`, Node 24 e `gru1` confirmados.
+    Na Vercel, o `under-pressure` roda sem limite de atraso do event loop. As Config da F1 do
+    `teko-api-staging` foram gravadas à mão (a F7 automatiza). Faltam as verificações manuais:
+    SSE de 95 s, desconexão com e sem `supportsCancellation`, `waitUntil`/SIGTERM, promote
+    durante stream, rollback, Sensitive de teste e cold start.
   - (a) web na Netlify: falta o Netlify CLI isolado em `tools/netlify-cli`, como o
     `tools/vercel-cli`.
   - (c) proxy Netlify → Vercel e (d) pooler do Neon dependem de (a) e (b).

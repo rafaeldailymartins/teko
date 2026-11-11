@@ -1,6 +1,6 @@
 ---
 
-status: proposed
+status: accepted
 date: 2026-11-11
 decision-makers: Rafael Daily Santos Martins
 ---
@@ -98,9 +98,9 @@ Opção escolhida: **Build Output API v3 montado a partir do bundle do tsdown**.
 - `scripts/build-vercel-output.test.ts` (`pnpm test:scripts`): forma do `config.json`, do
   `.vc-config.json` e da árvore da Function.
 - `apps/api/test/integration/server.test.ts`: o protocolo de captura do `listen` do launcher.
-- Spike F1 (b) no `spike-api-vercel.yml`: `/healthz` com 200 na URL única (com bypass) e no
-  domínio de produção do `teko-api-staging` (sem bypass). Resultado em
-  [ADR 0003](0003-f1-spikes.md).
+- Spike F1 (b) no `spike-api-vercel.yml` (runs 42987608534 e 42989881707): `/healthz` com 200 na
+  URL única (com bypass) e no domínio de produção do `teko-api-staging` (sem bypass), Function
+  `index` em `gru1` com Node 24. Resultado em [ADR 0003](0003-f1-spikes.md), "Spike (b)".
 
 ## Prós e contras das opções
 
