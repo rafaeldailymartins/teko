@@ -168,11 +168,12 @@ jobs:
           VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
           DEPLOYMENT_URL: ${{ steps.deploy.outputs.url }}
           BYPASS: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
-        # `--token` vem antes do subcomando: o `vercel curl` repassa ao curl as opções que não são
-        # dele. O bypass é sempre o do environment; sem ele, o CLI gera um segredo novo no projeto.
+        # Sem `--token`: o `vercel curl` repassa ao curl todos os argumentos que não são dele (até os
+        # globais antes do subcomando), então o token vem do env VERCEL_TOKEN, que o CLI lê. O bypass
+        # é sempre o do environment; sem ele, o CLI gera um segredo novo no projeto.
         run: |
           for path in /healthz /api/healthz; do
-            vercel --token "${VERCEL_TOKEN}" curl "$path" --deployment "$DEPLOYMENT_URL" \
+            vercel curl "$path" --deployment "$DEPLOYMENT_URL" \
               --protection-bypass "${BYPASS}" -- --fail-with-body --include
           done
 
@@ -200,7 +201,7 @@ jobs:
           echo "- promovida: ${DEPLOYMENT_URL}" >>"$GITHUB_STEP_SUMMARY"
           # O domínio de produção precisa ser público (proxy da Netlify, stream e preflight CORS
           # chegam sem login): curl puro, sem o bypass.
-          vercel --token "${VERCEL_TOKEN}" api "/v9/projects/${VERCEL_PROJECT_ID}/domains" >"${RUNNER_TEMP}/domains.json"
+          vercel api "/v9/projects/${VERCEL_PROJECT_ID}/domains" >"${RUNNER_TEMP}/domains.json"
           mapfile -t domains < <(jq -r '.domains[].name' "${RUNNER_TEMP}/domains.json")
           if (( ${#domains[@]} == 0 )); then
             echo "::error title=spike-api-vercel::O projeto não tem domínio de produção."
