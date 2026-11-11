@@ -42,6 +42,9 @@ catalogs:
     '@fission-ai/openspec':
       specifier: 1.16.0
       version: 1.16.0
+    '@netlify/plugin-nextjs':
+      specifier: 5.16.6
+      version: 5.16.6
     '@scalar/fastify-api-reference':
       specifier: 1.76.4
       version: 1.76.4
@@ -313,6 +316,9 @@ importers:
       '@feature-sliced/steiger-plugin':
         specifier: 'catalog:'
         version: 0.8.2(@typescript/typescript6@6.0.2)
+      '@netlify/plugin-nextjs':
+        specifier: 'catalog:'
+        version: 5.16.6
       '@tailwindcss/postcss':
         specifier: 'catalog:'
         version: 4.3.4
@@ -1039,6 +1045,10 @@ packages:
     peerDependencies:
       '@emnapi/core': ^1.7.1 || 2.0.0-beta.2 || 2.0.0-beta.3
       '@emnapi/runtime': ^1.7.1 || 2.0.0-beta.2 || 2.0.0-beta.3
+
+  '@netlify/plugin-nextjs@5.16.6':
+    resolution: {integrity: sha512-BXy5WhogsaQOKz+C+KMlWrQupdGkV1a6TmJ6RLF6RwUMz6Oi419RejMD8yB8ttBKqImQDkOE4MmNLx3uEEKxPw==}
+    engines: {node: '>=18.0.0'}
 
   '@next/env@16.4.5':
     resolution: {integrity: sha512-JwSPwpdkZL5VMl2jA/q+JI8MZdweAL3xmw5/tb9y/TLtmS0YXZnmYDzSihwk8xTj1OL+WM53gTqaj96yuLp6Xw==}
@@ -4743,6 +4753,8 @@ snapshots:
       '@emnapi/runtime': 1.11.2
       '@tybys/wasm-util': 0.10.4
     optional: true
+
+  '@netlify/plugin-nextjs@5.16.6': {}
 
   '@next/env@16.4.5': {}
 

@@ -39,6 +39,7 @@ global_pathspecs=(
   ':(glob).semgrep/**'
   ':(glob)sonar-project.properties'
   ':(glob)tools/vercel-cli/**'
+  ':(glob)tools/netlify-cli/**'
 )
 path_groups=(ingest rag llm)
 keys=(web api shared ingest rag llm)

@@ -11,3 +11,4 @@ rules:
       - ci.yml
       - pr-gate.yml
       - spike-api-vercel.yml
+      - spike-web-netlify.yml

@@ -96,6 +96,29 @@ updates:
         patterns:
           - "*"
 
+  # Netlify CLI no mesmo modelo (tools/netlify-cli/pnpm-workspace.yaml; ver ADR 0002).
+  - package-ecosystem: npm
+    directory: /tools/netlify-cli
+    target-branch: develop
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: America/Sao_Paulo
+    cooldown:
+      default-days: 7
+      semver-patch-days: 7
+      semver-minor-days: 7
+      semver-major-days: 14
+    commit-message:
+      prefix: chore
+      prefix-development: chore
+      include: scope
+    groups:
+      netlify-cli:
+        patterns:
+          - "*"
+
   - package-ecosystem: github-actions
     # A composite em .github/actions/setup também pina actions por SHA.
     directories:
