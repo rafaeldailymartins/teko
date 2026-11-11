@@ -6,8 +6,8 @@ workflow and the quality gates every change must pass. Security problems follow
 [Code of Conduct](CODE_OF_CONDUCT.md).
 
 > Code identifiers are in English. Code comments, specs, ADRs and most internal docs are in
-> Brazilian Portuguese; the public-facing files (this guide, `SECURITY.md`, `README.md`) are in
-> English.
+> Brazilian Portuguese. `README.md` is in Brazilian Portuguese, with an English version in
+> `README.en.md`; this guide and `SECURITY.md` are in English.
 
 ## Local setup
 

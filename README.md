@@ -1,79 +1,166 @@
+<div align="center">
+
+<img src="docs/assets/logo.svg" alt="Logo do Tekó: um T cuja barra é uma linha do tempo, com folhas brotando da haste" width="128" height="128">
+
 # Tekó
 
-**English** · [Português (Brasil)](README.pt-BR.md)
+**O assistente de IA para a legislação fiscal brasileira que sabe qual regra valia em cada data.**
 
 [![CI](https://img.shields.io/github/actions/workflow/status/rafaeldailymartins/teko/ci.yml?branch=develop&style=flat-square&label=CI)](https://github.com/rafaeldailymartins/teko/actions/workflows/ci.yml?query=branch%3Adevelop)
 [![CodeQL](https://img.shields.io/github/actions/workflow/status/rafaeldailymartins/teko/codeql.yml?branch=develop&style=flat-square&label=CodeQL)](https://github.com/rafaeldailymartins/teko/actions/workflows/codeql.yml)
 [![OpenSSF Scorecard](https://img.shields.io/ossf-scorecard/github.com/rafaeldailymartins/teko?style=flat-square&label=OpenSSF%20Scorecard)](https://scorecard.dev/viewer/?uri=github.com/rafaeldailymartins/teko)
 [![OpenSSF Best Practices](https://img.shields.io/cii/level/16550?style=flat-square&label=OpenSSF%20Best%20Practices)](https://www.bestpractices.dev/projects/16550)
-[![Codecov](https://img.shields.io/codecov/c/github/rafaeldailymartins/teko/develop?style=flat-square&label=coverage)](https://app.codecov.io/gh/rafaeldailymartins/teko/tree/develop)
+[![Codecov](https://img.shields.io/codecov/c/github/rafaeldailymartins/teko/develop?style=flat-square&label=cobertura)](https://app.codecov.io/gh/rafaeldailymartins/teko/tree/develop)
 [![Quality Gate](https://img.shields.io/sonar/quality_gate/rafaeldailymartins_teko?server=https%3A%2F%2Fsonarcloud.io&style=flat-square&label=quality%20gate)](https://sonarcloud.io/summary/new_code?id=rafaeldailymartins_teko)
-[![Mutation score](https://img.shields.io/endpoint?style=flat-square&url=https%3A%2F%2Fbadge-api.stryker-mutator.io%2Fgithub.com%2Frafaeldailymartins%2Fteko%2Fdevelop)](https://dashboard.stryker-mutator.io/reports/github.com/rafaeldailymartins/teko/develop)
-[![License: MIT](https://img.shields.io/github/license/rafaeldailymartins/teko?style=flat-square)](LICENSE)
+[![Score de mutação](https://img.shields.io/endpoint?style=flat-square&url=https%3A%2F%2Fbadge-api.stryker-mutator.io%2Fgithub.com%2Frafaeldailymartins%2Fteko%2Fdevelop)](https://dashboard.stryker-mutator.io/reports/github.com/rafaeldailymartins/teko/develop)
+[![Licença: MIT](https://img.shields.io/github/license/rafaeldailymartins/teko?style=flat-square)](LICENSE)
 [![Node.js](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2Frafaeldailymartins%2Fteko%2Fdevelop%2Fpackage.json&query=%24.engines.node&label=node&style=flat-square&logo=nodedotjs)](.nvmrc)
 
-> The name Tekó comes from the Tupi language.
+![Next.js](https://img.shields.io/badge/Next.js-16-000000?style=flat-square&logo=nextdotjs)
+![React](https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react&logoColor=black)
+![Fastify](https://img.shields.io/badge/Fastify-5-000000?style=flat-square&logo=fastify)
+![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?style=flat-square&logo=typescript&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-18_%2B_pgvector-4169E1?style=flat-square&logo=postgresql&logoColor=white)
+![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?style=flat-square&logo=tailwindcss&logoColor=white)
 
-Tekó is an open-source, zero-cost **RAG assistant for Brazilian tax legislation that is aware of
-validity dates** ("vigência"). It covers EFD ICMS/IPI, EFD-REINF and Goiás state rules (RCTE and
-EFD-GO). Instead of mixing wordings from different years, it:
+[🇧🇷 Português](README.md) · [🇺🇸 English](README.en.md)
 
-- resolves a **reference date** (usually the tax period), asking when the date is ambiguous;
-- **filters retrieval by validity range** in SQL, so only the wording in force on that date is used;
-- **cites the exact source**: article, paragraph or record and field, with document version and
-  validity interval;
-- **refuses** when the date falls outside the indexed coverage.
+</div>
 
-> **Status: early development (phase F1).** The monorepo skeleton, quality gates and local
-> infrastructure are in place; the platform spikes are pending. Nothing is deployed yet and the
-> answers are not usable. Some badges show "unknown" until their first run.
+## 💡 Sobre
 
-## Stack
+Quem trabalha com escrituração fiscal sabe: a resposta certa depende da data. Um campo da EFD, um
+código de ajuste ou um artigo do regulamento muda de redação, e misturar versões de épocas
+diferentes é a forma mais fácil de errar. O **Tekó** é um assistente RAG de código aberto e custo
+zero que responde sobre a legislação fiscal brasileira **com consciência de vigência**. Ele cobre a
+EFD ICMS/IPI, a EFD-REINF e as regras de Goiás (RCTE e EFD-GO).
 
-| Layer   | Technology                                                                                                                                                                                                |
-| ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Web     | Next.js 16 static export (no functions) on Netlify, React 19, Tailwind CSS 4, next-intl (en, pt-BR), Feature-Sliced Design                                                                                |
-| API     | Fastify 5 on Node.js 24, hexagonal architecture, Zod contracts shared via `@teko/shared`; deployed as a single Vercel Function (Fluid compute, region `gru1`) on Vercel Hobby, with Render Free as Plan B |
-| Data    | PostgreSQL 18 + pgvector (Neon in `aws-sa-east-1`, Docker locally), hybrid search with RRF                                                                                                                |
-| AI      | BGE-M3 embeddings, Gemini free tier with Groq fallback; PII redacted before any provider call                                                                                                             |
-| Tooling | pnpm 12 workspaces with a strict supply-chain policy, Turborepo, Biome, Vitest, Stryker, OpenSpec, lefthook, git-cliff                                                                                    |
+> 🌱 **Por que "Tekó"?** É uma palavra de origem tupi-guarani ligada ao "modo de ser", ao jeito de
+> viver de um povo. Aqui, é o jeito certo de ler a lei: no tempo em que ela valia.
 
-The API runs in two Vercel projects, `teko-api` (production, `teko-api.vercel.app`) and
-`teko-api-staging` (`teko-api-staging.vercel.app`). GitHub Actions builds and attests the output
-and deploys it with `vercel deploy --prebuilt`; there is no Git integration. See
-[ADR 0004](docs/adr/0004-vercel-hobby-api.md) for why (and why not a VM).
+## ✨ Como funciona
 
-**Non-commercial.** The API runs on Vercel's Hobby plan, which is for personal, non-commercial
-use. Tekó stays free and MIT-licensed, with no ads, affiliate links, paid tiers or paid services
-tied to the deployment. Donations are welcome.
+- 📅 **Data de referência.** Resolve a data da pergunta (em geral o período de apuração) e pergunta
+  de volta quando ela é ambígua.
+- 🔎 **Busca filtrada por vigência.** O filtro de vigência é feito em SQL, antes do ranking. Só
+  entra no contexto a redação em vigor naquela data, numa busca híbrida (vetorial + texto) com RRF.
+- 📌 **Citação exata.** Cada resposta aponta o artigo, o parágrafo ou o registro e o campo, com a
+  versão do documento e o intervalo de vigência.
+- 🛑 **Recusa honesta.** Quando a data está fora da cobertura indexada, o Tekó diz que não sabe em
+  vez de inventar.
+- 🛡️ **Privacidade.** Dados pessoais (CPF, CNPJ, e-mail etc.) são removidos antes de qualquer
+  chamada a um provedor de IA.
 
-## Quick start
+## 🚦 Status
 
-Requirements: Node.js 24, Corepack, Docker. On Windows, use Git Bash.
+> [!NOTE]
+> **Desenvolvimento inicial.** O esqueleto do monorepo, os gates de qualidade, a infraestrutura
+> local e os spikes de plataforma estão prontos (fases F0 e F1). A próxima fase traz o domínio de
+> vigência, o schema e a busca híbrida. Nada está publicado e as respostas ainda não são
+> utilizáveis.
+
+## 🧱 Stack
+
+| Camada         | Tecnologia                                                                                                                                         |
+| -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 🖥️ Web         | Next.js 16 com export estático (sem functions) na Netlify, React 19, Tailwind CSS 4, next-intl (pt-BR e en), Feature-Sliced Design                 |
+| ⚙️ API         | Fastify 5 em Node.js 24, arquitetura hexagonal, contratos Zod compartilhados via `@teko/shared`; uma única Vercel Function (Fluid compute, `gru1`) |
+| 🗄️ Dados       | PostgreSQL 18 + pgvector (Neon em `aws-sa-east-1`; Docker localmente), busca híbrida com RRF                                                       |
+| 🤖 IA          | Embeddings BGE-M3 (Cloudflare Workers AI), Gemini no plano gratuito com fallback no Groq                                                           |
+| 📥 Ingestão    | Python com Docling (TableFormer `ACCURATE`) para os PDFs e o WS de Tabelas Externas do SPED                                                        |
+| 🧰 Ferramentas | pnpm 12 com política estrita de supply chain, Turborepo, Biome, Vitest, Stryker, OpenSpec, lefthook, git-cliff                                     |
+
+## 🏗️ Arquitetura
+
+```
+Navegador
+  └── site estático (Netlify) ── proxy assinado (x-nf-sign) ──> API Fastify (Vercel Function, gru1)
+                                                                  ├── Postgres + pgvector (Neon)
+                                                                  ├── embeddings BGE-M3 (Workers AI)
+                                                                  └── LLM: Gemini → Groq (fallback)
+```
+
+- A API roda em dois projetos da Vercel: `teko-api` (produção) e `teko-api-staging`.
+- O GitHub Actions constrói e atesta o artefato e publica com `vercel deploy --prebuilt`; não há
+  integração Git. O porquê está na [ADR 0004](docs/adr/0004-vercel-hobby-api.md).
+- Se a Vercel faltar, há um Plano B no Render Free.
+
+## 🚀 Início rápido
+
+### 📋 Pré-requisitos
+
+- [Node.js](https://nodejs.org) 24 e Corepack
+- [Docker](https://www.docker.com) com Compose v2
+- No Windows, use o Git Bash
+
+### ▶️ Rodando
 
 ```bash
-corepack enable                 # or skip it and prefix every pnpm command with "corepack"
-pnpm install --frozen-lockfile  # e.g. corepack pnpm install --frozen-lockfile
-pnpm dev:secrets                                         # local-only secrets, git-ignored
-docker compose -f infra/local/compose.yaml up -d --wait  # Postgres + pgvector, signed dev proxy
+corepack enable                                          # ou prefixe cada comando com "corepack"
+pnpm install --frozen-lockfile
+pnpm dev:secrets                                         # segredos só locais, fora do git
+docker compose -f infra/local/compose.yaml up -d --wait  # Postgres + pgvector e proxy assinado de dev
 pnpm lint && pnpm typecheck && pnpm test
 ```
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for the full setup, Git Flow, the OpenSpec workflow and
-the quality gates.
+O [CONTRIBUTING.md](CONTRIBUTING.md) (em inglês) traz o setup completo, o Git Flow, o fluxo
+OpenSpec e todos os gates.
 
-## Project documents
+## ✅ Gates de qualidade
 
-- [CONTRIBUTING.md](CONTRIBUTING.md): setup, branches, commits (DCO), OpenSpec, quality gates
-- [SECURITY.md](SECURITY.md): how to report vulnerabilities privately
-- [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md): Contributor Covenant 2.1
-- [docs/adr/](docs/adr/): architecture decision records
+Tudo abaixo reprova o PR em vez de só avisar. O check `ci-gate` agrega os jobs e é obrigatório para
+entrar em `develop` e `main`.
 
-## Disclaimer
+| Gate                       | Ferramenta                                                        |
+| -------------------------- | ----------------------------------------------------------------- |
+| 🎨 Formatação e lint       | Biome, sem warnings                                               |
+| 🧩 Arquitetura             | dependency-cruiser (hexagonal), Steiger (FSD), `turbo boundaries` |
+| 🧹 Código morto e monorepo | knip, sherif, jscpd                                               |
+| 🔤 Tipos                   | `tsc` estrito e type-coverage ≥ 99%                               |
+| 🧪 Cobertura               | Vitest: ≥ 95% de linhas na API e no `shared`                      |
+| 🧬 Mutação                 | Stryker, score mínimo de 70                                       |
+| 🔐 Segurança               | CodeQL, Semgrep, gitleaks, osv-scanner, zizmor, dependency review |
+| 📦 Supply chain            | pnpm com release de pelo menos 7 dias e proveniência              |
+| 📐 Specs                   | `openspec validate --all --strict`                                |
 
-Tekó is a research and productivity tool for tax professionals. It is not legal or tax advice;
-always check the official sources it cites.
+## 🔒 Segurança
 
-## License
+Achou uma vulnerabilidade? Reporte em privado, como descreve o [SECURITY.md](SECURITY.md), e nunca
+numa issue pública. Injeção de prompt e vazamento de dados via RAG estão no escopo.
+
+## 💸 Custo zero e uso não comercial
+
+O Tekó roda só em planos gratuitos, sem cartão cadastrado em nenhum serviço. A API usa o plano
+Hobby da Vercel, que é para uso pessoal e não comercial: o projeto continua gratuito e MIT, sem
+anúncios, links de afiliado, planos pagos ou serviços pagos ligados ao deploy. Doações são
+bem-vindas.
+
+## 🤖 Como é desenvolvido
+
+O projeto é desenvolvido com o [Claude Code](https://claude.com/claude-code). Cada mudança nasce
+como uma proposta [OpenSpec](https://github.com/Fission-AI/OpenSpec), segue as regras do
+[`CLAUDE.md`](CLAUDE.md) e passa pelos gates acima no CI. As decisões de arquitetura ficam em
+[`docs/adr/`](docs/adr/).
+
+## 📚 Documentos
+
+- 🤝 [CONTRIBUTING.md](CONTRIBUTING.md): setup, branches, commits (DCO), OpenSpec e gates
+- 🔒 [SECURITY.md](SECURITY.md): como reportar vulnerabilidades em privado
+- 💬 [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md): Contributor Covenant 2.1
+- 🏛️ [docs/adr/](docs/adr/): registros de decisões de arquitetura
+
+## ⚖️ Aviso
+
+O Tekó é uma ferramenta de pesquisa e produtividade para profissionais da área fiscal. Não é
+consultoria jurídica nem tributária: confira sempre as fontes oficiais citadas.
+
+## 📄 Licença
 
 [MIT](LICENSE) © 2026 Rafael Daily Santos Martins
+
+## 👨‍💻 Autor
+
+Criado e mantido por:
+
+| [<img src="https://avatars.githubusercontent.com/u/162728324?v=4" width="60px;" alt=""/><br /><sub><b>Rafael Daily</b></sub>](https://github.com/rafaeldailymartins) |
+| :------------------------------------------------------------------------------------------------------------------------------------------------------------------: |

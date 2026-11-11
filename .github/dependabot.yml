@@ -130,11 +130,10 @@ updates:
       day: monday
       time: "06:00"
       timezone: America/Sao_Paulo
+    # O ecossistema github-actions só aceita `default-days`: as chaves `semver-*-days` invalidam o
+    # arquivo inteiro e nenhuma atualização roda (o mesmo vale para docker e docker-compose).
     cooldown:
       default-days: 7
-      semver-patch-days: 7
-      semver-minor-days: 7
-      semver-major-days: 14
     commit-message:
       prefix: chore
       prefix-development: chore
