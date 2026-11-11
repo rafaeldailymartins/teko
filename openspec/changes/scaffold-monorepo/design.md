@@ -53,6 +53,15 @@ verdade.
   `FUNCTION_MAX_DURATION_S`), o `dist/server.mjs` como handler e as dependências de produção do
   `pnpm deploy` hoisted; o CI não roda `vercel pull` nem `vercel build`. Alternativas e
   consequências na ADR 0017.
+- **Rotas temporárias `/api/_spike/*`** para os spikes (b) e (c): SSE com primeiro byte atrasado e
+  heartbeat, eco do proxy assinado (claims do `x-nf-sign`, IPs, nomes de cookies), runtime e
+  `waitUntil`. Só existem com `APP_ENV=staging` e `RUNTIME_TARGET=vercel` (`createHttpOptions`),
+  nunca devolvem valor de segredo e saem quando os spikes forem fechados. Alternativa: uma
+  Function à parte só para o spike; descartada porque mediria outra coisa, e não o `server.ts`
+  real.
+- **Spike (d) com `psql` do runner**, sem `pg` na API: o `pg` nunca foi publicado com proveniência,
+  e a regra do repositório exige proveniência para dependência nova. A decisão sobre o driver
+  fica para a F2; o `attachDatabasePool`, que depende do pool dentro da Function, também.
 - **Proxy de dev com Caddy em contêiner**, não um middleware no `next dev`: o export estático
   proíbe `proxy.ts`/middleware, e os rewrites do Next não injetam headers. O Caddy sobrescreve
   (`header_up` sem `+`) os três headers da Netlify; remoções com curinga foram evitadas porque o

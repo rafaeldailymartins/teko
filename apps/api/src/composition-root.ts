@@ -1,6 +1,6 @@
 import { AppEnv } from '@teko/shared/contracts'
 import type { FastifyBaseLogger, FastifyInstance } from 'fastify'
-import type { HttpOptions } from '#adapters/in/http/http-options.ts'
+import type { HttpOptions, SpikeRouteOptions } from '#adapters/in/http/http-options.ts'
 import { systemClock } from '#adapters/out/clock/system-clock.ts'
 import { createLogger } from '#adapters/out/telemetry/logger.ts'
 import type { Container } from '#app/container.ts'
@@ -11,7 +11,7 @@ import { createStreamBudget } from '#app/services/stream-budget.ts'
 import { createGetHealth } from '#app/use-cases/get-health.ts'
 import { type BuildInfo, createBuildInfo } from '#domain/shared/build-info.ts'
 import { buildApp } from './build-app.ts'
-import type { Env } from './config/env.ts'
+import { type Env, RuntimeTarget } from './config/env.ts'
 import {
   createPlatformAdapters,
   platformNetwork,
@@ -58,14 +58,35 @@ export function createContainer(env: Env, overrides: ContainerOverrides = {}): C
   }
 }
 
+/**
+ * Rotas `/api/_spike/*` dos spikes da F1: só em staging na Vercel, nunca em produção, no Render,
+ * no CI ou local. Saem quando os spikes forem fechados (registro na ADR 0003).
+ */
+function spikeRouteOptions(env: Env): SpikeRouteOptions | undefined {
+  if (env.APP_ENV !== AppEnv.Staging || env.RUNTIME_TARGET !== RuntimeTarget.Vercel) {
+    return undefined
+  }
+  return {
+    nodeVersion: process.version,
+    region: env.VERCEL_REGION ?? null,
+    maxDurationS: env.FUNCTION_MAX_DURATION_S,
+    sensitiveLength: env.TEKO_SPIKE_SENSITIVE?.length ?? null,
+    ...(env.NETLIFY_PROXY_JWS_SECRET === undefined
+      ? {}
+      : { proxySecret: env.NETLIFY_PROXY_JWS_SECRET }),
+  }
+}
+
 export function createHttpOptions(env: Env): HttpOptions {
   const network = platformNetwork(env)
+  const spike = spikeRouteOptions(env)
   return {
     webOrigin: env.WEB_ORIGIN,
     trustProxy: network.trustProxy,
     requestIdHeader: network.requestIdHeader,
     eventLoopDelayGuard: network.eventLoopDelayGuard,
     docs: env.APP_ENV !== AppEnv.Production,
+    ...(spike === undefined ? {} : { spike }),
     // Sem `rateLimit`: o `PgRateLimitStore` (tabela `app.rate_limits`) chega com o schema, e
     // nenhuma rota da F1 abre transação. Memória local não serve com várias instâncias.
   }

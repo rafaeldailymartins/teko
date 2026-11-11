@@ -19,6 +19,7 @@ import {
 import { STREAM_PREFIX, streamScope } from '#adapters/in/http/plugins/stream-cors.ts'
 import { registerProblemHandlers } from '#adapters/in/http/problem/error-handler.ts'
 import { healthRoutes } from '#adapters/in/http/routes/health.ts'
+import { spikeRoutes } from '#adapters/in/http/routes/spike.ts'
 import type { Container } from '#app/container.ts'
 
 export interface BuildAppDeps {
@@ -91,6 +92,10 @@ export async function buildApp(deps: BuildAppDeps): Promise<FastifyInstance> {
   }
 
   await app.register(healthRoutes)
+  if (deps.http.spike !== undefined) {
+    // Rotas temporárias dos spikes da F1: só staging na Vercel (`createHttpOptions`).
+    await app.register(spikeRoutes(deps.http.spike))
+  }
   await app.register(streamScope, { prefix: STREAM_PREFIX, webOrigin: deps.http.webOrigin })
 
   return app
