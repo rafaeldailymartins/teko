@@ -12,13 +12,17 @@
  *   script ANTES da primeira migração de cada projeto, para o bloco de grants achar os roles.
  *
  * Uso (o mantenedor, na própria máquina, com o `gh` autenticado):
- *   NEON_API_KEY=... NEON_PROJECT_ID=... node scripts/neon-roles.ts --env staging [--dry-run]
- *   NEON_API_KEY=... NEON_PROJECT_ID=... node scripts/neon-roles.ts --env production [--reset-password]
+ *   node scripts/neon-roles.ts --env staging --project <id-do-projeto> [--dry-run]
+ *   node scripts/neon-roles.ts --env production --project <id-do-projeto> [--reset-password]
  *
- * A API key é do projeto (project-scoped) e só existe no shell de quem roda; nada é gravado em disco.
+ * A API key é do projeto (project-scoped). Sem `NEON_API_KEY` no ambiente, o script a pede no
+ * terminal sem eco, e ela não fica no histórico do shell nem em disco. O ID do projeto não é
+ * segredo (`--project` ou `NEON_PROJECT_ID`).
  */
 import { execFileSync } from 'node:child_process'
 import { exit } from 'node:process'
+import { createInterface } from 'node:readline'
+import { Writable } from 'node:stream'
 import { parseArgs } from 'node:util'
 import { CliGuardError, findOnSafePath } from './lib/cli-guards.ts'
 
@@ -192,10 +196,31 @@ function setSecret(gh: string, target: SecretTarget, value: string): void {
   })
 }
 
+/** Lê uma linha do terminal sem ecoar o que é digitado (a API key nunca aparece na tela). */
+async function promptHidden(question: string): Promise<string> {
+  if (!process.stdin.isTTY) {
+    throw new CliGuardError('sem terminal interativo: defina NEON_API_KEY no ambiente')
+  }
+  process.stderr.write(question)
+  const muted = new Writable({
+    write: (_chunk, _encoding, callback) => {
+      callback()
+    },
+  })
+  const rl = createInterface({ input: process.stdin, output: muted, terminal: true })
+  try {
+    return (await new Promise<string>((resolve) => rl.question('', resolve))).trim()
+  } finally {
+    rl.close()
+    process.stderr.write('\n')
+  }
+}
+
 async function main(): Promise<void> {
   const { values } = parseArgs({
     options: {
       env: { type: 'string' },
+      project: { type: 'string' },
       'reset-password': { type: 'boolean', default: false },
       'dry-run': { type: 'boolean', default: false },
     },
@@ -205,10 +230,15 @@ async function main(): Promise<void> {
   if (target !== 'staging' && target !== 'production') {
     throw new CliGuardError('--env precisa ser staging ou production')
   }
-  const apiKey = process.env['NEON_API_KEY']
-  const projectId = process.env['NEON_PROJECT_ID']
-  if (!apiKey || !projectId || !/^[a-z0-9-]{1,64}$/.test(projectId)) {
-    throw new CliGuardError('defina NEON_API_KEY e NEON_PROJECT_ID (ID do projeto Neon)')
+  const projectId = values.project ?? process.env['NEON_PROJECT_ID']
+  if (!projectId || !/^[a-z0-9-]{1,64}$/.test(projectId)) {
+    throw new CliGuardError('informe o ID do projeto Neon (--project ou NEON_PROJECT_ID)')
+  }
+  const apiKey =
+    process.env['NEON_API_KEY'] ??
+    (await promptHidden(`API key do projeto Neon ${projectId} (${target}, não aparece na tela): `))
+  if (!apiKey) {
+    throw new CliGuardError('API key vazia')
   }
   const gh = findOnSafePath('gh')
   const neon = neonClient(apiKey)

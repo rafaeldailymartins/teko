@@ -6,7 +6,7 @@
 #
 # Todos os textos esperados (provisions, validity, facts, source_quote) vêm da fixture
 # test/fixtures/corpus, extraída das fontes oficiais (procedência no README da fixture). Curadoria
-# assistida: nenhum caso foi revisado pelo mantenedor ainda (reviewed_at: null).
+# assistida, revisada pelo mantenedor em 2026-11-11 (reviewed_at).
 
 # ---------------------------------------------------------------------------------------------
 # EFD ICMS/IPI (15): pares de campo que mudam entre o Guia 3.1.9 (leiaute 2025) e o 3.2.4 (2026)
@@ -28,8 +28,8 @@
   tags: [efd-icms-ipi, campo-tipo]
   source_url: https://www.gov.br/sped/pt-br/assuntos/escrituracoes-digitais/efd-icms-ipi/manuais-e-documentos-tecnicos/guia-pratico-efd-versao-3-1-9.pdf
   source_quote: 07 CNPJ Número de inscrição da entidade no CNPJ. N 014* - OC
-  curated_by: claude-opus-5.5 (curadoria assistida; revisão do mantenedor pendente)
-  reviewed_at: null
+  curated_by: claude-opus-5.5 (curadoria assistida; revisado pelo mantenedor)
+  reviewed_at: "2026-11-11"
 
 - id: efd-0000-cnpj-2026
   question: No registro de abertura da EFD ICMS/IPI, o campo do CNPJ da entidade é numérico ou caractere?
@@ -48,8 +48,8 @@
   tags: [efd-icms-ipi, campo-tipo]
   source_url: https://www.gov.br/sped/pt-br/assuntos/escrituracoes-digitais/efd-icms-ipi/manuais-e-documentos-tecnicos/guia-pratico-efd-versao-3-2-4.pdf
   source_quote: 07 CNPJ Número de inscrição da entidade no CNPJ. C 014* - OC
-  curated_by: claude-opus-5.5 (curadoria assistida; revisão do mantenedor pendente)
-  reviewed_at: null
+  curated_by: claude-opus-5.5 (curadoria assistida; revisado pelo mantenedor)
+  reviewed_at: "2026-11-11"
 
 - id: efd-c100-codsit-2025
   question: Quais códigos de situação do documento são aceitos no registro C100 da nota fiscal?
@@ -68,8 +68,8 @@
   tags: [efd-icms-ipi, valores-validos]
   source_url: https://www.gov.br/sped/pt-br/assuntos/escrituracoes-digitais/efd-icms-ipi/manuais-e-documentos-tecnicos/guia-pratico-efd-versao-3-1-9.pdf
   source_quote: "Campo 06 (COD_SIT) - Valores válidos: [00, 01, 02, 03, 04, 05, 06, 07, 08]"
-  curated_by: claude-opus-5.5 (curadoria assistida; revisão do mantenedor pendente)
-  reviewed_at: null
+  curated_by: claude-opus-5.5 (curadoria assistida; revisado pelo mantenedor)
+  reviewed_at: "2026-11-11"
 
 - id: efd-c100-codsit-2026
   question: Quais códigos de situação do documento são aceitos no registro C100 da nota fiscal?
@@ -88,8 +88,8 @@
   tags: [efd-icms-ipi, valores-validos]
   source_url: https://www.gov.br/sped/pt-br/assuntos/escrituracoes-digitais/efd-icms-ipi/manuais-e-documentos-tecnicos/guia-pratico-efd-versao-3-2-4.pdf
   source_quote: "Campo 06 (COD_SIT) - Valores válidos: [00, 01, 02, 03, 04, 05, 06, 07, 08, 09, 10]"
-  curated_by: claude-opus-5.5 (curadoria assistida; revisão do mantenedor pendente)
-  reviewed_at: null
+  curated_by: claude-opus-5.5 (curadoria assistida; revisado pelo mantenedor)
+  reviewed_at: "2026-11-11"
 
 - id: efd-c100-chvnfe-2025
   question: Qual é o tipo do campo da chave da NF-e no registro C100?
@@ -108,8 +108,8 @@
   tags: [efd-icms-ipi, campo-tipo]
   source_url: https://www.gov.br/sped/pt-br/assuntos/escrituracoes-digitais/efd-icms-ipi/manuais-e-documentos-tecnicos/guia-pratico-efd-versao-3-1-9.pdf
   source_quote: 09 CHV_NFE Chave da Nota Fiscal Eletrônica N 044* - OC OC
-  curated_by: claude-opus-5.5 (curadoria assistida; revisão do mantenedor pendente)
-  reviewed_at: null
+  curated_by: claude-opus-5.5 (curadoria assistida; revisado pelo mantenedor)
+  reviewed_at: "2026-11-11"
 
 - id: efd-c100-chvnfe-2026
   question: Qual é o tipo do campo da chave da NF-e no registro C100?
@@ -128,8 +128,8 @@
   tags: [efd-icms-ipi, campo-tipo]
   source_url: https://www.gov.br/sped/pt-br/assuntos/escrituracoes-digitais/efd-icms-ipi/manuais-e-documentos-tecnicos/guia-pratico-efd-versao-3-2-4.pdf
   source_quote: 09 CHV_NFE Chave da Nota Fiscal Eletrônica C 044* - OC OC
-  curated_by: claude-opus-5.5 (curadoria assistida; revisão do mantenedor pendente)
-  reviewed_at: null
+  curated_by: claude-opus-5.5 (curadoria assistida; revisado pelo mantenedor)
+  reviewed_at: "2026-11-11"
 
 - id: efd-c170-qtd-2025
   question: A quantidade do item no C170 pode ser zero quando a nota é complementar?
@@ -148,8 +148,8 @@
   tags: [efd-icms-ipi, validacao]
   source_url: https://www.gov.br/sped/pt-br/assuntos/escrituracoes-digitais/efd-icms-ipi/manuais-e-documentos-tecnicos/guia-pratico-efd-versao-3-1-9.pdf
   source_quote: exceto para o COD_SIT igual a 6 (complementar) ou 7 (complementar extemporâneo), para os quais o valor deve ser maior ou igual a “0” (zero).
-  curated_by: claude-opus-5.5 (curadoria assistida; revisão do mantenedor pendente)
-  reviewed_at: null
+  curated_by: claude-opus-5.5 (curadoria assistida; revisado pelo mantenedor)
+  reviewed_at: "2026-11-11"
 
 - id: efd-c170-qtd-2026
   question: Na escrituração de nota de crédito de terceiros com redução de valores, preciso informar a quantidade do item no C170?
@@ -168,8 +168,8 @@
   tags: [efd-icms-ipi, preenchimento]
   source_url: https://www.gov.br/sped/pt-br/assuntos/escrituracoes-digitais/efd-icms-ipi/manuais-e-documentos-tecnicos/guia-pratico-efd-versao-3-2-4.pdf
   source_quote: este campo não deverá ser informado em caso de escrituração de documento fiscal emitido por terceiro com a finalidade de nota de crédito do tipo redução de valores
-  curated_by: claude-opus-5.5 (curadoria assistida; revisão do mantenedor pendente)
-  reviewed_at: null
+  curated_by: claude-opus-5.5 (curadoria assistida; revisado pelo mantenedor)
+  reviewed_at: "2026-11-11"
 
 - id: efd-e110-vltotdeb-2025
   question: Quais documentos ficam fora do valor total dos débitos na apuração do ICMS próprio (E110)?
@@ -188,8 +188,8 @@
   tags: [efd-icms-ipi, validacao]
   source_url: https://www.gov.br/sped/pt-br/assuntos/escrituracoes-digitais/efd-icms-ipi/manuais-e-documentos-tecnicos/guia-pratico-efd-versao-3-1-9.pdf
   source_quote: os documentos complementares extemporâneos (COD_SIT com valor igual ‘07’) e os documentos fiscais com CFOP 5605
-  curated_by: claude-opus-5.5 (curadoria assistida; revisão do mantenedor pendente)
-  reviewed_at: null
+  curated_by: claude-opus-5.5 (curadoria assistida; revisado pelo mantenedor)
+  reviewed_at: "2026-11-11"
 
 - id: efd-e110-vltotdeb-2026
   question: Quais documentos ficam fora do valor total dos débitos na apuração do ICMS próprio (E110)?
@@ -208,8 +208,8 @@
   tags: [efd-icms-ipi, validacao]
   source_url: https://www.gov.br/sped/pt-br/assuntos/escrituracoes-digitais/efd-icms-ipi/manuais-e-documentos-tecnicos/guia-pratico-efd-versao-3-2-4.pdf
   source_quote: os documentos fiscais emitidos com redução de valores extemporâneos (COD_SIT com valor igual “10”)
-  curated_by: claude-opus-5.5 (curadoria assistida; revisão do mantenedor pendente)
-  reviewed_at: null
+  curated_by: claude-opus-5.5 (curadoria assistida; revisado pelo mantenedor)
+  reviewed_at: "2026-11-11"
 
 - id: efd-e110-debesp-2025
   question: O que entra no campo de débitos especiais (extra-apuração) do E110?
@@ -228,8 +228,8 @@
   tags: [efd-icms-ipi, preenchimento]
   source_url: https://www.gov.br/sped/pt-br/assuntos/escrituracoes-digitais/efd-icms-ipi/manuais-e-documentos-tecnicos/guia-pratico-efd-versao-3-1-9.pdf
   source_quote: a) de ICMS correspondentes aos documentos fiscais extemporâneos (COD_SIT igual a “01”) e dos documentos fiscais complementares extemporâneos (COD_SIT igual a “07”).
-  curated_by: claude-opus-5.5 (curadoria assistida; revisão do mantenedor pendente)
-  reviewed_at: null
+  curated_by: claude-opus-5.5 (curadoria assistida; revisado pelo mantenedor)
+  reviewed_at: "2026-11-11"
 
 - id: efd-e110-debesp-2026
   question: O que entra no campo de débitos especiais (extra-apuração) do E110?
@@ -251,8 +251,8 @@
   tags: [efd-icms-ipi, preenchimento]
   source_url: https://www.gov.br/sped/pt-br/assuntos/escrituracoes-digitais/efd-icms-ipi/manuais-e-documentos-tecnicos/guia-pratico-efd-versao-3-2-4.pdf
   source_quote: aos documentos fiscais complementares extemporâneos (COD_SIT igual a “07”) e aos documentos fiscais emitidos com redução de valores extemporâneos (COD_SIT com valor igual “10”).
-  curated_by: claude-opus-5.5 (curadoria assistida; revisão do mantenedor pendente)
-  reviewed_at: null
+  curated_by: claude-opus-5.5 (curadoria assistida; revisado pelo mantenedor)
+  reviewed_at: "2026-11-11"
 
 - id: efd-1310-captanque-2026
   question: Na movimentação diária de combustíveis por tanque, existe campo para a capacidade de armazenagem do tanque?
@@ -270,8 +270,8 @@
   tags: [efd-icms-ipi, campo-novo]
   source_url: https://www.gov.br/sped/pt-br/assuntos/escrituracoes-digitais/efd-icms-ipi/manuais-e-documentos-tecnicos/guia-pratico-efd-versao-3-2-4.pdf
   source_quote: 11 CAP_TANQUE Capacidade de armazenagem, em litros N 006 - O
-  curated_by: claude-opus-5.5 (curadoria assistida; revisão do mantenedor pendente)
-  reviewed_at: null
+  curated_by: claude-opus-5.5 (curadoria assistida; revisado pelo mantenedor)
+  reviewed_at: "2026-11-11"
 
 - id: efd-c100-vldoc-2025
   question: When there is CBS, IBS or IS on the operation, does the C100 total document value match the sum of VL_OPR in C190?
@@ -290,8 +290,8 @@
   tags: [efd-icms-ipi, reforma-tributaria]
   source_url: https://www.gov.br/sped/pt-br/assuntos/escrituracoes-digitais/efd-icms-ipi/manuais-e-documentos-tecnicos/guia-pratico-efd-versao-3-1-9.pdf
   source_quote: Quando houver CBS, IBS ou IS incidentes na operação, o valor deste campo não corresponderá à soma do campo VL_OPR dos registros C190 (“filhos” deste registro C100).
-  curated_by: claude-opus-5.5 (curadoria assistida; revisão do mantenedor pendente)
-  reviewed_at: null
+  curated_by: claude-opus-5.5 (curadoria assistida; revisado pelo mantenedor)
+  reviewed_at: "2026-11-11"
 
 - id: efd-c100-vldoc-2026
   question: O valor total do documento no C100 deve considerar CBS, IBS e IS?
@@ -310,8 +310,8 @@
   tags: [efd-icms-ipi, reforma-tributaria]
   source_url: https://www.gov.br/sped/pt-br/assuntos/escrituracoes-digitais/efd-icms-ipi/manuais-e-documentos-tecnicos/guia-pratico-efd-versao-3-2-4.pdf
   source_quote: exceto para o exercício 2026, quando não devem ser considerados os valores de CBS, IBS e IS no cômputo do valor total do documento fiscal.
-  curated_by: claude-opus-5.5 (curadoria assistida; revisão do mantenedor pendente)
-  reviewed_at: null
+  curated_by: claude-opus-5.5 (curadoria assistida; revisado pelo mantenedor)
+  reviewed_at: "2026-11-11"
 
 # ---------------------------------------------------------------------------------------------
 # EFD-Reinf (8): leiautes 2.1.1 (competências de março a agosto de 2023) e 2.1.2 (desde setembro de 2023)
@@ -332,8 +332,8 @@
   tags: [efd-reinf, r-2010]
   source_url: https://www.gov.br/sped/pt-br/assuntos/escrituracoes-digitais/efd-reinf/documento-tecnicos/versao-atual/leiautes/leiautes-da-efd-reinf-v-2-1-1.zip
   source_quote: 1 - É contribuinte da CPRB - retenção de 3,5%.
-  curated_by: claude-opus-5.5 (curadoria assistida; revisão do mantenedor pendente)
-  reviewed_at: null
+  curated_by: claude-opus-5.5 (curadoria assistida; revisado pelo mantenedor)
+  reviewed_at: "2026-11-11"
 
 - id: reinf-r2010-retencao-2025
   question: Qual o limite do valor da retenção informado no R-2010 em relação à base de retenção?
@@ -351,8 +351,8 @@
   tags: [efd-reinf, r-2010]
   source_url: https://www.gov.br/sped/pt-br/assuntos/escrituracoes-digitais/efd-reinf/documento-tecnicos/versao-atual/leiautes/leiautes-da-efd-reinf-v-2-1-2.zip
   source_quote: "Validação: Não pode ser maior que 11% de {vlrBaseRet}."
-  curated_by: claude-opus-5.5 (curadoria assistida; revisão do mantenedor pendente)
-  reviewed_at: null
+  curated_by: claude-opus-5.5 (curadoria assistida; revisado pelo mantenedor)
+  reviewed_at: "2026-11-11"
 
 - id: reinf-r2010-adicional-2024
   question: Como calcular o adicional de retenção quando o serviço gera aposentadoria especial aos trabalhadores?
@@ -370,8 +370,8 @@
   tags: [efd-reinf, r-2010]
   source_url: https://www.gov.br/sped/pt-br/assuntos/escrituracoes-digitais/efd-reinf/documento-tecnicos/versao-atual/leiautes/leiautes-da-efd-reinf-v-2-1-2.zip
   source_quote: somatório de 4% sobre o {vlrServicos15} mais 3% sobre {vlrServicos20} mais 2% sobre {vlrServicos25}.
-  curated_by: claude-opus-5.5 (curadoria assistida; revisão do mantenedor pendente)
-  reviewed_at: null
+  curated_by: claude-opus-5.5 (curadoria assistida; revisado pelo mantenedor)
+  reviewed_at: "2026-11-11"
 
 - id: reinf-r4020-isenimun-2023
   question: No evento de retenções sobre pagamentos a pessoa jurídica, quais valores existem para o indicador de isenção e imunidade do beneficiário?
@@ -390,8 +390,8 @@
   tags: [efd-reinf, r-4020]
   source_url: https://www.gov.br/sped/pt-br/assuntos/escrituracoes-digitais/efd-reinf/documento-tecnicos/versao-atual/leiautes/leiautes-da-efd-reinf-v-2-1-1.zip
   source_quote: "Informações sobre isenção e imunidade: 1 - Entidade não isenta/não imune - Tributação normal;"
-  curated_by: claude-opus-5.5 (curadoria assistida; revisão do mantenedor pendente)
-  reviewed_at: null
+  curated_by: claude-opus-5.5 (curadoria assistida; revisado pelo mantenedor)
+  reviewed_at: "2026-11-11"
 
 - id: reinf-r4020-isenimun-2024
   question: No evento de retenções sobre pagamentos a pessoa jurídica, quem pode informar o indicador de isenção e imunidade do beneficiário?
@@ -413,8 +413,8 @@
   tags: [efd-reinf, r-4020]
   source_url: https://www.gov.br/sped/pt-br/assuntos/escrituracoes-digitais/efd-reinf/documento-tecnicos/versao-atual/leiautes/leiautes-da-efd-reinf-v-2-1-2.zip
   source_quote: Informação a ser prestada exclusivamente por órgãos da Administração Pública Federal Direta, autarquias e fundações da Administração Pública Federal
-  curated_by: claude-opus-5.5 (curadoria assistida; revisão do mantenedor pendente)
-  reviewed_at: null
+  curated_by: claude-opus-5.5 (curadoria assistida; revisado pelo mantenedor)
+  reviewed_at: "2026-11-11"
 
 - id: reinf-r4020-indfciscp-2023
   question: Para indicar sociedade em conta de participação no R-4020, qual natureza de rendimento é exigida?
@@ -433,8 +433,8 @@
   tags: [efd-reinf, r-4020]
   source_url: https://www.gov.br/sped/pt-br/assuntos/escrituracoes-digitais/efd-reinf/documento-tecnicos/versao-atual/leiautes/leiautes-da-efd-reinf-v-2-1-1.zip
   source_quote: b) o código de natureza de rendimento indicado em {natRend} deve ser igual a [12001].
-  curated_by: claude-opus-5.5 (curadoria assistida; revisão do mantenedor pendente)
-  reviewed_at: null
+  curated_by: claude-opus-5.5 (curadoria assistida; revisado pelo mantenedor)
+  reviewed_at: "2026-11-11"
 
 - id: reinf-r4020-indfciscp-2024
   question: Quais condições valem para indicar sociedade em conta de participação no pagamento a pessoa jurídica do R-4020?
@@ -453,8 +453,8 @@
   tags: [efd-reinf, r-4020]
   source_url: https://www.gov.br/sped/pt-br/assuntos/escrituracoes-digitais/efd-reinf/documento-tecnicos/versao-atual/leiautes/leiautes-da-efd-reinf-v-2-1-2.zip
   source_quote: a) o número de identificação do contribuinte declarante deve ser de pessoa jurídica (CNPJ) não pertencente ao grupo 1 da tabela de naturezas jurídicas ou de pessoa física (CPF).
-  curated_by: claude-opus-5.5 (curadoria assistida; revisão do mantenedor pendente)
-  reviewed_at: null
+  curated_by: claude-opus-5.5 (curadoria assistida; revisado pelo mantenedor)
+  reviewed_at: "2026-11-11"
 
 - id: reinf-r4020-dtescrcont-2025
   question: Quando devo informar a data da escrituração contábil no pagamento a pessoa jurídica do R-4020?
@@ -472,8 +472,8 @@
   tags: [efd-reinf, r-4020, campo-novo]
   source_url: https://www.gov.br/sped/pt-br/assuntos/escrituracoes-digitais/efd-reinf/documento-tecnicos/versao-atual/leiautes/leiautes-da-efd-reinf-v-2-1-2.zip
   source_quote: "Informação obrigatória e exclusiva se a natureza do rendimento informada no campo {natRend} for igual a [12052]."
-  curated_by: claude-opus-5.5 (curadoria assistida; revisão do mantenedor pendente)
-  reviewed_at: null
+  curated_by: claude-opus-5.5 (curadoria assistida; revisado pelo mantenedor)
+  reviewed_at: "2026-11-11"
 
 # ---------------------------------------------------------------------------------------------
 # RCTE/CTE (12): art. 76 do RCTE em várias datas (snapshot único de 16.09.26) e pares do CTE
@@ -495,8 +495,8 @@
   tags: [rcte-cte, rcte, vigencia]
   source_url: https://appasp.economia.go.gov.br/Legislacao/arquivos/Rcte/RCTE.htm
   source_quote: § 6º Excepcionalmente, para projeto de valor igual ,ou superior a R$ 300.000,00 (trezentos mil reais)
-  curated_by: claude-opus-5.5 (curadoria assistida; revisão do mantenedor pendente)
-  reviewed_at: null
+  curated_by: claude-opus-5.5 (curadoria assistida; revisado pelo mantenedor)
+  reviewed_at: "2026-11-11"
 
 - id: rcte-art76-p6-2006-05
   question: Em maio de 2006, qual valor mínimo aplicado no GOYAZES ou no PROESPORTE permitia ao Secretário da Fazenda definir prazos diversos de pagamento do ICMS?
@@ -515,8 +515,8 @@
   tags: [rcte-cte, rcte, vigencia, question-text, dod-f2]
   source_url: https://appasp.economia.go.gov.br/Legislacao/arquivos/Rcte/RCTE.htm
   source_quote: quando o contribuinte aplicar nos Programas GOYAZES ou PROESPORTE, isoladamente, valor igual ou superior a 40.000,00 (quarenta mil reais)
-  curated_by: claude-opus-5.5 (curadoria assistida; revisão do mantenedor pendente)
-  reviewed_at: null
+  curated_by: claude-opus-5.5 (curadoria assistida; revisado pelo mantenedor)
+  reviewed_at: "2026-11-11"
 
 - id: rcte-art76-p6-2010-01
   question: Ainda existe a possibilidade de o Secretário da Fazenda definir prazos diversos para quem aplica nos programas GOYAZES ou PROESPORTE?
@@ -535,8 +535,8 @@
   tags: [rcte-cte, rcte, vigencia, revogacao]
   source_url: https://appasp.economia.go.gov.br/Legislacao/arquivos/Rcte/RCTE.htm
   source_quote: § 6º Revogado.
-  curated_by: claude-opus-5.5 (curadoria assistida; revisão do mantenedor pendente)
-  reviewed_at: null
+  curated_by: claude-opus-5.5 (curadoria assistida; revisado pelo mantenedor)
+  reviewed_at: "2026-11-11"
 
 - id: rcte-art76-p8-2026-06
   question: Na importação, o que a Receita Federal deve exigir antes de entregar a mercadoria ao importador goiano?
@@ -555,8 +555,8 @@
   tags: [rcte-cte, rcte, vigencia]
   source_url: https://appasp.economia.go.gov.br/Legislacao/arquivos/Rcte/RCTE.htm
   source_quote: § 8º A RFB exigirá, antes da entrega da mercadoria ou bem ao importador, a exibição do comprovante de pagamento do ICMS ou da GLME
-  curated_by: claude-opus-5.5 (curadoria assistida; revisão do mantenedor pendente)
-  reviewed_at: null
+  curated_by: claude-opus-5.5 (curadoria assistida; revisado pelo mantenedor)
+  reviewed_at: "2026-11-11"
 
 - id: rcte-art76-p8-2026-09
   question: Na importação, o que a Receita Federal deve exigir antes de entregar a mercadoria ao importador goiano?
@@ -575,8 +575,8 @@
   tags: [rcte-cte, rcte, vigencia]
   source_url: https://appasp.economia.go.gov.br/Legislacao/arquivos/Rcte/RCTE.htm
   source_quote: § 8º A RFB deve exigir, antes da entrega da mercadoria ou bem ao importador, a exibição do comprovante de pagamento do ICMS ou da GLME
-  curated_by: claude-opus-5.5 (curadoria assistida; revisão do mantenedor pendente)
-  reviewed_at: null
+  curated_by: claude-opus-5.5 (curadoria assistida; revisado pelo mantenedor)
+  reviewed_at: "2026-11-11"
 
 - id: rcte-art76-p9-2025-03
   question: Quando o desembaraço aduaneiro ocorre em outro estado, que manifestação adicional é exigida na importação para Goiás?
@@ -595,8 +595,8 @@
   tags: [rcte-cte, rcte, vigencia]
   source_url: https://appasp.economia.go.gov.br/Legislacao/arquivos/Rcte/RCTE.htm
   source_quote: § 9º Quando o desembaraço aduaneiro de combustíveis derivados de petróleo se efetivar em território de unidade da Federação diversa daquela do importador situado no Estado de Goiás
-  curated_by: claude-opus-5.5 (curadoria assistida; revisão do mantenedor pendente)
-  reviewed_at: null
+  curated_by: claude-opus-5.5 (curadoria assistida; revisado pelo mantenedor)
+  reviewed_at: "2026-11-11"
 
 - id: rcte-art76-p9-default
   question: Quando o desembaraço aduaneiro ocorre em outro estado, o que deve ser observado na importação para Goiás?
@@ -615,8 +615,8 @@
   tags: [rcte-cte, rcte, vigencia, default]
   source_url: https://appasp.economia.go.gov.br/Legislacao/arquivos/Rcte/RCTE.htm
   source_quote: § 9º Quando o desembaraço aduaneiro se verificar em território de unidade da Federação distinta daquela do importador ou adquirente, deve ser observado o seguinte
-  curated_by: claude-opus-5.5 (curadoria assistida; revisão do mantenedor pendente)
-  reviewed_at: null
+  curated_by: claude-opus-5.5 (curadoria assistida; revisado pelo mantenedor)
+  reviewed_at: "2026-11-11"
 
 - id: rcte-art76-p5-inc1-2005
   question: Qual percentual mínimo do imposto o contribuinte precisava aplicar no GOYAZES ou no PROESPORTE para ter o prazo especial de pagamento?
@@ -634,8 +634,8 @@
   tags: [rcte-cte, rcte, vigencia]
   source_url: https://appasp.economia.go.gov.br/Legislacao/arquivos/Rcte/RCTE.htm
   source_quote: ou no Programa Estadual de Incentivo ao Esporte - PROESPORTE -, equivalente a, no mínimo, 5% (cinco por cento) da média do valor do imposto a pagar
-  curated_by: claude-opus-5.5 (curadoria assistida; revisão do mantenedor pendente)
-  reviewed_at: null
+  curated_by: claude-opus-5.5 (curadoria assistida; revisado pelo mantenedor)
+  reviewed_at: "2026-11-11"
 
 - id: rcte-art71-inc1-2003
   question: Under the Goiás ICMS regulation, when does the tax fall due for periodic assessment?
@@ -654,8 +654,8 @@
   tags: [rcte-cte, rcte, vigencia, retroativo]
   source_url: https://appasp.economia.go.gov.br/Legislacao/arquivos/Rcte/RCTE.htm
   source_quote: I - na apuração periódica, na data prevista em ato do Secretário da Fazenda;
-  curated_by: claude-opus-5.5 (curadoria assistida; revisão do mantenedor pendente)
-  reviewed_at: null
+  curated_by: claude-opus-5.5 (curadoria assistida; revisado pelo mantenedor)
+  reviewed_at: "2026-11-11"
 
 - id: rcte-art71-pu-2023
   question: A partir de quando o saldo devedor apurado de ICMS sofre juros de mora e acréscimos legais?
@@ -673,8 +673,8 @@
   tags: [rcte-cte, rcte, vigencia]
   source_url: https://appasp.economia.go.gov.br/Legislacao/arquivos/Rcte/RCTE.htm
   source_quote: Parágrafo único. O valor do saldo devedor apurado está sujeito à incidência de juros de mora e acréscimos legais a partir do 1º (primeiro) dia subsequente ao do vencimento.
-  curated_by: claude-opus-5.5 (curadoria assistida; revisão do mantenedor pendente)
-  reviewed_at: null
+  curated_by: claude-opus-5.5 (curadoria assistida; revisado pelo mantenedor)
+  reviewed_at: "2026-11-11"
 
 - id: cte-art52-2020
   question: Quem é o substituto tributário nas operações com energia elétrica em Goiás?
@@ -693,8 +693,8 @@
   tags: [rcte-cte, cte, vigencia]
   source_url: https://appasp.economia.go.gov.br/Legislacao/arquivos/Cte/CTE.htm
   source_quote: Art. 52. A empresa distribuidora de energia elétrica fica nomeada substituta tributária relativamente à obrigação de pagar o imposto devido nas operações anteriores e subseqüentes
-  curated_by: claude-opus-5.5 (curadoria assistida; revisão do mantenedor pendente)
-  reviewed_at: null
+  curated_by: claude-opus-5.5 (curadoria assistida; revisado pelo mantenedor)
+  reviewed_at: "2026-11-11"
 
 - id: cte-art52-2026
   question: Quem é o substituto tributário nas operações com energia elétrica em Goiás?
@@ -713,8 +713,8 @@
   tags: [rcte-cte, cte, vigencia]
   source_url: https://appasp.economia.go.gov.br/Legislacao/arquivos/Cte/CTE.htm
   source_quote: "Art. 52. Ficam nomeados substitutos tributários nas operações com energia elétrica, desde a produção ou a importação até o consumo:"
-  curated_by: claude-opus-5.5 (curadoria assistida; revisão do mantenedor pendente)
-  reviewed_at: null
+  curated_by: claude-opus-5.5 (curadoria assistida; revisado pelo mantenedor)
+  reviewed_at: "2026-11-11"
 
 # ---------------------------------------------------------------------------------------------
 # EFD-GO e Tabelas GO (5)
@@ -735,8 +735,8 @@
   tags: [efd-go-tabelas, efd-go]
   source_url: https://goias.gov.br/economia/wp-content/uploads/sites/45/2026/03/Guia_pratico_5.9.pdf
   source_quote: O arquivo digital da EFD deve ser enviado até o dia 15 (quinze) do mês subsequente ao encerramento do mês da apuração (Art. 356-N do RCTE)
-  curated_by: claude-opus-5.5 (curadoria assistida; revisão do mantenedor pendente)
-  reviewed_at: null
+  curated_by: claude-opus-5.5 (curadoria assistida; revisado pelo mantenedor)
+  reviewed_at: "2026-11-11"
 
 - id: efdgo-c173-obrigatorio
   question: O registro C173 é obrigatório para os contribuintes goianos?
@@ -754,8 +754,8 @@
   tags: [efd-go-tabelas, efd-go]
   source_url: https://goias.gov.br/economia/wp-content/uploads/sites/45/2025/10/Guia_pratico_5.8.pdf
   source_quote: O registro C173 passa a ser obrigatório à partir de 01/03/2023.
-  curated_by: claude-opus-5.5 (curadoria assistida; revisão do mantenedor pendente)
-  reviewed_at: null
+  curated_by: claude-opus-5.5 (curadoria assistida; revisado pelo mantenedor)
+  reviewed_at: "2026-11-11"
 
 - id: tabgo-go000002-2024
   question: Qual código de ajuste da apuração de Goiás uso para o débito da restituição de crédito de ICMS recebida em moeda?
@@ -774,8 +774,8 @@
   tags: [efd-go-tabelas, tabelas-go]
   source_url: https://www.sped.fazenda.gov.br/spedtabelas/WsConsulta/obterTabela.ashx?idTabela=37&versao=151
   source_quote: GO000002 - Débito referente ao valor da restituição de crédito de ICMS normal, concedida mediante processo (recebimento em moeda)
-  curated_by: claude-opus-5.5 (curadoria assistida; revisão do mantenedor pendente)
-  reviewed_at: null
+  curated_by: claude-opus-5.5 (curadoria assistida; revisado pelo mantenedor)
+  reviewed_at: "2026-11-11"
 
 - id: tabgo-go000002-2025
   question: Qual código de ajuste da apuração de Goiás uso para o débito da restituição de crédito de ICMS recebida em moeda?
@@ -794,8 +794,8 @@
   tags: [efd-go-tabelas, tabelas-go]
   source_url: https://www.sped.fazenda.gov.br/spedtabelas/WsConsulta/obterTabela.ashx?idTabela=37&versao=151
   source_quote: GO000002 - Débito referente ao valor da restituição de crédito de ICMS normal, concedida mediante processo (recebimento em moeda). Art. 486 do RCTE.
-  curated_by: claude-opus-5.5 (curadoria assistida; revisão do mantenedor pendente)
-  reviewed_at: null
+  curated_by: claude-opus-5.5 (curadoria assistida; revisado pelo mantenedor)
+  reviewed_at: "2026-11-11"
 
 - id: tabgo-5-5-transferencia
   question: Qual código de tipo de utilização de créditos fiscais de Goiás corresponde à transferência de crédito?
@@ -813,8 +813,8 @@
   tags: [efd-go-tabelas, tabelas-go]
   source_url: https://www.sped.fazenda.gov.br/spedtabelas/WsConsulta/obterTabela.ashx?idTabela=40&versao=5
   source_quote: GO03 - Transferência de crédito
-  curated_by: claude-opus-5.5 (curadoria assistida; revisão do mantenedor pendente)
-  reviewed_at: null
+  curated_by: claude-opus-5.5 (curadoria assistida; revisado pelo mantenedor)
+  reviewed_at: "2026-11-11"
 
 # ---------------------------------------------------------------------------------------------
 # Recusas (6): fora da cobertura indexada (antes da primeira versão, depois do verified_at
@@ -833,8 +833,8 @@
   tags: [recusa, antes-da-cobertura]
   source_url: https://www.gov.br/sped/pt-br/assuntos/escrituracoes-digitais/efd-icms-ipi/manuais-e-documentos-tecnicos/guia-pratico-efd-versao-3-1-9.pdf
   source_quote: "Atualização: 13 de maio de 2025"
-  curated_by: claude-opus-5.5 (curadoria assistida; revisão do mantenedor pendente)
-  reviewed_at: null
+  curated_by: claude-opus-5.5 (curadoria assistida; revisado pelo mantenedor)
+  reviewed_at: "2026-11-11"
 
 - id: recusa-reinf-antes-da-cobertura
   question: Quais retenções informar no evento de pagamentos a pessoa jurídica da EFD-Reinf?
@@ -849,8 +849,8 @@
   tags: [recusa, antes-da-cobertura]
   source_url: https://www.gov.br/sped/pt-br/assuntos/escrituracoes-digitais/efd-reinf/documento-tecnicos/versao-atual/leiautes/leiautes-da-efd-reinf-v-2-1-1.zip
   source_quote: Anexo ao Ato Declaratório Executivo Cofis n° 60/2022
-  curated_by: claude-opus-5.5 (curadoria assistida; revisão do mantenedor pendente)
-  reviewed_at: null
+  curated_by: claude-opus-5.5 (curadoria assistida; revisado pelo mantenedor)
+  reviewed_at: "2026-11-11"
 
 - id: recusa-rcte-antes-da-cobertura
   question: Qual era o prazo de pagamento do ICMS na importação de mercadoria do exterior?
@@ -865,8 +865,8 @@
   tags: [recusa, antes-da-cobertura]
   source_url: https://appasp.economia.go.gov.br/Legislacao/arquivos/Rcte/RCTE.htm
   source_quote: "NOTA: Redação com vigência de 01.01.98 a 30.10.99."
-  curated_by: claude-opus-5.5 (curadoria assistida; revisão do mantenedor pendente)
-  reviewed_at: null
+  curated_by: claude-opus-5.5 (curadoria assistida; revisado pelo mantenedor)
+  reviewed_at: "2026-11-11"
 
 - id: recusa-rcte-depois-do-verified-at
   question: O que a Receita Federal deve exigir antes de entregar a mercadoria importada ao importador goiano?
@@ -881,8 +881,8 @@
   tags: [recusa, depois-do-verified-at]
   source_url: https://appasp.economia.go.gov.br/Legislacao/arquivos/Rcte/RCTE.htm
   source_quote: CONSOLIDADO ATÉ O DECRETO Nº 10.986, DE 16.09.26.
-  curated_by: claude-opus-5.5 (curadoria assistida; revisão do mantenedor pendente)
-  reviewed_at: null
+  curated_by: claude-opus-5.5 (curadoria assistida; revisado pelo mantenedor)
+  reviewed_at: "2026-11-11"
 
 - id: recusa-efd-depois-do-verified-at
   question: Como preencher o indicador de benefício no registro C197?
@@ -897,8 +897,8 @@
   tags: [recusa, depois-do-verified-at]
   source_url: https://www.gov.br/sped/pt-br/assuntos/escrituracoes-digitais/efd-icms-ipi/manuais-e-documentos-tecnicos/guia-pratico-efd-versao-3-2-4.pdf
   source_quote: CAMPOS INCLUÍDOS NO LEIAUTE A PARTIR DO PERÍODO DE APURAÇÃO DE JANEIRO DE 2027.
-  curated_by: claude-opus-5.5 (curadoria assistida; revisão do mantenedor pendente)
-  reviewed_at: null
+  curated_by: claude-opus-5.5 (curadoria assistida; revisado pelo mantenedor)
+  reviewed_at: "2026-11-11"
 
 - id: recusa-anexos-rcte-c3
   question: Qual a margem de valor agregado da substituição tributária para autopeças no Anexo VIII do RCTE?
@@ -913,8 +913,8 @@
   tags: [recusa, anexos-c3]
   source_url: https://appasp.economia.go.gov.br/Legislacao/arquivos/Rcte/RCTE.htm
   source_quote: CONSOLIDADO ATÉ O DECRETO Nº 10.986, DE 16.09.26.
-  curated_by: claude-opus-5.5 (curadoria assistida; revisão do mantenedor pendente)
-  reviewed_at: null
+  curated_by: claude-opus-5.5 (curadoria assistida; revisado pelo mantenedor)
+  reviewed_at: "2026-11-11"
 
 # ---------------------------------------------------------------------------------------------
 # Ambíguos (4): data do texto contra escolha explícita, ou datas conflitantes no texto
@@ -931,8 +931,8 @@
   tags: [ambiguo, explicit-conflict]
   source_url: https://appasp.economia.go.gov.br/Legislacao/arquivos/Rcte/RCTE.htm
   source_quote: valor igual ou superior a 40.000,00 (quarenta mil reais)
-  curated_by: claude-opus-5.5 (curadoria assistida; revisão do mantenedor pendente)
-  reviewed_at: null
+  curated_by: claude-opus-5.5 (curadoria assistida; revisado pelo mantenedor)
+  reviewed_at: "2026-11-11"
 
 - id: ambiguo-duas-datas-no-texto
   question: O § 6º do art. 76 do RCTE dizia a mesma coisa em março de 2004 e em janeiro de 2010?
@@ -946,8 +946,8 @@
   tags: [ambiguo, ambiguous-text]
   source_url: https://appasp.economia.go.gov.br/Legislacao/arquivos/Rcte/RCTE.htm
   source_quote: § 6º Revogado.
-  curated_by: claude-opus-5.5 (curadoria assistida; revisão do mantenedor pendente)
-  reviewed_at: null
+  curated_by: claude-opus-5.5 (curadoria assistida; revisado pelo mantenedor)
+  reviewed_at: "2026-11-11"
 
 - id: ambiguo-data-da-nota-contra-pa
   question: Para uma nota emitida em 15/08/2025, o CNPJ do registro 0000 é numérico ou caractere?
@@ -961,8 +961,8 @@
   tags: [ambiguo, explicit-conflict]
   source_url: https://www.gov.br/sped/pt-br/assuntos/escrituracoes-digitais/efd-icms-ipi/manuais-e-documentos-tecnicos/guia-pratico-efd-versao-3-2-4.pdf
   source_quote: 07 CNPJ Número de inscrição da entidade no CNPJ. C 014* - OC
-  curated_by: claude-opus-5.5 (curadoria assistida; revisão do mantenedor pendente)
-  reviewed_at: null
+  curated_by: claude-opus-5.5 (curadoria assistida; revisado pelo mantenedor)
+  reviewed_at: "2026-11-11"
 
 - id: ambiguo-duas-competencias-reinf
   question: No R-4020, o indicador de isenção e imunidade era igual nas competências 05/2023 e 10/2023?
@@ -976,5 +976,5 @@
   tags: [ambiguo, ambiguous-text]
   source_url: https://www.gov.br/sped/pt-br/assuntos/escrituracoes-digitais/efd-reinf/documento-tecnicos/versao-atual/leiautes/leiautes-da-efd-reinf-v-2-1-2.zip
   source_quote: Informações sobre isenção e imunidade
-  curated_by: claude-opus-5.5 (curadoria assistida; revisão do mantenedor pendente)
-  reviewed_at: null
+  curated_by: claude-opus-5.5 (curadoria assistida; revisado pelo mantenedor)
+  reviewed_at: "2026-11-11"

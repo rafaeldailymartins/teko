@@ -24,14 +24,15 @@ No `teko-staging`, o `teko_app` já existe desde o spike F1 (d), com os timeouts
 ## Como rodar
 
 Na máquina do mantenedor, com o `gh` autenticado no repositório e uma API key **do projeto**
-(Neon Console → projeto → Settings → API keys), só no shell:
+(Neon Console → projeto → Settings → API keys). O script pede a key no terminal, sem eco e fora do
+histórico do shell; o ID do projeto (Neon Console → projeto → Settings) vai em `--project`:
 
 ```bash
-NEON_API_KEY=... NEON_PROJECT_ID=... node scripts/neon-roles.ts --env staging --dry-run
+node scripts/neon-roles.ts --env staging --project <id-do-projeto> --dry-run
 ```
 
 ```bash
-NEON_API_KEY=... NEON_PROJECT_ID=... node scripts/neon-roles.ts --env staging
+node scripts/neon-roles.ts --env staging --project <id-do-projeto>
 ```
 
 O `--dry-run` só mostra o plano (`create`, `keep` ou `reset` por role e os segredos que faltam). Sem
