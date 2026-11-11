@@ -22,9 +22,11 @@ docs, mensagens), seguindo o estilo do que já existe.
 
 Atualize esta seção no PR que fecha cada fase ou spike.
 
-- **F0 (contas e governança):** concluída. Falta só conferir o primeiro PR do Dependabot
-  (`chore(deps): …`).
-- **F1 (esqueleto, gates e spikes):** esqueleto, gates e CI em `develop`. Spikes (ADR 0003):
+- **F0 (contas e governança):** concluída. O `dependabot.yml` chegou a `develop` em 2026-11-11 e
+  ainda não abriu PR (`gh pr list --author app/dependabot --state all` vazio nessa data); a
+  primeira rodada é na segunda, 16/11, às 06:00 de Brasília. Conferir o primeiro PR
+  (`chore(deps): …`) quando vier.
+- **F1 (esqueleto, gates e spikes):** concluída em 2026-11-11, com a ADR 0003 `accepted`. Spikes:
   - (a) web na Netlify: concluído. Site `tekoia` (time `rafael-daily-santos-martins`, a conta do
     token do CI), `tools/netlify-cli` isolado, `@netlify/plugin-nextjs` fixado no lockfile,
     proteção de visitantes desligada. A Netlify troca `/pt-BR/` por `/pt-br/`: tratar na F5.
@@ -38,16 +40,23 @@ Atualize esta seção no PR que fecha cada fase ou spike.
   - (d) pooler do Neon: concluído. Timeouts no role valem pelo pooler, que recusa
     `statement_timeout` como parâmetro de conexão; o resume cabe no corte de 26 s. O `pg` nunca
     teve proveniência: decidir o driver na F2, junto com o `attachDatabasePool`.
-  - (e) e (g) concluído e parcial; (f) ingestão real em PR separado, provavelmente com o token do
-    Cloudflare Workers AI (embeddings BGE-M3).
-  - As rotas `/api/_spike/*` (só staging na Vercel) saem quando os spikes fecharem. As env vars
-    Config da F1 do `teko-api-staging` foram gravadas à mão (a F7 automatiza).
-  - Itens menores: o projeto `teko-api` (produção) existe e `teko-api.vercel.app` está reservado
-    por um placeholder (a API real e as env vars chegam na F7); o primeiro PR do Dependabot (F0)
-    ainda não veio (rodada semanal às segundas, com 7 dias de espera).
-  - Fora o (f) e a conferência do Dependabot, a F1 está fechada; a F2 pode começar quando o
-    mantenedor decidir.
-- **F2 em diante:** não começar antes de fechar as pendências da F1 (decisão do mantenedor).
+  - (e) concluído; (g) parcial: as bibliotecas ainda não introduzidas são conferidas pelas fases
+    que as introduzem.
+  - (f) ingestão: concluído. Docling com TableFormer V1 `ACCURATE` (o V2 desmonta as tabelas de
+    campos; Guia 3.2.4 inteiro em 71,7 min, 457 tabelas); WS de Tabelas Externas em TXT cp1252 com
+    SHA-1 nos metadados; `bge-m3` com `[n, 1024]` e custo real em `meta.neurons`; red team sem
+    `hijacking` e com `jailbreak:tree` e `jailbreak-templates` (os planejados são remote-only). O
+    token do Workers AI está no `tools/ingest/.env` local e no environment `staging`
+    (`CF_AI_TOKEN`, `CF_ACCOUNT_ID`).
+  - As rotas `/api/_spike/*` e a `TEKO_SPIKE_SENSITIVE` saíram do código; os workflows de spike
+    ficam só com os passos que não dependem delas, como referência para a F7. As env vars Config
+    da F1 do `teko-api-staging` foram gravadas à mão (a F7 automatiza).
+  - O projeto `teko-api` (produção) existe e `teko-api.vercel.app` está reservado por um
+    placeholder (a API real e as env vars chegam na F7).
+  - Riscos residuais, registrados na ADR 0003: SIGTERM e cold start não medidos com rigor;
+    `attachDatabasePool` e driver do Postgres na F2 (o `pg` nunca teve proveniência); WAF na F7;
+    `/pt-br/` minúsculo na F5.
+- **F2 em diante:** a F2 começa quando o mantenedor decidir.
 
 ## Como trabalhar
 

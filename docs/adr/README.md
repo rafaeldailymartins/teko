@@ -7,7 +7,7 @@ numeração, idioma e substituição estão na [ADR 0001](0001-record-architectu
 | --------------------------------------------- | ------------------------------------------------------------------------ | -------- |
 | [0001](0001-record-architecture-decisions.md) | Registrar decisões de arquitetura em ADRs                                | accepted |
 | [0002](0002-supply-chain-pnpm.md)             | Supply chain de dependências com pnpm 12                                 | accepted |
-| [0003](0003-f1-spikes.md)                     | Resultados dos spikes da F1                                              | proposed |
+| [0003](0003-f1-spikes.md)                     | Resultados dos spikes da F1                                              | accepted |
 | [0004](0004-vercel-hobby-api.md)              | API no Vercel Hobby (uma Function Fluid, dois projetos, `gru1`) + Render | accepted |
 | [0017](0017-vercel-build-output-tsdown.md)    | Deploy `--prebuilt` de um `.vercel/output` montado do bundle do tsdown   | accepted |
 

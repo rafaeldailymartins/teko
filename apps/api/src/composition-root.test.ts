@@ -70,69 +70,6 @@ describe('createContainer', () => {
   })
 })
 
-describe('rotas de spike (createHttpOptions)', () => {
-  const VERCEL = {
-    ...BASE,
-    NODE_ENV: 'production',
-    RUNTIME_TARGET: 'vercel',
-    VERCEL_REGION: 'gru1',
-  } as const
-  const NODE_24 = { nodeVersion: 'v24.22.2' }
-
-  it('staging na Vercel: ligadas, com região, maxDuration e só o tamanho da Sensitive', () => {
-    const env = parseEnv(
-      {
-        ...VERCEL,
-        APP_ENV: 'staging',
-        TEKO_SPIKE_SENSITIVE: 'valor-secreto',
-        NETLIFY_PROXY_JWS_SECRET: 'x'.repeat(32),
-      },
-      NODE_24,
-    )
-    expect(createHttpOptions(env).spike).toEqual({
-      nodeVersion: process.version,
-      region: 'gru1',
-      maxDurationS: 300,
-      sensitiveLength: 13,
-      proxySecret: 'x'.repeat(32),
-    })
-  })
-
-  it('staging na Vercel sem as opcionais: Sensitive ausente e sem segredo do proxy', () => {
-    const spike = createHttpOptions(parseEnv({ ...VERCEL, APP_ENV: 'staging' }, NODE_24)).spike
-    expect(spike).toMatchObject({ sensitiveLength: null })
-    expect(spike).not.toHaveProperty('proxySecret')
-  })
-
-  it('sem VERCEL_REGION (Env montado à mão; o parse já a exige em staging): região nula', () => {
-    const { VERCEL_REGION: _region, ...withoutRegion } = parseEnv(
-      { ...VERCEL, APP_ENV: 'staging' },
-      NODE_24,
-    )
-    expect(createHttpOptions(withoutRegion).spike).toMatchObject({ region: null })
-  })
-
-  it('produção na Vercel, Render e CI: nunca', () => {
-    const production = parseEnv(
-      { ...VERCEL, APP_ENV: 'production', WEB_ORIGIN: 'https://tekoia.netlify.app' },
-      NODE_24,
-    )
-    const render = parseEnv(
-      {
-        ...BASE,
-        APP_ENV: 'staging',
-        NODE_ENV: 'production',
-        RUNTIME_TARGET: 'render',
-        TRUST_PROXY: '1',
-      },
-      NODE_24,
-    )
-    for (const env of [production, render, parseEnv(BASE)]) {
-      expect(createHttpOptions(env)).not.toHaveProperty('spike')
-    }
-  })
-})
-
 describe('createHttpOptions', () => {
   it('no CI e local confia só na rede do Caddy, usa o X-Request-Id dele e não liga rate limit', () => {
     expect(createHttpOptions(parseEnv(BASE))).toEqual({

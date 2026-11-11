@@ -219,7 +219,7 @@ registrado; o resto continua aberto:
 - [x] `promote` de uma deployment de produção anterior durante um stream ativo: o stream terminou na
   deployment de origem, e o promote de volta funcionou. Logo depois do "Success", o domínio ainda
   pode servir a deployment anterior por um instante. `vercel rollback` não foi rodado;
-- [x] Sensitive de teste visível em runtime (`/api/_spike/runtime`, só o tamanho) e fora do output por
+- [x] Sensitive de teste visível em runtime (`/api/_spike/runtime`, só o tamanho; a rota e a Sensitive saíram no fechamento da F1) e fora do output por
   construção (o build não lê env da Vercel, e o pack recusa `.env*`);
 - [x] Deployment Protection: URL única sem bypass bloqueada (HTTP 302 para o login da Vercel) e
   domínio de produção público (200 sem bypass), no run 42987608534;
