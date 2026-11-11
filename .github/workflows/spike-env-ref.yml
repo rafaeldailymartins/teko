@@ -1,0 +1,41 @@
+# Spike F0 (temporário): contra qual ref a regra de branch de um environment é avaliada num
+# evento `pull_request`. O job do `evals` (todas as branches) mostra o ref do evento; o do
+# `release-rehearsal` (só `release/*` e `hotfix/*`) deve ser recusado, e a mensagem da recusa diz
+# qual ref foi avaliado. Nenhum job lê segredos. Sai do repositório no mesmo PR, depois do resultado.
+name: Spike F0 - ref do environment em pull_request
+
+on:
+  pull_request:
+    branches: [develop]
+    paths: [.github/workflows/spike-env-ref.yml]
+
+permissions: {}
+
+jobs:
+  evals-ref:
+    name: evals (todas as branches)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    environment: evals
+    steps:
+      - name: Refs do evento
+        env:
+          REF: ${{ github.ref }}
+          HEAD_REF: ${{ github.head_ref }}
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          echo "github.ref=${REF} head_ref=${HEAD_REF} base_ref=${BASE_REF}"
+          echo "### evals: github.ref=\`${REF}\`, head_ref=\`${HEAD_REF}\`" >> "$GITHUB_STEP_SUMMARY"
+
+  release-rehearsal-ref:
+    name: release-rehearsal (release/* e hotfix/*)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    environment: release-rehearsal
+    steps:
+      - name: Refs do evento (só roda se a regra de branch aceitar)
+        env:
+          REF: ${{ github.ref }}
+          HEAD_REF: ${{ github.head_ref }}
+        run: |
+          echo "aceito: github.ref=${REF} head_ref=${HEAD_REF}"
