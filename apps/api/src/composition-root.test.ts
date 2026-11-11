@@ -11,7 +11,7 @@ import { VERCEL_SHUTDOWN } from './config/platform.ts'
 
 const BASE = {
   APP_ENV: 'ci',
-  WEB_ORIGIN: 'https://develop--teko-web.netlify.app',
+  WEB_ORIGIN: 'https://develop--tekoia.netlify.app',
   APP_VERSION: '0.0.0-abc1234',
   GIT_SHA: 'abc1234',
   LOG_LEVEL: 'silent',
@@ -73,7 +73,7 @@ describe('createContainer', () => {
 describe('createHttpOptions', () => {
   it('no CI e local confia só na rede do Caddy, usa o X-Request-Id dele e não liga rate limit', () => {
     expect(createHttpOptions(parseEnv(BASE))).toEqual({
-      webOrigin: 'https://develop--teko-web.netlify.app',
+      webOrigin: 'https://develop--tekoia.netlify.app',
       trustProxy: ['172.30.0.0/24'],
       requestIdHeader: 'x-request-id',
       eventLoopDelayGuard: true,
@@ -86,7 +86,7 @@ describe('createHttpOptions', () => {
       ...BASE,
       APP_ENV: 'production',
       NODE_ENV: 'production',
-      WEB_ORIGIN: 'https://teko-web.netlify.app',
+      WEB_ORIGIN: 'https://tekoia.netlify.app',
       RUNTIME_TARGET: 'render',
       TRUST_PROXY: '1',
     })

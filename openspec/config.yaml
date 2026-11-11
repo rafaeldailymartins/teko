@@ -12,7 +12,7 @@ context: |
     em SQL (daterange), cita dispositivo, versão e intervalo de vigência, e recusa quando a data
     está fora da cobertura indexada.
   - "Tekó" é o nome em todo texto visível; identificadores técnicos usam ASCII minúsculo "teko"
-    (@teko/shared, teko-web, teko-api).
+    (@teko/shared, tekoia, teko-api).
   - Custo zero absoluto: só free tiers que param em vez de cobrar. Mantenedor solo.
 
   Stack

@@ -1,4 +1,4 @@
-# Site teko-web na Netlify: export estático do Next (sem functions, sem edge, sem adapter).
+# Site tekoia na Netlify: export estático do Next (sem functions, sem edge, sem adapter).
 #
 # Monorepo: este arquivo fica no package directory (apps/web) e o base directory é a raiz do
 # repositório; por isso todos os caminhos abaixo são relativos à raiz.

@@ -2,7 +2,7 @@ import Fastify, { type FastifyInstance } from 'fastify'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { STREAM_CORS_MAX_AGE_SECONDS, STREAM_PREFIX, streamScope } from './stream-cors.ts'
 
-const WEB_ORIGIN = 'https://teko-web.netlify.app'
+const WEB_ORIGIN = 'https://tekoia.netlify.app'
 const STREAM_URL = '/api/v1/questions/0b9f5b0e-3f43-4c62-9f7e-0d1c2b3a4f5e/stream'
 
 let app: FastifyInstance
@@ -45,8 +45,8 @@ describe('streamScope (CORS do stream)', () => {
 
   it.each([
     'https://evil.example',
-    'https://teko-web.netlify.app.evil.example',
-    'http://teko-web.netlify.app',
+    'https://tekoia.netlify.app.evil.example',
+    'http://tekoia.netlify.app',
   ])('não libera a origem %s', async (origin) => {
     const res = await preflight(origin)
     expect(res.headers['access-control-allow-origin']).toBeUndefined()

@@ -43,7 +43,7 @@ services:
       - key: RUNTIME_TARGET
         value: render
       - key: WEB_ORIGIN
-        value: https://teko-web.netlify.app
+        value: https://tekoia.netlify.app
       # Host real atribuído pelo Render; trocar aqui se for outro.
       - key: STREAM_ORIGIN
         value: https://teko-api-planb.onrender.com

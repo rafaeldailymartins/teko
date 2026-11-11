@@ -15,7 +15,7 @@ const DEV_ENV = { APP_ENV: 'development', WEB_ORIGIN: 'http://localhost:3000' } 
 const PROD_ENV = {
   NODE_ENV: 'production',
   APP_ENV: 'production',
-  WEB_ORIGIN: 'https://teko-web.netlify.app',
+  WEB_ORIGIN: 'https://tekoia.netlify.app',
   RUNTIME_TARGET: 'render',
   TRUST_PROXY: '1',
 } as const
@@ -89,10 +89,10 @@ describe('parseEnv', () => {
   })
 
   it.each([
-    'https://teko-web.netlify.app/',
-    'https://teko-web.netlify.app/app',
-    'ftp://teko-web.netlify.app',
-    'teko-web.netlify.app',
+    'https://tekoia.netlify.app/',
+    'https://tekoia.netlify.app/app',
+    'ftp://tekoia.netlify.app',
+    'tekoia.netlify.app',
   ])('rejeita WEB_ORIGIN que não é origem exata: %s', (origin) => {
     expect(problemsOf({ ...DEV_ENV, WEB_ORIGIN: origin }).join('\n')).toMatch(/^WEB_ORIGIN:/m)
   })

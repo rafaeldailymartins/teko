@@ -9,7 +9,7 @@ import {
   VERCEL_SHUTDOWN,
 } from './platform.ts'
 
-const BASE = { APP_ENV: 'ci', WEB_ORIGIN: 'https://develop--teko-web.netlify.app' } as const
+const BASE = { APP_ENV: 'ci', WEB_ORIGIN: 'https://develop--tekoia.netlify.app' } as const
 const DIRECT = {
   path: 'direct',
   signatureValid: false,

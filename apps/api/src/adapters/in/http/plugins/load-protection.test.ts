@@ -38,7 +38,7 @@ function fixedClientIp(ip: string | null): ClientIp & { readonly inputs: ClientI
 
 async function appWith(store: RateLimitStore, clientIp: ClientIp): Promise<FastifyInstance> {
   const base = createContainer(
-    parseEnv({ APP_ENV: 'ci', WEB_ORIGIN: 'https://develop--teko-web.netlify.app' }),
+    parseEnv({ APP_ENV: 'ci', WEB_ORIGIN: 'https://develop--tekoia.netlify.app' }),
   )
   const app = Fastify()
   registerProblemHandlers(app)

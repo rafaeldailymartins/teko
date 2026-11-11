@@ -2,7 +2,7 @@
 export const PRODUCT_NAME = 'Tekó'
 
 /** Origem pública do front em produção: base de URLs absolutas (canonical, Open Graph). */
-export const SITE_ORIGIN = 'https://teko-web.netlify.app'
+export const SITE_ORIGIN = 'https://tekoia.netlify.app'
 
 /** Repositório público (licença MIT). */
 export const REPOSITORY_URL = 'https://github.com/rafaeldailymartins/teko'
