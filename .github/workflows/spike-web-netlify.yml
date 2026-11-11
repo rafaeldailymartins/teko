@@ -142,6 +142,30 @@ jobs:
           fi
           exit "$fail"
 
+      - name: O segredo do proxy não está no export
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          SITE_ID: ${{ steps.site.outputs.id }}
+        # No plano Free da Netlify o NETLIFY_PROXY_JWS_SECRET é variável comum (sem escopo nem valor
+        # secreto) e chega ao ambiente do build. O valor é lido pela API, mascarado no log e
+        # procurado em todo o out/; aparecer em qualquer arquivo derruba o job.
+        run: |
+          account="$(netlify api getSite --data "{\"site_id\":\"${SITE_ID}\"}" | jq -r .account_slug)"
+          netlify api getEnvVars --data "{\"account_id\":\"${account}\",\"site_id\":\"${SITE_ID}\"}" >"${RUNNER_TEMP}/site-env.json"
+          value="$(jq -r '[.[] | select(.key == "NETLIFY_PROXY_JWS_SECRET") | .values[].value] | first // empty' "${RUNNER_TEMP}/site-env.json")"
+          rm -f "${RUNNER_TEMP}/site-env.json"
+          if [[ -z "$value" ]]; then
+            echo "::warning title=spike-web-netlify::NETLIFY_PROXY_JWS_SECRET não existe no site; o proxy /api/* vai sem assinatura (spike c)."
+            echo "- NETLIFY_PROXY_JWS_SECRET: ausente no site" >>"$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          echo "::add-mask::${value}"
+          if grep -rlF -- "$value" apps/web/out; then
+            echo "::error title=spike-web-netlify::O valor do NETLIFY_PROXY_JWS_SECRET apareceu no export (arquivos acima)."
+            exit 1
+          fi
+          echo "- NETLIFY_PROXY_JWS_SECRET: presente no site e ausente do export" >>"$GITHUB_STEP_SUMMARY"
+
       - name: 0 functions e 0 edge functions no deploy
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
