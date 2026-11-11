@@ -1,0 +1,65 @@
+{
+  "app": {
+    "name": "Tekó",
+    "tagline": "Legislação fiscal brasileira, na data certa",
+    "description": "Assistente de código aberto que responde dúvidas sobre legislação fiscal brasileira citando a fonte e a redação vigente na data de referência. Em construção."
+  },
+  "common": {
+    "skipToContent": "Pular para o conteúdo",
+    "homeLink": "Tekó, página inicial",
+    "languageNav": "Idioma",
+    "disclaimer": "Apoio à consulta; não constitui parecer.",
+    "license": "Código aberto sob a licença MIT.",
+    "sourceCode": "Código-fonte no GitHub"
+  },
+  "landing": {
+    "status": "Em construção",
+    "title": "Legislação fiscal, na redação que valia na sua data.",
+    "lead": "O Tekó é um assistente de código aberto para dúvidas sobre legislação fiscal brasileira. Cada resposta será dada para um período de apuração ou data de referência e citará o dispositivo e a versão usados.",
+    "howItWorks": {
+      "title": "Como vai funcionar",
+      "referenceDate": {
+        "title": "Data de referência primeiro",
+        "body": "Você informa o período de apuração (por exemplo, 03/2024) e a resposta usa a redação vigente naquele momento. Se a norma mudou dentro do período, o Tekó avisa."
+      },
+      "citations": {
+        "title": "Citações verificáveis",
+        "body": "Cada afirmação aponta para o dispositivo, a versão e o intervalo de vigência usados, com link para a fonte oficial."
+      },
+      "coverage": {
+        "title": "Cobertura declarada",
+        "body": "O Tekó diz quais normas e períodos conhece. Fora dessa cobertura, ele recusa em vez de adivinhar."
+      }
+    },
+    "projectStatus": {
+      "title": "Situação do projeto",
+      "body": "Estamos montando a fundação: repositório, contratos compartilhados entre front e API e esta página. O assistente ainda não responde perguntas.",
+      "scope": "O corpus inicial previsto reúne os guias do SPED e a legislação do ICMS de Goiás."
+    }
+  },
+  "gateway": {
+    "title": "Escolha o idioma",
+    "continue": "Continuar em português"
+  },
+  "notFound": {
+    "title": "Página não encontrada",
+    "description": "O endereço não existe ou foi movido.",
+    "backHome": "Voltar para a página inicial"
+  },
+  "errors": {
+    "validation_error": "Alguns dados da pergunta são inválidos. Revise e tente de novo.",
+    "unauthenticated": "Sua sessão expirou. Entre novamente para continuar.",
+    "forbidden": "Você não tem permissão para esta ação.",
+    "not_found": "Não encontramos o que você procurou.",
+    "onboarding_required": "Conclua o cadastro inicial para fazer perguntas.",
+    "quota_exceeded": "O limite diário de perguntas foi atingido.",
+    "rate_limited": "Muitas solicitações em pouco tempo. Aguarde alguns instantes e tente de novo.",
+    "service_paused": "O serviço está pausado temporariamente.",
+    "ticket_invalid": "A conexão da resposta expirou. Tente de novo.",
+    "ticket_reused": "Esta resposta já foi aberta em outra conexão.",
+    "stream_busy": "Já há uma resposta em andamento. Aguarde ou interrompa-a.",
+    "upstream_unavailable": "O provedor de IA está indisponível no momento. Tente mais tarde.",
+    "region_restricted": "O Tekó não está disponível na sua região.",
+    "internal": "Ocorreu um erro inesperado. Tente de novo."
+  }
+}

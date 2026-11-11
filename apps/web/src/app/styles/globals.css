@@ -1,0 +1,109 @@
+@import "tailwindcss";
+
+/*
+ * Design tokens do Tekó (OKLCH). Cada token traz o par claro/escuro em `light-dark()`, resolvido
+ * pelo `color-scheme` do elemento:
+ * - sem `data-theme`, vale o `prefers-color-scheme` do sistema (`color-scheme: light dark`);
+ * - `data-theme="light"`/`"dark"` no <html> (gravado pelo script de tema) fixa o esquema.
+ * O teste `src/app/styles/tokens.test.ts` exige contraste WCAG AA dos pares de texto e de UI nos
+ * dois temas: ao mudar uma cor aqui, rode `test:unit`.
+ */
+
+/* Tema: a variante `dark:` segue o atributo explícito e, sem ele, a preferência do sistema. */
+@custom-variant dark {
+  &:where([data-theme="dark"], [data-theme="dark"] *) {
+    @slot;
+  }
+  @media (prefers-color-scheme: dark) {
+    &:where(:not([data-theme="light"], [data-theme="light"] *)) {
+      @slot;
+    }
+  }
+}
+
+:root {
+  color-scheme: light dark;
+
+  /* Superfícies e texto */
+  --background: light-dark(oklch(0.99 0.004 205), oklch(0.18 0.015 220));
+  --surface: light-dark(oklch(0.965 0.008 205), oklch(0.22 0.018 220));
+  --foreground: light-dark(oklch(0.22 0.02 220), oklch(0.95 0.008 205));
+  --muted-foreground: light-dark(oklch(0.46 0.02 220), oklch(0.76 0.015 205));
+  --border: light-dark(oklch(0.87 0.012 205), oklch(0.33 0.02 220));
+  --border-strong: light-dark(oklch(0.56 0.02 220), oklch(0.6 0.02 205));
+
+  /* Primária: petróleo */
+  --primary: light-dark(oklch(0.5 0.09 205), oklch(0.74 0.1 200));
+  --primary-foreground: light-dark(oklch(0.99 0.004 205), oklch(0.18 0.015 220));
+  --ring: light-dark(oklch(0.5 0.09 205), oklch(0.74 0.1 200));
+
+  /* Acento âmbar: data de referência e vigência */
+  --accent: light-dark(oklch(0.93 0.07 85), oklch(0.32 0.06 70));
+  --accent-foreground: light-dark(oklch(0.36 0.08 60), oklch(0.9 0.1 85));
+  --accent-border: light-dark(oklch(0.62 0.13 70), oklch(0.7 0.13 75));
+
+  /* Tokens de domínio (texto sobre --background) */
+  --validity-current: light-dark(oklch(0.48 0.12 150), oklch(0.78 0.14 150));
+  --validity-superseded: light-dark(oklch(0.5 0.02 250), oklch(0.72 0.02 250));
+  --validity-future: light-dark(oklch(0.5 0.13 260), oklch(0.78 0.1 260));
+  --coverage-out: light-dark(oklch(0.52 0.18 27), oklch(0.75 0.14 27));
+  --degraded: light-dark(oklch(0.5 0.11 65), oklch(0.8 0.13 80));
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-foreground: var(--foreground);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-ring: var(--ring);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent-border: var(--accent-border);
+  --color-validity-current: var(--validity-current);
+  --color-validity-superseded: var(--validity-superseded);
+  --color-validity-future: var(--validity-future);
+  --color-coverage-out: var(--coverage-out);
+  --color-degraded: var(--degraded);
+
+  --font-sans: var(--font-geist-sans, ui-sans-serif), system-ui, sans-serif;
+  --font-serif: var(--font-source-serif, ui-serif), Georgia, serif;
+}
+
+@layer base {
+  html {
+    font-size: 87.5%; /* base de 14 px, escalável pelo usuário */
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-background font-sans text-foreground antialiased;
+    min-height: 100dvh;
+    text-rendering: optimizeLegibility;
+  }
+
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-ring;
+  }
+
+  ::selection {
+    @apply bg-primary text-primary-foreground;
+  }
+
+  /* O destino do skip link não pode ficar sob cabeçalhos fixos (WCAG 2.4.11). */
+  [id] {
+    scroll-margin-top: 5rem;
+  }
+}
