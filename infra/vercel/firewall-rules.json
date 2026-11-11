@@ -1,0 +1,181 @@
+{
+  "$comment": [
+    "Regras custom do WAF da Vercel por projeto (Hobby: 3 regras custom, das quais 1 de rate limit).",
+    "Cada item de 'rules' é o payload aceito por `vercel firewall rules add --data '<json>' --yes`",
+    "(Vercel CLI >= 65.11.0, em tools/vercel-cli) e pela API REST de firewall (PATCH",
+    "/v1/security/firewall/config, action 'rules.insert'). A aplicação é feita na F7; o smoke confere",
+    "o efeito. Nenhuma regra usa 'challenge' nem casa com caminhos proxiados: o proxy da Netlify é",
+    "servidor a servidor e não resolve desafio. Rate limit por IP nunca vale para caminhos proxiados.",
+    "Regra 2: além do POST do stream, o preflight OPTIONS do mesmo caminho também chega direto do",
+    "navegador sem x-nf-sign; por isso a exceção é pelo caminho, sem condição de método.",
+    "Regra 1 (só no staging) libera também /api/docs (Swagger + Scalar)."
+  ],
+  "projects": {
+    "teko-api": {
+      "rules": [
+        {
+          "name": "deny-non-api",
+          "description": "Nega tudo fora de /healthz, /api/healthz, /api/auth/* e /api/v1/* (sem invocar a Function).",
+          "active": true,
+          "conditionGroup": [
+            {
+              "conditions": [
+                {
+                  "type": "path",
+                  "op": "re",
+                  "value": "^/(?:healthz|api/healthz|api/auth/.*|api/v1/.*)$",
+                  "neg": true
+                }
+              ]
+            }
+          ],
+          "action": {
+            "mitigate": {
+              "action": "deny",
+              "rateLimit": null,
+              "redirect": null,
+              "actionDuration": null
+            }
+          }
+        },
+        {
+          "name": "deny-unsigned-proxied",
+          "description": "Nega /api/auth/* e /api/v1/* sem x-nf-sign, exceto o caminho do stream (direto, Bearer ticket).",
+          "active": true,
+          "conditionGroup": [
+            {
+              "conditions": [
+                { "type": "path", "op": "re", "value": "^/api/(?:auth|v1)/" },
+                { "type": "header", "key": "x-nf-sign", "op": "nex" },
+                {
+                  "type": "path",
+                  "op": "re",
+                  "value": "^/api/v1/questions/[^/]+/stream$",
+                  "neg": true
+                }
+              ]
+            }
+          ],
+          "action": {
+            "mitigate": {
+              "action": "deny",
+              "rateLimit": null,
+              "redirect": null,
+              "actionDuration": null
+            }
+          }
+        },
+        {
+          "name": "rate-limit-stream",
+          "description": "POST do stream: 10 requests por IP em janela fixa de 60 s; acima disso, 429.",
+          "active": true,
+          "conditionGroup": [
+            {
+              "conditions": [
+                { "type": "method", "op": "eq", "value": "POST" },
+                { "type": "path", "op": "re", "value": "^/api/v1/questions/[^/]+/stream$" }
+              ]
+            }
+          ],
+          "action": {
+            "mitigate": {
+              "action": "rate_limit",
+              "rateLimit": {
+                "algo": "fixed_window",
+                "window": 60,
+                "limit": 10,
+                "keys": ["ip"],
+                "action": "rate_limit"
+              },
+              "redirect": null,
+              "actionDuration": null
+            }
+          }
+        }
+      ]
+    },
+    "teko-api-staging": {
+      "rules": [
+        {
+          "name": "deny-non-api",
+          "description": "Nega tudo fora de /healthz, /api/healthz, /api/auth/*, /api/v1/* e /api/docs* (sem invocar a Function).",
+          "active": true,
+          "conditionGroup": [
+            {
+              "conditions": [
+                {
+                  "type": "path",
+                  "op": "re",
+                  "value": "^/(?:healthz|api/healthz|api/auth/.*|api/v1/.*|api/docs(?:/.*)?)$",
+                  "neg": true
+                }
+              ]
+            }
+          ],
+          "action": {
+            "mitigate": {
+              "action": "deny",
+              "rateLimit": null,
+              "redirect": null,
+              "actionDuration": null
+            }
+          }
+        },
+        {
+          "name": "deny-unsigned-proxied",
+          "description": "Nega /api/auth/* e /api/v1/* sem x-nf-sign, exceto o caminho do stream (direto, Bearer ticket).",
+          "active": true,
+          "conditionGroup": [
+            {
+              "conditions": [
+                { "type": "path", "op": "re", "value": "^/api/(?:auth|v1)/" },
+                { "type": "header", "key": "x-nf-sign", "op": "nex" },
+                {
+                  "type": "path",
+                  "op": "re",
+                  "value": "^/api/v1/questions/[^/]+/stream$",
+                  "neg": true
+                }
+              ]
+            }
+          ],
+          "action": {
+            "mitigate": {
+              "action": "deny",
+              "rateLimit": null,
+              "redirect": null,
+              "actionDuration": null
+            }
+          }
+        },
+        {
+          "name": "rate-limit-stream",
+          "description": "POST do stream: 10 requests por IP em janela fixa de 60 s; acima disso, 429.",
+          "active": true,
+          "conditionGroup": [
+            {
+              "conditions": [
+                { "type": "method", "op": "eq", "value": "POST" },
+                { "type": "path", "op": "re", "value": "^/api/v1/questions/[^/]+/stream$" }
+              ]
+            }
+          ],
+          "action": {
+            "mitigate": {
+              "action": "rate_limit",
+              "rateLimit": {
+                "algo": "fixed_window",
+                "window": 60,
+                "limit": 10,
+                "keys": ["ip"],
+                "action": "rate_limit"
+              },
+              "redirect": null,
+              "actionDuration": null
+            }
+          }
+        }
+      ]
+    }
+  }
+}
