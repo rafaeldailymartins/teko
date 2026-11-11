@@ -65,8 +65,18 @@ evals, release) ainda não existem.
 | Stryker    | `/websites/stryker-mutator_io`        | 10.1.1           | reporter `dashboard` com `module` por pacote no monorepo                                        |
 | Shields.io | `/badges/shields`                     | serviço atual    | rotas dos badges de CI, CodeQL, Scorecard, Best Practices, Codecov, Sonar e endpoint do Stryker |
 
-As ações do GitHub (checkout, harden-runner, alls-green, CodeQL, dependency-review, osv-scanner,
-zizmor, gitleaks, Semgrep, scorecard, codecov) e as ferramentas de lint (knip, sherif,
-dependency-cruiser, steiger, commitlint, lefthook) foram conferidas pelos streams que escreveram
-os workflows e a configuração da raiz; os IDs que faltam nesta tabela devem ser acrescentados por
-esses streams antes do arquivamento (tarefa 3.3).
+| knip | `/websites/knip_dev` | 6.44.1 | padrões `!` de produção em `entry`/`project` por workspace e `--production --include dependencies,unlisted,unresolved,binaries` |
+| sherif | sem ID no Context7 (a busca devolve só `/sheriff-arch/sheriff`, outra ferramenta) | 1.13.0 | `lint:monorepo` sem configuração; conferido pelo README do pacote |
+| dependency-cruiser | `/sverweij/dependency-cruiser` | 18.7.2 | regras `forbidden` da API hexagonal, `tsPreCompilationDeps`, `enhancedResolveOptions` e `dependencyTypesNot: type-only` |
+| Steiger | `/feature-sliced/steiger` | 0.9.0 (plugin 0.8.2) | `fsd.configs.recommended`, `forbidden-imports` desligada em favor de `no-cross-imports` e `no-higher-level-imports`, `import-locality` e `ignores` |
+| commitlint | `/conventional-changelog/commitlint` | 21.2.4 | `config-conventional`, `scope-enum` com a lista de escopos e `signed-off-by` |
+| Lefthook | `/evilmartians/lefthook` | 2.2.1 | `pre-commit` paralelo com `glob` e `stage_fixed`, `commit-msg` com `{1}` e `pre-push` com `--affected` |
+| GitHub Actions | `/websites/github_en_actions` | serviço atual | `workflow_call` com `secrets` explícitos e `permissions` por job; `re-actors/alls-green` (`allowed-skips`) não tem ID e foi conferido pelo README da action |
+| zizmor | `/zizmorcore/zizmor` | 1.32.0 (action v0.8.1) | `zizmor-action` com `permissions: {}` no topo, `persist-credentials: false` e anotações sem SARIF |
+| Gitleaks | `/gitleaks/gitleaks/v8.30.1` | 8.30.1 | `gitleaks git` com `--log-opts` pela faixa de commits do PR, `--redact` e código de saída 1 com vazamento |
+
+A conferência no fechamento da F1 encontrou uma divergência: o `apps/web/steiger.config.ts` ligava
+`no-cross-imports` sem desligar a `forbidden-imports` do `recommended`, e a doc do Steiger manda
+trocar a regra agregada pelas duas granulares. A configuração foi corrigida. As demais ações
+(checkout, harden-runner, CodeQL, dependency-review, osv-scanner, Semgrep, scorecard, codecov)
+são fixadas por SHA e conferidas pelo README de cada uma, sem ID no Context7.

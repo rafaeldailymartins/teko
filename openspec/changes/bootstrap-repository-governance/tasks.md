@@ -19,13 +19,14 @@
 
 ## 3. Configuração do GitHub
 
-- [ ] 3.1 Criar o repositório público com `main` e `develop` (default) e conferir em Settings → Branches
-- [ ] 3.2 Criar os rulesets `checks-*`, `review-*`, `release-tags` e `branch-names` e conferir que um push direto em `develop` é rejeitado
-- [ ] 3.3 Ativar Private Vulnerability Reporting, secret scanning e push protection e conferir na aba Security
-- [ ] 3.4 Criar a App `teko-release-bot` e os environments (inclusive `ops`) e conferir em Settings → Environments
-- [ ] 3.5 Rodar o spike de environments em `pull_request` (ref avaliada) e registrar o resultado em `docs/adr/`
-- [ ] 3.6 Conferir o DoD da F0: Scorecard publica e o Dependabot abre o primeiro PR `chore(deps): …`
+- [x] 3.1 Criar o repositório público com `main` e `develop` (default) e conferir em Settings → Branches (conferido pela API em 2026-11-11)
+- [x] 3.2 Criar os rulesets `checks-*`, `review-*`, `release-tags` e `branch-names` e conferir que um push direto em `develop` é rejeitado (os seis ativos; `checks-develop` exige PR e não tem bypass, e `GET /rules/branches/develop` traz `pull_request` e `non_fast_forward`)
+- [x] 3.3 Ativar Private Vulnerability Reporting, secret scanning e push protection e conferir na aba Security
+- [x] 3.4 Criar a App `teko-release-bot` e os environments (inclusive `ops`) e conferir em Settings → Environments
+- [x] 3.5 Rodar o spike de environments em `pull_request` (ref avaliada) e registrar o resultado em `docs/adr/` (`refs/pull/N/merge`; ADR 0024)
+- [x] 3.6 Conferir o DoD da F0: Scorecard publica (7,4 em 2026-11-11) e `/healthz` responde em `teko-api.vercel.app` e `teko-api-staging.vercel.app`
+- [ ] 3.7 Conferir o DoD da F0: o Dependabot abre o primeiro PR `chore(deps): …` (primeira rodada em 2026-11-16)
 
 ## Workflow follow-up
 
-- Arquivar a mudança (`openspec archive bootstrap-repository-governance --yes`) no PR que concluir o grupo 3.
+- Arquivar a mudança (`openspec archive bootstrap-repository-governance --yes`) no PR que marcar a 3.7.
