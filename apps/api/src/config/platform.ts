@@ -67,6 +67,13 @@ export interface ShutdownProfile {
 export interface PlatformNetwork {
   readonly trustProxy: TrustProxy
   readonly requestIdHeader: string | null
+  /**
+   * Limite de atraso do event loop do `under-pressure` (503 acima de 1 s). Desligado na Vercel:
+   * em Fluid compute a instância fica congelada entre invocações, o timer de amostragem para, e o
+   * congelamento aparece como atraso; no spike F1 (b), o `/healthz` ficou em 503 depois de ~10 s
+   * de ociosidade (ADR 0017). Lá, quem limita a carga é a própria plataforma.
+   */
+  readonly eventLoopDelayGuard: boolean
 }
 
 /**
@@ -87,12 +94,11 @@ function nonVercelTrustProxy(env: Env): TrustProxy {
 }
 
 export function platformNetwork(env: Env): PlatformNetwork {
+  const vercel = env.RUNTIME_TARGET === RuntimeTarget.Vercel
   return {
-    trustProxy:
-      env.RUNTIME_TARGET === RuntimeTarget.Vercel
-        ? VERCEL_TRUST_PROXY_HOPS
-        : nonVercelTrustProxy(env),
+    trustProxy: vercel ? VERCEL_TRUST_PROXY_HOPS : nonVercelTrustProxy(env),
     requestIdHeader: REQUEST_ID_HEADER[env.RUNTIME_TARGET],
+    eventLoopDelayGuard: !vercel,
   }
 }
 

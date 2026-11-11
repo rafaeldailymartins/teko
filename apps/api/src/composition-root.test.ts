@@ -76,6 +76,7 @@ describe('createHttpOptions', () => {
       webOrigin: 'https://develop--teko-web.netlify.app',
       trustProxy: ['172.30.0.0/24'],
       requestIdHeader: 'x-request-id',
+      eventLoopDelayGuard: true,
       docs: true,
     })
   })
@@ -96,6 +97,7 @@ describe('createHttpOptions', () => {
     const options = createHttpOptions(parseEnv({ ...BASE, RUNTIME_TARGET: 'vercel' }))
     expect(options.trustProxy).toBe(1)
     expect(options.requestIdHeader).toBe('x-vercel-id')
+    expect(options.eventLoopDelayGuard).toBe(false)
   })
 
   it('no Render usa o trustProxy medido e nunca o X-Request-Id do cliente', () => {
@@ -104,6 +106,7 @@ describe('createHttpOptions', () => {
     )
     expect(options.trustProxy).toEqual(['10.0.0.0/8'])
     expect(options.requestIdHeader).toBeNull()
+    expect(options.eventLoopDelayGuard).toBe(true)
   })
 })
 

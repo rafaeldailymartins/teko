@@ -11,11 +11,15 @@ import { MAX_EVENT_LOOP_DELAY_MS, type RateLimitOptions } from '../http-options.
 /**
  * `under-pressure`: com o event loop atrasado mais de 1 s (dimensionado para 1 vCPU por
  * instância), responde 503 (`Retry-After`) em vez de enfileirar trabalho. O `/healthz` também
- * passa a dar 503.
+ * passa a dar 503. Com `eventLoopDelayGuard: false` (Vercel), o limite fica desligado (`0`, o
+ * padrão do plugin): o congelamento da instância entre invocações seria lido como atraso.
  */
-export async function registerUnderPressure(app: FastifyInstance): Promise<void> {
+export async function registerUnderPressure(
+  app: FastifyInstance,
+  options: { readonly eventLoopDelayGuard: boolean },
+): Promise<void> {
   await app.register(underPressure, {
-    maxEventLoopDelay: MAX_EVENT_LOOP_DELAY_MS,
+    maxEventLoopDelay: options.eventLoopDelayGuard ? MAX_EVENT_LOOP_DELAY_MS : 0,
     exposeStatusRoute: false,
   })
 }

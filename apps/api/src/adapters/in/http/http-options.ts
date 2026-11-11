@@ -18,6 +18,11 @@ export interface HttpOptions {
    * `x-request-id` do Caddy no CI e local); `null` = sempre um UUID próprio.
    */
   readonly requestIdHeader: string | null
+  /**
+   * `under-pressure` com limite de atraso do event loop (`MAX_EVENT_LOOP_DELAY_MS`). Desligado na
+   * Vercel, onde o congelamento da instância entre invocações conta como atraso.
+   */
+  readonly eventLoopDelayGuard: boolean
   /** Swagger + Scalar em `/api/docs` (nunca em produção). */
   readonly docs: boolean
   /**

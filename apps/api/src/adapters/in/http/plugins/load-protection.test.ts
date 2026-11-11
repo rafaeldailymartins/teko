@@ -1,5 +1,5 @@
 import Fastify, { type FastifyInstance } from 'fastify'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import type { ClientIp, ClientIpInput } from '#app/ports/client-ip.ts'
 import type { RateLimitHit, RateLimitStore } from '#app/ports/rate-limit-store.ts'
 import { createContainer } from '../../../../composition-root.ts'
@@ -135,7 +135,7 @@ describe('rateLimitNamespace', () => {
 describe('registerUnderPressure', () => {
   it('não interfere com o processo saudável e não expõe rota de status', async () => {
     const app = Fastify()
-    await registerUnderPressure(app)
+    await registerUnderPressure(app, { eventLoopDelayGuard: true })
     app.get('/ok', async () => ({ ok: true }))
 
     expect((await app.inject({ url: '/ok' })).statusCode).toBe(200)
@@ -143,4 +143,21 @@ describe('registerUnderPressure', () => {
     expect(app.memoryUsage()).toHaveProperty('eventLoopDelay')
     await app.close()
   })
+
+  it.each([
+    [true, 1000],
+    [false, 0],
+  ] as const)(
+    'eventLoopDelayGuard %s → maxEventLoopDelay %d (0 desliga no plugin)',
+    async (eventLoopDelayGuard, expected) => {
+      const app = Fastify()
+      const register = vi.spyOn(app, 'register')
+      await registerUnderPressure(app, { eventLoopDelayGuard })
+      expect(register).toHaveBeenCalledWith(expect.any(Function), {
+        maxEventLoopDelay: expected,
+        exposeStatusRoute: false,
+      })
+      await app.close()
+    },
+  )
 })

@@ -64,6 +64,7 @@ export function createHttpOptions(env: Env): HttpOptions {
     webOrigin: env.WEB_ORIGIN,
     trustProxy: network.trustProxy,
     requestIdHeader: network.requestIdHeader,
+    eventLoopDelayGuard: network.eventLoopDelayGuard,
     docs: env.APP_ENV !== AppEnv.Production,
     // Sem `rateLimit`: o `PgRateLimitStore` (tabela `app.rate_limits`) chega com o schema, e
     // nenhuma rota da F1 abre transação. Memória local não serve com várias instâncias.
