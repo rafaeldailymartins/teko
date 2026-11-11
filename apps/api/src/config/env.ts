@@ -92,7 +92,7 @@ const exactOriginSchema = z
   .url({ protocol: /^https?$/, error: 'deve ser uma URL http(s)' })
   .refine((value) => URL.canParse(value) && new URL(value).origin === value, {
     error:
-      'deve ser uma origem exata, sem caminho nem barra final (ex.: https://teko-web.netlify.app)',
+      'deve ser uma origem exata, sem caminho nem barra final (ex.: https://tekoia.netlify.app)',
   })
 
 const trustProxyListSchema = z.array(z.union([z.ipv4(), z.ipv6(), z.cidrv4(), z.cidrv6()])).min(1)

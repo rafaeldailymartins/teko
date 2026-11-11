@@ -45,10 +45,10 @@ Free** fica como Plano B, com o mesmo `server.ts`.
 
 ### Projetos e domínios
 
-| Projeto            | Ambiente   | Domínio de produção (`STREAM_ORIGIN` e alvo do proxy) | Neon           | `WEB_ORIGIN`                            |
-| ------------------ | ---------- | ----------------------------------------------------- | -------------- | --------------------------------------- |
-| `teko-api`         | production | `https://teko-api.vercel.app`                         | `teko-prod`    | `https://teko-web.netlify.app`          |
-| `teko-api-staging` | staging    | `https://teko-api-staging.vercel.app`                 | `teko-staging` | `https://develop--teko-web.netlify.app` |
+| Projeto            | Ambiente   | Domínio de produção (`STREAM_ORIGIN` e alvo do proxy) | Neon           | `WEB_ORIGIN`                          |
+| ------------------ | ---------- | ----------------------------------------------------- | -------------- | ------------------------------------- |
+| `teko-api`         | production | `https://teko-api.vercel.app`                         | `teko-prod`    | `https://tekoia.netlify.app`          |
+| `teko-api-staging` | staging    | `https://teko-api-staging.vercel.app`                 | `teko-staging` | `https://develop--tekoia.netlify.app` |
 
 - Os dois projetos ficam no time Hobby pessoal, com Root Directory `apps/api`, Fluid compute,
   região de Functions `gru1` (São Paulo, AWS sa-east-1) e **sem repositório Git conectado**. O

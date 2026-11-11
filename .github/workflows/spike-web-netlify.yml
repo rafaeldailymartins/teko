@@ -1,12 +1,12 @@
-# Spike F1 (a): export estático do Next no site `teko-web` da Netlify, pelo mesmo fluxo que o
+# Spike F1 (a): export estático do Next no site `tekoia` da Netlify, pelo mesmo fluxo que o
 # deploy-web.yml da F7 vai usar:
 #   netlify deploy --build --context develop --alias develop (build no runner; o
 #   @netlify/plugin-nextjs vem do lockfile e se desliga com NETLIFY_NEXT_PLUGIN_SKIP) → 0 functions
 #   e 0 edge functions no deploy → env do contexto develop aplicado no build →
-#   https://develop--teko-web.netlify.app servindo o export.
+#   https://develop--tekoia.netlify.app servindo o export.
 #
 # Só `workflow_dispatch` (nunca roda em PR nem em push) e só no environment `staging`, que guarda o
-# NETLIFY_AUTH_TOKEN (segredo). O site é achado pelo nome (`teko-web`); sem token ou sem site, o job
+# NETLIFY_AUTH_TOKEN (segredo). O site é achado pelo nome (`tekoia`); sem token ou sem site, o job
 # falha antes de construir. Nada aqui inventa resultado: o resumo do job registra o que a Netlify
 # devolveu (deploy, URL, functions, contexto).
 #
@@ -25,14 +25,14 @@ concurrency:
 
 jobs:
   deploy:
-    name: deploy (teko-web, alias develop)
+    name: deploy (tekoia, alias develop)
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     environment: staging
     permissions:
       contents: read
     env:
-      NETLIFY_SITE_NAME: teko-web
+      NETLIFY_SITE_NAME: tekoia
       EXPECTED_STREAM_ORIGIN: https://teko-api-staging.vercel.app
       NETLIFY_TELEMETRY_DISABLED: "1"
       TURBO_TELEMETRY_DISABLED: "1"
@@ -66,7 +66,7 @@ jobs:
           pnpm --dir tools/netlify-cli install --frozen-lockfile
           echo "${GITHUB_WORKSPACE}/tools/netlify-cli/node_modules/.bin" >>"$GITHUB_PATH"
 
-      - name: Achar o site teko-web
+      - name: Achar o site tekoia
         id: site
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}

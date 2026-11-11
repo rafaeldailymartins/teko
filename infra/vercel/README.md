@@ -20,10 +20,10 @@ A configuração do projeto que vive no repositório fica em `apps/api/vercel.js
 
 ## Projetos
 
-| Projeto            | Ambiente lógico | Domínio de produção                   | Neon           | `WEB_ORIGIN`                            |
-| ------------------ | --------------- | ------------------------------------- | -------------- | --------------------------------------- |
-| `teko-api`         | `production`    | `https://teko-api.vercel.app`         | `teko-prod`    | `https://teko-web.netlify.app`          |
-| `teko-api-staging` | `staging`       | `https://teko-api-staging.vercel.app` | `teko-staging` | `https://develop--teko-web.netlify.app` |
+| Projeto            | Ambiente lógico | Domínio de produção                   | Neon           | `WEB_ORIGIN`                          |
+| ------------------ | --------------- | ------------------------------------- | -------------- | ------------------------------------- |
+| `teko-api`         | `production`    | `https://teko-api.vercel.app`         | `teko-prod`    | `https://tekoia.netlify.app`          |
+| `teko-api-staging` | `staging`       | `https://teko-api-staging.vercel.app` | `teko-staging` | `https://develop--tekoia.netlify.app` |
 
 - Os dois ficam no time Hobby pessoal. Staging é um **projeto à parte**, não um Preview: cada
   projeto só recebe deploys `--prod`, e todas as env vars vão no ambiente Production do projeto.

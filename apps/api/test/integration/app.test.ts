@@ -13,7 +13,7 @@ import { EnvValidationError, parseEnv } from '../../src/config/env.ts'
  * externa configurada.
  */
 
-const WEB_ORIGIN = 'https://develop--teko-web.netlify.app'
+const WEB_ORIGIN = 'https://develop--tekoia.netlify.app'
 
 /** Recorte do OpenAPI usado nas asserções. */
 const openApiDocumentSchema = z.object({
@@ -44,7 +44,7 @@ const ENVS = {
   production: {
     APP_ENV: 'production',
     NODE_ENV: 'production',
-    WEB_ORIGIN: 'https://teko-web.netlify.app',
+    WEB_ORIGIN: 'https://tekoia.netlify.app',
     APP_VERSION: '0.1.0',
     GIT_SHA: 'abc1234',
     RUNTIME_TARGET: 'vercel',
