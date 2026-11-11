@@ -24,19 +24,25 @@ Atualize esta seção no PR que fecha cada fase ou spike.
 
 - **F0 (contas e governança):** concluída. Falta só conferir o primeiro PR do Dependabot
   (`chore(deps): …`).
-- **F1 (esqueleto, gates e spikes):** esqueleto, gates e CI em `develop`. Spikes pendentes:
-  - (b) API na Vercel: deploy e `/healthz` concluídos (ADR 0003, "Spike (b)"). O zero-config
-    quebrava no boot; a API vai pelo Build Output API montado do bundle do tsdown
-    (`scripts/build-vercel-output.ts`, ADR 0017), Function `index`, Node 24 e `gru1` confirmados.
-    Na Vercel, o `under-pressure` roda sem limite de atraso do event loop. As Config da F1 do
-    `teko-api-staging` foram gravadas à mão (a F7 automatiza). Faltam as verificações manuais:
-    SSE de 95 s, desconexão com e sem `supportsCancellation`, `waitUntil`/SIGTERM, promote
-    durante stream, rollback, Sensitive de teste e cold start.
-  - (a) web na Netlify: falta o Netlify CLI isolado em `tools/netlify-cli`, como o
-    `tools/vercel-cli`.
-  - (c) proxy Netlify → Vercel e (d) pooler do Neon dependem de (a) e (b).
-  - (e), (f) e (g) rodam localmente. O (f) provavelmente precisa do token do Cloudflare Workers AI
-    (embeddings BGE-M3).
+- **F1 (esqueleto, gates e spikes):** esqueleto, gates e CI em `develop`. Spikes (ADR 0003):
+  - (a) web na Netlify: concluído. Site `tekoia` (time `rafael-daily-santos-martins`, a conta do
+    token do CI), `tools/netlify-cli` isolado, `@netlify/plugin-nextjs` fixado no lockfile,
+    proteção de visitantes desligada. A Netlify troca `/pt-BR/` por `/pt-br/`: tratar na F5.
+  - (b) API na Vercel: concluído. Build Output API montado do bundle do tsdown (ADR 0017),
+    Function `index` em `gru1` com Node 24, SSE de 95 s sem corte, promote durante stream e
+    `waitUntil` ok; a desconexão só é percebida com `supportsCancellation`, que passou a ser
+    padrão com `maxDuration` de 120 s. SIGTERM e cold start ficam como risco residual.
+  - (c) proxy Netlify → Vercel: concluído. `x-nf-sign` verificado, `deploy_context=branch-deploy`
+    no alias `develop`, `NETLIFY_CLIENT_IP_TRUSTED = true` (só com assinatura). No Netlify Free o
+    `NETLIFY_PROXY_JWS_SECRET` é variável comum, com travas contra vazamento no bundle.
+  - (d) pooler do Neon: workflow `spike-neon.yml` pronto; falta o resultado. O `pg` nunca teve
+    proveniência: decidir o driver na F2, junto com o `attachDatabasePool`.
+  - (e) e (g) concluído e parcial; (f) ingestão real em PR separado, provavelmente com o token do
+    Cloudflare Workers AI (embeddings BGE-M3).
+  - As rotas `/api/_spike/*` (só staging na Vercel) saem quando os spikes fecharem. As env vars
+    Config da F1 do `teko-api-staging` foram gravadas à mão (a F7 automatiza).
+  - Itens menores: o projeto `teko-api` (produção) ainda não existe na Vercel; o primeiro PR do
+    Dependabot (F0) ainda não veio (rodada semanal às segundas, com 7 dias de espera).
 - **F2 em diante:** não começar antes de fechar as pendências da F1 (decisão do mantenedor).
 
 ## Como trabalhar

@@ -111,8 +111,10 @@ describe('buildVercelOutput', () => {
       shouldAddHelpers: false,
       shouldAddSourcemapSupport: true,
       supportsResponseStreaming: true,
-      maxDuration: MAX_DURATION_S,
+      maxDuration: 120,
+      supportsCancellation: true,
     })
+    assert.equal(MAX_DURATION_S, 120)
   })
 
   it('leva o bundle e só as dependências de produção, sem .bin, metadados do pnpm nem @teko', () => {

@@ -32,9 +32,9 @@
 Os spikes que fazem deploy ou chamam serviços externos dependem de tokens que ainda não existem
 (contas criadas em 2026-11-10). Nenhum resultado é presumido: cada um fica pendente até rodar.
 
-- [ ] 4.1 Spike (a): build do Next no Actions + `netlify deploy --build --context develop --alias develop` com 0 functions e env por contexto, registrado em `docs/adr/0003-f1-spikes.md`
-- [ ] 4.2 Spike (b): Fastify "hello" com o `server.ts` real no `teko-api-staging` pelo fluxo do CI (tsdown → `scripts/build-vercel-output.ts` → tarball atestado → `vercel deploy --prebuilt --prod --skip-domain` → `vercel curl` → `vercel promote`), com o checklist da ADR 0003
-- [ ] 4.3 Spike (c): plugin `context-routing` contra uma rota de echo no `teko-api-staging.vercel.app`, com o checklist da ADR 0003
+- [x] 4.1 Spike (a): build do Next no Actions + `netlify deploy --build --context develop --alias develop` com 0 functions e env por contexto, registrado em `docs/adr/0003-f1-spikes.md`
+- [x] 4.2 Spike (b): Fastify "hello" com o `server.ts` real no `teko-api-staging` pelo fluxo do CI (tsdown → `scripts/build-vercel-output.ts` → tarball atestado → `vercel deploy --prebuilt --prod --skip-domain` → `vercel curl` → `vercel promote`), com o checklist da ADR 0003
+- [x] 4.3 Spike (c): plugin `context-routing` contra uma rota de echo no `teko-api-staging.vercel.app`, com o checklist da ADR 0003
 - [ ] 4.4 Spike (d): Neon `-pooler` com timeouts por role, `attachDatabasePool` e reconexão após scale-to-zero
 - [x] 4.5 Spike (e): exports `parseJsonEventStream` e `uiMessageChunkSchema` do `ai`, registrado na ADR 0003 (presentes em 7.0.162 e 7.0.169)
 - [ ] 4.6 Spike (f): Docling ACCURATE contra V2 no Guia 3.2.4, formato do WS de Tabelas Externas, `bge-m3` com dimensão 1024 e plugins locais do promptfoo

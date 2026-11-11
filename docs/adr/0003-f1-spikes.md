@@ -21,15 +21,15 @@ GHCR e deployer blue/green deixaram de existir.
 
 ## Spikes
 
-| Spike | Pergunta                                                                                                                                                                                                                     | Status                                                                                                        | Resultado                                                                                                                                  | Decisão decorrente                                                                                                                                                                                      |
-| ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| (a)   | Build do Next no Actions + `netlify deploy --build --context develop --alias develop` com `NETLIFY_NEXT_PLUGIN_SKIP`: o deploy tem 0 functions e o env por contexto é aplicado?                                              | pendente — requer tokens (contas criadas em 2026-11-10)                                                       | Há um export estático local em `apps/web/out` e o `ci.yml` falha se aparecer `.netlify/functions`; o deploy real depende do PAT da Netlify |                                                                                                                                                                                                         |
-| (b)   | Fastify "hello" com o `server.ts` real no `teko-api-staging`, pelo fluxo do CI (build → tarball atestado → `vercel deploy --prebuilt --prod --skip-domain` → `vercel curl` → `vercel promote`). Ver "Checklist do spike (b)" | deploy e `/healthz` concluídos (2026-11-11); verificações manuais pendentes                                   | O zero-config quebra no boot; o Build Output API montado do bundle do tsdown funciona, em `gru1` e Node 24 (ver "Spike (b)")               | Build Output API pelo tsdown ([ADR 0017](0017-vercel-build-output-tsdown.md)); `under-pressure` sem limite de atraso do event loop na Vercel; `maxDuration`/`supportsCancellation` no `.vc-config.json` |
-| (c)   | Plugin `context-routing` contra uma rota de echo no `teko-api-staging.vercel.app`. Ver "Checklist do spike (c)"                                                                                                              | pendente — requer tokens (contas criadas em 2026-11-10)                                                       |                                                                                                                                            | Allowlist de `deploy_context`; header de IP do cliente                                                                                                                                                  |
-| (d)   | Neon `-pooler` com timeouts por role (o pooler não aceita `statement_timeout` como parâmetro de conexão), `attachDatabasePool` e reconexão após scale-to-zero                                                                | pendente — requer tokens (contas criadas em 2026-11-10)                                                       |                                                                                                                                            | Timeouts no role; retry único em `57P01`/`ECONNRESET`                                                                                                                                                   |
-| (e)   | Exports `parseJsonEventStream` e `uiMessageChunkSchema` do pacote `ai`                                                                                                                                                       | concluído                                                                                                     | Os dois são exportados pelo entry `ai` (ver "Spike (e)")                                                                                   | O `TicketedChatTransport` pode importar os dois de `ai`; a versão do catálogo precisa respeitar os 7 dias                                                                                               |
-| (f)   | Ingestão: Docling ACCURATE contra V2 no Guia 3.2.4, formato do WS de Tabelas Externas, `bge-m3` com dimensão 1024 e plugins locais do promptfoo                                                                              | pendente — requer tokens (contas criadas em 2026-11-10) para `bge-m3`; Docling real e WS ainda não executados | `tools/ingest` existe com testes sobre dublês do Docling (55 testes, cobertura de 100%); nenhuma conversão real foi feita                  |                                                                                                                                                                                                         |
-| (g)   | Conferência via Context7 de todas as versões da tabela "Ferramentas da raiz" (inclusive a Vercel CLI) e das tabelas de stack de API (inclusive `@vercel/functions`) e web                                                    | parcial                                                                                                       | Ver "Spike (g)"                                                                                                                            | Versões seguradas e exceções na [ADR 0002](0002-supply-chain-pnpm.md)                                                                                                                                   |
+| Spike | Pergunta                                                                                                                                                                                                                     | Status                                                                                                        | Resultado                                                                                                                                                              | Decisão decorrente                                                                                                                                                          |
+| ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| (a)   | Build do Next no Actions + `netlify deploy --build --context develop --alias develop` com `NETLIFY_NEXT_PLUGIN_SKIP`: o deploy tem 0 functions e o env por contexto é aplicado?                                              | concluído (2026-11-11)                                                                                        | Sim, no site `tekoia` (ver "Spike (a)"); a Netlify instala o plugin do Next sozinha se ele não for declarado, e troca `/pt-BR/` por `/pt-br/`                          | `@netlify/plugin-nextjs` fixado no lockfile; proteção de visitantes desligada no site; o i18n da F5 precisa tratar URL em minúsculas                                        |
+| (b)   | Fastify "hello" com o `server.ts` real no `teko-api-staging`, pelo fluxo do CI (build → tarball atestado → `vercel deploy --prebuilt --prod --skip-domain` → `vercel curl` → `vercel promote`). Ver "Checklist do spike (b)" | concluído (2026-11-11); SIGTERM e cold start sem medição conclusiva                                           | Build Output API pelo tsdown; SSE de 95 s sem corte; promote durante stream; `waitUntil`; desconexão só com `supportsCancellation` (ver "Spike (b)")                   | [ADR 0017](0017-vercel-build-output-tsdown.md); `supportsCancellation: true` e `maxDuration` de 120 s no `.vc-config.json`; `under-pressure` sem limite de atraso na Vercel |
+| (c)   | Plugin `context-routing` contra uma rota de echo no `teko-api-staging.vercel.app`. Ver "Checklist do spike (c)"                                                                                                              | concluído (2026-11-11)                                                                                        | `x-nf-sign` verificado, com `deploy_context=branch-deploy` no alias; a Netlify sobrescreve `x-nf-client-connection-ip`; sem cache; +27 ms de mediana (ver "Spike (c)") | `NETLIFY_CLIENT_IP_TRUSTED = true` (só com assinatura); allowlist de `deploy_context` em staging = `branch-deploy`; segredo do proxy como variável comum no Netlify Free    |
+| (d)   | Neon `-pooler` com timeouts por role (o pooler não aceita `statement_timeout` como parâmetro de conexão), `attachDatabasePool` e reconexão após scale-to-zero                                                                | pendente — requer tokens (contas criadas em 2026-11-10)                                                       |                                                                                                                                                                        | Timeouts no role; retry único em `57P01`/`ECONNRESET`                                                                                                                       |
+| (e)   | Exports `parseJsonEventStream` e `uiMessageChunkSchema` do pacote `ai`                                                                                                                                                       | concluído                                                                                                     | Os dois são exportados pelo entry `ai` (ver "Spike (e)")                                                                                                               | O `TicketedChatTransport` pode importar os dois de `ai`; a versão do catálogo precisa respeitar os 7 dias                                                                   |
+| (f)   | Ingestão: Docling ACCURATE contra V2 no Guia 3.2.4, formato do WS de Tabelas Externas, `bge-m3` com dimensão 1024 e plugins locais do promptfoo                                                                              | pendente — requer tokens (contas criadas em 2026-11-10) para `bge-m3`; Docling real e WS ainda não executados | `tools/ingest` existe com testes sobre dublês do Docling (55 testes, cobertura de 100%); nenhuma conversão real foi feita                                              |                                                                                                                                                                             |
+| (g)   | Conferência via Context7 de todas as versões da tabela "Ferramentas da raiz" (inclusive a Vercel CLI) e das tabelas de stack de API (inclusive `@vercel/functions`) e web                                                    | parcial                                                                                                       | Ver "Spike (g)"                                                                                                                                                        | Versões seguradas e exceções na [ADR 0002](0002-supply-chain-pnpm.md)                                                                                                       |
 
 ### Checklist do spike (b)
 
@@ -93,9 +93,80 @@ Conclusões:
   O `scripts/vercel-env-sync.ts` da F7 assume isso. Sem `APP_VERSION`/`GIT_SHA`, o `/healthz`
   responde `version: 0.0.0` e `gitSha: unknown`.
 
-Continuam abertos no checklist: SSE de 95 s, desconexão com e sem `supportsCancellation`,
-`waitUntil` e SIGTERM, promote e deploy durante stream, `vercel rollback`, Sensitive de teste
-ausente do output, cold start (p95) e `attachDatabasePool` (este com o spike (d)).
+### Rodada de stream (2026-11-11)
+
+O run 42989881707 foi só o deploy; a rodada de stream é o run 43007922090 (`stream_checks`), mais
+duas sondas de desconexão feitas à parte (a do workflow caiu na deployment anterior, ver abaixo).
+
+| Item                                                                            | Resultado                                                                                                                                                                                            |
+| ------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Runtime (`/api/_spike/runtime`)                                                 | Node `v24.22.2`, `VERCEL_REGION=gru1`, Sensitive de teste presente (só o tamanho, 23), segredo do proxy configurado                                                                                  |
+| SSE de 95 s pelo domínio de produção (primeiro byte em 30 s, heartbeat de 15 s) | `start` aos 30,2 s; heartbeats aos 45, 60, 75 e 90 s; `end` aos 95,2 s; `request completed` com 95.005 ms. Sem corte nem buffering                                                                   |
+| Promote de uma deployment de produção anterior durante o stream                 | Aos ~40 s o domínio passou para a anterior (`ilctuqbow`); o stream em curso terminou normalmente na atual, e o promote de volta funcionou. É também a prova de promote de deployment antiga no Hobby |
+| Propagação do promote                                                           | Uma requisição feita logo depois do "Success" do `vercel promote` ainda caiu na deployment anterior (404, sem as rotas de spike). O workflow agora espera a rota da deployment nova antes de seguir  |
+| `waitUntil`                                                                     | Resposta em 2 ms (202); a tarefa pós-resposta terminou 1.501 ms depois (atraso pedido: 1.500 ms)                                                                                                     |
+| Desconexão **sem** `supportsCancellation`                                       | Cliente saiu aos 15 s de um SSE de 60 s; nenhum `request.signal` nem `close`, e o stream rodou até o fim (`responseTime` de 60.005 ms)                                                               |
+| Desconexão **com** `supportsCancellation` (run 43008973221)                     | `request.signal` e `close` da resposta aos 14,66 s; o Fastify registrou `stream closed prematurely`                                                                                                  |
+| SIGTERM                                                                         | Nenhum `shutdown requested` nos logs da janela de 30 min (o Hobby recusa `--since 60m`: retenção curta). Não observado; segue como risco residual, coberto pelo teto de 450 ms do encerramento       |
+| Sensitive fora do output                                                        | Por construção: o build não lê env da Vercel (sem `vercel pull` nem `vercel build`), e o pack recusa `.env*`. Não houve varredura do tarball pelo valor                                              |
+| Cold start (p95)                                                                | Não medido com rigor. Maior latência observada em `/api/healthz`: 390 ms direto e 939 ms proxiado (15 amostras do Brasil)                                                                            |
+
+Outros achados: o campo `region` dos registros do `vercel logs` (`iad1`, `sfo1`) não é a região
+da Function (`gru1`, pelo `x-vercel-id` e pelo `VERCEL_REGION`); o upstream cancelado pela
+desconexão (fetch do LLM) só existe na F4; `vercel rollback` não foi rodado (o promote de uma
+deployment anterior cobre o mecanismo). O `attachDatabasePool` fica para a F2 (ver "Spike (d)").
+
+## Spike (a): web na Netlify
+
+Site `tekoia` (o `teko-web` nunca existiu, e `teko.netlify.app` é de terceiros), no time
+`rafael-daily-santos-martins`, a conta do `NETLIFY_AUTH_TOKEN` do environment `staging`. Run
+43009044666 do `spike-web-netlify.yml` (Netlify CLI 27.16.2, isolado em `tools/netlify-cli`).
+
+- **Env por contexto:** o build roda com `CONTEXT=develop` e
+  `NEXT_PUBLIC_STREAM_ORIGIN=https://teko-api-staging.vercel.app` (do `[context.develop]` do
+  `netlify.toml`). A API da Netlify registra o deploy como `context: branch-deploy`,
+  `branch: develop`.
+- **0 functions e 0 edge functions** (`getDeploy`).
+- **Plugin do Next:** sem declaração, o `netlify build` baixa o `@netlify/plugin-nextjs` do npm
+  sem versão fixa e roda o `onPreBuild` dele, mesmo com `NETLIFY_NEXT_PLUGIN_SKIP`. Declarado com
+  versão exata (5.16.6, catálogo e `[[plugins]]`), ele vem do lockfile e só faz o skip (ADR 0002).
+- **Alias público:** a conta nasce com proteção de visitantes (`sso_login`) em todos os
+  contextos, o que exigiria login na Netlify até para a produção; foi desligada no site.
+- **Headers:** os do `netlify.toml` valem; o HSTS é o da própria Netlify
+  (`max-age=31536000; includeSubDomains; preload`) em `*.netlify.app`.
+- **URL em minúsculas:** `/pt-BR/` responde 301 para `/pt-br/`. O i18n da F5
+  (`localePrefix: 'always'`) precisa tratar isso.
+- **Plano Free:** escopos de env var e valores secretos são só do Pro e do Enterprise (a API
+  responde 403). O `NETLIFY_PROXY_JWS_SECRET` fica como variável comum, legível pelo time e
+  presente no ambiente do build; o `next.config.ts` e o workflow falham se ele aparecer no bundle.
+  Decisão do mantenedor.
+
+## Spike (c): proxy Netlify → Vercel
+
+Run 43009440530 do `spike-proxy.yml` (runner nos EUA) e medição de latência feita do Brasil. A
+mesma requisição ao eco `/api/_spike/echo`, direto e pelo `develop--tekoia`, com valores
+forjados pelo cliente (`x-nf-client-connection-ip: 198.51.100.7`, `x-forwarded-for: 198.51.100.8`).
+
+|                                 | direto (Vercel)                                         | proxiado (Netlify → Vercel)                                                                                                               |
+| ------------------------------- | ------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `x-nf-sign`                     | ausente                                                 | presente e **verificado** com o `NETLIFY_PROXY_JWS_SECRET` da API                                                                         |
+| claims                          |                                                         | `deploy_context: branch-deploy`, `iss: netlify`, `site_url: https://develop--tekoia.netlify.app`, `exp` +5 min, `netlify_id` = ID do site |
+| `x-nf-client-connection-ip`     | o forjado passa intacto                                 | **sobrescrito** com o IP real do cliente                                                                                                  |
+| `x-forwarded-for` e `x-real-ip` | sobrescritos com o IP de quem conectou (o forjado some) | o IP de saída da Netlify (muda a cada requisição)                                                                                         |
+| Cookie e Set-Cookie             | chega e volta                                           | chega e volta                                                                                                                             |
+| Cache                           | `x-vercel-cache: MISS`                                  | `cache-status: "Netlify Edge"; fwd=miss`, `x-vercel-cache: MISS`, `receivedAt` diferentes                                                 |
+
+- **Latência** (`/api/healthz`, 15 amostras do Brasil, mín/mediana/máx): direto 116/162/390 ms,
+  proxiado 124/189/939 ms; **+27 ms de mediana** pela Netlify. Do Brasil o caminho é Netlify `gru1`
+  → Function `gru1`; do runner nos EUA, Netlify `iad1` → Function `gru1`. Longe do corte de 26 s.
+- **WAF:** `/api/v1/coverage` direto e sem `x-nf-sign` respondeu 404 (a rota não existe na F1): as
+  regras ainda não estão aplicadas; elas e o smoke do efeito chegam na F7.
+- **Deployment Protection:** domínio de produção público (200 direto e pelo proxy).
+- **Decisões:** `NETLIFY_CLIENT_IP_TRUSTED = true` (o header só vale com assinatura válida, porque a
+  chamada direta o deixa passar forjado); a allowlist de `deploy_context` do plugin
+  `netlifySignature` (F4) aceita `branch-deploy` em staging, e o valor de produção (`production`,
+  esperado) é conferido no primeiro deploy de produção.
+- **Falta, por depender da F2:** o pior caso de cold start mais o resume do Neon dentro dos 26 s.
 
 ## Spike (e): exports do pacote `ai`
 
@@ -168,7 +239,6 @@ Vercel, versões).
 ### Consequências
 
 - (e) e parte do (g) já ajustaram o catálogo e a ADR 0002.
-- (b) teve o deploy e o `/healthz` concluídos em 2026-11-11 (ver "Spike (b)"), com a decisão na
-  [ADR 0017](0017-vercel-build-output-tsdown.md); as verificações manuais de stream seguem abertas.
-- Os spikes (a), (c), (d) e (f) dependem dos tokens de deploy e de API, que ainda não existem
-  (as contas foram criadas em 2026-11-10). Nenhum resultado deles foi presumido.
+- (a), (b) e (c) concluídos em 2026-11-11 (ver as seções de cada um), com as decisões aplicadas no
+  código, no plano e na [ADR 0017](0017-vercel-build-output-tsdown.md).
+- (d) e (f) seguem nas suas seções; nenhum resultado deles foi presumido.

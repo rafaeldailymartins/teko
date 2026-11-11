@@ -26,10 +26,6 @@ on:
         description: Promover a deployment ao domínio de produção do teko-api-staging (vercel promote)
         type: boolean
         default: true
-      supports_cancellation:
-        description: Liga supportsCancellation no .vc-config.json desta deployment (só para o spike de desconexão)
-        type: boolean
-        default: false
       stream_checks:
         description: "Depois do promote: SSE de 95 s, desconexão, waitUntil, promote durante stream e logs (cerca de 8 min)"
         type: boolean
@@ -106,15 +102,6 @@ jobs:
         run: |
           vercel --version
           node scripts/build-vercel-output.ts
-
-      - name: supportsCancellation nesta deployment (spike de desconexão)
-        if: inputs.supports_cancellation
-        # Só para o spike: o valor padrão do script continua sem cancelamento até a decisão.
-        run: |
-          cfg=.vercel/output/functions/index.func/.vc-config.json
-          jq '.supportsCancellation = true' "$cfg" >"${RUNNER_TEMP}/vc-config.json"
-          mv "${RUNNER_TEMP}/vc-config.json" "$cfg"
-          jq -c . "$cfg"
 
       - name: Empacotar o .vercel/output (sem .env nem project.json)
         id: pack
@@ -250,12 +237,9 @@ jobs:
           {
             echo "## Spike F1 (b): stream e runtime"
             echo
-            echo "- supportsCancellation nesta deployment: \`${SUPPORTS_CANCELLATION}\`"
             echo "- runtime: \`$(jq -c . "${RUNNER_TEMP}/runtime.json")\`"
             echo "- waitUntil agendado: \`$(jq -c . "${RUNNER_TEMP}/wait-until.json")\`"
           } >>"$GITHUB_STEP_SUMMARY"
-        env:
-          SUPPORTS_CANCELLATION: ${{ inputs.supports_cancellation }}
 
       - name: "Spike: SSE de 95 s e promote de uma deployment antiga durante o stream"
         if: inputs.promote && inputs.stream_checks
@@ -339,6 +323,13 @@ jobs:
           DEPLOYMENT_URL: ${{ steps.deploy.outputs.url }}
         run: |
           base=https://teko-api-staging.vercel.app
+          # Depois do promote de volta, o domínio leva um instante para servir a deployment desta
+          # execução (no primeiro dispatch, o teste caiu na anterior, sem as rotas de spike: 404).
+          # Espera até 60 s pela rota de runtime antes de testar.
+          for _ in $(seq 1 30); do
+            [[ "$(curl -sS -o /dev/null -w '%{http_code}' "${base}/api/_spike/runtime")" == 200 ]] && break
+            sleep 2
+          done
           # O cliente desiste aos 15 s de um stream de 60 s.
           curl -sSN --max-time 15 "${base}/api/_spike/sse?firstByteDelayS=5&durationS=60&heartbeatS=5" >/dev/null 2>&1 || true
           sleep 30

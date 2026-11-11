@@ -127,7 +127,7 @@ jobs:
             local url="$1"
             for _ in $(seq 1 15); do
               curl -sS -o /dev/null -w '%{time_total}\n' "$url"
-            done | sort -n | awk '{a[NR] = $1} END {printf "%.0f %.0f %.0f", a[1] * 1000, a[int((NR + 1) / 2)] * 1000, a[NR] * 1000}'
+            done | sort -n | awk '{a[NR] = $1} END {printf "%.0f %.0f %.0f\n", a[1] * 1000, a[int((NR + 1) / 2)] * 1000, a[NR] * 1000}'
           }
           # A primeira chamada de cada lado entra na amostra: com a instância fria, ela mostra o cold start.
           read -r d_min d_med d_max < <(sample "${DIRECT}/api/healthz")
