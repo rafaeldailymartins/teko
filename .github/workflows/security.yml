@@ -207,6 +207,11 @@ jobs:
           # - typing-extensions: a PSF-2.0 detectada com "GPL-1.0-or-later" por causa do histórico de
           #   licença do Python no texto (falso positivo conhecido).
           # - prexit: WTFPL (permissiva, mas vaga); liberada só para este pacote, não como licença.
+          # - normalize-package-data: o package.json declara BSD-2-Clause (6.0.2, 7.0.1 e 8.0.0); a
+          #   detecção do GitHub acrescenta "BSD-3-Clause AND JSON". spdx-exceptions: CC-BY-3.0, e o
+          #   pacote só contém a lista de dados SPDX (index.json).
+          #   Os dois vêm do núcleo do Netlify CLI isolado (tools/netlify-cli), sem como removê-los.
           allow-dependencies-licenses: >-
             pkg:pypi/torch, pkg:pypi/typing-extensions, pkg:npm/prexit,
-            pkg:npm/@bytecodealliance/preview2-shim
+            pkg:npm/@bytecodealliance/preview2-shim, pkg:npm/normalize-package-data,
+            pkg:npm/spdx-exceptions

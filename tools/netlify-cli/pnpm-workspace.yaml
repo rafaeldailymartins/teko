@@ -38,6 +38,12 @@ overrides:
   glob@>=9.0.0 <=14.0.1: ^14.0.2
   # GHSA-g3hv-75wg-m249 (moderate). Via glob (minimatch 10.2.6).
   minimatch@>=7.0.0 <11.0.1: ^11.0.1
+  # Fora da árvore por licença (o dependency-review reprova): os dois só servem ao `netlify dev`,
+  # que não roda aqui. sharp (libvips, LGPL-3.0) vem de ipx ← @netlify/images (CDN de imagens
+  # local), como o next>sharp removido na raiz; @netlify/redirect-matcher (UNLICENSED) vem de
+  # @netlify/redirects ← @netlify/dev. O deploy do spike F1 (a) valida o CLI sem eles.
+  sharp: "-"
+  "@netlify/redirect-matcher": "-"
 
 auditConfig:
   ignoreGhsas:
