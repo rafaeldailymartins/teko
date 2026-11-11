@@ -14,6 +14,8 @@ from pathlib import Path, PurePosixPath
 from typing import Final, Self, cast
 from urllib.parse import urlsplit
 
+from teko_ingest.paths import resolve_file
+
 MANIFEST_SCHEMA_VERSION: Final = 1
 """Versão do formato do manifesto; muda quando um campo muda de significado."""
 
@@ -36,9 +38,19 @@ class ManifestError(ValueError):
     """O manifesto (ou o JSON de origem) é inválido."""
 
 
-def sha256_file(path: Path) -> str:
-    """Calcula o sha256 (hex minúsculo) de um arquivo, lendo em blocos."""
-    with path.open("rb") as stream:
+def sha256_file(path: Path, *, root: Path) -> str:
+    """Calcula o sha256 (hex minúsculo) de um arquivo dentro de ``root``, lendo em blocos.
+
+    Args:
+        path: Arquivo a ler; se relativo, é interpretado a partir de ``root``.
+        root: Raiz permitida (ver :mod:`teko_ingest.paths`).
+
+    Raises:
+        UnsafePathError: se ``path`` não for um arquivo regular dentro de ``root``.
+
+    """
+    safe = resolve_file(path, root=root)
+    with safe.open("rb") as stream:
         return hashlib.file_digest(stream, "sha256").hexdigest()
 
 

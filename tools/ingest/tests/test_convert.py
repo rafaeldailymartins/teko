@@ -29,6 +29,7 @@ from teko_ingest.convert import (
     load_docling,
 )
 from teko_ingest.manifest import ExtractionManifest, ManifestError
+from teko_ingest.paths import UnsafePathError
 
 URL = "https://www.gov.br/sped/guia.pdf"
 FIXED_NOW = datetime(2026, 11, 10, 12, 0, tzinfo=UTC)
@@ -55,6 +56,7 @@ def test_convert_writes_docling_json_and_manifest(pdf: Path, tmp_path: Path) -> 
         pdf,
         source_id="efd-icms-ipi/guia-pratico/3.1.8",
         url=URL,
+        root=tmp_path,
         out_root=out_root,
         api=fake_api(factory),
         now=lambda: FIXED_NOW,
@@ -72,10 +74,68 @@ def test_convert_writes_docling_json_and_manifest(pdf: Path, tmp_path: Path) -> 
     assert stored == manifest
 
     [converter] = factory.instances
-    assert converter.converted == [pdf]
+    assert converter.converted == [pdf.resolve()]
     assert converter.document.saved == [
-        (out_root / digest / "docling.json", FakeImageRefMode.PLACEHOLDER),
+        (out_root.resolve() / digest / "docling.json", FakeImageRefMode.PLACEHOLDER),
     ]
+
+
+def test_relative_paths_are_resolved_against_root(pdf: Path, tmp_path: Path) -> None:
+    factory = ConverterFactory()
+    (tmp_path / "modelos").mkdir()
+
+    manifest = convert_document(
+        Path(pdf.name),
+        root=tmp_path,
+        source_id="x",
+        url=URL,
+        out_root=Path("out"),
+        options=ConvertOptions(artifacts_path=Path("modelos")),
+        api=fake_api(factory),
+    )
+
+    [converter] = factory.instances
+    assert converter.converted == [pdf.resolve()]
+    pipeline = converter.format_options[FakeInputFormat.PDF].kwargs["pipeline_options"]
+    assert pipeline.kwargs["artifacts_path"] == (tmp_path / "modelos").resolve()
+    assert (tmp_path / "out" / manifest.output_path).is_file()
+
+
+@pytest.mark.parametrize(
+    ("source", "out_root", "artifacts_path"),
+    [
+        (Path("..", "fora.pdf"), Path("out"), None),
+        (Path("guia.pdf"), Path("..", "out"), None),
+        (Path("guia.pdf"), Path("out"), Path("..")),
+        (Path("guia.pdf"), Path("out"), Path("modelos-inexistentes")),
+    ],
+)
+def test_paths_outside_root_fail_before_converting(
+    tmp_path: Path,
+    source: Path,
+    out_root: Path,
+    artifacts_path: Path | None,
+) -> None:
+    root = tmp_path / "root"
+    root.mkdir()
+    (root / "guia.pdf").write_bytes(b"%PDF")
+    (tmp_path / "fora.pdf").write_bytes(b"%PDF")
+    factory = ConverterFactory()
+
+    with pytest.raises(UnsafePathError):
+        convert_document(
+            source,
+            root=root,
+            source_id="x",
+            url=URL,
+            out_root=out_root,
+            options=ConvertOptions(artifacts_path=artifacts_path),
+            api=fake_api(factory),
+        )
+
+    assert factory.instances == []
+    assert not (tmp_path / "out").exists()
+    assert not (root / "out").exists()
 
 
 def test_pipeline_follows_plan_defaults() -> None:
@@ -113,10 +173,17 @@ def test_partial_success_is_a_failure_and_writes_nothing(pdf: Path, tmp_path: Pa
     out_root = tmp_path / "out"
 
     with pytest.raises(ConversionFailedError, match="partial_success") as excinfo:
-        convert_document(pdf, source_id="x", url=URL, out_root=out_root, api=fake_api(factory))
+        convert_document(
+            pdf,
+            root=tmp_path,
+            source_id="x",
+            url=URL,
+            out_root=out_root,
+            api=fake_api(factory),
+        )
 
     assert excinfo.value.status == "partial_success"
-    assert excinfo.value.source == pdf
+    assert excinfo.value.source == pdf.resolve()
     assert not out_root.exists()
 
 
@@ -128,6 +195,7 @@ def test_invalid_metadata_fails_before_converting(pdf: Path, tmp_path: Path) -> 
             pdf,
             source_id="x",
             url="file:///etc/passwd",
+            root=tmp_path,
             out_root=tmp_path,
             api=fake_api(factory),
         )
@@ -142,7 +210,7 @@ def test_convert_without_docling_raises_clear_error(
 ) -> None:
     _block_docling(monkeypatch)
     with pytest.raises(DoclingNotInstalledError, match="uv sync --extra docling"):
-        convert_document(pdf, source_id="x", url=URL, out_root=tmp_path)
+        convert_document(pdf, source_id="x", url=URL, root=tmp_path, out_root=tmp_path)
 
 
 def test_load_docling_resolves_real_import_paths(monkeypatch: pytest.MonkeyPatch) -> None:

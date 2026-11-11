@@ -5,6 +5,10 @@ Subcomandos:
 - ``manifest``: calcula o sha256 de um arquivo e imprime o manifesto JSON, sem converter;
 - ``convert``: converte com o Docling e grava ``<out>/<sha256>/{docling.json, manifest.json}``.
 
+Todo caminho (arquivo de entrada, ``--out``, ``--artifacts-path``) precisa ficar dentro da raiz
+``--root`` (padrão: o diretório atual), verificada após resolver ``..`` e links simbólicos; os
+caminhos relativos são interpretados a partir dela. Ver :mod:`teko_ingest.paths`.
+
 Códigos de saída: 0 sucesso, 1 conversão incompleta, 2 entrada inválida, 3 Docling ausente.
 """
 
@@ -26,19 +30,12 @@ from teko_ingest.convert import (
     installed_docling_version,
 )
 from teko_ingest.manifest import ExtractionManifest, ManifestError, sha256_file
+from teko_ingest.paths import UnsafePathError
 
 EXIT_OK: Final = 0
 EXIT_CONVERSION_FAILED: Final = 1
 EXIT_INVALID_INPUT: Final = 2
 EXIT_DOCLING_MISSING: Final = 3
-
-
-def _existing_file(value: str) -> Path:
-    path = Path(value)
-    if not path.is_file():
-        msg = f"arquivo não encontrado: {value}"
-        raise argparse.ArgumentTypeError(msg)
-    return path
 
 
 def _positive_float(value: str) -> float:
@@ -62,7 +59,18 @@ def build_parser() -> argparse.ArgumentParser:
     commands = parser.add_subparsers(dest="command", required=True)
 
     common = argparse.ArgumentParser(add_help=False)
-    common.add_argument("file", type=_existing_file, help="arquivo de entrada")
+    common.add_argument(
+        "file",
+        type=Path,
+        help="arquivo de entrada (relativo à raiz; precisa estar dentro dela)",
+    )
+    common.add_argument(
+        "--root",
+        type=Path,
+        default=Path(),
+        help="raiz permitida: todo caminho lido ou gravado precisa estar dentro dela, inclusive "
+        "após seguir links simbólicos (padrão: o diretório atual)",
+    )
     common.add_argument("--source-id", required=True, help="id da fonte em corpus/sources.yaml")
     common.add_argument("--url", required=True, help="URL http(s) de origem do arquivo")
 
@@ -102,7 +110,8 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def _run_manifest(args: argparse.Namespace) -> int:
-    source: Path = args.file
+    # O arquivo é validado (raiz, tipo) antes de qualquer outra verificação.
+    digest = sha256_file(args.file, root=args.root)
     docling_version: str | None = args.docling_version or installed_docling_version()
     if docling_version is None:
         sys.stderr.write(
@@ -110,7 +119,6 @@ def _run_manifest(args: argparse.Namespace) -> int:
             "com `uv sync --extra docling`\n",
         )
         return EXIT_DOCLING_MISSING
-    digest = sha256_file(source)
     output_path: str = args.output_path or f"{digest}/{DOCLING_JSON}"
     manifest = ExtractionManifest(
         source_id=args.source_id,
@@ -133,6 +141,7 @@ def _run_convert(args: argparse.Namespace) -> int:
     try:
         manifest = convert_document(
             args.file,
+            root=args.root,
             source_id=args.source_id,
             url=args.url,
             out_root=args.out,
@@ -161,6 +170,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         if args.command == "manifest":
             return _run_manifest(args)
         return _run_convert(args)
+    except UnsafePathError as exc:
+        sys.stderr.write(f"erro: caminho inválido: {exc}\n")
+        return EXIT_INVALID_INPUT
     except ManifestError as exc:
         sys.stderr.write(f"erro: manifesto inválido: {exc}\n")
         return EXIT_INVALID_INPUT

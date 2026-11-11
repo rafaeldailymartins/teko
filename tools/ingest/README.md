@@ -56,6 +56,16 @@ uv run teko-ingest convert guia.pdf --source-id efd-icms-ipi/guia-pratico/3.1.8 
   --url https://www.gov.br/sped/... --out out --artifacts-path .cache/docling-models
 ```
 
+Todo caminho recebido pela CLI (o arquivo de entrada, `--out` e `--artifacts-path`) precisa ficar
+dentro da raiz `--root`, que por padrão é o diretório atual. A verificação é feita depois de
+resolver `..` e links simbólicos, então um link dentro da raiz que aponta para fora dela é
+rejeitado; a entrada também precisa ser um arquivo regular. Caminhos relativos são interpretados
+a partir da raiz. Caminho fora da raiz termina com o código `2`.
+
+```bash
+uv run teko-ingest manifest guia.pdf --root downloads --source-id ... --url ...
+```
+
 O pipeline de PDF usa tabelas em modo `ACCURATE` com cell matching, OCR desligado (`--ocr` só
 quando a fonte tem `ocr: true` em `corpus/sources.yaml`), timeout de 3600 s por documento e
 serviços remotos desligados. Conversão com status diferente de `SUCCESS` (inclusive

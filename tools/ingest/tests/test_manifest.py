@@ -173,10 +173,10 @@ def test_sha256_file_matches_hashlib(tmp_path: Path) -> None:
     payload = b"%PDF-1.7\n" + bytes(range(256)) * 5000
     target = tmp_path / "doc.pdf"
     target.write_bytes(payload)
-    assert sha256_file(target) == hashlib.sha256(payload).hexdigest()
+    assert sha256_file(target, root=tmp_path) == hashlib.sha256(payload).hexdigest()
 
 
 def test_sha256_file_of_empty_file(tmp_path: Path) -> None:
     target = tmp_path / "vazio.bin"
     target.write_bytes(b"")
-    assert sha256_file(target) == hashlib.sha256(b"").hexdigest()
+    assert sha256_file(target, root=tmp_path) == hashlib.sha256(b"").hexdigest()

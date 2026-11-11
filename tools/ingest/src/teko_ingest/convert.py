@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Any, Final
 
 from teko_ingest.manifest import ExtractionManifest, sha256_file
+from teko_ingest.paths import resolve_dir, resolve_file
 
 DOCLING_JSON: Final = "docling.json"
 MANIFEST_JSON: Final = "manifest.json"
@@ -143,9 +144,17 @@ def _utc_now() -> datetime:
     return datetime.now(UTC)
 
 
+def _confined_options(options: ConvertOptions, root: Path) -> ConvertOptions:
+    if options.artifacts_path is None:
+        return options
+    artifacts = resolve_dir(options.artifacts_path, root=root, must_exist=True)
+    return replace(options, artifacts_path=artifacts)
+
+
 def convert_document(  # noqa: PLR0913 - todos são keyword-only e explícitos
     source: Path,
     *,
+    root: Path,
     source_id: str,
     url: str,
     out_root: Path,
@@ -157,6 +166,8 @@ def convert_document(  # noqa: PLR0913 - todos são keyword-only e explícitos
 
     Args:
         source: Arquivo baixado pelo Node (PDF, XLSX etc.).
+        root: Raiz permitida: ``source``, ``out_root`` e ``options.artifacts_path`` precisam
+            ficar dentro dela; caminhos relativos são interpretados a partir dela.
         source_id: Identificador da fonte em ``corpus/sources.yaml``.
         url: URL de origem do arquivo.
         out_root: Diretório raiz da saída (``out/``).
@@ -168,13 +179,17 @@ def convert_document(  # noqa: PLR0913 - todos são keyword-only e explícitos
         O manifesto gravado.
 
     Raises:
+        UnsafePathError: se algum caminho sair de ``root`` ou não for do tipo esperado.
         DoclingNotInstalledError: se o extra ``docling`` não estiver instalado.
         ConversionFailedError: se o status não for ``SUCCESS`` (inclui ``PARTIAL_SUCCESS``
             por timeout, que deixaria o corpus incompleto).
 
     """
+    safe_source = resolve_file(source, root=root)
+    safe_out_root = resolve_dir(out_root, root=root)
+    safe_options = _confined_options(options or ConvertOptions(), root)
     docling = api if api is not None else load_docling()
-    digest = sha256_file(source)
+    digest = sha256_file(safe_source, root=root)
     # Valida os metadados antes da conversão, que pode levar horas.
     manifest = ExtractionManifest(
         source_id=source_id,
@@ -185,12 +200,13 @@ def convert_document(  # noqa: PLR0913 - todos são keyword-only e explícitos
         output_path=f"{digest}/{DOCLING_JSON}",
     )
 
-    converter = build_converter(docling, options or ConvertOptions())
-    result = converter.convert(source)
+    converter = build_converter(docling, safe_options)
+    result = converter.convert(safe_source)
     if result.status != docling.conversion_status.SUCCESS:
-        raise ConversionFailedError(source, str(getattr(result.status, "value", result.status)))
+        status = str(getattr(result.status, "value", result.status))
+        raise ConversionFailedError(safe_source, status)
 
-    out_dir = out_root / digest
+    out_dir = safe_out_root / digest
     out_dir.mkdir(parents=True, exist_ok=True)
     result.document.save_as_json(
         out_dir / DOCLING_JSON,

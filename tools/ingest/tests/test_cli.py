@@ -27,6 +27,12 @@ from teko_ingest.manifest import ExtractionManifest
 URL = "https://www.gov.br/sped/guia.pdf"
 
 
+@pytest.fixture(autouse=True)
+def cwd_is_tmp(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # A raiz padrão da CLI é o diretório atual.
+    monkeypatch.chdir(tmp_path)
+
+
 @pytest.fixture
 def pdf(tmp_path: Path) -> Path:
     target = tmp_path / "guia.pdf"
@@ -97,11 +103,93 @@ def test_manifest_rejects_invalid_url(pdf: Path, capsys: pytest.CaptureFixture[s
     assert "manifesto inválido" in capsys.readouterr().err
 
 
-def test_missing_file_is_a_usage_error(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
-    with pytest.raises(SystemExit) as excinfo:
-        main(["manifest", str(tmp_path / "nao-existe.pdf"), "--source-id", "s", "--url", URL])
-    assert excinfo.value.code == EXIT_INVALID_INPUT
+def test_missing_file_is_invalid_input(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    args = ["manifest", str(tmp_path / "nao-existe.pdf"), "--source-id", "s", "--url", URL]
+    assert main([*args, "--docling-version", "2.146.0"]) == EXIT_INVALID_INPUT
     assert "arquivo não encontrado" in capsys.readouterr().err
+
+
+def _outside_file(tmp_path: Path) -> Path:
+    outside = tmp_path.parent / f"{tmp_path.name}-fora.pdf"
+    outside.write_bytes(b"segredo")
+    return outside
+
+
+@pytest.mark.parametrize("command", ["manifest", "convert"])
+def test_absolute_path_outside_default_root_is_rejected(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    docling_factory: ConverterFactory,
+    command: str,
+) -> None:
+    outside = _outside_file(tmp_path)
+    args = [command, str(outside), "--source-id", "s", "--url", URL]
+    assert main(args) == EXIT_INVALID_INPUT
+    captured = capsys.readouterr()
+    assert "fora da raiz" in captured.err
+    assert captured.out == ""
+    assert docling_factory.instances == []
+
+
+def test_dotdot_escape_is_rejected(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    outside = _outside_file(tmp_path)
+    args = ["manifest", f"../{outside.name}", "--source-id", "s", "--url", URL]
+    assert main([*args, "--docling-version", "2.146.0"]) == EXIT_INVALID_INPUT
+    assert "fora da raiz" in capsys.readouterr().err
+
+
+def test_symlink_escaping_root_is_rejected(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    outside = _outside_file(tmp_path)
+    try:
+        (tmp_path / "atalho.pdf").symlink_to(outside)
+    except OSError as exc:  # Windows sem modo desenvolvedor/privilégio
+        pytest.skip(f"symlink indisponível nesta plataforma: {exc}")
+    args = ["manifest", "atalho.pdf", "--source-id", "s", "--url", URL]
+    assert main([*args, "--docling-version", "2.146.0"]) == EXIT_INVALID_INPUT
+    assert "fora da raiz" in capsys.readouterr().err
+
+
+def test_explicit_root_confines_and_anchors_relative_paths(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    corpus = tmp_path / "corpus"
+    corpus.mkdir()
+    (corpus / "guia.pdf").write_bytes(b"%PDF")
+    base = ["manifest", "--root", "corpus", "--source-id", "s", "--url", URL]
+    base += ["--docling-version", "2.146.0"]
+
+    assert main([*base, "guia.pdf"]) == EXIT_OK
+    assert ExtractionManifest.from_json(capsys.readouterr().out).sha256 == (
+        hashlib.sha256(b"%PDF").hexdigest()
+    )
+
+    (tmp_path / "irmao.pdf").write_bytes(b"%PDF")
+    assert main([*base, "../irmao.pdf"]) == EXIT_INVALID_INPUT
+    assert "fora da raiz" in capsys.readouterr().err
+
+
+def test_missing_root_is_invalid_input(pdf: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    args = ["manifest", str(pdf), "--root", "nao-existe", "--source-id", "s", "--url", URL]
+    assert main(args) == EXIT_INVALID_INPUT
+    assert "raiz não encontrada" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("option", ["--out", "--artifacts-path"])
+def test_convert_dirs_outside_root_are_rejected(
+    pdf: Path,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    docling_factory: ConverterFactory,
+    option: str,
+) -> None:
+    args = ["convert", str(pdf), "--source-id", "s", "--url", URL, option, str(tmp_path.parent)]
+    assert main(args) == EXIT_INVALID_INPUT
+    assert "fora da raiz" in capsys.readouterr().err
+    assert docling_factory.instances == []
 
 
 def test_convert_writes_output(
@@ -122,7 +210,7 @@ def test_convert_writes_output(
     pipeline = next(iter(converter.format_options.values())).kwargs["pipeline_options"]
     assert pipeline.kwargs["do_ocr"] is True
     assert pipeline.kwargs["document_timeout"] == 90.0
-    assert pipeline.kwargs["artifacts_path"] == tmp_path
+    assert pipeline.kwargs["artifacts_path"] == tmp_path.resolve()
 
 
 def test_convert_partial_success_exits_1(

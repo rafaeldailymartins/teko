@@ -11,6 +11,7 @@ from teko_ingest.convert import (
     convert_document,
 )
 from teko_ingest.manifest import ExtractionManifest, ManifestError, sha256_file
+from teko_ingest.paths import UnsafePathError
 
 __all__ = [
     "ConversionFailedError",
@@ -18,6 +19,7 @@ __all__ = [
     "DoclingNotInstalledError",
     "ExtractionManifest",
     "ManifestError",
+    "UnsafePathError",
     "convert_document",
     "sha256_file",
 ]
