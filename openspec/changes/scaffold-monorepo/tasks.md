@@ -17,7 +17,7 @@
 - [x] 2.2 Criar o esqueleto de `apps/api` (sem rotas de negócio) e conferir com `pnpm --filter @teko/api typecheck`
 - [x] 2.3 Criar o esqueleto de `apps/web` com export estático e conferir com `pnpm --filter @teko/web build` (0 functions)
 - [x] 2.4 Criar `tools/ingest` (Python + uv, `exclude-newer = "7 days"`) e conferir com `uv run --frozen pytest`
-- [ ] 2.5 Criar `apps/api/vercel.json` (`regions: ["gru1"]`, `fluid: true`, `git.deploymentEnabled: false`) e o `.vercel/output` da Function a partir do bundle do tsdown (`scripts/build-vercel-output.ts`, ADR 0017; o zero-config quebrou no spike (b)) e conferir com o deploy do spike (b)
+- [x] 2.5 Criar `apps/api/vercel.json` (`regions: ["gru1"]`, `fluid: true`, `git.deploymentEnabled: false`) e o `.vercel/output` da Function a partir do bundle do tsdown (`scripts/build-vercel-output.ts`, ADR 0017; o zero-config quebrou no spike (b)) e conferir com o deploy do spike (b)
 
 ## 3. Stack local
 
