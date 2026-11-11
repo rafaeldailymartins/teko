@@ -17,7 +17,7 @@
 - [x] 2.2 Criar o esqueleto de `apps/api` (sem rotas de negócio) e conferir com `pnpm --filter @teko/api typecheck`
 - [x] 2.3 Criar o esqueleto de `apps/web` com export estático e conferir com `pnpm --filter @teko/web build` (0 functions)
 - [x] 2.4 Criar `tools/ingest` (Python + uv, `exclude-newer = "7 days"`) e conferir com `uv run --frozen pytest`
-- [ ] 2.5 Criar `apps/api/vercel.json` (`regions: ["gru1"]`, `fluid: true`, `git.deploymentEnabled: false`) e o entrypoint da Function e conferir com `vercel build` no spike (b)
+- [ ] 2.5 Criar `apps/api/vercel.json` (`regions: ["gru1"]`, `fluid: true`, `git.deploymentEnabled: false`) e o `.vercel/output` da Function a partir do bundle do tsdown (`scripts/build-vercel-output.ts`, ADR 0017; o zero-config quebrou no spike (b)) e conferir com o deploy do spike (b)
 
 ## 3. Stack local
 
@@ -33,7 +33,7 @@ Os spikes que fazem deploy ou chamam serviços externos dependem de tokens que a
 (contas criadas em 2026-11-10). Nenhum resultado é presumido: cada um fica pendente até rodar.
 
 - [ ] 4.1 Spike (a): build do Next no Actions + `netlify deploy --build --context develop --alias develop` com 0 functions e env por contexto, registrado em `docs/adr/0003-f1-spikes.md`
-- [ ] 4.2 Spike (b): Fastify "hello" com o `server.ts` real no `teko-api-staging` pelo fluxo do CI (`vercel pull` → `vercel build` → tarball atestado → `vercel deploy --prebuilt --prod --skip-domain` → `vercel curl` → `vercel promote`), com o checklist da ADR 0003
+- [ ] 4.2 Spike (b): Fastify "hello" com o `server.ts` real no `teko-api-staging` pelo fluxo do CI (tsdown → `scripts/build-vercel-output.ts` → tarball atestado → `vercel deploy --prebuilt --prod --skip-domain` → `vercel curl` → `vercel promote`), com o checklist da ADR 0003
 - [ ] 4.3 Spike (c): plugin `context-routing` contra uma rota de echo no `teko-api-staging.vercel.app`, com o checklist da ADR 0003
 - [ ] 4.4 Spike (d): Neon `-pooler` com timeouts por role, `attachDatabasePool` e reconexão após scale-to-zero
 - [x] 4.5 Spike (e): exports `parseJsonEventStream` e `uiMessageChunkSchema` do `ai`, registrado na ADR 0003 (presentes em 7.0.162 e 7.0.169)

@@ -52,7 +52,8 @@ Aplicar nos dois projetos, no dashboard (Project Settings), e conferir todo mês
   precisa estar definido explicitamente (sem default) e não pode ser `node`; com a variável de sistema
   `VERCEL=1` presente, qualquer valor diferente de `vercel` impede o boot (vale também para
   `vercel dev`/`vercel env pull`). Os `env.*.json` deste diretório já definem `RUNTIME_TARGET=vercel`.
-- [ ] **Install/Build Command:** padrão do preset até o spike F1 (b) decidir (ver "Pendências").
+- [ ] **Install/Build Command:** sem efeito. O deploy é sempre `--prebuilt` de um `.vercel/output`
+  montado no CI (ADR 0017); a Vercel não instala nem constrói nada.
 
 **Functions**
 
@@ -60,11 +61,13 @@ Aplicar nos dois projetos, no dashboard (Project Settings), e conferir todo mês
 - [ ] **Function Region:** `gru1` (também `"regions": ["gru1"]`). O Hobby permite uma região só.
 - [ ] Memória/CPU: o padrão do Hobby (2 GB / 1 vCPU, fixo). Com Fluid, memória não vai no
   `vercel.json`.
-- [ ] `maxDuration`: padrão do Hobby (300 s) até o spike F1 (b) confirmar o nome da Function
-  gerada pelo zero-config. Depois, entra no `vercel.json`
-  `functions["<entry>"]: { "maxDuration": 120, "supportsCancellation": true }` e a env Config
-  `FUNCTION_MAX_DURATION_S` passa para `120` no mesmo PR (a API calcula o prazo de cada
-  invocação a partir dela, porque o `@vercel/functions` 3.7.6 não tem `getDeadline`).
+- [ ] `maxDuration`: 300 s (o teto do Hobby), declarado no `.vc-config.json` da Function `index`
+  por `scripts/build-vercel-output.ts` (`MAX_DURATION_S`). O bloco `functions` do `vercel.json` não
+  vale para output pronto. A troca para `120` com `supportsCancellation: true` espera a conferência
+  manual de desconexão do spike F1 (b); quando vier, muda a constante do script e a env Config
+  `FUNCTION_MAX_DURATION_S` no mesmo PR (a API calcula o prazo de cada invocação a partir dela,
+  porque o `@vercel/functions` 3.7.6 não tem `getDeadline`, e o teste do script exige os dois
+  iguais).
 
 **Git**
 
@@ -135,9 +138,11 @@ Fluxo do `deploy-api.yml` (`develop` → `teko-api-staging`; release em `main` �
 `VERCEL_TOKEN`, `VERCEL_ORG_ID` e `VERCEL_PROJECT_ID` do environment do GitHub:
 
 1. `pnpm install --frozen-lockfile`, `pnpm audit --prod` e osv-scanner no commit exato;
-2. `vercel pull --yes --environment=production`;
-3. `vercel build --prod` (ou o Build Output API gerado pelo tsdown, se o spike F1 (b) escolher o
-   fallback);
+2. sem `vercel pull` nem `vercel build` (ADR 0017): `pnpm --filter @teko/api build` (tsdown),
+   `pnpm --filter @teko/api --prod deploy --ignore-scripts --config.node-linker=hoisted
+   dist/vercel/api-prod` (dependências de produção, sem links simbólicos);
+3. `node scripts/build-vercel-output.ts`: recria `.vercel/output` (Build Output API v3) com a
+   Function `index`;
 4. `node scripts/pack-vercel-output.ts --env production|staging`: tarball determinístico do
    `.vercel/output` (sem `.vercel/.env*` nem `project.json`), com sha256. `--env` é o único
    argumento; o resto é fixo: env vars de `infra/vercel/env.<env>.json`, build no primeiro de
@@ -154,33 +159,39 @@ Fluxo do `deploy-api.yml` (`develop` → `teko-api-staging`; release em `main` �
 9. smoke da URL única com `vercel curl` e o bypass de automação;
 10. `vercel promote <url>`; preflight CORS real no domínio de produção; falha → `vercel rollback`.
 
-O `.vercel/` gerado por `vercel pull`/`vercel build` fica no `.gitignore` e nunca entra em artifact
-ou release além do tarball filtrado.
+O `.vercel/` gerado no CI fica no `.gitignore` e nunca entra em artifact ou release além do
+tarball filtrado.
 
 ## Como a Function carrega o `server.ts`
 
-Lido do builder `@vercel/fastify` 24.0.1 e do runtime `@vercel/node` 29.0.1 que acompanham a Vercel
-CLI 65.11.0 (`tools/vercel-cli`); o spike F1 (b) confirma em deploy real:
+O builder zero-config do Fastify não é usado (ADR 0017): no spike F1 (b) ele compilou
+`src/server.ts` mantendo os imports `.ts`, e a Function caiu com `ERR_MODULE_NOT_FOUND`. O
+`.vercel/output` sai de `scripts/build-vercel-output.ts`:
 
-- O entrypoint é o primeiro de `app`, `index`, `server`, `src/app`, `src/index`, `src/server` (com
-  extensão `js`, `cjs`, `mjs`, `ts`, `cts` ou `mts`) cujo **texto** importe `fastify`. O
-  `src/server.ts` tem um `import type ... from 'fastify'` só para isso. Todas as rotas vão para essa
-  Function.
-- O runtime troca `http.Server.prototype.listen` por um interceptador que só captura o servidor,
+- Uma Function, `functions/index.func`, com `.vc-config.json` `runtime: "nodejs24.x"`,
+  `launcherType: "Nodejs"`, `handler: "server.mjs"` (o bundle do tsdown),
+  `supportsResponseStreaming: true` e `maxDuration`; o `node_modules` dela tem só as dependências
+  de produção. O `config.json` manda tudo o que não é arquivo estático para ela, com o caminho
+  original (as mesmas rotas que o zero-config emitia). A região vem do projeto.
+- O launcher `Nodejs` (o mesmo que carregava o `server.js` do zero-config; lido do `@vercel/node`
+  29.0.1 da Vercel CLI 65.11.0) troca `http.Server.prototype.listen` por um interceptador que só captura o servidor,
   importa o módulo, espera até 1 s pela captura e então faz o `listen` real numa porta efêmera.
   Por isso o `server.ts` aguarda o boot no topo do módulo, mas não aguarda o `listen` (o teste
   `apps/api/test/integration/server.test.ts` reproduz esse protocolo).
 
 ## Pendências que dependem de tokens (spikes F1 (b) e (c))
 
-Ainda não há `VERCEL_TOKEN` nem projetos linkados, então nada abaixo foi executado:
+O `spike-api-vercel.yml` roda no environment `staging` do GitHub. Itens marcados têm resultado
+registrado; o resto continua aberto:
 
-- [ ] zero-config detecta `src/server.ts` no monorepo pnpm com Root Directory `apps/api` e resolve
-  `@teko/shared` em `.ts` e os subpath imports `#domain/*`, `#app/*`, `#adapters/*`; senão,
-  fallback do Build Output API gerado pelo tsdown;
-- [ ] Install/Build Command: o `vercel build` no runner reinstala dependências com pnpm 12 (via
-  corepack)? Se sim, decidir entre deixar o padrão ou um Install Command que reaproveite a
-  instalação do CI;
+- [x] zero-config detecta `src/server.ts` no monorepo pnpm com Root Directory `apps/api` e resolve
+  `@teko/shared` em `.ts` e os subpath imports? **Não** (run 42980171686): o `server.js` gerado
+  importa `./composition-root.ts` e a Function cai com `ERR_MODULE_NOT_FOUND` (HTTP 500
+  `FUNCTION_INVOCATION_FAILED`). Adotado o fallback do Build Output API a partir do bundle do
+  tsdown (ADR 0017);
+- [x] Install/Build Command: sem efeito, porque a Vercel não constrói mais nada (no run
+  42980171686, o `vercel build` reaproveitou a instalação do CI: "Done in 2ms using pnpm
+  v12.18.0");
 - [ ] `engines.node` 24.x efetivo, `VERCEL_REGION=gru1` em runtime e o nome da Function (para o
   glob de `functions` no `vercel.json`);
 - [ ] SSE de 95 s com heartbeat de 15 s e primeiro byte atrasado em 30 s, sem corte nem buffering;

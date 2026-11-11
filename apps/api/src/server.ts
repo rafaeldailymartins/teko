@@ -1,7 +1,4 @@
 import closeWithGrace from 'close-with-grace'
-// A detecção zero-config de Fastify da Vercel procura `src/server.ts` e exige que o arquivo
-// importe `fastify` textualmente (regex sobre o código-fonte, no builder `@vercel/fastify`).
-// Este import de tipo cumpre isso e não gera código.
 import type { FastifyInstance } from 'fastify'
 import { createRuntime, type Runtime } from './composition-root.ts'
 import { EnvValidationError, loadEnv } from './config/env.ts'
@@ -10,8 +7,9 @@ import { createGracefulShutdown } from './graceful-shutdown.ts'
 /**
  * Único entrypoint HTTP da API, sem mudança entre plataformas:
  *
- * - **Vercel** (zero-config Fastify, `RUNTIME_TARGET=vercel`): a app inteira vira uma só Function
- *   em Fluid compute. O runtime (`@vercel/node`) importa este módulo com
+ * - **Vercel** (`RUNTIME_TARGET=vercel`): o bundle deste módulo (`dist/server.mjs`) é o handler da
+ *   única Function, em Fluid compute, no Build Output API montado por
+ *   `scripts/build-vercel-output.ts` (ADR 0017). O launcher `Nodejs` da Vercel importa o módulo com
  *   `http.Server.prototype.listen` trocado por um interceptador que só captura o servidor e
  *   **não** abre a porta; depois do `import()` terminar, ele mesmo chama o `listen` real numa
  *   porta efêmera e encaminha as requisições. Por isso o boot (env, container, app, `ready`) é
