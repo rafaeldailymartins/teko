@@ -192,6 +192,10 @@ jobs:
         with:
           fail-on-severity: low
           fail-on-scopes: runtime
+          # GHSA-gcqx-w48m-w2h4 (low): deepmerge 4.3.1 sem versão corrigida, só na árvore do Netlify
+          # CLI isolado (tools/netlify-cli), via @netlify/config, que mescla o netlify.toml do próprio
+          # repositório. Mesma exceção do auditConfig de tools/netlify-cli (ADR 0002).
+          allow-ghsas: GHSA-gcqx-w48m-w2h4
           show-patched-versions: true
           # Licença fora desta lista reprova o PR; incluir uma nova exige revisão do CODEOWNER.
           allow-licenses: >-
