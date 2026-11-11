@@ -32,6 +32,9 @@ overrides:
   qs@<6.16.1: 6.17.1
   # GHSA-g3hv-75wg-m249 (moderate). Via @stryker-mutator/core (minimatch 10.2.6); cruza major.
   minimatch@>=7.0.0 <11.0.1: 11.0.4
+  # sharp é opcional do Next (otimização de imagens), sem uso no export estático (images.unoptimized).
+  # Removido: traz binários libvips sob LGPL-3.0, fora da allowlist de licenças do dependency-review.
+  next>sharp: "-"
 
 catalog:
   # Ferramentas da raiz
