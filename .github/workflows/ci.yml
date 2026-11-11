@@ -316,7 +316,7 @@ jobs:
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: coverage-lcov-integration
-          path: apps/*/coverage-integration/lcov.info
+          path: apps/api/coverage-integration/lcov.info
           if-no-files-found: ignore
           retention-days: 1
 
@@ -689,7 +689,8 @@ jobs:
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           pattern: coverage-lcov-integration
-          path: ${{ github.workspace }}
+          # Um arquivo só: o artifact guarda o lcov.info sem o diretório, e o destino o recoloca.
+          path: ${{ github.workspace }}/apps/api/coverage-integration
           merge-multiple: true
 
       - name: Baixar o coverage.xml do tools/ingest

@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, writeFileSync } from 'node:fs'
+import { readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { gzipSync } from 'node:zlib'
 import {
@@ -37,12 +37,25 @@ export const FIXTURE_FILE = 'embeddings.json.gz'
 /** Perguntas extras dos testes de integração e do e2e (além das do golden). */
 export const QUESTIONS_FILE = 'questions.json'
 
+/** Lê o arquivo, ou devolve `undefined` se ele não existe (sem checar antes: evita corrida). */
+function readIfExists<T>(read: () => T): T | undefined {
+  try {
+    return read()
+  } catch (error) {
+    if (error instanceof Error && 'code' in error && error.code === 'ENOENT') {
+      return undefined
+    }
+    throw error
+  }
+}
+
 function fixtureQuestions(fixtureDir: string): string[] {
   const file = join(fixtureDir, QUESTIONS_FILE)
-  if (!existsSync(file)) {
+  const content = readIfExists(() => readFileSync(file, 'utf8'))
+  if (content === undefined) {
     return []
   }
-  const parsed = JSON.parse(readFileSync(file, 'utf8')) as { questions?: unknown }
+  const parsed = JSON.parse(content) as { questions?: unknown }
   if (!Array.isArray(parsed.questions) || !parsed.questions.every((q) => typeof q === 'string')) {
     throw new Error(`${file}: "questions" precisa ser uma lista de textos`)
   }
@@ -79,9 +92,11 @@ async function main(): Promise<void> {
   const apiToken = process.env['CF_AI_TOKEN']
   const fixtureDir = process.env['FIXTURE_DIR'] ?? DEFAULT_FIXTURE_DIR
   const target = join(fixtureDir, FIXTURE_FILE)
-  const existing: EmbeddingFixture = existsSync(target)
-    ? readEmbeddingFixture(target)
-    : { model: BGE_M3_MODEL, dimensions: BGE_M3_DIMENSIONS, vectors: {} }
+  const existing: EmbeddingFixture = readIfExists(() => readEmbeddingFixture(target)) ?? {
+    model: BGE_M3_MODEL,
+    dimensions: BGE_M3_DIMENSIONS,
+    vectors: {},
+  }
 
   const byHash = new Map<string, string>()
   for (const text of fixtureTexts(fixtureDir)) {

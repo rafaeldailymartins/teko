@@ -25,9 +25,14 @@ export interface BatchLimits {
  * Divide os índices de `texts` em lotes que respeitam os dois limites. Um texto sozinho acima do
  * teto ainda vira um lote de um (o provedor decide; o chunker já limita o tamanho).
  */
+const DEFAULT_BATCH_LIMITS: BatchLimits = {
+  maxItems: MAX_BATCH_ITEMS,
+  maxPaddedTokens: MAX_PADDED_TOKENS,
+}
+
 export function planEmbeddingBatches(
   texts: readonly string[],
-  limits: BatchLimits = { maxItems: MAX_BATCH_ITEMS, maxPaddedTokens: MAX_PADDED_TOKENS },
+  limits: BatchLimits = DEFAULT_BATCH_LIMITS,
 ): number[][] {
   const order = texts
     .map((text, index) => ({ index, tokens: estimateTokens(text) }))

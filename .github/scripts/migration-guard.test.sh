@@ -50,6 +50,13 @@ add_migration 0002_expand 'ALTER TABLE a ADD COLUMN b int;'
 expect_exit "expand passa" 0 '[]'
 
 reset_repo
+add_migration 0002_snapshot 'ALTER TABLE a ADD COLUMN d int;'
+printf '{ "concurrently": false, "drop": "x" }\n' >"$repo/$migrations/0002_snapshot/snapshot.json"
+git_quiet add .
+git_quiet commit -m snapshot
+expect_exit "snapshot.json do drizzle-kit não conta" 0 '[]'
+
+reset_repo
 add_migration 0002_comment $'-- antes havia um DROP aqui\nALTER TABLE a ADD COLUMN c int;'
 expect_exit "DROP só em comentário passa" 0 '[]'
 

@@ -34,8 +34,9 @@ while IFS=$'\t' read -r status path; do
   report "${path}: migração existente foi ${what} (migração publicada é imutável; crie uma nova)"
 done < <(git diff --name-status --diff-filter=MD "${base}...HEAD" -- "${MIGRATIONS_DIR}/**/migration.sql" "${MIGRATIONS_DIR}/*/migration.sql" | sort -u)
 
-# Linhas adicionadas nas migrações novas, sem comentários SQL de linha inteira.
-added="$(git diff --unified=0 --diff-filter=A "${base}...HEAD" -- "${MIGRATIONS_DIR}" \
+# Linhas adicionadas nos .sql das migrações novas, sem comentários SQL de linha inteira. O
+# snapshot.json do drizzle-kit fica de fora: ele tem "concurrently": false em todo índice.
+added="$(git diff --unified=0 --diff-filter=A "${base}...HEAD" -- "${MIGRATIONS_DIR}/*.sql" \
   | grep -E '^\+[^+]' | sed -E 's/^\+//' | grep -vE '^\s*--' || true)"
 
 if grep -qiE '\bCONCURRENTLY\b' <<<"$added"; then

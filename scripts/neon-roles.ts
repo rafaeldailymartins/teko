@@ -119,7 +119,7 @@ function neonClient(apiKey: string): NeonClient {
     if (!response.ok) {
       // Só o status: o corpo de erro pode ecoar parâmetros.
       throw new Error(
-        `Neon API ${method} ${path.replace(/\?.*$/, '')}: HTTP ${String(response.status)}`,
+        `Neon API ${method} ${path.split('?')[0] ?? path}: HTTP ${String(response.status)}`,
       )
     }
     return response.json()

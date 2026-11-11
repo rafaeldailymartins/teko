@@ -2,7 +2,7 @@ import { fileURLToPath } from 'node:url'
 import { parseArgs } from 'node:util'
 import { DEFAULT_FIXTURE_DIR, seedFixtures } from '#adapters/in/cli/seed-fixtures/seed-fixtures.ts'
 import { createContainer, migrateDatabase } from './composition-root.ts'
-import { EnvValidationError, parseEnv } from './config/env.ts'
+import { EnvValidationError, loadCliEnv } from './config/env.ts'
 
 /**
  * Entrypoint da CLI (`pnpm --filter @teko/api cli <subcomando>`; empacotada como `dist/cli.mjs`).
@@ -23,9 +23,6 @@ const MIGRATIONS_FOLDER = fileURLToPath(new URL('../drizzle/migrations', import.
 
 const USAGE = `uso: cli seed-fixtures [--dir <dir>] [--migrate] [--replace]`
 
-/** A CLI não serve HTTP: `WEB_ORIGIN` só existe para o env da API validar. */
-const CLI_ENV_DEFAULTS = { APP_ENV: 'development', WEB_ORIGIN: 'http://localhost:3000' } as const
-
 async function runSeedFixtures(args: readonly string[]): Promise<void> {
   const { values } = parseArgs({
     args: [...args],
@@ -36,7 +33,7 @@ async function runSeedFixtures(args: readonly string[]): Promise<void> {
     },
     strict: true,
   })
-  const env = parseEnv({ ...CLI_ENV_DEFAULTS, ...process.env })
+  const env = loadCliEnv()
   if (env.DATABASE_URL === undefined) {
     throw new Error('seed-fixtures exige DATABASE_URL (URL direta do owner)')
   }

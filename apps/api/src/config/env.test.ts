@@ -5,6 +5,7 @@ import {
   DEFAULT_TRUST_PROXY,
   EnvValidationError,
   HOBBY_MAX_DURATION_S,
+  loadCliEnv,
   parseEnv,
   VERCEL_FUNCTION_REGION,
 } from './env.ts'
@@ -420,5 +421,13 @@ describe('parseEnv', () => {
       expect((error as Error).message).toMatch(/^Configuração inválida/)
       expect((error as Error).message).not.toContain(secret)
     }
+  })
+})
+
+describe('loadCliEnv', () => {
+  it('dá à CLI o APP_ENV e o WEB_ORIGIN de desenvolvimento, sem sobrepor o ambiente', () => {
+    expect(loadCliEnv({}).APP_ENV).toBe('development')
+    expect(loadCliEnv({}).WEB_ORIGIN).toBe('http://localhost:3000')
+    expect(loadCliEnv({ APP_ENV: 'ci' }).APP_ENV).toBe('ci')
   })
 })

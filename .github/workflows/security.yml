@@ -211,7 +211,14 @@ jobs:
           #   detecção do GitHub acrescenta "BSD-3-Clause AND JSON". spdx-exceptions: CC-BY-3.0, e o
           #   pacote só contém a lista de dados SPDX (index.json).
           #   Os dois vêm do núcleo do Netlify CLI isolado (tools/netlify-cli), sem como removê-los.
+          # - @modelcontextprotocol/server-filesystem (via promptfoo, só evals): o package.json diz
+          #   "SEE LICENSE IN LICENSE", mas o tarball não traz o arquivo; o README declara MIT e o
+          #   repositório (modelcontextprotocol/servers) está em transição de MIT para Apache-2.0,
+          #   as duas na allowlist.
+          # - big-integer (via promptfoo, só evals): o package.json declara Unlicense; a detecção
+          #   acrescenta "public domain" por causa da dedicação ao domínio público do próprio texto.
           allow-dependencies-licenses: >-
             pkg:pypi/torch, pkg:pypi/typing-extensions, pkg:npm/prexit,
             pkg:npm/@bytecodealliance/preview2-shim, pkg:npm/normalize-package-data,
-            pkg:npm/spdx-exceptions
+            pkg:npm/spdx-exceptions, pkg:npm/@modelcontextprotocol/server-filesystem,
+            pkg:npm/big-integer

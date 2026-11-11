@@ -342,3 +342,18 @@ export function parseEnv(
 export function loadEnv(): Env {
   return parseEnv(process.env)
 }
+
+/**
+ * A CLI (`src/cli.ts`) não serve HTTP: `APP_ENV` e `WEB_ORIGIN` ganham o padrão de
+ * desenvolvimento quando não vêm do ambiente, só para o mesmo schema validar o resto.
+ */
+const CLI_ENV_DEFAULTS = {
+  APP_ENV: AppEnv.Development,
+  WEB_ORIGIN: 'http://localhost:3000',
+} as const
+
+export function loadCliEnv(
+  source: Readonly<Record<string, string | undefined>> = process.env,
+): Env {
+  return parseEnv({ ...CLI_ENV_DEFAULTS, ...source })
+}

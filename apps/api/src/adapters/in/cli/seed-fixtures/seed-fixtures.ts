@@ -29,17 +29,20 @@ function readJson(file: string): unknown {
 
 export function loadFixtureDocuments(dir: string): FixtureDocument[] {
   const documentsDir = join(dir, 'documents')
-  return readdirSync(documentsDir)
-    .filter((name) => name.endsWith('.json'))
-    .sort()
-    .map((name) => {
-      const file = join(documentsDir, name)
-      const parsed = fixtureDocumentSchema.safeParse(readJson(file))
-      if (!parsed.success) {
-        throw new FixtureFileError(file, parsed.error)
-      }
-      return parsed.data
-    })
+  return (
+    readdirSync(documentsDir)
+      .filter((name) => name.endsWith('.json'))
+      // Ordem de unidade de código, explícita: independe do locale da máquina.
+      .sort((a, b) => (a < b ? -1 : Number(a > b)))
+      .map((name) => {
+        const file = join(documentsDir, name)
+        const parsed = fixtureDocumentSchema.safeParse(readJson(file))
+        if (!parsed.success) {
+          throw new FixtureFileError(file, parsed.error)
+        }
+        return parsed.data
+      })
+  )
 }
 
 export function loadFixtureCommand(

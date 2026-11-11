@@ -71,10 +71,11 @@ Atualize esta seção no PR que fecha cada fase ou spike.
   Testcontainers, `yaml` e os overrides de `glob`/`basic-ftp` da árvore do promptfoo. Fixture
   única com textos reais (1.574 chunks, vetores BGE-M3 reais em `embeddings.json.gz`; regenerar
   com `pnpm --filter @teko/api fixtures:embed` e as credenciais do `tools/ingest/.env`) e golden
-  de 50 casos com `reviewed_at: null` (revisão do mantenedor pendente). Retrieval evals: recall@10
-  0,925, MRR 0,771, demais 1,00; `sql-perf` em ~120–135 ms. Os roles do Neon ainda não foram
-  criados nos projetos reais: o mantenedor roda `scripts/neon-roles.ts` (staging: falta o
-  `teko_watch`; prod: os dois) antes da primeira migração (F7), ver `docs/runbooks/neon-roles.md`.
+  de 50 casos revisado pelo mantenedor em 2026-11-11. Retrieval evals: recall@10
+  0,925, MRR 0,771, demais 1,00; `sql-perf` em ~120–135 ms. Roles do Neon criados em 2026-11-11
+  com `scripts/neon-roles.ts` (`teko_watch` no staging; `teko_app` e `teko_watch` na produção),
+  com as URLs `-pooler` em `maintenance` e `corpus-watch`; nenhuma migração rodou ainda nos
+  projetos reais (a primeira é do `deploy-api.yml`, F7). Ver `docs/runbooks/neon-roles.md`.
 - **F3 em diante:** a F3 começa quando o mantenedor decidir.
 
 ## Como trabalhar

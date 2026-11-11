@@ -1,5 +1,5 @@
 import type { Jurisdiction } from '@teko/shared/contracts'
-import type { IsoDate, ValidityInterval } from '@teko/shared/vigencia'
+import { compareIsoDates, type IsoDate, type ValidityInterval } from '@teko/shared/vigencia'
 import { chunkText, embeddingText } from '#domain/corpus/chunker.ts'
 import {
   type Family,
@@ -97,7 +97,7 @@ function knowledgeOf(version: SourceProvisionVersion, doc: SourceDocument): Vali
   const published = doc.versions
     .filter((candidate) => version.documentVersions.includes(candidate.key))
     .map((candidate) => candidate.publishedOn)
-    .sort()
+    .sort(compareIsoDates)
   const from = published[0]
   if (from === undefined) {
     throw new RangeError(

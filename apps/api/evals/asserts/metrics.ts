@@ -1,4 +1,4 @@
-import { containsDate, type ValidityInterval } from '@teko/shared/vigencia'
+import { compareIsoDates, containsDate, type ValidityInterval } from '@teko/shared/vigencia'
 import { z } from 'zod'
 import type { GoldenCase } from '../datasets/schema.ts'
 
@@ -133,8 +133,8 @@ export function clarificationCorrect(golden: GoldenCase, output: RetrievalOutput
   if (golden.expected.status !== 'needs_clarification') {
     return notApplicable('caso não é ambíguo')
   }
-  const expected = [...(golden.expected.candidates ?? [])].sort()
-  const actual = [...output.candidates].sort()
+  const expected = [...(golden.expected.candidates ?? [])].sort(compareIsoDates)
+  const actual = [...output.candidates].sort(compareIsoDates)
   const ok = output.outcome === 'needs_clarification' && expected.join() === actual.join()
   return { score: ok ? 1 : 0, reason: `obtido ${output.outcome} [${actual.join(', ')}]` }
 }
