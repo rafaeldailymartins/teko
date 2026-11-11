@@ -95,3 +95,6 @@ catalog:
   next-intl: 4.14.9
   steiger: 0.9.0
   "@feature-sliced/steiger-plugin": 0.8.2
+  # Declarado só para a Netlify usar esta cópia (do lockfile) em vez de baixar uma sem versão fixa;
+  # NETLIFY_NEXT_PLUGIN_SKIP desliga a lógica dele (spike F1 (a)).
+  "@netlify/plugin-nextjs": 5.16.6

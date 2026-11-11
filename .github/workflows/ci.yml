@@ -108,9 +108,9 @@ jobs:
       - name: Biome
         run: pnpm lint
 
-      - name: Lockfiles em documento único (raiz e tools/vercel-cli)
-        # O script verifica uma lista fixa: o lockfile da raiz e o do projeto isolado
-        # tools/vercel-cli (lido pelo Dependabot e pelos jobs de deploy), sem argumentos.
+      - name: Lockfiles em documento único (raiz, tools/vercel-cli e tools/netlify-cli)
+        # O script verifica uma lista fixa: o lockfile da raiz e os dos projetos isolados dos CLIs de
+        # deploy (lidos pelo Dependabot e pelos jobs de deploy), sem argumentos.
         run: pnpm check-lockfile
 
       - name: Consistência do monorepo (sherif)
@@ -397,6 +397,11 @@ jobs:
       # projeto isolado) também precisa estar livre de vulnerabilidades conhecidas.
       - name: Vulnerabilidades no Vercel CLI isolado (tools/vercel-cli)
         working-directory: tools/vercel-cli
+        run: pnpm audit --audit-level low
+
+      # Idem para o Netlify CLI, que roda nos deploys da web com o NETLIFY_AUTH_TOKEN.
+      - name: Vulnerabilidades no Netlify CLI isolado (tools/netlify-cli)
+        working-directory: tools/netlify-cli
         run: pnpm audit --audit-level low
 
   python:

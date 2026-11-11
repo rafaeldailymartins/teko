@@ -63,16 +63,19 @@ qualquer separador de documento ou se o `package.json` declarar essas chaves; ro
 (lefthook) e no CI (`pnpm check-lockfile`).
 
 Adendo (2026-11-11): o script não aceita argumentos e verifica sempre a lista fixa
-`pnpm-lock.yaml` e `tools/vercel-cli/pnpm-lock.yaml`; nenhum caminho vem da linha de comando.
+`pnpm-lock.yaml` e `tools/vercel-cli/pnpm-lock.yaml`; nenhum caminho vem da linha de comando. Com
+o spike F1 (a), a lista ganhou `tools/netlify-cli/pnpm-lock.yaml`.
 
 ### Exceções
 
-| Exceção                                       | Detalhe                                                                                                                                                  | Revisão                                                                |
-| --------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| `lefthook` fixado em **2.2.1** (plano: 2.2.2) | A 2.2.2 foi publicada **sem** proveniência SLSA, enquanto 2.2.0 e 2.2.1 têm; o `trustPolicy: no-downgrade` a recusa                                      | Subir quando sair uma versão com proveniência                          |
-| `trustPolicyExclude: chokidar@4.0.3`          | 4.0.2 e 4.0.3 foram publicadas em dez/2024 sem provenance; 4.0.0, 4.0.1 e 5.0.0 têm. O `steiger` exige `^4.0.3`                                          | Remover quando o steiger aceitar o chokidar 5                          |
-| `@vercel/functions` fixado em **3.7.6**       | Última versão com proveniência SLSA; todas as seguintes saíram só com trusted publisher (ver "Vercel" abaixo). Nenhuma exceção no workspace da aplicação | Subir quando a Vercel voltar a publicar com proveniência               |
-| Projeto isolado `tools/vercel-cli`            | O Vercel CLI e seus `@vercel/*` exigem exceções de `trustPolicy`, confinadas a um projeto pnpm à parte (ver "Vercel" abaixo)                             | Remover as exceções quando a Vercel voltar a publicar com proveniência |
+| Exceção                                            | Detalhe                                                                                                                                                  | Revisão                                                                |
+| -------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| `lefthook` fixado em **2.2.1** (plano: 2.2.2)      | A 2.2.2 foi publicada **sem** proveniência SLSA, enquanto 2.2.0 e 2.2.1 têm; o `trustPolicy: no-downgrade` a recusa                                      | Subir quando sair uma versão com proveniência                          |
+| `trustPolicyExclude: chokidar@4.0.3`               | 4.0.2 e 4.0.3 foram publicadas em dez/2024 sem provenance; 4.0.0, 4.0.1 e 5.0.0 têm. O `steiger` exige `^4.0.3`                                          | Remover quando o steiger aceitar o chokidar 5                          |
+| `@vercel/functions` fixado em **3.7.6**            | Última versão com proveniência SLSA; todas as seguintes saíram só com trusted publisher (ver "Vercel" abaixo). Nenhuma exceção no workspace da aplicação | Subir quando a Vercel voltar a publicar com proveniência               |
+| Projeto isolado `tools/vercel-cli`                 | O Vercel CLI e seus `@vercel/*` exigem exceções de `trustPolicy`, confinadas a um projeto pnpm à parte (ver "Vercel" abaixo)                             | Remover as exceções quando a Vercel voltar a publicar com proveniência |
+| Projeto isolado `tools/netlify-cli`                | O Netlify CLI 27.16.2 e a árvore dele (835 pacotes) ficam fora do workspace da aplicação, com duas exceções de versão exata (ver "Netlify" abaixo)       | A cada atualização do CLI                                              |
+| `@netlify/plugin-nextjs` **5.16.6** no `@teko/web` | Sem a declaração, a Netlify instala o plugin sozinha, do npm e sem versão fixa (ver "Netlify" abaixo)                                                    | Dependabot, com o cooldown de 7 dias                                   |
 
 ### Versões seguradas pela regra de 7 dias (em 2026-11-10)
 
@@ -139,6 +142,28 @@ em produção.
   `corepack pnpm --dir tools/vercel-cli exec vercel ...`), nunca no runtime, e não entra no
   `.vercel/output`. Assim, o workspace da aplicação mantém a política estrita com **zero**
   exceções para a Vercel.
+
+### Netlify: `tools/netlify-cli` e o plugin do Next (adendo de 2026-11-11, spike F1 (a))
+
+- **Netlify CLI 27.16.2 em `tools/netlify-cli`**, no mesmo modelo do `tools/vercel-cli`: projeto
+  pnpm isolado, lockfile próprio, Dependabot à parte, `pnpm audit --audit-level low` no CI e
+  instalado só nos jobs de deploy. A 27.17.0 citada no plano saiu em 2026-11-10 e ainda não tinha 7
+  dias; a 27.16.2 (2026-11-02) tem proveniência SLSA. Exceções, todas revisadas no registro:
+
+  | Exceção                                                                      | Motivo                                                                                                                                                                                                                                                              |
+  | ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+  | `trustPolicyExclude: "@netlify/serverless-functions-api@2.24.0"` e `@2.28.1` | O pacote teve proveniência só em 2023 (1.3.0 a 1.5.2) e nenhuma versão desde então tem proveniência nem trusted publisher; é um estado antigo, não uma troca recente de publicador. Uma varredura da árvore inteira do CLI (835 nomes) não achou outro rebaixamento |
+  | `allowBuilds`: `esbuild`, `netlify-cli` e `unix-dgram` em `false`            | `esbuild` recebe o binário pelas `optionalDependencies`; o `postinstall` do CLI só instala autocomplete no shell e imprime um banner; `unix-dgram` é addon nativa opcional do `hot-shots` (statsd por socket Unix), que o deploy não usa                            |
+  | `overrides`: `glob` ^14.0.2 e `minimatch` ^11.0.1                            | GHSA-3g3m-2fjr-6pw4 e GHSA-g3hv-75wg-m249 (moderate); cruzam major, como no `tools/vercel-cli`                                                                                                                                                                      |
+  | `auditConfig.ignoreGhsas: GHSA-gcqx-w48m-w2h4`                               | `deepmerge` 4.3.1 (low) não tem versão corrigida; só o `@netlify/config` o usa, para mesclar o `netlify.toml` do próprio repositório                                                                                                                                |
+
+- **`@netlify/plugin-nextjs` 5.16.6** (proveniência SLSA, 0 dependências, MIT) no catálogo, como
+  devDependency do `@teko/web` e em `[[plugins]]` do `apps/web/netlify.toml`. O spike mostrou que,
+  ao detectar o Next, o `netlify build` baixa o plugin do npm sem versão fixa para
+  `apps/web/.netlify/plugins` e roda o `onPreBuild` dele, mesmo com `NETLIFY_NEXT_PLUGIN_SKIP`
+  (que só desliga a lógica do plugin). Declarado, ele é resolvido do `package.json`
+  (`loadedFrom: package.json` no `@netlify/build`), sob esta política; o skip continua desligando
+  a lógica. O workflow do spike falha se a pasta de instalação automática aparecer.
 
 ### Python (`tools/ingest`)
 

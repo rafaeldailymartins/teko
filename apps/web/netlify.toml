@@ -11,9 +11,16 @@
   publish = "apps/web/out"
 
 [build.environment]
-  # Sem @netlify/plugin-nextjs: o export estático é publicado como está.
+  # O export estático é publicado como está: o @netlify/plugin-nextjs roda só para se desligar.
   NETLIFY_NEXT_PLUGIN_SKIP = "true"
   NEXT_TELEMETRY_DISABLED = "1"
+
+# Sem esta declaração, a Netlify instala o @netlify/plugin-nextjs sozinha, do npm e sem versão
+# fixa, ao detectar o Next (spike F1 (a)). Declarado aqui e como devDependency do @teko/web, ela usa
+# a cópia do lockfile, sob a política de supply chain; o NETLIFY_NEXT_PLUGIN_SKIP acima desliga a
+# lógica dele.
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
 
 # Proxy assinado /api/* → API do contexto (só configuração; ver o plugin).
 [[plugins]]

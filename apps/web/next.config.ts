@@ -44,8 +44,21 @@ function assertStreamOrigin(env: NodeJS.ProcessEnv): void {
   }
 }
 
+/**
+ * Nos builds da Netlify (`CONTEXT` definido), registra o contexto e a origem do stream que entram
+ * no bundle; os dois são públicos (vêm do `netlify.toml`). Os workflows de deploy conferem esta
+ * linha para provar que o env do contexto foi aplicado.
+ */
+function logDeployContext(env: NodeJS.ProcessEnv): void {
+  const { CONTEXT: context, NEXT_PUBLIC_STREAM_ORIGIN: origin } = env
+  if (context) {
+    console.info(`[teko] contexto Netlify=${context} NEXT_PUBLIC_STREAM_ORIGIN=${origin ?? ''}`)
+  }
+}
+
 assertPublicEnvIsSafe(process.env)
 assertStreamOrigin(process.env)
+logDeployContext(process.env)
 
 const withNextIntl = createNextIntlPlugin('./src/shared/i18n/request.ts')
 

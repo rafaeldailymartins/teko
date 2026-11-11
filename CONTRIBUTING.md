@@ -160,20 +160,25 @@ The supply-chain rules are documented in
   pinned to 3.7.6, the last release with SLSA provenance. Do not bump it until Vercel publishes
   with provenance again.
 
-### Vercel CLI (`tools/vercel-cli`)
+### Deploy CLIs (`tools/vercel-cli`, `tools/netlify-cli`)
 
-The Vercel CLI lives in `tools/vercel-cli`, a separate pnpm project (`packages: []`) with its own
-lockfile and the only provenance exceptions in the repository (`vercel` and `@vercel/*` stopped
-shipping SLSA provenance in August 2026; see ADR 0002). It is **not** part of the workspace, is not
-installed by the root `pnpm install`, and only runs in the deploy jobs of GitHub Actions:
+The Vercel CLI and the Netlify CLI live in `tools/vercel-cli` and `tools/netlify-cli`, separate pnpm
+projects (`packages: []`) with their own lockfiles. They hold the only provenance exceptions in the
+repository (`vercel` and `@vercel/*` stopped shipping SLSA provenance in August 2026, and two exact
+versions of `@netlify/serverless-functions-api`; see ADR 0002). They are **not** part of the
+workspace, are not installed by the root `pnpm install`, and only run in the deploy jobs of GitHub
+Actions:
 
 ```bash
 corepack pnpm --dir tools/vercel-cli install --frozen-lockfile
 corepack pnpm --dir tools/vercel-cli exec vercel --version
+corepack pnpm --dir tools/netlify-cli install --frozen-lockfile
+corepack pnpm --dir tools/netlify-cli exec netlify --version
 ```
 
-You do not need it locally: deploys happen only from CI (`vercel build` → attested output →
-`vercel deploy --prebuilt`). Never add `vercel` or `@vercel/*` exceptions to the root
+You do not need them locally: deploys happen only from CI (the API as a Build Output API assembled
+from the tsdown bundle and deployed with `vercel deploy --prebuilt`, ADR 0017; the web with
+`netlify deploy --build`). Never add `vercel`, `@vercel/*` or Netlify CLI exceptions to the root
 `pnpm-workspace.yaml`.
 
 ### Python (`tools/ingest`)
@@ -210,7 +215,8 @@ CI also runs two shell test suites over its own configuration: `.github/scripts/
 A PR that changes CI or root configuration (`.github/workflows`, `.github/actions`,
 `.github/scripts`, `.github/affected-paths.yml`, `turbo.json`, `package.json`,
 `pnpm-workspace.yaml`, `pnpm-lock.yaml`, `tsconfig*.json`, `biome.json`, `knip.json`,
-`lefthook.yml`, `.semgrep/`, `sonar-project.properties`, `tools/vercel-cli/`) runs every job,
+`lefthook.yml`, `.semgrep/`, `sonar-project.properties`, `tools/vercel-cli/`, `tools/netlify-cli/`)
+runs every job,
 not just the affected ones.
 
 `pnpm knip` runs knip twice: the default pass (whole project, tests included) and a

@@ -11,7 +11,8 @@
     },
     "apps/web": {
       "entry": ["app/**/*.{ts,tsx}!", "steiger.config.ts"],
-      "project": ["app/**/*.{ts,tsx}!", "src/**/*.{ts,tsx}!"]
+      "project": ["app/**/*.{ts,tsx}!", "src/**/*.{ts,tsx}!"],
+      "ignoreUnresolved": ["/apps/web/netlify/plugins/context-routing"]
     },
     "packages/shared": {
       "entry": ["src/*/index.ts!"],

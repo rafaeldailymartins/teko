@@ -22,6 +22,7 @@
   },
   "devDependencies": {
     "@feature-sliced/steiger-plugin": "catalog:",
+    "@netlify/plugin-nextjs": "catalog:",
     "@tailwindcss/postcss": "catalog:",
     "@types/node": "catalog:",
     "@types/react": "catalog:",
