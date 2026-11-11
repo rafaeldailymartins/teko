@@ -199,7 +199,10 @@ jobs:
   test:
     name: test
     needs: scope
-    if: fromJSON(needs.scope.outputs.json).packages
+    # Em push roda sempre: a análise de branch do Sonar mede a cobertura de todo o código novo do
+    # período, e um push sem pacote afetado (só docs ou config) sem lcov derrubava o quality gate
+    # com new_coverage 0%. Os pacotes sem mudança saem do cache do Turbo.
+    if: github.event_name == 'push' || fromJSON(needs.scope.outputs.json).packages
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     permissions:
@@ -407,7 +410,8 @@ jobs:
   python:
     name: python (tools/ingest)
     needs: scope
-    if: fromJSON(needs.scope.outputs.json).ingest
+    # Em push roda sempre, pelo mesmo motivo do `test`: o Sonar precisa do coverage.xml.
+    if: github.event_name == 'push' || fromJSON(needs.scope.outputs.json).ingest
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     permissions:

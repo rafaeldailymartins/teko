@@ -52,6 +52,12 @@ check "sonar com timeout do quality gate" \
   bash -c "$(declare -f sonar_args); sonar_args | grep -Eq 'sonar.qualitygate.timeout=[0-9]+'"
 check "sonar pula sem SONAR_TOKEN (fork/Dependabot sem o segredo)" \
   bash -c "yq -r '.jobs.sonar.steps[].run // \"\"' .github/workflows/ci.yml | grep -q 'if \[\[ -z \"\${SONAR_TOKEN}\" \]\]'"
+# Em push, o Sonar analisa a branch inteira: sem o lcov e o coverage.xml, o new_coverage vai a 0%
+# e o quality gate reprova (sonar-push-without-coverage).
+check "test roda sempre em push (lcov para o Sonar)" \
+  bash -c "yq -r '.jobs.test.if' .github/workflows/ci.yml | grep -q \"github.event_name == 'push' ||\""
+check "python roda sempre em push (coverage.xml para o Sonar)" \
+  bash -c "yq -r '.jobs.python.if' .github/workflows/ci.yml | grep -q \"github.event_name == 'push' ||\""
 check "ci-gate depende do workflow ci (que inclui o sonar)" \
   bash -c "yq -e '.jobs.\"ci-gate\".needs | contains([\"ci\"])' .github/workflows/pr-gate.yml >/dev/null"
 
