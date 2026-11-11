@@ -18,6 +18,7 @@
     "test": "turbo run test:unit test:integration",
     "test:unit": "turbo run test:unit",
     "test:integration": "turbo run test:integration",
+    "test:scripts": "node --test \"scripts/**/*.test.ts\"",
     "test:mutation": "turbo run test:mutation",
     "lint": "biome ci --error-on-warnings .",
     "lint:fix": "biome check --write .",

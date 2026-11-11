@@ -21,6 +21,12 @@
  *   node scripts/pack-vercel-output.ts --out dist/teko-api-output.tgz \
  *     [--vercel-dir .vercel] [--env-file infra/vercel/env.production.json] [--gitleaks gitleaks]
  *
+ * Argumentos (`scripts/lib/cli-guards.ts`): `--out`, `--vercel-dir` e `--env-file` são resolvidos
+ * contra o cwd e precisam ficar dentro do repositório, com links resolvidos. `--gitleaks` aceita só
+ * o nome `gitleaks` (procurado apenas em diretórios absolutos e protegidos do PATH) ou o caminho
+ * absoluto de um binário que se chame `gitleaks` (`gitleaks.exe` no Windows), como o
+ * `$RUNNER_TEMP/gitleaks` verificado por SHA-256 no CI. O `tar` também sai do PATH protegido.
+ *
  * Saída: o tarball, `<tarball>.sha256` (formato do `sha256sum`) e, com `GITHUB_OUTPUT`, as saídas
  * `tarball`, `sha256` e `bytes`. Não usa dependências: só o Node 24 (type stripping).
  */
@@ -40,6 +46,12 @@ import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'nod
 import { env, exit } from 'node:process'
 import { parseArgs } from 'node:util'
 import { gzipSync } from 'node:zlib'
+import {
+  compareCodeUnits,
+  findOnSafePath,
+  resolveAllowedExecutable,
+  resolveInsideRoot,
+} from './lib/cli-guards.ts'
 
 const REPO_ROOT = resolve(import.meta.dirname, '..')
 const DEFAULT_ENV_FILES = ['env.production.json', 'env.staging.json'].map((name) =>
@@ -77,11 +89,15 @@ function parseOptions(): Options {
   if (values.out === undefined) {
     throw new PackError('--out <arquivo.tgz> é obrigatório')
   }
+  // Todo caminho fica dentro do repositório (links resolvidos) e sai absoluto, então nunca vira
+  // opção do tar ou do gitleaks. O executável sai da allowlist (ver `resolveAllowedExecutable`).
   return {
-    vercelDir: resolve(values['vercel-dir']),
-    out: resolve(values.out),
-    envFiles: values['env-file'] ?? DEFAULT_ENV_FILES,
-    gitleaks: values.gitleaks,
+    vercelDir: resolveInsideRoot(REPO_ROOT, values['vercel-dir']),
+    out: resolveInsideRoot(REPO_ROOT, values.out),
+    envFiles: (values['env-file'] ?? DEFAULT_ENV_FILES).map((file) =>
+      resolveInsideRoot(REPO_ROOT, file),
+    ),
+    gitleaks: resolveAllowedExecutable(values.gitleaks, 'gitleaks'),
   }
 }
 
@@ -92,7 +108,7 @@ interface Entry {
 }
 
 function walk(root: string, current = root, entries: Entry[] = []): Entry[] {
-  for (const name of readdirSync(current).sort()) {
+  for (const name of readdirSync(current).sort(compareCodeUnits)) {
     const path = join(current, name)
     const relativePath = relative(root, path).split(sep).join('/')
     const stat = lstatSync(path)
@@ -148,7 +164,7 @@ function knownEnvNames(envFiles: readonly string[]): string[] {
   if (names.size === 0) {
     throw new PackError(`nenhuma env var conhecida em ${envFiles.join(', ')}`)
   }
-  return [...names].sort()
+  return [...names].sort(compareCodeUnits)
 }
 
 /**
@@ -173,8 +189,13 @@ function assertNoEnvAssignments(entries: readonly Entry[], pattern: RegExp): voi
   }
 }
 
-function run(command: string, args: readonly string[]): Buffer {
-  const result = spawnSync(command, args, { maxBuffer: 1024 * 1024 * 1024 })
+/**
+ * `executable` é sempre um caminho absoluto já validado (`findOnSafePath` ou
+ * `resolveAllowedExecutable`), e o spawn é sem shell, com argumentos em array.
+ */
+function run(executable: string, args: readonly string[]): Buffer {
+  const command = basename(executable)
+  const result = spawnSync(executable, args, { shell: false, maxBuffer: 1024 * 1024 * 1024 })
   if (result.error !== undefined) {
     throw new PackError(`não foi possível executar ${command}: ${result.error.message}`)
   }
@@ -196,11 +217,12 @@ function sourceDateEpoch(): number {
 }
 
 function deterministicTar(vercelDir: string): Buffer {
-  const version = run('tar', ['--version']).toString('utf8')
+  const tar = findOnSafePath('tar')
+  const version = run(tar, ['--version']).toString('utf8')
   if (!version.includes('GNU tar')) {
     throw new PackError('é preciso o GNU tar (runner Ubuntu); bsdtar não garante determinismo')
   }
-  return run('tar', [
+  return run(tar, [
     '--create',
     '--file=-',
     `--directory=${vercelDir}`,

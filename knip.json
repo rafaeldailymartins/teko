@@ -3,7 +3,7 @@
   "ignoreFiles": [".semgrep/**"],
   "workspaces": {
     ".": {
-      "entry": ["scripts/*.ts!"]
+      "entry": ["scripts/*.ts!", "scripts/**/*.test.ts"]
     },
     "apps/api": {
       "project": ["src/**/*.ts!", "test/**/*.ts"],

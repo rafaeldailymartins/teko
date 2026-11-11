@@ -18,6 +18,7 @@ import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto'
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join, relative, resolve } from 'node:path'
 import { exit } from 'node:process'
+import { CliGuardError, findOnSafePath } from './lib/cli-guards.ts'
 
 const repoRoot = resolve(import.meta.dirname, '..')
 const apiEnvPath = join(repoRoot, 'apps', 'api', '.env')
@@ -58,13 +59,34 @@ function readEnv(path: string): { content: string; entries: EnvEntries } {
   return { content, entries: parseEnv(content) }
 }
 
-function assertGitIgnored(path: string): void {
+/**
+ * Caminho absoluto do git, procurado só em diretórios absolutos e protegidos do PATH: um nome
+ * solto deixaria o sistema escolher o binário (no Windows, inclusive um `git.exe` plantado no cwd).
+ * Sem git confiável, a consulta é pulada com aviso, como antes quando o git faltava.
+ */
+function trustedGit(): string | undefined {
+  try {
+    return findOnSafePath('git')
+  } catch (error) {
+    if (error instanceof CliGuardError) {
+      return undefined
+    }
+    throw error
+  }
+}
+
+function assertGitIgnored(path: string, git: string | undefined): void {
   const target = relative(repoRoot, path)
+  if (git === undefined) {
+    console.warn(`dev-secrets: git não encontrado no PATH para ${target}; seguindo assim mesmo.`)
+    return
+  }
   try {
     // Sem --no-index: um .env já rastreado pelo git conta como "não ignorado" e aborta.
-    execFileSync('git', ['check-ignore', '--quiet', '--', target], {
+    execFileSync(git, ['check-ignore', '--quiet', '--', target], {
       cwd: repoRoot,
       stdio: 'ignore',
+      shell: false,
     })
   } catch (error) {
     const status = (error as { status?: number | null }).status
@@ -140,12 +162,13 @@ function applyPlan(plan: Plan, current: string, replacements: Map<string, string
 }
 
 function main(): void {
+  const git = trustedGit()
   for (const path of [apiEnvPath, infraEnvPath]) {
     if (!existsSync(dirname(path))) {
       console.error(`dev-secrets: diretório ${relative(repoRoot, dirname(path))} não existe.`)
       exit(1)
     }
-    assertGitIgnored(path)
+    assertGitIgnored(path, git)
   }
 
   const nowSeconds = Math.floor(Date.now() / 1000)
