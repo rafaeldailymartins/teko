@@ -12,9 +12,13 @@
 # Só `workflow_dispatch` (nunca roda em PR nem em push) e só no environment `staging`, que guarda
 # o VERCEL_TOKEN de staging (segredo) e VERCEL_ORG_ID/VERCEL_PROJECT_ID (variáveis). Sem eles o
 # job falha logo no primeiro passo, com a lista do que falta. Nada aqui inventa resultado: o
-# resumo do job registra o que a Vercel gerou (functions, runtime, região, URL, sha256), e as
-# verificações manuais do spike (SSE de 95 s, desconexão, SIGTERM, promote durante stream, cold
-# start, rollback) seguem o roteiro em docs/adr, usando a deployment criada aqui.
+# resumo do job registra o que a Vercel gerou (functions, runtime, região, URL, sha256).
+#
+# Spike encerrado: os resultados (SSE de 95 s, desconexão, waitUntil, SIGTERM, promote durante
+# stream) estão na docs/adr/0003-f1-spikes.md, e as rotas temporárias /api/_spike/* saíram da
+# API, junto com as verificações de stream que as usavam. O workflow fica como referência para o
+# deploy-api.yml da F7: build, tarball atestado, deploy --prebuilt, smoke em /healthz e
+# /api/healthz e promote.
 #
 # O Vercel CLI vem do projeto isolado tools/vercel-cli (lockfile próprio; ver ADR 0002).
 name: Spike F1 (b) - API na Vercel
@@ -26,10 +30,6 @@ on:
         description: Promover a deployment ao domínio de produção do teko-api-staging (vercel promote)
         type: boolean
         default: true
-      stream_checks:
-        description: "Depois do promote: SSE de 95 s, desconexão, waitUntil, promote durante stream e logs (cerca de 8 min)"
-        type: boolean
-        default: false
 
 permissions: {}
 
@@ -206,7 +206,10 @@ jobs:
           vercel promote "$DEPLOYMENT_URL" --timeout=5m --token "${VERCEL_TOKEN}"
           echo "- promovida: ${DEPLOYMENT_URL}" >>"$GITHUB_STEP_SUMMARY"
           # O domínio de produção precisa ser público (proxy da Netlify, stream e preflight CORS
-          # chegam sem login): curl puro, sem o bypass.
+          # chegam sem login): curl puro, sem o bypass. O 200 aqui não prova que o domínio já serve
+          # a deployment nova (logo depois do promote ainda pode cair na anterior), e o /healthz
+          # deste projeto responde gitSha unknown (sem GIT_SHA no env; ADR 0003); a espera pela
+          # propagação (polling até gitSha == sha) fica para o deploy-api.yml da F7.
           vercel api "/v9/projects/${VERCEL_PROJECT_ID}/domains" >"${RUNNER_TEMP}/domains.json"
           mapfile -t domains < <(jq -r '.domains[].name' "${RUNNER_TEMP}/domains.json")
           if (( ${#domains[@]} == 0 )); then
@@ -221,136 +224,6 @@ jobs:
               exit 1
             fi
           done
-
-      # --- Verificações de stream do spike F1 (b), contra o domínio de produção do staging -------
-      # Usam as rotas temporárias /api/_spike/* (só existem em staging na Vercel). As de SSE e de
-      # promote durante stream decidem o resultado; as de desconexão, waitUntil e SIGTERM só
-      # registram o que os logs de runtime mostram (é isso que o spike quer descobrir).
-
-      - name: "Spike: runtime e waitUntil"
-        if: inputs.promote && inputs.stream_checks
-        run: |
-          base=https://teko-api-staging.vercel.app
-          curl -sS --fail-with-body "${base}/api/_spike/runtime" >"${RUNNER_TEMP}/runtime.json"
-          jq -c . "${RUNNER_TEMP}/runtime.json"
-          curl -sS --fail-with-body -X POST "${base}/api/_spike/wait-until?delayMs=1500" >"${RUNNER_TEMP}/wait-until.json"
-          {
-            echo "## Spike F1 (b): stream e runtime"
-            echo
-            echo "- runtime: \`$(jq -c . "${RUNNER_TEMP}/runtime.json")\`"
-            echo "- waitUntil agendado: \`$(jq -c . "${RUNNER_TEMP}/wait-until.json")\`"
-          } >>"$GITHUB_STEP_SUMMARY"
-
-      - name: "Spike: SSE de 95 s e promote de uma deployment antiga durante o stream"
-        if: inputs.promote && inputs.stream_checks
-        env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-          VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
-          DEPLOYMENT_URL: ${{ steps.deploy.outputs.url }}
-        run: |
-          base=https://teko-api-staging.vercel.app
-          sse="${RUNNER_TEMP}/sse.txt"
-          # Cada linha do stream sai com o instante de chegada (ms desde o início do curl).
-          probe() {
-            local url="$1" out="$2" max="$3" start
-            start="$(date +%s%3N)"
-            curl -sSN --max-time "$max" -D "${out}.headers" "$url" 2>"${out}.err" \
-              | while IFS= read -r line || [[ -n "$line" ]]; do
-                  printf '%s %s\n' "$(( $(date +%s%3N) - start ))" "$line"
-                done >"$out"
-          }
-
-          # Deployment de produção anterior (para o promote durante o stream e a volta).
-          vercel api "/v6/deployments?projectId=${VERCEL_PROJECT_ID}&target=production&state=READY&limit=10" >"${RUNNER_TEMP}/deployments.json"
-          current="${DEPLOYMENT_URL#https://}"
-          previous="$(jq -r --arg current "$current" '[.deployments[] | select(.url != $current)] | sort_by(.created) | reverse | .[0].url // empty' "${RUNNER_TEMP}/deployments.json")"
-          if [[ -z "$previous" ]]; then
-            echo "::error title=spike-api-vercel::Não há deployment de produção anterior para o promote durante o stream."
-            exit 1
-          fi
-
-          probe "${base}/api/_spike/sse?firstByteDelayS=30&durationS=95&heartbeatS=15" "$sse" 130 &
-          stream_pid=$!
-          sleep 40
-          # Durante o stream: o domínio passa para a deployment anterior (promote de deployment
-          # de produção mais antiga no Hobby); o stream em curso deve terminar na atual.
-          promote_rc=0
-          vercel promote "https://${previous}" --timeout=5m || promote_rc=$?
-          older_health="$(curl -sS -o /dev/null -w '%{http_code}' "${base}/healthz" || true)"
-          wait "$stream_pid" || true
-          # Volta: o domínio de produção fica de novo com a deployment desta execução.
-          vercel promote "$DEPLOYMENT_URL" --timeout=5m
-          back_health="$(curl -sS -o /dev/null -w '%{http_code}' "${base}/healthz")"
-
-          cat "$sse"
-          fail=0
-          start_ms="$(awk '$2 == "event:" && $3 == "start" {print $1; exit}' "$sse")"
-          end_ms="$(awk '$2 == "event:" && $3 == "end" {print $1; exit}' "$sse")"
-          hb_count="$(grep -c ' : hb ' "$sse" || true)"
-          # Maior intervalo entre linhas não vazias depois do start (buffering juntaria tudo no fim).
-          max_gap="$(awk -v s="${start_ms:-0}" 'NF > 1 && $1 >= s { if (prev != "") { gap = $1 - prev; if (gap > max) max = gap } prev = $1 } END { print max + 0 }' "$sse")"
-          {
-            echo "- SSE pelo domínio de produção: start em \`${start_ms:-ausente}\` ms, end em \`${end_ms:-ausente}\` ms, heartbeats \`${hb_count}\`, maior intervalo \`${max_gap}\` ms"
-            echo "- headers do SSE: \`$(grep -iE '^(content-type|cache-control|x-vercel-id):' "${sse}.headers" | tr -d '\r' | paste -sd ';' -)\`"
-            echo "- promote da deployment anterior (\`${previous}\`) durante o stream: código \`${promote_rc}\`; /healthz depois: HTTP \`${older_health}\`; volta para a atual: HTTP \`${back_health}\`"
-          } >>"$GITHUB_STEP_SUMMARY"
-          if [[ -z "$start_ms" ]] || (( start_ms < 29000 || start_ms > 45000 )); then
-            echo "::error title=spike-api-vercel::O primeiro evento do SSE não chegou entre 29 e 45 s (${start_ms:-ausente} ms)."
-            fail=1
-          fi
-          if [[ -z "$end_ms" ]] || (( end_ms < 94000 )); then
-            echo "::error title=spike-api-vercel::O SSE não terminou com event: end depois de 95 s (${end_ms:-ausente} ms); corte ou promote derrubaram o stream."
-            fail=1
-          fi
-          if (( hb_count < 4 || max_gap > 17000 )); then
-            echo "::error title=spike-api-vercel::Heartbeats ausentes ou chegando em bloco (${hb_count} heartbeats, maior intervalo ${max_gap} ms): buffering."
-            fail=1
-          fi
-          if (( promote_rc != 0 )); then
-            echo "::error title=spike-api-vercel::vercel promote de uma deployment de produção anterior falhou (${promote_rc})."
-            fail=1
-          fi
-          [[ "$back_health" == 200 ]] || fail=1
-          exit "$fail"
-
-      - name: "Spike: desconexão, waitUntil e SIGTERM nos logs de runtime"
-        if: always() && inputs.promote && inputs.stream_checks && steps.deploy.outputs.url != ''
-        env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-          VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
-          DEPLOYMENT_URL: ${{ steps.deploy.outputs.url }}
-        run: |
-          base=https://teko-api-staging.vercel.app
-          # Depois do promote de volta, o domínio leva um instante para servir a deployment desta
-          # execução (no primeiro dispatch, o teste caiu na anterior, sem as rotas de spike: 404).
-          # Espera até 60 s pela rota de runtime antes de testar.
-          for _ in $(seq 1 30); do
-            [[ "$(curl -sS -o /dev/null -w '%{http_code}' "${base}/api/_spike/runtime")" == 200 ]] && break
-            sleep 2
-          done
-          # O cliente desiste aos 15 s de um stream de 60 s.
-          curl -sSN --max-time 15 "${base}/api/_spike/sse?firstByteDelayS=5&durationS=60&heartbeatS=5" >/dev/null 2>&1 || true
-          sleep 30
-          vercel logs --deployment "$DEPLOYMENT_URL" --since 30m --json >"${RUNNER_TEMP}/deploy-logs.jsonl" 2>/dev/null || true
-          vercel logs --since 30m --json >"${RUNNER_TEMP}/project-logs.jsonl" 2>/dev/null || true
-          report() {
-            local label="$1" pattern="$2" file="$3" lines
-            lines="$(grep -a "$pattern" "$file" | cut -c1-400 || true)"
-            echo "- ${label}: $(grep -ac "$pattern" "$file" || true) registro(s)"
-            if [[ -n "$lines" ]]; then
-              echo '```'
-              echo "$lines" | head -5
-              echo '```'
-            fi
-          }
-          {
-            report "desconexão via request.signal" 'cliente desconectou' "${RUNNER_TEMP}/deploy-logs.jsonl"
-            report "resposta fechada antes do fim" 'resposta fechada antes do fim' "${RUNNER_TEMP}/deploy-logs.jsonl"
-            report "waitUntil concluído depois da resposta" 'tarefa pós-resposta concluída' "${RUNNER_TEMP}/deploy-logs.jsonl"
-            report "SIGTERM (shutdown requested) no projeto, últimos 30 min" 'shutdown requested' "${RUNNER_TEMP}/project-logs.jsonl"
-          } >>"$GITHUB_STEP_SUMMARY"
 
       - name: Logs de runtime da deployment (só em falha)
         if: failure() && steps.deploy.outputs.url != ''

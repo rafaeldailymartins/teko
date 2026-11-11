@@ -1,7 +1,7 @@
 ---
 
-status: proposed
-date: 2026-11-10
+status: accepted
+date: 2026-11-11
 decision-makers: Rafael Daily Santos Martins
 ---
 
@@ -21,15 +21,15 @@ GHCR e deployer blue/green deixaram de existir.
 
 ## Spikes
 
-| Spike | Pergunta                                                                                                                                                                                                                     | Status                                                                                                        | Resultado                                                                                                                                                                        | Decisão decorrente                                                                                                                                                          |
-| ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| (a)   | Build do Next no Actions + `netlify deploy --build --context develop --alias develop` com `NETLIFY_NEXT_PLUGIN_SKIP`: o deploy tem 0 functions e o env por contexto é aplicado?                                              | concluído (2026-11-11)                                                                                        | Sim, no site `tekoia` (ver "Spike (a)"); a Netlify instala o plugin do Next sozinha se ele não for declarado, e troca `/pt-BR/` por `/pt-br/`                                    | `@netlify/plugin-nextjs` fixado no lockfile; proteção de visitantes desligada no site; o i18n da F5 precisa tratar URL em minúsculas                                        |
-| (b)   | Fastify "hello" com o `server.ts` real no `teko-api-staging`, pelo fluxo do CI (build → tarball atestado → `vercel deploy --prebuilt --prod --skip-domain` → `vercel curl` → `vercel promote`). Ver "Checklist do spike (b)" | concluído (2026-11-11); SIGTERM e cold start sem medição conclusiva                                           | Build Output API pelo tsdown; SSE de 95 s sem corte; promote durante stream; `waitUntil`; desconexão só com `supportsCancellation` (ver "Spike (b)")                             | [ADR 0017](0017-vercel-build-output-tsdown.md); `supportsCancellation: true` e `maxDuration` de 120 s no `.vc-config.json`; `under-pressure` sem limite de atraso na Vercel |
-| (c)   | Plugin `context-routing` contra uma rota de echo no `teko-api-staging.vercel.app`. Ver "Checklist do spike (c)"                                                                                                              | concluído (2026-11-11)                                                                                        | `x-nf-sign` verificado, com `deploy_context=branch-deploy` no alias; a Netlify sobrescreve `x-nf-client-connection-ip`; sem cache; +27 ms de mediana (ver "Spike (c)")           | `NETLIFY_CLIENT_IP_TRUSTED = true` (só com assinatura); allowlist de `deploy_context` em staging = `branch-deploy`; segredo do proxy como variável comum no Netlify Free    |
-| (d)   | Neon `-pooler` com timeouts por role (o pooler não aceita `statement_timeout` como parâmetro de conexão), `attachDatabasePool` e reconexão após scale-to-zero                                                                | concluído (2026-11-11), sem o `attachDatabasePool`                                                            | Timeouts do role valem pelo pooler; o pooler recusa `statement_timeout` em `options`; primeira query depois de 5,5 min ociosos em 4,7 s, sem erro de reconexão (ver "Spike (d)") | Timeouts no role, como no plano; driver e `attachDatabasePool` decididos na F2 (o `pg` nunca teve proveniência)                                                             |
-| (e)   | Exports `parseJsonEventStream` e `uiMessageChunkSchema` do pacote `ai`                                                                                                                                                       | concluído                                                                                                     | Os dois são exportados pelo entry `ai` (ver "Spike (e)")                                                                                                                         | O `TicketedChatTransport` pode importar os dois de `ai`; a versão do catálogo precisa respeitar os 7 dias                                                                   |
-| (f)   | Ingestão: Docling ACCURATE contra V2 no Guia 3.2.4, formato do WS de Tabelas Externas, `bge-m3` com dimensão 1024 e plugins locais do promptfoo                                                                              | pendente — requer tokens (contas criadas em 2026-11-10) para `bge-m3`; Docling real e WS ainda não executados | `tools/ingest` existe com testes sobre dublês do Docling (55 testes, cobertura de 100%); nenhuma conversão real foi feita                                                        |                                                                                                                                                                             |
-| (g)   | Conferência via Context7 de todas as versões da tabela "Ferramentas da raiz" (inclusive a Vercel CLI) e das tabelas de stack de API (inclusive `@vercel/functions`) e web                                                    | parcial                                                                                                       | Ver "Spike (g)"                                                                                                                                                                  | Versões seguradas e exceções na [ADR 0002](0002-supply-chain-pnpm.md)                                                                                                       |
+| Spike | Pergunta                                                                                                                                                                                                                     | Status                                                              | Resultado                                                                                                                                                                                                                                           | Decisão decorrente                                                                                                                                                                                 |
+| ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| (a)   | Build do Next no Actions + `netlify deploy --build --context develop --alias develop` com `NETLIFY_NEXT_PLUGIN_SKIP`: o deploy tem 0 functions e o env por contexto é aplicado?                                              | concluído (2026-11-11)                                              | Sim, no site `tekoia` (ver "Spike (a)"); a Netlify instala o plugin do Next sozinha se ele não for declarado, e troca `/pt-BR/` por `/pt-br/`                                                                                                       | `@netlify/plugin-nextjs` fixado no lockfile; proteção de visitantes desligada no site; o i18n da F5 precisa tratar URL em minúsculas                                                               |
+| (b)   | Fastify "hello" com o `server.ts` real no `teko-api-staging`, pelo fluxo do CI (build → tarball atestado → `vercel deploy --prebuilt --prod --skip-domain` → `vercel curl` → `vercel promote`). Ver "Checklist do spike (b)" | concluído (2026-11-11); SIGTERM e cold start sem medição conclusiva | Build Output API pelo tsdown; SSE de 95 s sem corte; promote durante stream; `waitUntil`; desconexão só com `supportsCancellation` (ver "Spike (b)")                                                                                                | [ADR 0017](0017-vercel-build-output-tsdown.md); `supportsCancellation: true` e `maxDuration` de 120 s no `.vc-config.json`; `under-pressure` sem limite de atraso na Vercel                        |
+| (c)   | Plugin `context-routing` contra uma rota de echo no `teko-api-staging.vercel.app`. Ver "Checklist do spike (c)"                                                                                                              | concluído (2026-11-11)                                              | `x-nf-sign` verificado, com `deploy_context=branch-deploy` no alias; a Netlify sobrescreve `x-nf-client-connection-ip`; sem cache; +27 ms de mediana (ver "Spike (c)")                                                                              | `NETLIFY_CLIENT_IP_TRUSTED = true` (só com assinatura); allowlist de `deploy_context` em staging = `branch-deploy`; segredo do proxy como variável comum no Netlify Free                           |
+| (d)   | Neon `-pooler` com timeouts por role (o pooler não aceita `statement_timeout` como parâmetro de conexão), `attachDatabasePool` e reconexão após scale-to-zero                                                                | concluído (2026-11-11), sem o `attachDatabasePool`                  | Timeouts do role valem pelo pooler; o pooler recusa `statement_timeout` em `options`; primeira query depois de 5,5 min ociosos em 4,7 s, sem erro de reconexão (ver "Spike (d)")                                                                    | Timeouts no role, como no plano; driver e `attachDatabasePool` decididos na F2 (o `pg` nunca teve proveniência)                                                                                    |
+| (e)   | Exports `parseJsonEventStream` e `uiMessageChunkSchema` do pacote `ai`                                                                                                                                                       | concluído                                                           | Os dois são exportados pelo entry `ai` (ver "Spike (e)")                                                                                                                                                                                            | O `TicketedChatTransport` pode importar os dois de `ai`; a versão do catálogo precisa respeitar os 7 dias                                                                                          |
+| (f)   | Ingestão: Docling ACCURATE contra V2 no Guia 3.2.4, formato do WS de Tabelas Externas, `bge-m3` com dimensão 1024 e plugins locais do promptfoo                                                                              | concluído (2026-11-11)                                              | V1 `ACCURATE` converteu o Guia inteiro (366 páginas, 457 tabelas); o V2 desmonta as tabelas de campos. WS: TXT cp1252 com SHA-1 nos metadados. `bge-m3`: `[n, 1024]`. promptfoo: `hijacking` e `jailbreak` (meta) são remote-only (ver "Spike (f)") | TableFormer V1 `ACCURATE`; custo de embedding pelo `meta.neurons`; red team sem `hijacking`, com `jailbreak:tree` e `jailbreak-templates`; sha256 do arquivo baixado no lugar do MD5 do Ato COTEPE |
+| (g)   | Conferência via Context7 de todas as versões da tabela "Ferramentas da raiz" (inclusive a Vercel CLI) e das tabelas de stack de API (inclusive `@vercel/functions`) e web                                                    | parcial                                                             | Ver "Spike (g)"                                                                                                                                                                                                                                     | Versões seguradas e exceções na [ADR 0002](0002-supply-chain-pnpm.md)                                                                                                                              |
 
 ### Checklist do spike (b)
 
@@ -214,6 +214,125 @@ Conclusão: os dois símbolos existem no entry principal `ai`, em runtime e nos 
   (`packages/shared/src/contracts/stream.ts`) protege contra remoção numa atualização do
   Dependabot.
 
+## Spike (f): ingestão
+
+Executado em 2026-11-11, na máquina do mantenedor (Windows, 8 núcleos, sem GPU), com os scripts
+de spike fora do repositório. Nenhum segredo passou pelo código: o token do Workers AI ficou no
+`tools/ingest/.env` local, fora do git.
+
+### Docling no Guia Prático EFD ICMS/IPI 3.2.4
+
+PDF oficial do [gov.br/sped](https://www.gov.br/sped/pt-br/assuntos/escrituracoes-digitais/efd-icms-ipi/manuais-e-documentos-tecnicos/guia-pratico-efd-versao-3-2-4.pdf/@@display-file/file)
+(366 páginas, 6,6 MB, sha256 `01e76f17…b6f164`). O portal antigo `sped.rfb.gov.br` para na
+3.2.2.
+
+- **MD5 do Ato COTEPE ≠ MD5 do arquivo publicado.** O Ato COTEPE/ICMS 86/2026 dá a chave
+  `8DEF286233A4EBF912E9C09EA36E5DBF` para a 3.2.4; o PDF baixado tem MD5
+  `aaec227817731c6429375bdcc9e47b84`. A chave do Ato não serve para conferir o download: o
+  `sources.yaml` (F3) guarda o sha256 do arquivo efetivamente baixado e registra a chave do Ato só
+  como metadado.
+
+Docling 2.146.0 (docling-core 2.105.0, torch 2.15.0+cpu), com as opções do `convert.py` (OCR
+desligado, `do_cell_matching=True`, serviços remotos desligados, imagens como placeholder) e os
+modelos baixados por `docling-tools models download layout tableformer tableformerv2`:
+
+| Execução                                      | Páginas | Tempo              | s/página | Tabelas | Resultado            |
+| --------------------------------------------- | ------- | ------------------ | -------- | ------- | -------------------- |
+| V1 `ACCURATE`, amostra (páginas 60–69)        | 10      | 52,7 s             | 5,3      | 7       | `success`            |
+| V2 (`TableStructureV2Options`), mesma amostra | 10      | 30,2 s             | 3,0      | 7       | `success`            |
+| V1 `ACCURATE`, Guia inteiro                   | 366     | 4.301 s (71,7 min) | 11,8     | 457     | `success`, sem erros |
+
+Na amostra, com as mesmas tabelas de registros (B500, B510, B990, C001, C100...):
+
+| Métrica                                                                                        | V1 `ACCURATE` | V2     |
+| ---------------------------------------------------------------------------------------------- | ------------- | ------ |
+| Tabelas de campos com cabeçalho reconhecido (`Nº`, `Campo`, `Descrição`, `Tipo`, `Tam`, `Dec`) | 6 de 7        | 0 de 7 |
+| Células com número e nome do campo fundidos (`01 REG`)                                         | 0             | 69     |
+| `REG` sozinho na coluna `Campo`                                                                | 6             | 0      |
+| Descrições de campos vizinhos misturadas (C100: "…"C100" Indicador do tipo de operação")       | não           | sim    |
+
+No Guia inteiro com o V1: 457 tabelas em 310 páginas, 259 tabelas de campos com o cabeçalho
+completo, 269 registros distintos (de `0000` a `K990`, pelo "Texto fixo contendo"), 21 células
+fundidas e 106 tabelas com cabeçalho genérico, das quais 102 vêm logo depois de outra tabela
+(continuação depois da quebra de página, sem repetir o cabeçalho). Saída: `docling.json` de
+36,6 MB e Markdown de 1,6 MB.
+
+- **Decisão (mantenedor, 2026-11-11): TableFormer V1 `ACCURATE` com cell matching**, como já está
+  no plano e no `convert.py`. O V2 é 43% mais rápido, mas desmonta justamente as tabelas de
+  registros e campos, que são o que a ingestão do Guia precisa. A conversão completa com o V2 foi
+  interrompida depois da decisão; a comparação é a da amostra.
+- **Quebra de página:** o parser `docling-guia` (F3) junta a tabela de cabeçalho genérico à tabela
+  de campos anterior, como prevê o teste "Docling JSON com tabela que quebra de página".
+- **Tempo:** os 71,7 min foram medidos com a CPU dividida com outras tarefas (média de 2,4 núcleos
+  em uso); sem disputa, a amostra projeta uns 32 min. Mesmo assim, o Guia passa do
+  `document_timeout` de 3.600 s do plano numa máquina com a CPU disputada. A F3 mede no runner do
+  Actions e, se a conversão passar do timeout, sobe o `document_timeout` do Guia ou o divide por
+  `page_range` (o mesmo mecanismo previsto para documentos de mais de 5 h).
+
+### WS de Tabelas Externas
+
+`https://www.sped.fazenda.gov.br/spedtabelas/WsConsulta/WsConsulta.asmx` (ASMX/IIS, SOAP 1.1,
+1.2 e HTTP GET/POST no WSDL). Consulta por GET, sem autenticação, em 0,27 s:
+
+| Item                               | Resultado                                                                                                                                                         |
+| ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Operações                          | `consultarVersoesTabelasExternas(codigoSistema)` e `consultarVersoesTabelasExternasPorData(codigoSistema, dataReferencia)`                                        |
+| Retorno                            | `RetornoVersoesTabelasExternas`: `codigoRetorno` (101 = ok), `mensagemErro`, `urlDownloadArquivo` e `metadadosXml` (XML escapado dentro do XML)                   |
+| Metadados (`SpedFiscal`)           | `<tabelas dthc="2026-11-09" versao="1959">`, 188 tabelas em pacotes por UF; cada `<tabela>` tem `id`, `tipo`, `desc`, `versao`, `dtCriacao`, `dtVersao` e `hash`  |
+| Tabelas de Goiás (`SPEDFISCAL_GO`) | 5.1.1 (`id` 37, versão 151), 5.2 (38, v51), 5.3 (39, v47), 5.5 (40, v5), além de Códigos de Receita (187, v10)                                                    |
+| Download                           | `obterTabela.ashx?idTabela=<id>&versao=<versao>` → `application/txt`, `Content-Disposition: attachment; filename=Id37$V151.txt`                                   |
+| `hash`                             | SHA-1 do arquivo baixado; conferiu nas quatro tabelas de Goiás                                                                                                    |
+| Formato                            | TXT em **cp1252** (não é UTF-8; tem `–` em 0x96), CRLF; 1ª linha `versão=151 COD_AJUR, DESC_AJUR, DT_INI, DT_FIM`; linhas `codigo                                 | descricao | DDMMAAAA | DDMMAAAA`, `DT_FIM` vazio = vigente |
+| Histórico                          | Versões antigas continuam disponíveis (`versao=1` e `versao=150` da 5.1.1). A v1 tem cabeçalho só `versão=1.0`, sem nomes de colunas                              |
+| Vigência por linha                 | Na 5.1.1 v151, 163 códigos aparecem em mais de uma linha, com períodos diferentes (ex.: `GO359999` em 2017–2018 e de 2019 em diante); 447 linhas sem `DT_FIM`     |
+| Erros                              | Versão inexistente ou parâmetro errado voltam **HTTP 200** com `text/html` e corpo `Erro o obter Tabela:VERSAO_TABELA_EXTERNA_NAO_ENCONTRADA` (ou `..._INVALIDA`) |
+
+### `bge-m3` no Workers AI
+
+Conta no Workers Free, token criado pelo template "Workers AI" (`Workers AI - Read` e `Edit`).
+`POST https://api.cloudflare.com/client/v4/accounts/{id}/ai/run/@cf/baai/bge-m3` com
+`{ "text": [...] }`:
+
+| Lote                       | HTTP | Latência | `shape`       |
+| -------------------------- | ---- | -------- | ------------- |
+| 1 texto (primeira chamada) | 200  | 516 ms   | `[1, 1024]`   |
+| 3 textos                   | 200  | 185 ms   | `[3, 1024]`   |
+| 50 textos                  | 200  | 282 ms   | `[50, 1024]`  |
+| 101 textos                 | 200  |          | `[101, 1024]` |
+
+- **Dimensão 1024** em todos os vetores, valores finitos, norma ≈ 1 (0,9997–0,9999), `pooling: "cls"`.
+  O `halfvec(1024)` do plano vale.
+- **Determinístico:** o mesmo texto repetido deu cosseno 1,000000.
+- **Custo real na resposta:** `result.meta` traz `cost_metric_name_1: "input_tokens"`, o valor e
+  `neurons` (5 tokens → 0,00537 neuron, ≈ 1.075 neurons por milhão de tokens), e o header
+  `cf-ai-neurons` traz o mesmo valor arredondado. O orçamento de 8.000 neurons/dia da ingestão
+  cobre ≈ 7,4 milhões de tokens por dia. A estimativa `ceil(chars/3)` deu os mesmos 5 tokens para
+  `Registro C100`.
+- O lote de 50 do plano cabe com folga (101 também passou).
+
+### promptfoo 0.125.1 com geração remota desligada
+
+Instalado isolado no scratchpad (pnpm com `minimumReleaseAge` de 7 dias e `trustPolicy:
+no-downgrade`; a 0.125.1 é de 2026-10-25 e tem proveniência SLSA v1), com
+`PROMPTFOO_DISABLE_REMOTE_GENERATION=true`, `PROMPTFOO_DISABLE_SHARING=1` e
+`PROMPTFOO_DISABLE_TELEMETRY=1`. `promptfoo redteam plugins` lista 155 plugins sem dizer quais
+são remote-only; a lista veio de `REMOTE_ONLY_PLUGIN_IDS` no pacote e da documentação (Context7
+`/websites/promptfoo_dev`). A prova foi um `redteam run` completo, com um provider local falso
+como `redteam.provider` e juiz, contra um alvo `echo`:
+
+| Item do plano                                                                                    | Resultado sem geração remota                                                                                                                 |
+| ------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `prompt-extraction`, `pii:direct`, `overreliance`, `hallucination`, `excessive-agency`, `policy` | geram casos em `en` e `pt-BR`                                                                                                                |
+| `hijacking`                                                                                      | **remote-only**: `hijacking plugin requires remote generation`, 0 casos                                                                      |
+| `base64`, `leetspeak`                                                                            | ok na geração e na avaliação                                                                                                                 |
+| `prompt-injection`                                                                               | ok, mas **obsoleta** ("use `jailbreak-templates`")                                                                                           |
+| `jailbreak`                                                                                      | **obsoleta**; na avaliação vira `promptfoo:redteam:iterative:meta`, que é remote-only (`jailbreak:meta strategy requires remote generation`) |
+| `jailbreak-templates`, `jailbreak:tree`                                                          | ok na geração e na avaliação (o `tree` itera com o `redteam.provider`)                                                                       |
+| `jailbreak:composite`, `jailbreak:likert`                                                        | remote-only                                                                                                                                  |
+
+A documentação lembra que a variável não isola a rede (telemetria e sharing têm variáveis
+próprias, já previstas no plano).
+
 ## Spike (g): conferências feitas
 
 ### Versões e maturidade (2026-11-10)
@@ -256,15 +375,35 @@ introduzem, nas fases correspondentes.
 
 ## Decisão
 
-Pendente. Esta ADR passa a `accepted` quando todos os spikes tiverem resultado e as decisões
-decorrentes estiverem aplicadas no plano e nas ADRs afetadas (allowlist de `deploy_context`,
-header de IP, formato do entrypoint e do build, glob de `supportsCancellation`, `trustProxy` da
-Vercel, versões).
+Aceita em 2026-11-11: os sete spikes têm resultado registrado e as decisões decorrentes estão
+aplicadas no código, no plano e nas ADRs afetadas (allowlist de `deploy_context`, header de IP,
+formato do entrypoint e do build, `supportsCancellation` no `.vc-config.json`, `trustProxy` da
+Vercel, versões). O (g) fica parcial por natureza: as bibliotecas ainda não introduzidas são
+conferidas via Context7 pelas fases que as introduzem.
+
+As rotas temporárias `/api/_spike/*` e a Sensitive de teste `TEKO_SPIKE_SENSITIVE` saíram da API
+no fechamento. Os workflows `spike-api-vercel.yml` e `spike-proxy.yml` ficam só com os passos
+que não dependem delas (build, tarball atestado, deploy, smoke, promote, WAF, latência e cache),
+como referência para a F7.
 
 ### Consequências
 
-- (e) e parte do (g) já ajustaram o catálogo e a ADR 0002.
-- (a), (b), (c) e (d) concluídos em 2026-11-11 (ver as seções de cada um), com as decisões
-  aplicadas no código, no plano e na [ADR 0017](0017-vercel-build-output-tsdown.md).
-- (f) segue na sua seção, num PR à parte; nenhum resultado dele foi presumido. Esta ADR passa a
-  `accepted` quando ele fechar.
+- (e) e parte do (g) ajustaram o catálogo e a ADR 0002.
+- (a), (b), (c) e (d) aplicaram as decisões no código, no plano e na
+  [ADR 0017](0017-vercel-build-output-tsdown.md).
+- (f) confirmou a configuração do Docling e o `halfvec(1024)`, e ajustou no plano o formato das
+  Tabelas Externas, a contabilidade de neurons e a lista de plugins e estratégias do red team.
+
+### Riscos residuais
+
+Ficam registrados como estão, sem medição adicional na F1:
+
+- **SIGTERM e cold start** não foram medidos com rigor na Vercel (spike (b)); o teto de 450 ms do
+  encerramento e as chamadas curtas cobrem o risco, e o DoD da F7 volta a medir.
+- **`attachDatabasePool` e o driver do Postgres** ficam para a F2: o `pg` nunca foi publicado com
+  proveniência, e a regra do repositório a exige para dependência nova (spike (d)).
+- **WAF** não foi aplicado na F1; as regras e o smoke do efeito chegam na F7 (spike (c)).
+- **`/pt-br/` em minúsculas**: a Netlify redireciona `/pt-BR/`, e o i18n da F5 precisa tratar
+  isso (spike (a)).
+- **Pior caso de cold start + resume do Neon** dentro do corte de 26 s do proxy depende da F2
+  (spikes (c) e (d)); as medidas separadas cabem com folga.
