@@ -99,7 +99,7 @@ export function inspectSignature(token: string | undefined, secret?: string): Si
   return { present: true, claims, verified }
 }
 
-function headerValue(value: string | string[] | undefined): string | null {
+export function headerValue(value: string | string[] | undefined): string | null {
   if (value === undefined) {
     return null
   }
@@ -113,7 +113,7 @@ export function cookieNames(cookieHeader: string | undefined): string[] {
   }
   return cookieHeader
     .split(';')
-    .map((pair) => pair.split('=')[0]?.trim() ?? '')
+    .map((pair) => pair.replace(/=.*$/s, '').trim())
     .filter((name) => name !== '')
 }
 
@@ -190,6 +190,11 @@ export function spikeRoutes(options: SpikeRouteOptions): FastifyPluginAsyncZod {
         const startedAt = Date.now()
         watchDisconnect(request.log, request.signal, reply.raw, startedAt)
         request.log.info({ spike: 'sse', query: request.query }, 'spike sse: início')
+        // Headers antes de qualquer byte do corpo: o Node só os envia no primeiro write, e o
+        // primeiro byte aqui é atrasado de propósito. O Fastify faz o writeHead e depois o pipe.
+        reply.raw.once('pipe', () => {
+          reply.raw.flushHeaders()
+        })
         return reply
           .header('content-type', 'text/event-stream; charset=utf-8')
           .header('cache-control', 'no-cache, no-transform')
@@ -213,7 +218,11 @@ export function spikeRoutes(options: SpikeRouteOptions): FastifyPluginAsyncZod {
           ip: request.ip,
           headers,
           cookieNames: cookieNames(request.headers.cookie),
-          nfSign: inspectSignature(Array.isArray(sign) ? sign[0] : sign, options.proxySecret),
+          // O Node nunca junta x-nf-sign repetido em array (só set-cookie vira array).
+          nfSign: inspectSignature(
+            typeof sign === 'string' ? sign : undefined,
+            options.proxySecret,
+          ),
           receivedAt: new Date().toISOString(),
         })
       },

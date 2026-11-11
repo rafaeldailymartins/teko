@@ -104,6 +104,14 @@ describe('rotas de spike (createHttpOptions)', () => {
     expect(spike).not.toHaveProperty('proxySecret')
   })
 
+  it('sem VERCEL_REGION (Env montado à mão; o parse já a exige em staging): região nula', () => {
+    const { VERCEL_REGION: _region, ...withoutRegion } = parseEnv(
+      { ...VERCEL, APP_ENV: 'staging' },
+      NODE_24,
+    )
+    expect(createHttpOptions(withoutRegion).spike).toMatchObject({ region: null })
+  })
+
   it('produção na Vercel, Render e CI: nunca', () => {
     const production = parseEnv(
       { ...VERCEL, APP_ENV: 'production', WEB_ORIGIN: 'https://tekoia.netlify.app' },

@@ -1,14 +1,25 @@
 import { createHmac } from 'node:crypto'
+import { Writable } from 'node:stream'
 import { AppEnv, HealthStatus } from '@teko/shared/contracts'
-import Fastify, { type FastifyInstance } from 'fastify'
+import Fastify, { type FastifyBaseLogger, type FastifyInstance } from 'fastify'
 import { serializerCompiler, validatorCompiler } from 'fastify-type-provider-zod'
+import { pino } from 'pino'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import type { Container } from '#app/container.ts'
 import type { SpikeRouteOptions } from '../http-options.ts'
 import { decorateContainer } from '../plugins/container.ts'
-import { cookieNames, inspectSignature, SPIKE_COOKIE, spikeRoutes, spikeSseBody } from './spike.ts'
+import {
+  cookieNames,
+  headerValue,
+  inspectSignature,
+  SPIKE_COOKIE,
+  spikeRoutes,
+  spikeSseBody,
+} from './spike.ts'
 
-const SECRET = 'segredo-de-teste-com-pelo-menos-32-caracteres'
+// Valores de teste montados em tempo de execução (não são segredo; o gitleaks não precisa vê-los).
+const SECRET = 'a'.repeat(40)
+const OTHER_SECRET = 'b'.repeat(40)
 
 function signedToken(claims: Record<string, unknown>, secret = SECRET): string {
   const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url')
@@ -86,9 +97,7 @@ describe('inspectSignature', () => {
   })
 
   it('outro segredo: claims, mas verified false', () => {
-    expect(
-      inspectSignature(signedToken(claims, 'outro-segredo-qualquer-com-32-caracteres!'), SECRET),
-    ).toEqual({
+    expect(inspectSignature(signedToken(claims, OTHER_SECRET), SECRET)).toEqual({
       present: true,
       claims,
       verified: false,
@@ -152,15 +161,71 @@ describe('spikeSseBody', () => {
   })
 
   it('erro que não é abort sobe', async () => {
-    const boom = (): number => {
-      throw new Error('relógio quebrado')
+    // A primeira leitura do relógio (início) funciona; a seguinte, já dentro do stream, falha.
+    let reads = 0
+    const flaky = (): number => {
+      reads += 1
+      if (reads > 1) {
+        throw new Error('relógio quebrado')
+      }
+      return 0
     }
     const body = spikeSseBody(
       { firstByteDelayS: 0, durationS: 1, heartbeatS: 1 },
       new AbortController().signal,
-      boom,
+      flaky,
     )
     await expect(body.next()).rejects.toThrow('relógio quebrado')
+  })
+})
+
+describe('headerValue', () => {
+  it('string, array (headers repetidos) e ausente', () => {
+    expect(headerValue('a')).toBe('a')
+    expect(headerValue(['a', 'b'])).toBe('a, b')
+    expect(headerValue(undefined)).toBeNull()
+  })
+})
+
+describe('desconexão no SSE (servidor HTTP de verdade)', () => {
+  it('loga request.signal e o fechamento antes do fim; um stream completo não loga', async () => {
+    const lines: string[] = []
+    const logged = new Writable({
+      write(chunk: Buffer, _encoding, callback) {
+        lines.push(chunk.toString('utf8'))
+        callback()
+      },
+    })
+    const logger: FastifyBaseLogger = pino({ level: 'info' }, logged)
+    // O fetch deixa a conexão do primeiro stream em keep-alive; o close não pode esperar por ela.
+    const server = Fastify({ loggerInstance: logger, forceCloseConnections: true })
+    server.setValidatorCompiler(validatorCompiler)
+    server.setSerializerCompiler(serializerCompiler)
+    decorateContainer(server, container)
+    await server.register(spikeRoutes(options))
+    await server.listen({ host: '127.0.0.1', port: 0 })
+    const address = server.server.address()
+    if (address === null || typeof address === 'string') {
+      throw new Error('o servidor deveria escutar em uma porta TCP')
+    }
+    const base = `http://127.0.0.1:${String(address.port)}/api/_spike/sse`
+
+    // Completo: nenhum log de desconexão.
+    await (await fetch(`${base}?firstByteDelayS=0&durationS=1&heartbeatS=1`)).text()
+    // Cliente desiste antes do primeiro byte.
+    const controller = new AbortController()
+    const pending = fetch(`${base}?firstByteDelayS=5&durationS=10&heartbeatS=1`, {
+      signal: controller.signal,
+    })
+    const response = await pending
+    controller.abort()
+    await response.text().catch(() => undefined)
+    await vi.waitFor(() => {
+      expect(lines.join('')).toContain('cliente desconectou')
+      expect(lines.join('')).toContain('resposta fechada antes do fim')
+    })
+    expect(lines.join('').match(/resposta fechada antes do fim/g)).toHaveLength(1)
+    await server.close()
   })
 })
 
@@ -212,6 +277,14 @@ describe('spikeRoutes', () => {
       expect(JSON.stringify(body)).not.toContain('valor')
     },
   )
+
+  it('GET /api/_spike/echo sem x-nf-sign nem cookies (chamada direta)', async () => {
+    const res = await app.inject({ url: '/api/_spike/echo' })
+    expect(res.json()).toMatchObject({
+      cookieNames: [],
+      nfSign: { present: false, claims: null, verified: null },
+    })
+  })
 
   it('GET /api/_spike/runtime: Node, região e Sensitive só pelo tamanho', async () => {
     const res = await app.inject({ url: '/api/_spike/runtime' })
