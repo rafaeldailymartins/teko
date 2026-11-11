@@ -1,0 +1,109 @@
+[project]
+name = "teko-ingest"
+version = "0.0.0"
+description = "Extração de documentos do corpus do Tekó com Docling (job Python da ingestão)."
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.12,<3.15"
+dependencies = []
+
+[project.optional-dependencies]
+# Pesado (torch, modelos): fica fora do `uv sync` padrão, usado só no job `extract`.
+# torch/torchvision entram como dependências diretas para que `tool.uv.sources`
+# consiga apontá-los para o índice CPU do PyTorch.
+docling = [
+  "docling==2.146.0",
+  "torch==2.15.0",
+  "torchvision==0.29.2",
+]
+
+[project.scripts]
+teko-ingest = "teko_ingest.cli:main"
+
+[dependency-groups]
+dev = [
+  "hypothesis==6.170.14",
+  "pip-audit==2.10.1",
+  "pyright==1.1.414",
+  "pytest==9.2.0",
+  "pytest-cov==7.1.0",
+  "ruff==0.17.3",
+]
+
+[build-system]
+requires = ["uv_build>=0.11.29,<0.14"]
+build-backend = "uv_build"
+
+[tool.uv]
+# Maturidade mínima de 7 dias, a mesma regra do `minimumReleaseAge: 10080` do pnpm: a resolução
+# ignora artefatos enviados ao índice há menos de 7 dias. O valor é relativo; o uv grava o span
+# e o corte calculado no `uv.lock` e só recalcula o corte numa nova resolução (`uv lock
+# --upgrade`, `--upgrade-package` ou `--refresh`). Os pins `==` deste arquivo precisam estar
+# dentro da janela, senão o `uv lock` falha.
+exclude-newer = "7 days"
+
+[tool.uv.sources]
+torch = [{ index = "pytorch-cpu", extra = "docling", marker = "sys_platform != 'darwin'" }]
+torchvision = [{ index = "pytorch-cpu", extra = "docling", marker = "sys_platform != 'darwin'" }]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = [
+  "COM812", # conflita com o formatter
+  "D203",   # usamos D211 (sem linha em branco antes da docstring de classe)
+  "D213",   # usamos D212 (resumo na primeira linha)
+  "CPY001", # sem cabeçalho de copyright por arquivo
+  "D401",   # o modo imperativo do pydocstyle é para inglês; as docstrings são em pt-BR
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = [
+  "S101",    # assert é o idioma do pytest
+  "PLR2004", # valores literais nas asserções
+  "D",       # docstrings opcionais nos testes
+  "INP001",  # tests/ não é pacote
+]
+
+[tool.ruff.lint.flake8-tidy-imports]
+ban-relative-imports = "all"
+
+[tool.ruff.format]
+quote-style = "double"
+line-ending = "lf"
+
+[tool.pyright]
+include = ["src", "tests"]
+pythonVersion = "3.12"
+typeCheckingMode = "strict"
+venvPath = "."
+venv = ".venv"
+extraPaths = ["tests"]
+reportMissingModuleSource = "error"
+reportUnnecessaryTypeIgnoreComment = "error"
+
+[tool.pytest]
+minversion = "9.2"
+strict = true
+testpaths = ["tests"]
+pythonpath = ["tests"]
+addopts = ["-ra", "--cov", "--cov-report=term-missing", "--import-mode=importlib"]
+
+[tool.coverage.run]
+branch = true
+source = ["teko_ingest"]
+
+[tool.coverage.report]
+fail_under = 85
+show_missing = true
+skip_covered = false
+exclude_also = ["if TYPE_CHECKING:"]

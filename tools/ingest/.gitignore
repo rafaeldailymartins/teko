@@ -1,0 +1,7 @@
+# Saídas locais do job de extração (o .gitignore da raiz já cobre .venv, out/ e caches)
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+.hypothesis/
+.cache/
