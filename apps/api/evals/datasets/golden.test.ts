@@ -54,12 +54,12 @@ describe('schema do golden', () => {
 describe('golden versionado', () => {
   const cases = loadGolden()
 
-  it('tem 50 casos na distribuição do plano, nenhum revisado ainda pelo mantenedor', () => {
+  it('tem 50 casos na distribuição do plano, todos revisados pelo mantenedor', () => {
     expect(cases).toHaveLength(50)
     const byStatus = Object.groupBy(cases, (golden) => golden.expected.status)
     expect(byStatus.refused).toHaveLength(6)
     expect(byStatus.needs_clarification).toHaveLength(4)
-    expect(cases.every((golden) => golden.reviewed_at === null)).toBe(true)
+    expect(cases.every((golden) => golden.reviewed_at !== null)).toBe(true)
   })
 
   it('toda stable_key esperada existe na fixture', () => {
