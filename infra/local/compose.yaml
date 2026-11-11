@@ -1,0 +1,229 @@
+# Stack de desenvolvimento local do Tekó.
+#
+#   pnpm dev:secrets                                              # gera infra/local/.env (fora do git)
+#   docker compose -f infra/local/compose.yaml up -d --wait       # Postgres (pgvector) + proxy :8787
+#   docker compose -f infra/local/compose.yaml --profile langfuse up -d --wait   # + Langfuse :3100
+#
+# Todas as portas ficam presas a 127.0.0.1. Imagens fixadas por digest (tag mantida para leitura).
+# Os valores ${...:?} vêm de infra/local/.env, lido automaticamente pelo Compose (diretório do projeto).
+name: teko-local
+
+x-hardening: &hardening
+  security_opt:
+    - no-new-privileges:true
+  restart: unless-stopped
+
+services:
+  postgres:
+    <<: *hardening
+    # Paridade com o Neon: PostgreSQL 18 + pgvector 0.8.6.
+    image: pgvector/pgvector:0.8.6-pg18-trixie@sha256:78bf48b801e792f99e3ac62b5036fd3876e9be48afda16c1e331af1c75ceb2ff
+    environment:
+      POSTGRES_USER: teko
+      POSTGRES_DB: teko
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?rode `pnpm dev:secrets` antes de subir a stack}
+    ports:
+      - 127.0.0.1:${TEKO_PG_PORT:-5432}:5432
+    volumes:
+      # PG 18+: o volume é /var/lib/postgresql (PGDATA = /var/lib/postgresql/18/docker).
+      - pgdata:/var/lib/postgresql
+    healthcheck:
+      test: [CMD, pg_isready, --username=teko, --dbname=teko]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+
+  dev-proxy:
+    <<: *hardening
+    image: caddy:2.11.9-alpine@sha256:0bbb055bda6793c999bde78b1b5ce3e89f829fb031af2cf50056ea1246559fee
+    environment:
+      DEV_STATIC_JWS: ${DEV_STATIC_JWS:?rode `pnpm dev:secrets` antes de subir a stack}
+    ports:
+      - 127.0.0.1:8787:8787
+    extra_hosts:
+      # A API roda no host (`pnpm dev`); no Linux, host.docker.internal precisa deste mapeamento.
+      - host.docker.internal:host-gateway
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+    read_only: true
+    tmpfs:
+      - /config
+      - /data
+    cap_drop:
+      - ALL
+    healthcheck:
+      test: [CMD, wget, --quiet, --tries=1, --spider, http://127.0.0.1:8787/_proxy/healthz]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # ---------------------------------------------------------------------------------------------
+  # Profile "langfuse": Langfuse self-hosted só para dev local (staging e produção usam o
+  # Langfuse Cloud). Org, projeto, chaves e usuário são criados no boot (headless initialization);
+  # as chaves e a senha do usuário estão em infra/local/.env. UI em http://localhost:3100.
+  # ---------------------------------------------------------------------------------------------
+  langfuse-worker:
+    <<: *hardening
+    profiles: [langfuse]
+    image: langfuse/langfuse-worker:4.78.0@sha256:175a32200b9908b283104e67b84d080381e841daa8ee6692f5bb26538df1a59e
+    depends_on: &langfuse-depends-on
+      langfuse-postgres:
+        condition: service_healthy
+      langfuse-redis:
+        condition: service_healthy
+      langfuse-clickhouse:
+        condition: service_healthy
+      langfuse-minio:
+        condition: service_healthy
+    environment: &langfuse-env
+      NEXTAUTH_URL: http://localhost:3100
+      # HOSTNAME: sem 0.0.0.0 o servidor escuta só no hostname do contêiner e o healthcheck falha.
+      HOSTNAME: 0.0.0.0
+      DATABASE_URL: postgresql://langfuse:${LANGFUSE_POSTGRES_PASSWORD:?rode `pnpm dev:secrets`}@langfuse-postgres:5432/langfuse
+      SALT: ${LANGFUSE_SALT:?rode `pnpm dev:secrets`}
+      ENCRYPTION_KEY: ${LANGFUSE_ENCRYPTION_KEY:?rode `pnpm dev:secrets`}
+      TELEMETRY_ENABLED: "false"
+      LANGFUSE_ENABLE_EXPERIMENTAL_FEATURES: "false"
+      CLICKHOUSE_MIGRATION_URL: clickhouse://langfuse-clickhouse:9000
+      CLICKHOUSE_URL: http://langfuse-clickhouse:8123
+      CLICKHOUSE_USER: clickhouse
+      CLICKHOUSE_PASSWORD: ${LANGFUSE_CLICKHOUSE_PASSWORD:?rode `pnpm dev:secrets`}
+      CLICKHOUSE_CLUSTER_ENABLED: "false"
+      LANGFUSE_S3_EVENT_UPLOAD_BUCKET: langfuse
+      LANGFUSE_S3_EVENT_UPLOAD_REGION: auto
+      LANGFUSE_S3_EVENT_UPLOAD_ACCESS_KEY_ID: minio
+      LANGFUSE_S3_EVENT_UPLOAD_SECRET_ACCESS_KEY: ${LANGFUSE_MINIO_PASSWORD:?rode `pnpm dev:secrets`}
+      LANGFUSE_S3_EVENT_UPLOAD_ENDPOINT: http://langfuse-minio:9000
+      LANGFUSE_S3_EVENT_UPLOAD_FORCE_PATH_STYLE: "true"
+      LANGFUSE_S3_EVENT_UPLOAD_PREFIX: events/
+      LANGFUSE_S3_MEDIA_UPLOAD_BUCKET: langfuse
+      LANGFUSE_S3_MEDIA_UPLOAD_REGION: auto
+      LANGFUSE_S3_MEDIA_UPLOAD_ACCESS_KEY_ID: minio
+      LANGFUSE_S3_MEDIA_UPLOAD_SECRET_ACCESS_KEY: ${LANGFUSE_MINIO_PASSWORD:?rode `pnpm dev:secrets`}
+      # Presigned URLs precisam voltar ao host; o acesso interno usa a rede do Compose.
+      LANGFUSE_S3_MEDIA_UPLOAD_ENDPOINT: http://localhost:9090
+      LANGFUSE_S3_MEDIA_UPLOAD_INTERNAL_ENDPOINT: http://langfuse-minio:9000
+      LANGFUSE_S3_MEDIA_UPLOAD_FORCE_PATH_STYLE: "true"
+      LANGFUSE_S3_MEDIA_UPLOAD_PREFIX: media/
+      LANGFUSE_S3_BATCH_EXPORT_ENABLED: "false"
+      REDIS_HOST: langfuse-redis
+      REDIS_PORT: "6379"
+      REDIS_AUTH: ${LANGFUSE_REDIS_PASSWORD:?rode `pnpm dev:secrets`}
+      REDIS_TLS_ENABLED: "false"
+    healthcheck:
+      test: [CMD, wget, --no-verbose, --tries=1, --spider, http://127.0.0.1:3030/api/health]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
+  langfuse-web:
+    <<: *hardening
+    profiles: [langfuse]
+    image: langfuse/langfuse:4.78.0@sha256:037188385ac6612d3494319fa060052da407b235502874c7ea79ade583c29002
+    depends_on: *langfuse-depends-on
+    ports:
+      # 3000 é do `next dev`; o Langfuse local fica em 3100.
+      - 127.0.0.1:3100:3000
+    environment:
+      <<: *langfuse-env
+      NEXTAUTH_SECRET: ${LANGFUSE_NEXTAUTH_SECRET:?rode `pnpm dev:secrets`}
+      AUTH_DISABLE_SIGNUP: "true"
+      LANGFUSE_INIT_ORG_ID: teko-local
+      LANGFUSE_INIT_ORG_NAME: Tekó (local)
+      LANGFUSE_INIT_PROJECT_ID: teko-dev
+      LANGFUSE_INIT_PROJECT_NAME: teko-dev
+      LANGFUSE_INIT_PROJECT_PUBLIC_KEY: ${LANGFUSE_INIT_PROJECT_PUBLIC_KEY:?rode `pnpm dev:secrets`}
+      LANGFUSE_INIT_PROJECT_SECRET_KEY: ${LANGFUSE_INIT_PROJECT_SECRET_KEY:?rode `pnpm dev:secrets`}
+      LANGFUSE_INIT_USER_EMAIL: dev@teko.localhost
+      LANGFUSE_INIT_USER_NAME: dev
+      LANGFUSE_INIT_USER_PASSWORD: ${LANGFUSE_INIT_USER_PASSWORD:?rode `pnpm dev:secrets`}
+    healthcheck:
+      test: [CMD, wget, --no-verbose, --tries=1, --spider, http://127.0.0.1:3000/api/public/health]
+      interval: 10s
+      timeout: 5s
+      retries: 18
+      start_period: 60s
+
+  langfuse-postgres:
+    <<: *hardening
+    profiles: [langfuse]
+    image: postgres:17.11-alpine@sha256:3540c0362c809df084ffac0ae69fe794515f9de92692f02178bcdce0ef0302ac
+    environment:
+      POSTGRES_USER: langfuse
+      POSTGRES_DB: langfuse
+      POSTGRES_PASSWORD: ${LANGFUSE_POSTGRES_PASSWORD:?rode `pnpm dev:secrets`}
+    volumes:
+      - langfuse-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: [CMD, pg_isready, --username=langfuse, --dbname=langfuse]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  langfuse-redis:
+    <<: *hardening
+    profiles: [langfuse]
+    image: redis:7.4.12-alpine@sha256:7b1753b4c5ad8458906c272a8132b8c15f5557b000379eb115fb239706a384b7
+    # noeviction é obrigatório: as filas do Langfuse não podem ser despejadas.
+    command:
+      - redis-server
+      - --requirepass
+      - ${LANGFUSE_REDIS_PASSWORD:?rode `pnpm dev:secrets`}
+      - --maxmemory-policy
+      - noeviction
+    environment:
+      REDISCLI_AUTH: ${LANGFUSE_REDIS_PASSWORD:?rode `pnpm dev:secrets`}
+    healthcheck:
+      test: [CMD, redis-cli, ping]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  langfuse-clickhouse:
+    <<: *hardening
+    profiles: [langfuse]
+    image: clickhouse/clickhouse-server:26.3.62.3@sha256:de3e47c64078aa196dae2349e048fc98ba81947f651f5c20e06e46baea8ae40a
+    user: "101:101"
+    environment:
+      CLICKHOUSE_DB: default
+      CLICKHOUSE_USER: clickhouse
+      CLICKHOUSE_PASSWORD: ${LANGFUSE_CLICKHOUSE_PASSWORD:?rode `pnpm dev:secrets`}
+    volumes:
+      - langfuse-clickhouse-data:/var/lib/clickhouse
+      - langfuse-clickhouse-logs:/var/log/clickhouse-server
+    healthcheck:
+      test: [CMD, wget, --no-verbose, --tries=1, --spider, http://127.0.0.1:8123/ping]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+
+  langfuse-minio:
+    <<: *hardening
+    profiles: [langfuse]
+    # A MinIO não publica mais imagens oficiais; a da Chainguard só tem a tag `latest`, fixada aqui.
+    image: cgr.dev/chainguard/minio:latest@sha256:fb893e36fc369d41e92f678b17ec27378fa5bf0576aeef7ac15460c13629ab5a
+    entrypoint: sh
+    command: -c 'mkdir -p /data/langfuse && minio server --address ":9000" --console-address ":9001" /data'
+    environment:
+      MINIO_ROOT_USER: minio
+      MINIO_ROOT_PASSWORD: ${LANGFUSE_MINIO_PASSWORD:?rode `pnpm dev:secrets`}
+    ports:
+      # Endpoint das presigned URLs de mídia (LANGFUSE_S3_MEDIA_UPLOAD_ENDPOINT).
+      - 127.0.0.1:9090:9000
+    volumes:
+      - langfuse-minio-data:/data
+    healthcheck:
+      test: [CMD, mc, ready, local]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  pgdata:
+  langfuse-pgdata:
+  langfuse-clickhouse-data:
+  langfuse-clickhouse-logs:
+  langfuse-minio-data:

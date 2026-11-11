@@ -1,0 +1,39 @@
+{
+  "name": "@teko/web",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Frontend do Tekó: Next.js em export estático, Feature-Sliced Design",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "dev": "next dev --port 3000",
+    "build": "next build",
+    "typecheck": "tsc -p tsconfig.json --incremental false",
+    "test:unit": "vitest run --coverage",
+    "lint:fsd": "steiger ./src",
+    "type-coverage": "type-coverage --at-least 99 --strict --ignore-catch"
+  },
+  "dependencies": {
+    "@teko/shared": "workspace:*",
+    "next": "catalog:",
+    "next-intl": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:"
+  },
+  "devDependencies": {
+    "@feature-sliced/steiger-plugin": "catalog:",
+    "@tailwindcss/postcss": "catalog:",
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "@typescript/native": "catalog:",
+    "@vitest/coverage-v8": "catalog:",
+    "babel-plugin-react-compiler": "catalog:",
+    "postcss": "catalog:",
+    "steiger": "catalog:",
+    "tailwindcss": "catalog:",
+    "type-coverage": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

@@ -1,0 +1,104 @@
+{
+  "$schema": "./node_modules/turbo/schema.json",
+  "ui": "stream",
+  "envMode": "strict",
+  "futureFlags": {
+    "affectedUsingTaskInputs": true
+  },
+  "globalDependencies": [
+    "tsconfig.base.json",
+    "tsconfig.scripts.json",
+    ".nvmrc",
+    "pnpm-workspace.yaml",
+    "biome.json",
+    "knip.json",
+    "lefthook.yml",
+    ".jscpd.json",
+    ".github/workflows/**",
+    ".github/actions/**",
+    ".github/scripts/**",
+    ".github/affected-paths.yml",
+    ".semgrep/**",
+    "sonar-project.properties",
+    "tools/vercel-cli/**"
+  ],
+  "boundaries": {
+    "tags": {
+      "shared": {
+        "dependencies": {
+          "deny": ["web", "api"]
+        }
+      },
+      "web": {
+        "dependencies": {
+          "deny": ["api"]
+        }
+      },
+      "api": {
+        "dependencies": {
+          "deny": ["web"]
+        }
+      }
+    }
+  },
+  "tasks": {
+    "transit": {
+      "dependsOn": ["^transit"]
+    },
+    "build": {
+      "dependsOn": ["^build"],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "!**/*.test.ts",
+        "!**/*.test.tsx",
+        "!**/*.md",
+        "!test/**",
+        "!tests/**"
+      ],
+      "outputs": ["dist/**", "out/**", ".next/**", "!.next/cache/**"],
+      "env": ["NEXT_PUBLIC_*", "APP_VERSION", "CONTEXT"],
+      "passThroughEnv": ["GEMINI_API_KEY", "OPENAI_API_KEY", "NEXT_TELEMETRY_DISABLED"]
+    },
+    "typecheck": {
+      "inputs": ["$TURBO_DEFAULT$", "!**/*.md"],
+      "outputs": [],
+      "dependsOn": ["transit"]
+    },
+    "test:unit": {
+      "inputs": ["$TURBO_DEFAULT$", "!**/*.md"],
+      "outputs": ["coverage/**", "reports/**"],
+      "dependsOn": ["transit"]
+    },
+    "test:integration": {
+      "inputs": ["$TURBO_DEFAULT$", "!**/*.md"],
+      "outputs": ["reports/**"],
+      "env": ["TESTCONTAINERS_*", "DOCKER_HOST"],
+      "dependsOn": ["transit"]
+    },
+    "test:mutation": {
+      "inputs": ["$TURBO_DEFAULT$", "!**/*.md"],
+      "outputs": ["reports/mutation/**"],
+      "env": ["STRYKER_DASHBOARD_API_KEY"],
+      "dependsOn": ["transit"]
+    },
+    "lint:deps": {
+      "inputs": ["$TURBO_DEFAULT$", "!**/*.md"],
+      "outputs": [],
+      "dependsOn": ["transit"]
+    },
+    "lint:fsd": {
+      "inputs": ["$TURBO_DEFAULT$", "!**/*.md"],
+      "outputs": [],
+      "dependsOn": ["transit"]
+    },
+    "type-coverage": {
+      "inputs": ["$TURBO_DEFAULT$", "!**/*.md"],
+      "outputs": [],
+      "dependsOn": ["transit"]
+    },
+    "dev": {
+      "cache": false,
+      "persistent": true
+    }
+  }
+}

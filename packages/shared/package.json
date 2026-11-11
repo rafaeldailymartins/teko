@@ -1,0 +1,39 @@
+{
+  "name": "@teko/shared",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Contratos, erros, vigência, PII, analytics e chaves de i18n compartilhados por web e api",
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./contracts": "./src/contracts/index.ts",
+    "./errors": "./src/errors/index.ts",
+    "./vigencia": "./src/vigencia/index.ts",
+    "./pii": "./src/pii/index.ts",
+    "./analytics": "./src/analytics/index.ts",
+    "./i18n": "./src/i18n/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "test:unit": "vitest run --coverage",
+    "test:mutation": "stryker run",
+    "type-coverage": "type-coverage --at-least 99 --strict --ignore-catch"
+  },
+  "dependencies": {
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@fast-check/vitest": "catalog:",
+    "@stryker-mutator/core": "catalog:",
+    "@stryker-mutator/typescript-checker": "catalog:",
+    "@stryker-mutator/vitest-runner": "catalog:",
+    "@types/node": "catalog:",
+    "@typescript/native": "catalog:",
+    "@vitest/coverage-v8": "catalog:",
+    "fast-check": "catalog:",
+    "type-coverage": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

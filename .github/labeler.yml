@@ -1,0 +1,59 @@
+# Rótulos por área, aplicados pelo job `labeler` do pr-hygiene.yml (actions/labeler v7).
+# As áreas seguem os escopos do commitlint.
+
+web:
+  - changed-files:
+      - any-glob-to-any-file: apps/web/**
+
+api:
+  - changed-files:
+      - any-glob-to-any-file: apps/api/**
+
+shared:
+  - changed-files:
+      - any-glob-to-any-file: packages/shared/**
+
+ingest:
+  - changed-files:
+      - any-glob-to-any-file:
+          - tools/ingest/**
+          - corpus/**
+          - apps/api/src/adapters/in/cli/ingest/**
+
+db:
+  - changed-files:
+      - any-glob-to-any-file:
+          - apps/api/drizzle/**
+          - apps/api/src/adapters/out/persistence/**
+
+eval:
+  - changed-files:
+      - any-glob-to-any-file: apps/api/evals/**
+
+ci:
+  - changed-files:
+      - any-glob-to-any-file:
+          - .github/**
+          - turbo.json
+          - lefthook.yml
+
+deps:
+  - changed-files:
+      - any-glob-to-any-file:
+          - pnpm-lock.yaml
+          - pnpm-workspace.yaml
+          - tools/ingest/uv.lock
+
+specs:
+  - changed-files:
+      - any-glob-to-any-file: openspec/**
+
+docs:
+  - changed-files:
+      - any-glob-to-any-file:
+          - docs/**
+          - "**/*.md"
+
+infra:
+  - changed-files:
+      - any-glob-to-any-file: infra/**

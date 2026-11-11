@@ -1,0 +1,44 @@
+{
+  "$schema": "../../node_modules/@biomejs/biome/configuration_schema.json",
+  "root": false,
+  "extends": "//",
+  "css": {
+    "parser": {
+      "tailwindDirectives": true
+    }
+  },
+  "overrides": [
+    {
+      "includes": ["**"],
+      "linter": {
+        "domains": {
+          "react": "recommended",
+          "next": "recommended"
+        },
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": [
+                      "next/server",
+                      "drizzle-orm",
+                      "drizzle-orm/**",
+                      "pg",
+                      "@netlify/blobs",
+                      "better-auth",
+                      "better-auth/**"
+                    ],
+                    "message": "apps/web é só frontend (export estático): sem código de servidor, banco ou Blobs. A lógica fica no Fastify."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
+}

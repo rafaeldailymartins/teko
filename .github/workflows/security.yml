@@ -1,0 +1,208 @@
+# Segurança de código, segredos, workflows e dependências. Em PR, roda chamado pelo pr-gate.yml;
+# também em push para develop/main e toda semana.
+#
+# O ZAP (baseline + API scan) entra quando existir a stack de CI (infra/ci/compose.yaml).
+name: Security
+
+on:
+  workflow_call:
+  push:
+    branches: [develop, main]
+  schedule:
+    - cron: "41 6 * * 1" # segunda, 06:41 UTC
+
+permissions: {}
+
+concurrency:
+  # Prefixo literal pelo mesmo motivo do ci.yml (workflow chamado herda `github.workflow`).
+  group: security-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  gitleaks:
+    name: gitleaks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          egress-policy: audit
+
+      - name: Checkout (histórico completo)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Instalar gitleaks (binário verificado por SHA-256)
+        env:
+          GITLEAKS_VERSION: 8.30.1
+          GITLEAKS_SHA256: 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb
+        run: |
+          archive="gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          curl -fsSL --retry 3 -o "${RUNNER_TEMP}/${archive}" \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/${archive}"
+          echo "${GITLEAKS_SHA256}  ${RUNNER_TEMP}/${archive}" | sha256sum --check --strict -
+          tar -xzf "${RUNNER_TEMP}/${archive}" -C "${RUNNER_TEMP}" gitleaks
+
+      - name: Procurar segredos no histórico
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PUSH_BEFORE: ${{ github.event.before }}
+          PUSH_AFTER: ${{ github.event.after }}
+        run: |
+          # PR: só os commits do PR; push: os commits novos; agendado ou primeiro push: tudo.
+          range=''
+          if [[ "$EVENT_NAME" == pull_request ]]; then
+            range="${PR_BASE_SHA}..${PR_HEAD_SHA}"
+          elif [[ "$EVENT_NAME" == push && -n "$PUSH_BEFORE" && ! "$PUSH_BEFORE" =~ ^0+$ ]]; then
+            range="${PUSH_BEFORE}..${PUSH_AFTER}"
+          fi
+          args=(git --redact --no-banner --verbose)
+          if [[ -n "$range" ]]; then
+            args+=("--log-opts=${range}")
+          fi
+          echo "gitleaks ${args[*]}"
+          "${RUNNER_TEMP}/gitleaks" "${args[@]}" .
+
+  zizmor:
+    name: zizmor
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Auditar workflows, actions e dependabot.yml
+        uses: zizmorcore/zizmor-action@45d7276c9ca790aabd705e31ca99c6185c3e76dd # v0.8.1
+        with:
+          version: 1.32.0
+          # Sem SARIF: os achados viram anotações e o job falha (exit code do zizmor).
+          advanced-security: false
+          annotations: true
+
+  osv-scanner:
+    name: osv-scanner
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Listar lockfiles
+        id: lockfiles
+        run: |
+          {
+            echo 'args<<OSV_ARGS'
+            echo '--lockfile=pnpm-lock.yaml'
+            if [[ -f tools/ingest/uv.lock ]]; then
+              echo '--lockfile=tools/ingest/uv.lock'
+            fi
+            echo 'OSV_ARGS'
+          } >>"$GITHUB_OUTPUT"
+
+      - name: osv-scanner (pnpm-lock.yaml e uv.lock)
+        uses: google/osv-scanner-action/osv-scanner-action@b1d267aea5211fa648d9d442fa64b90dbdcbdd36 # v2.7.0
+        with:
+          scan-args: ${{ steps.lockfiles.outputs.args }}
+
+  semgrep:
+    name: semgrep
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Regras próprias presentes?
+        id: rules
+        run: |
+          if compgen -G '.semgrep/*.yml' >/dev/null || compgen -G '.semgrep/*.yaml' >/dev/null; then
+            echo "present=true" >>"$GITHUB_OUTPUT"
+          else
+            echo "present=false" >>"$GITHUB_OUTPUT"
+            echo "::warning title=semgrep::.semgrep/ sem regras; nada a verificar."
+          fi
+
+      - name: Semgrep CE (container por digest, sem rede)
+        if: steps.rules.outputs.present == 'true'
+        env:
+          # semgrep/semgrep:1.183.0
+          SEMGREP_IMAGE: semgrep/semgrep@sha256:2e45517a85e13a9cca14a2a00df6bb48affd66b8ebfae1b0991cd57578362fb0
+        run: |
+          # 1) Fixtures das regras (.semgrep/teko.ts|tsx com anotações ruleid/ok): uma regra que
+          #    deixa de casar o caso positivo, ou passa a casar o negativo, reprova o job.
+          docker run --rm --network none \
+            --volume "${GITHUB_WORKSPACE}:/src:ro" --workdir /src \
+            "$SEMGREP_IMAGE" \
+            semgrep test .semgrep/
+          # 2) Scan do repositório (só arquivos rastreados pelo git), sem os fixtures.
+          docker run --rm --network none \
+            --volume "${GITHUB_WORKSPACE}:/src:ro" --workdir /src \
+            "$SEMGREP_IMAGE" \
+            semgrep scan --config .semgrep/ --exclude .semgrep --error --metrics=off --disable-version-check
+
+  dependency-review:
+    name: dependency-review
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          egress-policy: audit
+
+      - name: Revisar dependências novas do PR
+        uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+        with:
+          fail-on-severity: low
+          fail-on-scopes: runtime
+          show-patched-versions: true
+          # Licença fora desta lista reprova o PR; incluir uma nova exige revisão do CODEOWNER.
+          allow-licenses: >-
+            MIT, MIT-0, MIT-CMU, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC, 0BSD, BlueOak-1.0.0,
+            BSL-1.0, CC0-1.0, CC-BY-4.0, Unlicense, Python-2.0, PSF-2.0, CNRI-Python, MPL-2.0, Zlib
+          # Exceções por pacote (ADR 0002), cada uma revisada:
+          # - torch e @bytecodealliance/preview2-shim: "Apache-2.0 WITH LLVM-exception" (permissiva);
+          #   a action não documenta como avalia expressões com WITH.
+          # - typing-extensions: a PSF-2.0 detectada com "GPL-1.0-or-later" por causa do histórico de
+          #   licença do Python no texto (falso positivo conhecido).
+          # - prexit: WTFPL (permissiva, mas vaga); liberada só para este pacote, não como licença.
+          allow-dependencies-licenses: >-
+            pkg:pypi/torch, pkg:pypi/typing-extensions, pkg:npm/prexit,
+            pkg:npm/@bytecodealliance/preview2-shim

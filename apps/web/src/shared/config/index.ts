@@ -1,0 +1,1 @@
+export { MAIN_CONTENT_ID, PRODUCT_NAME, REPOSITORY_URL, SITE_ORIGIN } from './site.ts'

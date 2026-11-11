@@ -1,0 +1,26 @@
+# Arquivos de apps/api (Root Directory dos projetos teko-api e teko-api-staging) que nunca vão
+# para a Vercel. Os deploys são `vercel deploy --prebuilt` a partir do Actions: com --prebuilt, um
+# arquivo de Function que case com esta lista também é excluído do upload, então nada que a
+# Function importa em runtime (src/**, package.json, node_modules) pode aparecer aqui.
+
+# Segredos e configuração local
+.env
+.env.*
+
+# Testes, relatórios e artefatos de qualidade
+test/
+**/*.test.ts
+reports/
+coverage/
+.stryker-tmp/
+stryker.config.json
+vitest.config.ts
+vitest.stryker.config.ts
+.dependency-cruiser.cjs
+
+# Build do tsdown (Render, stack de CI e Docker); a Vercel compila src/server.ts
+dist/
+
+# Imagem da stack de CI (nunca publicada)
+Dockerfile
+Dockerfile.dockerignore

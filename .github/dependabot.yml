@@ -1,0 +1,181 @@
+# Dependabot: version updates semanais em develop (branch default, que também recebe as security
+# updates). O cooldown acompanha o `minimumReleaseAge` de 7 dias do pnpm-workspace.yaml.
+# `commit-message` com `include: scope` gera títulos `chore(deps): …` (e `chore(deps-dev): …`
+# para dependências de desenvolvimento), aceitos pelo `pr-title`.
+# Alerts, security updates e grouped security updates ficam ligados nas configurações do repo.
+version: 2
+
+updates:
+  - package-ecosystem: npm
+    directory: /
+    target-branch: develop
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: America/Sao_Paulo
+    cooldown:
+      default-days: 7
+      semver-patch-days: 7
+      semver-minor-days: 7
+      semver-major-days: 14
+    commit-message:
+      prefix: chore
+      prefix-development: chore
+      include: scope
+    open-pull-requests-limit: 10
+    # A ordem importa: uma dependência entra no primeiro grupo que casar. Os grupos por família
+    # vêm antes dos grupos genéricos por tipo de dependência.
+    groups:
+      opentelemetry:
+        patterns:
+          - "@opentelemetry/*"
+          - "@fastify/otel"
+      sentry:
+        patterns:
+          - "@sentry/*"
+      langfuse:
+        patterns:
+          - "@langfuse/*"
+      tanstack:
+        patterns:
+          - "@tanstack/*"
+      testing:
+        patterns:
+          - vitest
+          - "@vitest/*"
+          - fast-check
+          - "@fast-check/*"
+          - "@stryker-mutator/*"
+          - "@playwright/test"
+          - playwright
+          - playwright-bdd
+          - "@axe-core/*"
+          - "@lhci/*"
+          - autocannon
+          - testcontainers
+          - "@testcontainers/*"
+      prod-minor-patch:
+        dependency-type: production
+        update-types: [minor, patch]
+      dev-minor-patch:
+        dependency-type: development
+        update-types: [minor, patch]
+    ignore:
+      # OTel 3 só depois que o Langfuse suportar.
+      - dependency-name: "@opentelemetry/*"
+        update-types: [version-update:semver-major]
+      - dependency-name: "@fastify/otel"
+        update-types: [version-update:semver-major]
+      # Fixado na 3.7.6: as versões seguintes saem sem provenance e o trustPolicy as bloqueia
+      # (ADR 0002). Reavaliar quando a Vercel voltar a publicar attestations.
+      - dependency-name: "@vercel/functions"
+        versions: [">3.7.6"]
+
+  # Vercel CLI num projeto pnpm isolado, com lockfile e política de supply chain próprios
+  # (tools/vercel-cli/pnpm-workspace.yaml; ver ADR 0002). Só os jobs de deploy o instalam.
+  - package-ecosystem: npm
+    directory: /tools/vercel-cli
+    target-branch: develop
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: America/Sao_Paulo
+    cooldown:
+      default-days: 7
+      semver-patch-days: 7
+      semver-minor-days: 7
+      semver-major-days: 14
+    commit-message:
+      prefix: chore
+      prefix-development: chore
+      include: scope
+    groups:
+      vercel-cli:
+        patterns:
+          - "*"
+
+  - package-ecosystem: github-actions
+    # A composite em .github/actions/setup também pina actions por SHA.
+    directories:
+      - /
+      - /.github/actions/*
+    target-branch: develop
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: America/Sao_Paulo
+    cooldown:
+      default-days: 7
+      semver-patch-days: 7
+      semver-minor-days: 7
+      semver-major-days: 14
+    commit-message:
+      prefix: chore
+      prefix-development: chore
+      include: scope
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+
+  - package-ecosystem: uv
+    directory: /tools/ingest
+    target-branch: develop
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: America/Sao_Paulo
+    cooldown:
+      default-days: 7
+      semver-patch-days: 7
+      semver-minor-days: 7
+      semver-major-days: 14
+    commit-message:
+      prefix: chore
+      prefix-development: chore
+      include: scope
+    groups:
+      ingest-minor-patch:
+        update-types: [minor, patch]
+
+  # Imagem da API só para a stack de CI e o Docker local; produção roda na Vercel (Node gerenciado).
+  - package-ecosystem: docker
+    directory: /apps/api
+    target-branch: develop
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: America/Sao_Paulo
+    cooldown:
+      default-days: 7
+    commit-message:
+      prefix: chore
+      prefix-development: chore
+      include: scope
+
+  # /infra/ci entra nesta lista na mesma mudança que criar infra/ci/compose.yaml (F4): um
+  # diretório inexistente faz o job semanal falhar com dependency_file_not_found.
+  - package-ecosystem: docker-compose
+    directories:
+      - /infra/local
+    target-branch: develop
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: America/Sao_Paulo
+    cooldown:
+      default-days: 7
+    commit-message:
+      prefix: chore
+      prefix-development: chore
+      include: scope
+    groups:
+      compose-images:
+        patterns:
+          - "*"

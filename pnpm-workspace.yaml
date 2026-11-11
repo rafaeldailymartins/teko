@@ -1,0 +1,97 @@
+packages:
+  - apps/*
+  - packages/*
+
+# Supply chain: cada configuração abaixo é deliberada (ver docs/adr/0002-supply-chain-pnpm.md).
+catalogMode: strict
+savePrefix: ""
+minimumReleaseAge: 10080 # 7 dias, coerente com o cooldown do Dependabot
+trustPolicy: no-downgrade
+# Exceções pontuais (versão exata), cada uma justificada no ADR 0002:
+# chokidar@4.0.3: publicado em dez/2024 sem provenance (4.0.0/4.0.1/5.0.0 têm); exigido por steiger (^4.0.3).
+trustPolicyExclude:
+  - chokidar@4.0.3
+blockExoticSubdeps: true
+strictDepBuilds: true
+engineStrict: true
+pmOnFail: ignore
+# Builds de dependências: allowlist revisada item a item. Nada roda sem aprovação explícita.
+allowBuilds:
+  # postinstall só instala hooks; o script `prepare` da raiz já faz isso explicitamente.
+  lefthook: false
+  # Só compilam do fonte quando falta o binário pré-compilado (que chega como optionalDependency).
+  "@parcel/watcher": false
+  "@swc/core": false
+
+# Correções de vulnerabilidades transitivas (versões exatas, maduras). Revisar a cada atualização
+# do pacote que as puxa; remover quando o upstream já trouxer a versão corrigida.
+overrides:
+  # GHSA-mrhx-c7xc-m3w5 (high). Via @vercel/functions > @vercel/oidc > @vercel/cli-config (zod 4.1.11).
+  zod@<4.6.6: 4.6.7
+  # GHSA-q8mj-m7cp-5q26, GHSA-x5fp-wj9c-mxmx, GHSA-4mjr-xmp4-gh2g, GHSA-6pq8-jhm2-2vcw (moderate).
+  qs@<6.16.1: 6.17.1
+  # GHSA-g3hv-75wg-m249 (moderate). Via @stryker-mutator/core (minimatch 10.2.6); cruza major.
+  minimatch@>=7.0.0 <11.0.1: 11.0.4
+  # sharp é opcional do Next (otimização de imagens), sem uso no export estático (images.unoptimized).
+  # Removido: traz binários libvips sob LGPL-3.0, fora da allowlist de licenças do dependency-review.
+  next>sharp: "-"
+
+catalog:
+  # Ferramentas da raiz
+  "@biomejs/biome": 2.6.4
+  "@commitlint/cli": 21.2.4
+  "@commitlint/config-conventional": 21.2.4
+  "@fission-ai/openspec": 1.16.0
+  "@types/node": 24.19.2
+  "@typescript/native": npm:typescript@7.0.2
+  typescript: npm:@typescript/typescript6@6.0.2
+  git-cliff: 2.14.2
+  jscpd: 5.4.2
+  knip: 6.44.1
+  lefthook: 2.2.1 # 2.2.2 publicado sem proveniência SLSA (trustPolicy: no-downgrade); ver ADR 0002
+  sherif: 1.13.0
+  turbo: 2.11.10
+  type-coverage: 2.31.1
+  dependency-cruiser: 18.7.2
+  tsdown: 0.23.5
+
+  # Testes e qualidade
+  vitest: 5.1.0
+  "@vitest/coverage-v8": 5.1.0
+  fast-check: 4.10.2
+  "@fast-check/vitest": 0.5.0
+  "@stryker-mutator/core": 10.1.1
+  "@stryker-mutator/vitest-runner": 10.1.1
+  "@stryker-mutator/typescript-checker": 10.1.1
+
+  # Domínio compartilhado
+  zod: 4.6.7
+
+  # API
+  fastify: 5.12.8
+  fastify-type-provider-zod: 7.0.0
+  "@fastify/helmet": 13.2.0
+  "@fastify/cors": 11.4.0
+  "@fastify/rate-limit": 11.2.2
+  "@fastify/under-pressure": 9.2.1
+  "@fastify/sensible": 6.0.7
+  "@fastify/swagger": 9.9.3
+  "@scalar/fastify-api-reference": 1.76.4
+  pino: 10.4.0
+  pino-pretty: 13.2.0
+  close-with-grace: 2.5.0
+  "@vercel/functions": 3.7.6 # última com provenance SLSA + trusted publisher; 3.9+ sem provenance (ADR 0002)
+
+  # Web
+  next: 16.4.5
+  react: 19.3.1
+  react-dom: 19.3.1
+  "@types/react": 19.3.0
+  "@types/react-dom": 19.3.0
+  tailwindcss: 4.3.4
+  "@tailwindcss/postcss": 4.3.4
+  postcss: 8.5.32
+  babel-plugin-react-compiler: 1.0.0
+  next-intl: 4.14.9
+  steiger: 0.9.0
+  "@feature-sliced/steiger-plugin": 0.8.2

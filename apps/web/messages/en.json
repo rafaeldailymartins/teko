@@ -1,0 +1,65 @@
+{
+  "app": {
+    "name": "Tekó",
+    "tagline": "Brazilian tax law, as of the right date",
+    "description": "Open-source assistant that answers questions about Brazilian tax law, citing the source and the wording in force on the reference date. Under construction."
+  },
+  "common": {
+    "skipToContent": "Skip to content",
+    "homeLink": "Tekó, home page",
+    "languageNav": "Language",
+    "disclaimer": "A research aid; not professional advice.",
+    "license": "Open source under the MIT license.",
+    "sourceCode": "Source code on GitHub"
+  },
+  "landing": {
+    "status": "Under construction",
+    "title": "Tax law, in the wording that applied on your date.",
+    "lead": "Tekó is an open-source assistant for questions about Brazilian tax law. Every answer will be given for a tax period or reference date and will cite the provision and the version it used.",
+    "howItWorks": {
+      "title": "How it will work",
+      "referenceDate": {
+        "title": "Reference date first",
+        "body": "You set the tax period (for example, 03/2024) and the answer uses the wording in force at that time. If the rule changed within the period, Tekó tells you."
+      },
+      "citations": {
+        "title": "Verifiable citations",
+        "body": "Every statement points to the provision, version and validity interval it relied on, with a link to the official source."
+      },
+      "coverage": {
+        "title": "Declared coverage",
+        "body": "Tekó states which rules and periods it knows. Outside that coverage, it declines instead of guessing."
+      }
+    },
+    "projectStatus": {
+      "title": "Project status",
+      "body": "We are laying the foundation: repository, contracts shared by the front end and the API, and this page. The assistant does not answer questions yet.",
+      "scope": "The planned initial corpus covers the SPED guides and the ICMS legislation of the state of Goiás."
+    }
+  },
+  "gateway": {
+    "title": "Choose your language",
+    "continue": "Continue in English"
+  },
+  "notFound": {
+    "title": "Page not found",
+    "description": "This address does not exist or has moved.",
+    "backHome": "Back to the home page"
+  },
+  "errors": {
+    "validation_error": "Some details of the question are invalid. Please review and try again.",
+    "unauthenticated": "Your session has expired. Sign in again to continue.",
+    "forbidden": "You are not allowed to do this.",
+    "not_found": "We could not find what you were looking for.",
+    "onboarding_required": "Finish the initial setup to ask questions.",
+    "quota_exceeded": "The daily question limit has been reached.",
+    "rate_limited": "Too many requests in a short time. Wait a moment and try again.",
+    "service_paused": "The service is temporarily paused.",
+    "ticket_invalid": "The answer connection expired. Please try again.",
+    "ticket_reused": "This answer is already open in another connection.",
+    "stream_busy": "An answer is already in progress. Wait for it or stop it.",
+    "upstream_unavailable": "The AI provider is unavailable right now. Please try again later.",
+    "region_restricted": "Tekó is not available in your region.",
+    "internal": "Something went wrong. Please try again."
+  }
+}

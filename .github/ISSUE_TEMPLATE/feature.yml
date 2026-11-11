@@ -1,0 +1,35 @@
+name: Funcionalidade
+description: Proponha uma melhoria ou um novo recurso.
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Mudanças aceitas viram uma proposta OpenSpec (`openspec/changes/`) antes da implementação.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problema
+      description: Que necessidade não é atendida hoje? Para quem (analista EFD, dev de ERP, contador)?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposta
+      description: Como deveria funcionar, do ponto de vista de quem usa.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternativas consideradas
+
+  - type: textarea
+    id: legal-basis
+    attributes:
+      label: Base legal ou fonte
+      description: Normas, guias ou leiautes envolvidos, com a vigência, se aplicável.

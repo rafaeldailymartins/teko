@@ -1,0 +1,27 @@
+# Ignore específico de apps/api/Dockerfile (BuildKit: <Dockerfile>.dockerignore ao lado dele).
+# O contexto é a raiz do monorepo; entra só o que o build da API precisa.
+*
+
+!package.json
+!pnpm-lock.yaml
+!pnpm-workspace.yaml
+!tsconfig.base.json
+
+!apps/web/package.json
+
+!packages/shared/package.json
+!packages/shared/src/**
+
+!apps/api/package.json
+!apps/api/tsconfig.json
+!apps/api/tsdown.config.ts
+!apps/api/src/**
+
+# Mesmo dentro das pastas liberadas: nada de testes, artefatos ou segredos.
+**/*.test.ts
+**/node_modules
+**/dist
+**/coverage
+**/reports
+**/.env
+**/.env.*
