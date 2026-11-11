@@ -43,9 +43,10 @@ export function resolveTheme(
  * Script inline (executado no `<head>`, antes da pintura) que aplica a preferência salva.
  * É uma constante: o hash sha256 dele entra no CSP gerado no pós-build. Falhas de storage
  * (modo privado, cookies bloqueados) caem silenciosamente no tema do sistema.
+ *
+ * É um literal fixo, sem interpolação: código-fonte não se monta a partir de valores. As chaves
+ * (`THEME_STORAGE_KEY`, `THEME_ATTRIBUTE`) e os valores de `ThemePreference` aparecem nele
+ * literalmente, e o teste do módulo falha se um lado mudar sem o outro.
  */
-export const THEME_BOOTSTRAP_SCRIPT = `(function(){try{var t=localStorage.getItem(${JSON.stringify(
-  THEME_STORAGE_KEY,
-)});if(t===${JSON.stringify(ThemePreference.Light)}||t===${JSON.stringify(
-  ThemePreference.Dark,
-)}){document.documentElement.setAttribute(${JSON.stringify(THEME_ATTRIBUTE)},t)}}catch(e){}})()`
+export const THEME_BOOTSTRAP_SCRIPT =
+  '(function(){try{var t=localStorage.getItem("teko-theme");if(t==="light"||t==="dark"){document.documentElement.setAttribute("data-theme",t)}}catch(e){}})()'

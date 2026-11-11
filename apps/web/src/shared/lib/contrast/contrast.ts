@@ -15,8 +15,13 @@ export interface Oklch {
 
 export type LinearRgb = readonly [r: number, g: number, b: number]
 
+/**
+ * Cada número é `\d+(?:\.\d+)?` ou `\.\d+` (a mesma linguagem de `\d*\.?\d+`), alternativas que
+ * começam por caracteres diferentes: nenhum par de quantificadores disputa os mesmos dígitos, e a
+ * correspondência é linear mesmo para entradas hostis.
+ */
 const OKLCH_PATTERN =
-  /^oklch\(\s*(?<l>\d*\.?\d+)(?<percent>%?)\s+(?<c>\d*\.?\d+)\s+(?<h>-?\d*\.?\d+)(?:deg)?\s*\)$/i
+  /^oklch\(\s*(?<l>\d+(?:\.\d+)?|\.\d+)(?<percent>%?)\s+(?<c>\d+(?:\.\d+)?|\.\d+)\s+(?<h>-?(?:\d+(?:\.\d+)?|\.\d+))(?:deg)?\s*\)$/i
 
 /** Interpreta `oklch(L C H)` (L em fração ou %, sem alfa). Lança `SyntaxError` se inválido. */
 export function parseOklch(input: string): Oklch {

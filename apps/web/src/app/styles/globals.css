@@ -9,13 +9,21 @@
  * dois temas: ao mudar uma cor aqui, rode `test:unit`.
  */
 
-/* Tema: a variante `dark:` segue o atributo explícito e, sem ele, a preferência do sistema. */
+/*
+ * Tema: a variante `dark:` segue o atributo explícito e, sem ele, a preferência do sistema.
+ * As duas condições de seletor são variantes de forma curta, compostas com `@variant` no corpo de
+ * `dark`: assim nenhum `&` fica numa regra sem raiz de escopo (o `&` só aparece no parâmetro de
+ * `@custom-variant`, onde o Tailwind o substitui pelo seletor da utilidade).
+ */
+@custom-variant theme-dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+@custom-variant theme-not-light (&:where(:not([data-theme="light"], [data-theme="light"] *)));
+
 @custom-variant dark {
-  &:where([data-theme="dark"], [data-theme="dark"] *) {
+  @variant theme-dark {
     @slot;
   }
   @media (prefers-color-scheme: dark) {
-    &:where(:not([data-theme="light"], [data-theme="light"] *)) {
+    @variant theme-not-light {
       @slot;
     }
   }

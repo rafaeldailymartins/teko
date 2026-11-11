@@ -8,12 +8,35 @@ describe('parseOklch', () => {
     expect(parseOklch('OKLCH(.62 .2 -30)')).toEqual({ l: 0.62, c: 0.2, h: -30 })
   })
 
-  it.each(['', 'oklch(0.5 0.1)', 'oklch(0.5 0.1 200 / 50%)', 'rgb(0 0 0)', 'oklch(a b c)'])(
-    'rejeita %j',
-    (input) => {
-      expect(() => parseOklch(input)).toThrow(SyntaxError)
-    },
-  )
+  it('aceita inteiros e decimais com ou sem parte inteira', () => {
+    expect(parseOklch('oklch(1 0 0)')).toEqual({ l: 1, c: 0, h: 0 })
+    expect(parseOklch('oklch(0.25 1.5 -.5)')).toEqual({ l: 0.25, c: 1.5, h: -0.5 })
+  })
+
+  it.each([
+    '',
+    'oklch(0.5 0.1)',
+    'oklch(0.5 0.1 200 / 50%)',
+    'rgb(0 0 0)',
+    'oklch(a b c)',
+    'oklch(5. 0.1 200)',
+    'oklch(0.5 0.1. 200)',
+    'oklch(0..5 0.1 200)',
+    'oklch(0.5 0.1 --200)',
+  ])('rejeita %j', (input) => {
+    expect(() => parseOklch(input)).toThrow(SyntaxError)
+  })
+
+  // Regressão de ReDoS: `\d*\.?\d+` sobrepunha os dois quantificadores e era quadrático.
+  it.each([
+    `oklch(${'1'.repeat(50_000)}x`,
+    `oklch(0.5 ${'1'.repeat(50_000)}x`,
+    `oklch(0.5 0.1 ${'1'.repeat(50_000)}x`,
+  ])('rejeita depressa a entrada patológica %#', (input) => {
+    const start = performance.now()
+    expect(() => parseOklch(input)).toThrow(SyntaxError)
+    expect(performance.now() - start).toBeLessThan(100)
+  })
 })
 
 describe('oklchToLinearSrgb', () => {

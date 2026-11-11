@@ -65,6 +65,24 @@ describe('THEME_BOOTSTRAP_SCRIPT', () => {
     expect(attributes.size).toBe(0)
   })
 
+  // O script é um literal fixo (sem interpolação, para não montar código a partir de valores);
+  // este teste amarra o literal às constantes, para que nenhum dos dois mude sozinho.
+  it('usa as mesmas chaves e valores que as constantes do módulo', () => {
+    for (const value of [
+      THEME_STORAGE_KEY,
+      THEME_ATTRIBUTE,
+      ThemePreference.Light,
+      ThemePreference.Dark,
+    ]) {
+      expect(THEME_BOOTSTRAP_SCRIPT).toContain(JSON.stringify(value))
+    }
+    expect(THEME_BOOTSTRAP_SCRIPT).toContain(
+      `localStorage.getItem(${JSON.stringify(THEME_STORAGE_KEY)})`,
+    )
+    expect(THEME_BOOTSTRAP_SCRIPT).toContain(`setAttribute(${JSON.stringify(THEME_ATTRIBUTE)},t)`)
+    expect(THEME_BOOTSTRAP_SCRIPT).not.toContain(JSON.stringify(ThemePreference.System))
+  })
+
   it('é estável (o hash sha256 dele vai para o CSP)', () => {
     expect(THEME_BOOTSTRAP_SCRIPT).toMatchInlineSnapshot(
       `"(function(){try{var t=localStorage.getItem("teko-theme");if(t==="light"||t==="dark"){document.documentElement.setAttribute("data-theme",t)}}catch(e){}})()"`,
