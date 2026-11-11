@@ -65,7 +65,7 @@ Atualize esta seção no PR que fecha cada fase ou spike.
   - Riscos residuais, registrados na ADR 0003: SIGTERM e cold start não medidos com rigor;
     `attachDatabasePool` e driver do Postgres na F2 (o `pg` nunca teve proveniência); WAF na F7;
     `/pt-br/` minúsculo na F5.
-- **F2 (domínio de vigência, schema e busca híbrida):** implementada em 2026-11-11 (mudanças
+- **F2 (domínio de vigência, schema e busca híbrida):** concluída em 2026-11-11 (mudanças arquivadas
   `add-validity-domain`, `add-corpus-schema`, `add-hybrid-search`; ADRs 0009 e 0010). Driver `pg`
   8.23.1, exceção de proveniência no ADR 0002 (nenhum driver Postgres do npm tem), junto com
   Testcontainers, `yaml` e os overrides de `glob`/`basic-ftp` da árvore do promptfoo. Fixture
