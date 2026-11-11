@@ -1,0 +1,195 @@
+# Spike F1 (b): Fastify "hello" com o server.ts real no projeto `teko-api-staging`, pelo mesmo
+# fluxo que o deploy-api.yml da F7 vai usar:
+#   vercel pull → vercel build → tarball do .vercel/output atestado (actions/attest) →
+#   gh attestation verify → vercel deploy --prebuilt --prod --skip-domain → vercel curl na URL
+#   única (protegida) → vercel promote.
+#
+# Só `workflow_dispatch` (nunca roda em PR nem em push) e só no environment `staging`, que guarda
+# o VERCEL_TOKEN de staging (segredo) e VERCEL_ORG_ID/VERCEL_PROJECT_ID (variáveis). Sem eles o
+# job falha logo no primeiro passo, com a lista do que falta. Nada aqui inventa resultado: o
+# resumo do job registra o que a Vercel gerou (functions, runtime, região, URL, sha256), e as
+# verificações manuais do spike (SSE de 95 s, desconexão, SIGTERM, promote durante stream, cold
+# start, rollback) seguem o roteiro em docs/adr, usando a deployment criada aqui.
+#
+# O Vercel CLI vem do projeto isolado tools/vercel-cli (lockfile próprio; ver ADR 0002).
+name: Spike F1 (b) - API na Vercel
+
+on:
+  workflow_dispatch:
+    inputs:
+      promote:
+        description: Promover a deployment ao domínio de produção do teko-api-staging (vercel promote)
+        type: boolean
+        default: true
+
+permissions: {}
+
+concurrency:
+  # Deploys nunca são cancelados no meio.
+  group: spike-api-vercel
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: deploy (teko-api-staging)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    environment: staging
+    permissions:
+      contents: read
+      id-token: write # assinatura Sigstore da atestação
+      attestations: write # grava a atestação do tarball no repositório
+    env:
+      VERCEL_TELEMETRY_DISABLED: "1"
+      TURBO_TELEMETRY_DISABLED: "1"
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          # audit: os hosts da Vercel observados aqui alimentam a allowlist do deploy-api.yml.
+          egress-policy: audit
+
+      - name: Conferir segredos e variáveis do environment staging
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
+        run: |
+          missing=()
+          [[ -n "${VERCEL_TOKEN}" ]] || missing+=("segredo VERCEL_TOKEN")
+          [[ -n "${VERCEL_ORG_ID}" ]] || missing+=("variável VERCEL_ORG_ID")
+          [[ -n "${VERCEL_PROJECT_ID}" ]] || missing+=("variável VERCEL_PROJECT_ID (do projeto teko-api-staging)")
+          if (( ${#missing[@]} > 0 )); then
+            printf -v list '%s, ' "${missing[@]}"
+            echo "::error title=spike-api-vercel::Faltam no environment 'staging': ${list%, }. Cadastre-os (Settings > Environments > staging) e rode de novo; nada foi construído nem publicado."
+            exit 1
+          fi
+
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      - name: Instalar o Vercel CLI (tools/vercel-cli, lockfile congelado)
+        run: |
+          pnpm --dir tools/vercel-cli install --frozen-lockfile
+          echo "${GITHUB_WORKSPACE}/tools/vercel-cli/node_modules/.bin" >>"$GITHUB_PATH"
+
+      - name: vercel pull (Config de produção do teko-api-staging)
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
+        run: |
+          vercel --version
+          vercel pull --yes --environment=production --token "${VERCEL_TOKEN}"
+
+      - name: vercel build --prod
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
+        run: vercel build --prod --token "${VERCEL_TOKEN}"
+
+      - name: Empacotar o .vercel/output (sem .env nem project.json)
+        id: pack
+        run: |
+          # O spike também descobre onde o build grava o output com Root Directory apps/api.
+          out=''
+          for candidate in .vercel/output apps/api/.vercel/output; do
+            if [[ -d "$candidate" ]]; then out="$candidate"; break; fi
+          done
+          if [[ -z "$out" ]]; then
+            echo "::error title=spike-api-vercel::vercel build não gerou .vercel/output (nem em apps/api/.vercel/output)."
+            exit 1
+          fi
+          tarball="${RUNNER_TEMP}/teko-api-vercel-output.tgz"
+          # Só o diretório output entra; .vercel/.env* e .vercel/project.json ficam de fora.
+          tar --sort=name --owner=0 --group=0 --numeric-owner --mtime='@0' \
+            -C "$(dirname "$out")" -czf "$tarball" output
+          sha256="$(sha256sum "$tarball" | cut -d' ' -f1)"
+          {
+            echo "out=${out}"
+            echo "tarball=${tarball}"
+            echo "sha256=${sha256}"
+          } >>"$GITHUB_OUTPUT"
+          {
+            echo "## Spike F1 (b): build"
+            echo
+            echo "- output: \`${out}\`"
+            echo "- tarball sha256: \`${sha256}\`"
+            echo "- functions geradas (nome para o glob de \`functions\` no vercel.json):"
+            find "$out/functions" -maxdepth 3 -name '.vc-config.json' -print0 2>/dev/null \
+              | while IFS= read -r -d '' cfg; do
+                  echo "  - \`${cfg#"$out"/}\`: $(jq -c '{runtime, handler, regions, maxDuration, supportsResponseStreaming}' "$cfg")"
+                done
+          } >>"$GITHUB_STEP_SUMMARY"
+
+      - name: Atestar o tarball (provenance)
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: ${{ steps.pack.outputs.tarball }}
+
+      - name: Verificar a atestação antes do deploy
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TARBALL: ${{ steps.pack.outputs.tarball }}
+          REPO: ${{ github.repository }}
+        run: gh attestation verify "$TARBALL" --repo "$REPO"
+
+      - name: vercel deploy --prebuilt --prod --skip-domain
+        id: deploy
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
+          ARTIFACT_SHA256: ${{ steps.pack.outputs.sha256 }}
+          GIT_SHA: ${{ github.sha }}
+        run: |
+          url="$(vercel deploy --prebuilt --prod --skip-domain \
+            --meta "artifactSha256=${ARTIFACT_SHA256}" --meta "gitSha=${GIT_SHA}" \
+            --token "${VERCEL_TOKEN}")"
+          if [[ ! "$url" =~ ^https://[a-z0-9.-]+\.vercel\.app$ ]]; then
+            echo "::error title=spike-api-vercel::Saída inesperada do vercel deploy: ${url}"
+            exit 1
+          fi
+          echo "url=${url}" >>"$GITHUB_OUTPUT"
+          echo "- deployment: ${url} (meta artifactSha256=${ARTIFACT_SHA256})" >>"$GITHUB_STEP_SUMMARY"
+
+      - name: Smoke na URL única (protegida) com vercel curl
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
+          DEPLOYMENT_URL: ${{ steps.deploy.outputs.url }}
+        run: |
+          vercel curl /healthz --deployment "$DEPLOYMENT_URL" --token "${VERCEL_TOKEN}" -- --fail-with-body --include
+          vercel curl /api/healthz --deployment "$DEPLOYMENT_URL" --token "${VERCEL_TOKEN}" -- --fail-with-body --include
+
+      - name: URL única sem bypass não chega à API
+        env:
+          DEPLOYMENT_URL: ${{ steps.deploy.outputs.url }}
+        run: |
+          # Deployment Protection Standard: a URL única exige login na Vercel (401 ou redirect).
+          status="$(curl -sS -o /dev/null -w '%{http_code}' "${DEPLOYMENT_URL}/healthz")"
+          echo "- URL única sem bypass: HTTP ${status}" >>"$GITHUB_STEP_SUMMARY"
+          if [[ "$status" == 200 ]]; then
+            echo "::error title=spike-api-vercel::A URL única respondeu 200 sem autenticação; confira a Deployment Protection (Standard)."
+            exit 1
+          fi
+
+      - name: vercel promote
+        if: inputs.promote
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
+          DEPLOYMENT_URL: ${{ steps.deploy.outputs.url }}
+        run: |
+          vercel promote "$DEPLOYMENT_URL" --timeout=5m --token "${VERCEL_TOKEN}"
+          # Sem caminho absoluto, o vercel curl mira a deployment de produção atual do projeto.
+          vercel curl /healthz --token "${VERCEL_TOKEN}" -- --fail-with-body --include
+          echo "- promovida: ${DEPLOYMENT_URL}" >>"$GITHUB_STEP_SUMMARY"

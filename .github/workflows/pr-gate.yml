@@ -1,0 +1,107 @@
+# Gate único de PR. O check obrigatório dos rulesets é o job `ci-gate`.
+#
+# Todos os workflows chamados rodam SEMPRE: o filtro de caminhos é feito por dentro, a partir do
+# job `affected`, e os jobs não afetados terminam como `skipped`. Cada workflow entra aqui na fase
+# que o cria (ver "CI/CD, Git Flow e ambientes > Workflows" no plano):
+#   - F1: ci.yml, security.yml (este arquivo)
+#   - e2e.yml (se web/api afetados), mutation.yml (Stryker incremental), perf.yml (perfil `pr`)
+#     e evals.yml (perfil `pr`, se llm afetado) entram nas fases que os criam. Ao adicionar um
+#     deles: (1) novo job com `uses:` e `with: { affected: ... }`; (2) incluí-lo em `needs` do
+#     `ci-gate`; (3) se o job inteiro puder ser pulado por um `if:`, incluí-lo em `allowed-skips`.
+name: PR gate
+
+on:
+  pull_request:
+    branches: [develop, main]
+
+permissions: {}
+
+env:
+  NEXT_TELEMETRY_DISABLED: "1"
+  TURBO_TELEMETRY_DISABLED: "1"
+
+concurrency:
+  group: pr-gate-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  affected:
+    name: affected
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    outputs:
+      json: ${{ steps.scope.outputs.json }}
+      web: ${{ steps.scope.outputs.web }}
+      api: ${{ steps.scope.outputs.api }}
+      shared: ${{ steps.scope.outputs.shared }}
+      ingest: ${{ steps.scope.outputs.ingest }}
+      rag: ${{ steps.scope.outputs.rag }}
+      llm: ${{ steps.scope.outputs.llm }}
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          # audit nas duas primeiras semanas; depois `block` com a allowlist observada.
+          egress-policy: audit
+
+      - name: Checkout (histórico completo para o diff contra a base)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      - name: Calcular escopo afetado
+        id: scope
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_REF: ${{ github.base_ref }}
+          TURBO_TELEMETRY_DISABLED: "1"
+        run: bash .github/scripts/affected.sh
+
+  ci:
+    name: ci
+    needs: affected
+    uses: ./.github/workflows/ci.yml
+    permissions:
+      contents: read
+      id-token: write # upload de cobertura ao Codecov via OIDC
+    with:
+      affected: ${{ needs.affected.outputs.json }}
+    # Só o segredo que o ci.yml declara (nunca `secrets: inherit`). Em PR do Dependabot ele vem dos
+    # segredos do Dependabot; em PR de fork chega vazio e o job `sonar` pula a análise sem falhar.
+    # Com o token, o job `sonar` espera o quality gate e reprova o `ci-gate` se ele reprovar.
+    secrets:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+  security:
+    name: security
+    uses: ./.github/workflows/security.yml
+    permissions:
+      contents: read
+
+  ci-gate:
+    name: ci-gate
+    if: always()
+    needs: [affected, ci, security]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions: {}
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          egress-policy: audit
+
+      - name: Decidir se todos os jobs passaram
+        uses: re-actors/alls-green@b5b5b37504aa4183270bd3d855c52a67f212be35 # v1.3.0
+        with:
+          jobs: ${{ toJSON(needs) }}
+          # Jobs que podem terminar como `skipped` sem reprovar o gate. Na F1 nenhum job deste
+          # workflow é condicional (o filtro por escopo acontece dentro de ci.yml); os workflows
+          # condicionais das próximas fases (e2e, mutation, perf, evals) entram nesta lista.
+          allowed-skips: "[]"

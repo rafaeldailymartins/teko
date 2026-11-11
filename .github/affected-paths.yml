@@ -1,0 +1,24 @@
+# Grupos de caminhos que o turbo não enxerga (não são pacotes JS) ou que pedem gates próprios.
+# Lido por .github/scripts/affected.sh, que compara `git diff --name-only <base>...HEAD`
+# contra estes globs (pathspec `:(glob)` do git, em que `**` casa qualquer profundidade).
+# web/api/shared vêm do `turbo query affected --packages`, não daqui.
+# Mudar este arquivo marca todos os grupos como afetados.
+
+# Ingestão: pipeline Python, corpus versionado e o CLI de ingestão da API.
+ingest:
+  - tools/ingest/**
+  - corpus/**
+  - apps/api/src/adapters/in/cli/ingest/**
+
+# Recuperação (RAG): casos de uso, persistência, evals, fixtures de corpus e o domínio de vigência.
+rag:
+  - apps/api/src/application/**
+  - apps/api/src/adapters/out/persistence/**
+  - apps/api/evals/**
+  - apps/api/test/fixtures/corpus/**
+  - packages/shared/src/vigencia/**
+
+# Geração: prompts e adapters de LLM (dispara as generation evals).
+llm:
+  - apps/api/src/application/prompts/**
+  - apps/api/src/adapters/out/llm/**

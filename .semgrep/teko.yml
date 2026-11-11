@@ -1,0 +1,367 @@
+# Regras próprias do Tekó (Semgrep CE), rodadas pelo job `semgrep` do security.yml com `--error`.
+# Fonte: "Segurança > Regras do Semgrep" no plano, mais a fronteira de `@vercel/functions`.
+#
+# Os `paths` são relativos à raiz do repositório (semântica de gitignore: `/x` ancora na raiz,
+# `**/x` flutua). Fixtures de teste: .semgrep/teko.ts e .semgrep/teko.tsx (anotações
+# `ruleid:`/`ok:`), rodados com `semgrep test .semgrep/` (o `semgrep scan --test` legado não
+# descobre testes em diretório que começa com ponto). Como as regras são restritas por caminho,
+# cada `include` lista também os fixtures; o scan do repositório nunca os vê porque o security.yml
+# passa `--exclude .semgrep`. Os fixtures levam `biome-ignore-all lint` e ficam fora dos tsconfig.
+#
+# Rodar localmente (mesma imagem do CI):
+#   docker run --rm -v "$PWD:/src" -w /src semgrep/semgrep@sha256:<digest do security.yml> \
+#     semgrep test .semgrep/
+#   docker run --rm -v "$PWD:/src" -w /src semgrep/semgrep@sha256:<digest do security.yml> \
+#     semgrep scan --config .semgrep/ --exclude .semgrep --error --metrics=off
+rules:
+  # ---------------------------------------------------------------------------------------------
+  # Front estático (output: 'export'): nada de código de servidor no apps/web.
+  # ---------------------------------------------------------------------------------------------
+  - id: teko-web-no-route-handlers
+    message: >-
+      Route Handler ou rota da API do Pages Router em apps/web. O front é export estático (0
+      functions na Netlify): a API é o Fastify na Vercel, alcançado pelo proxy assinado /api/*.
+    severity: ERROR
+    languages: [javascript, typescript]
+    # Qualquer `export` num arquivo `route.*` (App Router) ou em apps/web/pages/** (Pages Router,
+    # que lá só existe para guardar o README que impede o Next de tratar src/pages como rotas).
+    # Sem export, o arquivo não registra handler nem página.
+    pattern-regex: '(?m)^[ \t]*export\b'
+    paths:
+      include:
+        - /apps/web/**/route.ts
+        - /apps/web/**/route.tsx
+        - /apps/web/**/route.js
+        - /apps/web/**/route.mjs
+        - /apps/web/pages/**/*.ts
+        - /apps/web/pages/**/*.tsx
+        - /apps/web/pages/**/*.js
+        - /apps/web/pages/**/*.jsx
+        - /apps/web/pages/**/*.mdx
+        - /.semgrep/teko.ts
+      exclude:
+        - node_modules
+    metadata:
+      category: security
+      plan: "Segurança > Regras do Semgrep: nenhum route.ts ou Server Action"
+
+  - id: teko-web-no-server-actions
+    message: >-
+      Diretiva "use server" (Server Action / Server Function) em apps/web. O export estático não
+      tem servidor; mutações vão para a API Fastify.
+    severity: ERROR
+    languages: [javascript, typescript]
+    # Diretiva de arquivo ou de função, com aspas simples ou duplas, no início da linha (não pega
+    # comentários nem a string no meio de uma expressão).
+    pattern-regex: '(?m)^[ \t]*[''"]use server[''"]'
+    paths:
+      include:
+        - /apps/web
+        - /.semgrep/teko.ts
+        - /.semgrep/teko.tsx
+      exclude:
+        - node_modules
+    metadata:
+      category: security
+      plan: "Segurança > Regras do Semgrep: nenhum route.ts ou Server Action"
+
+  # ---------------------------------------------------------------------------------------------
+  # SQL: Drizzle `sql.raw` só com literal.
+  # ---------------------------------------------------------------------------------------------
+  - id: teko-no-sql-raw-non-literal
+    message: >-
+      sql.raw() com argumento não literal: o texto entra no SQL sem parâmetro. Use o template
+      `sql` (que parametriza) ou `sql.identifier()`; `sql.raw` só com string literal constante.
+    severity: ERROR
+    languages: [javascript, typescript]
+    patterns:
+      - pattern: sql.raw($ARG)
+      # A propagação de constantes do Semgrep faz "..." casar também com uma `const` de string.
+      - pattern-not: sql.raw("...")
+    paths:
+      include:
+        - /apps
+        - /packages
+        - /scripts
+        - /.semgrep/teko.ts
+        - /.semgrep/teko.tsx
+      exclude:
+        - node_modules
+    metadata:
+      category: security
+      cwe: "CWE-89: SQL Injection"
+      plan: "Segurança > Regras do Semgrep: nenhum sql.raw( com entrada não literal"
+
+  # ---------------------------------------------------------------------------------------------
+  # XSS: sem HTML cru.
+  # ---------------------------------------------------------------------------------------------
+  - id: teko-no-dangerously-set-inner-html
+    message: >-
+      dangerouslySetInnerHTML injeta HTML sem escape (XSS e quebra do Trusted Types). Renderize
+      com JSX/Markdown seguro. Exceção única: o <script> de bootstrap de tema com a constante
+      THEME_BOOTSTRAP_SCRIPT, coberta por hash no CSP.
+    severity: ERROR
+    languages: [javascript, typescript]
+    patterns:
+      - pattern-either:
+          - pattern: <$EL dangerouslySetInnerHTML=$VALUE />
+          - pattern: "{dangerouslySetInnerHTML: $VALUE}"
+      - pattern-not: "<script dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP_SCRIPT }} />"
+    paths:
+      include:
+        - /apps
+        - /packages
+        - /.semgrep/teko.ts
+        - /.semgrep/teko.tsx
+      exclude:
+        - node_modules
+    metadata:
+      category: security
+      cwe: "CWE-79: Cross-site Scripting"
+      plan: "Segurança > Regras do Semgrep: nenhum dangerouslySetInnerHTML nem rehype-raw"
+
+  - id: teko-no-rehype-raw
+    message: >-
+      rehype-raw / allowDangerousHtml passam HTML cru do Markdown (respostas do LLM, textos
+      legais) para o DOM. Renderize o Markdown sem HTML embutido.
+    severity: ERROR
+    languages: [javascript, typescript]
+    pattern-either:
+      - patterns:
+          - pattern-either:
+              - pattern: import $X from "$MOD"
+              - pattern: import * as $X from "$MOD"
+              - pattern: import {$X} from "$MOD"
+              - pattern: import "$MOD"
+              - pattern: require("$MOD")
+              - pattern: import("$MOD")
+          - metavariable-regex:
+              metavariable: $MOD
+              regex: ^rehype-raw(/.*)?$
+      - pattern: "{allowDangerousHtml: true}"
+    paths:
+      include:
+        - /apps
+        - /packages
+        - /.semgrep/teko.ts
+        - /.semgrep/teko.tsx
+      exclude:
+        - node_modules
+    metadata:
+      category: security
+      cwe: "CWE-79: Cross-site Scripting"
+      plan: "Segurança > Regras do Semgrep: nenhum dangerouslySetInnerHTML nem rehype-raw"
+
+  # ---------------------------------------------------------------------------------------------
+  # Configuração: o ambiente só é lido nos módulos de config (validados com zod no boot).
+  # ---------------------------------------------------------------------------------------------
+  - id: teko-env-only-in-config
+    message: >-
+      process.env lido fora dos módulos de configuração. Na API, leia o env só em
+      apps/api/src/config/env.ts (validado) ou apps/api/src/config/platform.ts (RUNTIME_TARGET) e
+      injete o valor; no web, só em apps/web/src/shared/config/env.ts (NEXT_PUBLIC_* literais,
+      inlined no build) e nos arquivos de config do Next/ferramentas.
+    severity: ERROR
+    languages: [javascript, typescript]
+    pattern-either:
+      - pattern: process.env
+      - pattern: globalThis.process.env
+      - pattern: process["env"]
+      - pattern: const {..., env, ...} = process
+      - pattern: import {..., env, ...} from "process"
+      - pattern: import {..., env, ...} from "node:process"
+      # Reexportação do env. Por regex: o padrão `export {..., env, ...} from "..."` casa
+      # qualquer statement no Semgrep 1.183.
+      - pattern-regex: '(?m)^[ \t]*export\s*\{[^}]*\benv\b[^}]*\}\s*from\s*[''"](node:)?process[''"]'
+      # O módulo process importado por namespace/default ou por require.
+      - patterns:
+          - pattern-either:
+              - pattern-inside: |
+                  import * as $P from "$PROC"
+                  ...
+              - pattern-inside: |
+                  import $P from "$PROC"
+                  ...
+              - pattern-inside: |
+                  $P = require("$PROC")
+                  ...
+          - metavariable-regex:
+              metavariable: $PROC
+              regex: ^(node:)?process$
+          - pattern-either:
+              - pattern: $P.env
+              - pattern: $P["env"]
+      - patterns:
+          - pattern-either:
+              - pattern: require("$PROC").env
+              - pattern: const {..., env, ...} = require("$PROC")
+              - pattern: 'const {..., env: $E, ...} = require("$PROC")'
+          - metavariable-regex:
+              metavariable: $PROC
+              regex: ^(node:)?process$
+    paths:
+      include:
+        - /apps
+        - /packages
+        - /.semgrep/teko.ts
+        - /.semgrep/teko.tsx
+      exclude:
+        - node_modules
+        # Os módulos de configuração autorizados.
+        - /apps/api/src/config/env.ts
+        - /apps/api/src/config/platform.ts
+        - /apps/web/src/shared/config/env.ts
+        # Arquivos de config na raiz de cada pacote (next.config.ts, vitest/tsdown/drizzle/
+        # steiger/sentry configs): rodam no build ou nas ferramentas, nunca no runtime da app.
+        - /apps/*/*.config.ts
+        - /apps/*/*.config.mts
+        - /apps/*/*.config.js
+        - /apps/*/*.config.mjs
+        - /apps/*/*.config.cjs
+        - /packages/*/*.config.ts
+        # Plugin de build da Netlify (roda no build do site, lê CONTEXT e TEKO_API_PROXY_TARGET).
+        - /apps/web/netlify/plugins
+        # Scripts de build/CI de cada app (postbuild-headers, route-budgets) e testes, que não
+        # entram no bundle de runtime.
+        - /apps/*/scripts
+        - /apps/*/test
+        - /apps/*/tests
+        - /apps/*/perf
+        - /apps/*/evals
+        - "*.test.ts"
+        - "*.test.tsx"
+        - "*.spec.ts"
+    metadata:
+      category: correctness
+      plan: "Segurança > Regras do Semgrep: process.env lido só em config/env.ts"
+
+  # ---------------------------------------------------------------------------------------------
+  # SSRF: saída HTTP da API só pelo SafeFetcher.
+  # ---------------------------------------------------------------------------------------------
+  # O SafeFetcher (https + allowlist de hosts, DNS resolvido com bloqueio de IPs privados,
+  # link-local e de metadata, no máximo 3 redirects revalidados) chega com a ingestão e o watch.
+  # Enquanto ele não existe, a regra já vale para todo o código de runtime da API e do shared,
+  # que hoje não faz nenhuma chamada HTTP de saída; o único arquivo autorizado é o próprio
+  # SafeFetcher, reconhecido pelo nome (`safe-fetcher.ts` ou um diretório `safe-fetcher/`),
+  # onde quer que ele seja criado em adapters/out. Os SDKs de LLM/embeddings/telemetria fazem as
+  # chamadas deles por dentro (URLs base fixas, verificadas no boot) e não casam com esta regra.
+  - id: teko-external-fetch-only-via-safe-fetcher
+    message: >-
+      Chamada HTTP de saída fora do SafeFetcher (fetch, undici, axios, got, ky, node-fetch,
+      node:http/https). Use o SafeFetcher (https + allowlist + bloqueio de IPs privados e de
+      metadata), injetado pela composition root.
+    severity: ERROR
+    languages: [javascript, typescript]
+    pattern-either:
+      - pattern: fetch(...)
+      - pattern: globalThis.fetch(...)
+      # node:http/https como cliente. `metavariable-name` com `modules` não resolve imports no
+      # Semgrep CE, por isso o import é casado explicitamente: chamadas `request`/`get` sobre o
+      # namespace ou o default importado, e os imports nomeados `request`/`get`. Imports de tipo
+      # (`import type { IncomingMessage } from 'node:http'`) continuam livres.
+      - patterns:
+          - pattern-either:
+              - pattern-inside: |
+                  import * as $H from "$HTTP"
+                  ...
+              - pattern-inside: |
+                  import $H from "$HTTP"
+                  ...
+          - metavariable-regex:
+              metavariable: $HTTP
+              regex: ^(node:)?https?$
+          - pattern-either:
+              - pattern: $H.request(...)
+              - pattern: $H.get(...)
+      - patterns:
+          - pattern: import {$FN} from "$HTTP"
+          - metavariable-regex:
+              metavariable: $FN
+              regex: ^(request|get)$
+          - metavariable-regex:
+              metavariable: $HTTP
+              regex: ^(node:)?https?$
+      # O mesmo por require: chamada direta, módulo guardado numa variável ou desestruturado.
+      - patterns:
+          - pattern-either:
+              - pattern: require("$HTTP").$FN(...)
+              - patterns:
+                  - pattern-inside: |
+                      $H = require("$HTTP")
+                      ...
+                  - pattern: $H.$FN(...)
+              - pattern: const {..., $FN, ...} = require("$HTTP")
+              - pattern: 'const {..., $FN: $ALIAS, ...} = require("$HTTP")'
+          - metavariable-regex:
+              metavariable: $FN
+              regex: ^(request|get)$
+          - metavariable-regex:
+              metavariable: $HTTP
+              regex: ^(node:)?https?$
+      - patterns:
+          - pattern-either:
+              - pattern: import $X from "$MOD"
+              - pattern: import * as $X from "$MOD"
+              - pattern: import {$X} from "$MOD"
+              - pattern: require("$MOD")
+              - pattern: import("$MOD")
+          - metavariable-regex:
+              metavariable: $MOD
+              regex: ^(undici|axios|got|ky|node-fetch|cross-fetch|ofetch|superagent)(/.*)?$
+    paths:
+      include:
+        - /apps/api/src
+        - /packages/shared/src
+        - /.semgrep/teko.ts
+        - /.semgrep/teko.tsx
+      exclude:
+        - node_modules
+        - safe-fetcher.ts
+        - safe-fetcher
+        - "*.test.ts"
+    metadata:
+      category: security
+      cwe: "CWE-918: Server-Side Request Forgery (SSRF)"
+      plan: "Segurança > Regras do Semgrep: fetch externo só pelo SafeFetcher"
+
+  # ---------------------------------------------------------------------------------------------
+  # Plataforma: @vercel/functions só no adapter da Vercel (o resto roda igual no Render e no CI).
+  # ---------------------------------------------------------------------------------------------
+  - id: teko-vercel-functions-only-in-platform-adapter
+    message: >-
+      @vercel/functions importado fora de apps/api/src/adapters/out/platform/vercel. waitUntil,
+      attachDatabasePool e afins ficam atrás das portas BackgroundTasks/ClientIp, escolhidas por
+      config/platform.ts conforme RUNTIME_TARGET (vercel | render | node).
+    severity: ERROR
+    languages: [javascript, typescript]
+    pattern-either:
+      - patterns:
+          - pattern-either:
+              - pattern: import $X from "$MOD"
+              - pattern: import * as $X from "$MOD"
+              - pattern: import {$X} from "$MOD"
+              - pattern: import "$MOD"
+              - pattern: require("$MOD")
+              - pattern: import("$MOD")
+              # Reexportações: `export * from`, `export * as X from` e `export {…} from`.
+              - pattern: export * from "$MOD"
+              - pattern: export * as $X from "$MOD"
+              - pattern: export {...} from "$MOD"
+          - metavariable-regex:
+              metavariable: $MOD
+              regex: ^@vercel/functions(/.*)?$
+      # `export type {…} from`, que o parser do Semgrep não expõe como padrão.
+      - pattern-regex: '(?m)^[ \t]*export\s+type\s*\{[^}]*\}\s*from\s*[''"]@vercel/functions(/[^''"]*)?[''"]'
+    paths:
+      include:
+        - /apps
+        - /packages
+        - /scripts
+        - /.semgrep/teko.ts
+        - /.semgrep/teko.tsx
+      exclude:
+        - node_modules
+        - /apps/api/src/adapters/out/platform/vercel
+    metadata:
+      category: architecture
+      plan: "Qualidade > dependency-cruiser, regra 5; Stack de API: @vercel/functions"

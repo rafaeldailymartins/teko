@@ -1,0 +1,82 @@
+# CodeQL fica num workflow próprio (fora do pr-gate.yml) para que os checks se chamem
+# exatamente `Analyze (<linguagem>)`, sem o prefixo que um workflow_call acrescentaria.
+# O ruleset `code_scanning` bloqueia alertas `high_or_higher`.
+name: CodeQL
+
+on:
+  pull_request:
+    branches: [develop, main]
+  push:
+    branches: [develop, main]
+  schedule:
+    - cron: "23 5 * * 1" # segunda, 05:23 UTC
+
+permissions: {}
+
+concurrency:
+  group: codeql-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      security-events: write # upload dos resultados para o code scanning
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - language: actions
+            sources: ":(glob).github/workflows/*.yml :(glob).github/actions/**/action.yml"
+          - language: javascript-typescript
+            sources: ":(glob)**/*.ts :(glob)**/*.tsx :(glob)**/*.js :(glob)**/*.mjs :(glob)**/*.cjs"
+          - language: python
+            sources: ":(glob)**/*.py"
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # O CodeQL falha quando não encontra código da linguagem. Assim o check `Analyze (...)`
+      # continua existindo (e verde) enquanto a linguagem não tem fontes no repositório.
+      - name: Detectar fontes da linguagem
+        id: sources
+        env:
+          LANGUAGE: ${{ matrix.language }}
+          SOURCES: ${{ matrix.sources }}
+        run: |
+          read -r -a pathspecs <<<"$SOURCES"
+          if [[ -n "$(git ls-files -- "${pathspecs[@]}")" ]]; then
+            echo "present=true" >>"$GITHUB_OUTPUT"
+          else
+            echo "present=false" >>"$GITHUB_OUTPUT"
+            echo "::notice title=codeql::Sem fontes de ${LANGUAGE} no repositório; análise pulada."
+          fi
+
+      - name: Inicializar CodeQL
+        if: steps.sources.outputs.present == 'true'
+        uses: github/codeql-action/init@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: none
+          queries: security-extended
+          # .semgrep/ guarda fixtures com código propositalmente inseguro (casos `ruleid` das
+          # regras próprias); não é código do produto.
+          config: |
+            paths-ignore:
+              - .semgrep
+
+      - name: Analisar
+        if: steps.sources.outputs.present == 'true'
+        uses: github/codeql-action/analyze@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
+        with:
+          category: /language:${{ matrix.language }}

@@ -1,0 +1,64 @@
+name: Bug
+description: Algo não funciona como deveria (resposta, citação, vigência, interface ou API).
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Obrigado por reportar. Falhas de segurança **não** vão aqui: use o reporte privado de
+        vulnerabilidades. Não cole dados pessoais, CPF/CNPJ reais nem tokens.
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Área
+      options:
+        - Resposta ou citação incorreta
+        - Vigência (norma aplicada na data errada)
+        - Cobertura do corpus
+        - Interface web
+        - API
+        - Ingestão
+        - Outra
+    validations:
+      required: true
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: O que aconteceu
+      description: Inclua a pergunta feita e a data de referência, se for o caso.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: O que era esperado
+      description: Se possível, cite o dispositivo legal e a vigência que deveriam ter sido usados.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Como reproduzir
+      placeholder: |
+        1. Abrir …
+        2. Perguntar …
+        3. Ver …
+    validations:
+      required: true
+
+  - type: input
+    id: environment
+    attributes:
+      label: Ambiente
+      description: Produção ou staging, navegador e idioma (en/pt-BR).
+      placeholder: produção, Firefox 140, pt-BR
+
+  - type: input
+    id: request-id
+    attributes:
+      label: Request id
+      description: Aparece na mensagem de erro (campo `instance` do problem+json), se houver.

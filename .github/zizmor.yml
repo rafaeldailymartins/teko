@@ -1,0 +1,13 @@
+# Configuração do zizmor (descoberta automática em .github/zizmor.yml).
+# Cada exceção registra o motivo; revisar quando a causa deixar de existir.
+rules:
+  # A sintaxe `uses: $/...` (self-repository, GitHub, jul/2026) ainda é rejeitada pelo
+  # actionlint 1.7.12, que também é gate do CI. Os `uses: ./...` destes arquivos apontam para a
+  # composite .github/actions/setup e para os workflows chamados pelo pr-gate, sempre do mesmo
+  # commit do workflow e sem checkout de código de terceiros (não há pull_request_target).
+  # Remover quando o actionlint aceitar `$/` e migrar os `uses:`.
+  self-repository:
+    ignore:
+      - ci.yml
+      - pr-gate.yml
+      - spike-api-vercel.yml

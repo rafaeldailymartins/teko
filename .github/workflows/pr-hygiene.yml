@@ -1,0 +1,165 @@
+# Higiene de PR: título (Conventional Commits), Git Flow, DCO e rótulos por área.
+# `pr-title`, `gitflow-guard` e `dco` são checks obrigatórios nos rulesets.
+# Sem `pull_request_target`: em PRs de fork o token é só leitura, então o labeler roda apenas
+# para branches do próprio repositório.
+name: PR hygiene
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened, ready_for_review]
+    branches: [develop, main]
+
+permissions: {}
+
+concurrency:
+  group: pr-hygiene-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  pr-title:
+    name: pr-title
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      pull-requests: read # ler o PR (título e commits, se validateSingleCommit)
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          egress-policy: audit
+
+      - name: Validar título (vira a mensagem do squash)
+        uses: amannn/action-semantic-pull-request@2252a14e810aa9b85c2d560bd7070c802206ecf6 # v6.1.2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          # Tipos do @commitlint/config-conventional.
+          types: |
+            build
+            chore
+            ci
+            docs
+            feat
+            fix
+            perf
+            refactor
+            revert
+            style
+            test
+          # Mesma lista do `scope-enum` do commitlint.config.mjs, mais `deps-dev`, que o
+          # Dependabot gera com `include: scope` para dependências de desenvolvimento.
+          scopes: |
+            web
+            api
+            shared
+            ingest
+            retrieval
+            eval
+            obs
+            i18n
+            auth
+            db
+            ci
+            deps
+            deps-dev
+            release
+            specs
+            docs
+            infra
+          requireScope: false
+
+  gitflow-guard:
+    name: gitflow-guard
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions: {}
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          egress-policy: audit
+
+      - name: PR para main só de release/vX.Y.Z ou hotfix/vX.Y.Z do próprio repositório
+        env:
+          BASE_REF: ${{ github.base_ref }}
+          HEAD_REF: ${{ github.head_ref }}
+          HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          REPO: ${{ github.repository }}
+        run: |
+          if [[ "$BASE_REF" != main ]]; then
+            echo "Base '${BASE_REF}': sem restrição de origem."
+            exit 0
+          fi
+          if [[ "$HEAD_REPO" != "$REPO" ]]; then
+            echo "::error title=gitflow-guard::PR para main precisa vir de um branch deste repositório (veio de ${HEAD_REPO})."
+            exit 1
+          fi
+          if [[ ! "$HEAD_REF" =~ ^(release|hotfix)/v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error title=gitflow-guard::PR para main só aceita release/vX.Y.Z ou hotfix/vX.Y.Z (recebido: ${HEAD_REF}). Abra o PR contra develop."
+            exit 1
+          fi
+          echo "Origem '${HEAD_REF}' aceita para main."
+
+  dco:
+    name: dco
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read # listar os commits do PR pela API
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          egress-policy: audit
+
+      - name: Signed-off-by do autor em todo commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          commits="${RUNNER_TEMP}/commits.jsonl"
+          gh api --paginate "repos/${REPO}/pulls/${PR_NUMBER}/commits?per_page=100" --jq '.[]' >"$commits"
+          # Exceções: commits de dependabot[bot] e teko-release-bot[bot], e merge commits feitos
+          # pela interface do GitHub (committer web-flow). Os demais precisam de uma linha
+          # `Signed-off-by: Nome <email>` com o e-mail do autor do commit.
+          missing="$(
+            jq -r '
+              select((.author.login // "") | IN("dependabot[bot]", "teko-release-bot[bot]") | not)
+              | select(((.parents | length) > 1 and (.committer.login // "") == "web-flow") | not)
+              | (.commit.author.email | ascii_downcase) as $email
+              | [.commit.message | scan("(?m)^Signed-off-by: [^<\n]+ <([^>\n]+)>[ \t\r]*$") | .[0] | ascii_downcase] as $signers
+              | select($email | IN($signers[]) | not)
+              | "\(.sha[0:12]) \(.commit.author.name) <\(.commit.author.email)>: \(.commit.message | split("\n")[0])"
+            ' "$commits"
+          )"
+          total="$(jq -s 'length' "$commits")"
+          if [[ -n "$missing" ]]; then
+            echo "::error title=dco::Commits sem Signed-off-by do autor (DCO):"
+            echo "$missing"
+            echo
+            echo "Corrija com 'git rebase --signoff origin/<base>' (ou 'git commit --amend -s') e force-push."
+            exit 1
+          fi
+          echo "DCO ok: ${total} commit(s) verificados."
+
+  labeler:
+    name: labeler
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: write # aplicar rótulos
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          egress-policy: audit
+
+      - name: Rotular por área
+        uses: actions/labeler@bf12e9b00b37c5c0ca2b87b79b2daf7891dbda13 # v7.0.0
+        with:
+          configuration-path: .github/labeler.yml
+          sync-labels: true

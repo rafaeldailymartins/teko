@@ -1,0 +1,59 @@
+name: Setup
+description: >-
+  Instala o pnpm na versão do campo packageManager, o Node da .nvmrc (24.x) com cache do store
+  do pnpm e as dependências com lockfile congelado. Opcionalmente restaura o cache local do Turbo.
+  O checkout é responsabilidade do job (com persist-credentials: false).
+
+inputs:
+  install:
+    description: Roda `pnpm install --frozen-lockfile` ('true' ou 'false').
+    required: false
+    default: "true"
+  turbo-cache:
+    description: >-
+      Restaura `.turbo/cache` ('true' ou 'false'). O save fica no job e só acontece em push para
+      develop/main, para que um PR não envenene o cache dos branches protegidos.
+    required: false
+    default: "false"
+
+outputs:
+  turbo-cache-key:
+    description: Chave do cache do Turbo deste job, para o `actions/cache/save` no fim do job.
+    value: ${{ steps.turbo-key.outputs.key }}
+
+runs:
+  using: composite
+  steps:
+    - name: Instalar pnpm (versão do packageManager)
+      uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+
+    - name: Instalar Node (.nvmrc) com cache do pnpm
+      uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      with:
+        node-version-file: .nvmrc
+        cache: pnpm
+
+    - name: Instalar dependências (lockfile congelado)
+      if: inputs.install == 'true'
+      shell: bash
+      run: pnpm install --frozen-lockfile
+
+    - name: Calcular chave do cache do Turbo
+      id: turbo-key
+      if: inputs.turbo-cache == 'true'
+      shell: bash
+      env:
+        RUNNER_OS_NAME: ${{ runner.os }}
+        JOB_ID: ${{ github.job }}
+        SHA: ${{ github.sha }}
+      run: |
+        echo "prefix=turbo-${RUNNER_OS_NAME}-${JOB_ID}-" >>"$GITHUB_OUTPUT"
+        echo "key=turbo-${RUNNER_OS_NAME}-${JOB_ID}-${SHA}" >>"$GITHUB_OUTPUT"
+
+    - name: Restaurar cache do Turbo
+      if: inputs.turbo-cache == 'true'
+      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: .turbo/cache
+        key: ${{ steps.turbo-key.outputs.key }}
+        restore-keys: ${{ steps.turbo-key.outputs.prefix }}
