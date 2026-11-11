@@ -211,14 +211,20 @@ jobs:
           #   detecção do GitHub acrescenta "BSD-3-Clause AND JSON". spdx-exceptions: CC-BY-3.0, e o
           #   pacote só contém a lista de dados SPDX (index.json).
           #   Os dois vêm do núcleo do Netlify CLI isolado (tools/netlify-cli), sem como removê-los.
-          # - @modelcontextprotocol/server-filesystem (via promptfoo, só evals): o package.json diz
-          #   "SEE LICENSE IN LICENSE", mas o tarball não traz o arquivo; o README declara MIT e o
-          #   repositório (modelcontextprotocol/servers) está em transição de MIT para Apache-2.0,
-          #   as duas na allowlist.
-          # - big-integer (via promptfoo, só evals): o package.json declara Unlicense; a detecção
-          #   acrescenta "public domain" por causa da dedicação ao domínio público do próprio texto.
+          # Da árvore do promptfoo (devDependency de @teko/api, só evals; nada entra no bundle). Os
+          # opcionais com licença fora da lista saem por override no pnpm-workspace.yaml; ficam:
+          # - big-integer: o package.json declara Unlicense; a detecção acrescenta "public domain"
+          #   por causa da dedicação ao domínio público do próprio texto da Unlicense.
+          # - istextorbinary, binaryextensions, textextensions, editions e version-range: Artistic-2.0
+          #   (OSI, permissiva), dependência direta e obrigatória do promptfoo; liberadas por pacote,
+          #   não como licença.
+          # - json-schema: o package.json declara "(AFL-2.1 OR BSD-3-Clause)" (vale a BSD-3-Clause);
+          #   a detecção trata o OR como AND.
+          # - json-schema-typed: o package.json declara BSD-2-Clause; a detecção acrescenta "JSON"
+          #   (falso positivo, como o do normalize-package-data).
           allow-dependencies-licenses: >-
             pkg:pypi/torch, pkg:pypi/typing-extensions, pkg:npm/prexit,
             pkg:npm/@bytecodealliance/preview2-shim, pkg:npm/normalize-package-data,
-            pkg:npm/spdx-exceptions, pkg:npm/@modelcontextprotocol/server-filesystem,
-            pkg:npm/big-integer
+            pkg:npm/spdx-exceptions, pkg:npm/big-integer, pkg:npm/istextorbinary,
+            pkg:npm/binaryextensions, pkg:npm/textextensions, pkg:npm/editions,
+            pkg:npm/version-range, pkg:npm/json-schema, pkg:npm/json-schema-typed
