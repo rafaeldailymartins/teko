@@ -1,0 +1,2 @@
+# PR descartável: segredo falso gerado na hora para conferir que o gitleaks reprova o ci-gate.
+api_key = "WlwYklZQrGcnYrJ74GxXKw7sP3kkRNx2JCvGusOX"
