@@ -208,3 +208,18 @@ O mesmo padrão sem âncora sobrevivia em duas configurações depois da correç
 `apps/api/src/adapters/out` da análise do SonarQube Cloud (issues, cobertura, quality gate) e do
 gate de duplicação. Ambos passaram a `apps/web/out/**`. Regra para qualquer ferramenta nova: o
 export do Next se exclui pelo caminho completo, nunca por um glob de diretório `out`.
+
+## Adendo (2026-11-11): licenças no dependency-review e remoção do `sharp`
+
+O primeiro run real do PR #1 mostrou duas coisas que a análise local não pegava:
+
+- **`sharp` removido** (`overrides: next>sharp: "-"`). É opcional do Next e só serve à otimização de
+  imagens, que o export estático não usa (`images.unoptimized`). Trazia os binários `libvips` sob
+  LGPL-3.0.
+- **Allowlist de licenças ampliada** com licenças permissivas consolidadas que aparecem nos lockfiles do
+  Python e do Vercel CLI: `MIT-CMU` (pillow), `BSL-1.0` (pyclipper) e `CNRI-Python` (regex).
+- **Exceções por pacote** (`allow-dependencies-licenses`), em vez de liberar a licença inteira:
+  `torch` e `@bytecodealliance/preview2-shim` ("Apache-2.0 WITH LLVM-exception", permissiva, mas sem
+  avaliação documentada de `WITH` na action); `typing-extensions` (PSF-2.0 detectada com
+  "GPL-1.0-or-later" pelo histórico de licença do Python no texto); `prexit` (WTFPL, permissiva, mas
+  vaga). Uma licença nova continua exigindo revisão do CODEOWNER do `.github/`.
