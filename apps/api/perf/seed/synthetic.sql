@@ -81,5 +81,7 @@ JOIN corpus.document_versions dv ON dv.document_id = p.document_id;
 CREATE INDEX chunks_embedding_hnsw ON corpus.chunks USING hnsw (embedding halfvec_cosine_ops)
   WITH (m = 16, ef_construction = 128);
 
-ANALYZE corpus.documents, corpus.document_versions, corpus.provisions, corpus.provision_versions,
-  corpus.chunks, corpus.chunk_sources;
+-- Depois deste script, rode `VACUUM (ANALYZE)` nas tabelas do corpus numa instrução à parte (VACUUM
+-- não roda dentro da transação implícita de um script com vários comandos): sem ele, a medição
+-- pega a tabela recém-carregada, sem hint bits nem visibility map, o que a produção (com
+-- autovacuum) nunca vê. O `sql-perf` faz isso em `beforeAll`.

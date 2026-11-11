@@ -41,6 +41,29 @@ describe('extractDateMentions', () => {
     expect(extractDateMentions(text)).toEqual([])
   })
 
+  it.each([
+    ['janeiro', 'jan', 'january', null, 1],
+    ['fevereiro', 'fev', 'february', 'feb', 2],
+    ['março', 'mar', 'march', null, 3],
+    ['abril', 'abr', 'april', 'apr', 4],
+    ['maio', 'mai', 'may', null, 5],
+    ['junho', 'jun', 'june', null, 6],
+    ['julho', 'jul', 'july', null, 7],
+    ['agosto', 'ago', 'august', 'aug', 8],
+    ['setembro', 'set', 'september', 'sep', 9],
+    ['outubro', 'out', 'october', 'oct', 10],
+    ['novembro', 'nov', 'november', 'nov', 11],
+    ['dezembro', 'dez', 'december', 'dec', 12],
+  ])('mês %s e abreviações', (pt, short, en, enShort, month) => {
+    const value = `2024-${String(month).padStart(2, '0')}-01`
+    for (const name of [pt, short, en, enShort]) {
+      if (name !== null) {
+        expect(extractDateMentions(`${name}/2024`).map((mention) => mention.value)).toEqual([value])
+      }
+    }
+    expect(extractDateMentions('sept 2024').map((mention) => mention.value)).toEqual(['2024-09-01'])
+  })
+
   it('devolve na ordem do texto, sem repetir a mesma data e granularidade', () => {
     expect(
       extractDateMentions('de 15/02/2006 até fevereiro de 2006, e de novo 15.02.2006 e 05/2006'),
