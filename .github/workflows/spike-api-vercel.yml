@@ -1,8 +1,13 @@
 # Spike F1 (b): Fastify "hello" com o server.ts real no projeto `teko-api-staging`, pelo mesmo
 # fluxo que o deploy-api.yml da F7 vai usar:
-#   vercel pull → vercel build → tarball do .vercel/output atestado (actions/attest) →
-#   gh attestation verify → vercel deploy --prebuilt --prod --skip-domain → vercel curl na URL
-#   única (protegida) → vercel promote.
+#   tsdown → pnpm deploy --prod → scripts/build-vercel-output.ts (Build Output API v3) → tarball
+#   do .vercel/output atestado (actions/attest) → gh attestation verify → vercel deploy --prebuilt
+#   --prod --skip-domain → vercel curl na URL única (protegida) → vercel promote.
+#
+# Não há `vercel pull` nem `vercel build`: o builder zero-config do Fastify mantinha os imports
+# `.ts` no server.js e a Function caía com ERR_MODULE_NOT_FOUND (run 42980171686). O output é
+# montado a partir do bundle do tsdown (ADR 0017), e o deploy só precisa de VERCEL_ORG_ID e
+# VERCEL_PROJECT_ID.
 #
 # Só `workflow_dispatch` (nunca roda em PR nem em push) e só no environment `staging`, que guarda
 # o VERCEL_TOKEN de staging (segredo) e VERCEL_ORG_ID/VERCEL_PROJECT_ID (variáveis). Sem eles o
@@ -80,32 +85,26 @@ jobs:
           pnpm --dir tools/vercel-cli install --frozen-lockfile
           echo "${GITHUB_WORKSPACE}/tools/vercel-cli/node_modules/.bin" >>"$GITHUB_PATH"
 
-      - name: vercel pull (Config de produção do teko-api-staging)
-        env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-          VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
+      - name: Bundle da API (tsdown)
+        run: pnpm --filter @teko/api build
+
+      - name: Dependências de produção da API (pnpm deploy, linker hoisted)
+        # hoisted: node_modules sem links simbólicos (o script recusa link e descarta os .bin).
+        run: >-
+          pnpm --filter @teko/api --prod deploy --ignore-scripts
+          --config.node-linker=hoisted dist/vercel/api-prod
+
+      - name: Montar o .vercel/output (Build Output API v3)
         run: |
           vercel --version
-          vercel pull --yes --environment=production --token "${VERCEL_TOKEN}"
-
-      - name: vercel build --prod
-        env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-          VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
-        run: vercel build --prod --token "${VERCEL_TOKEN}"
+          node scripts/build-vercel-output.ts
 
       - name: Empacotar o .vercel/output (sem .env nem project.json)
         id: pack
         run: |
-          # O spike também descobre onde o build grava o output com Root Directory apps/api.
-          out=''
-          for candidate in .vercel/output apps/api/.vercel/output; do
-            if [[ -d "$candidate" ]]; then out="$candidate"; break; fi
-          done
-          if [[ -z "$out" ]]; then
-            echo "::error title=spike-api-vercel::vercel build não gerou .vercel/output (nem em apps/api/.vercel/output)."
+          out=.vercel/output
+          if [[ ! -f "$out/config.json" ]]; then
+            echo "::error title=spike-api-vercel::scripts/build-vercel-output.ts não gerou $out/config.json."
             exit 1
           fi
           tarball="${RUNNER_TEMP}/teko-api-vercel-output.tgz"
@@ -123,11 +122,12 @@ jobs:
             echo
             echo "- output: \`${out}\`"
             echo "- tarball sha256: \`${sha256}\`"
-            echo "- functions geradas (nome para o glob de \`functions\` no vercel.json):"
+            echo "- functions:"
             find "$out/functions" -maxdepth 3 -name '.vc-config.json' -print0 2>/dev/null \
               | while IFS= read -r -d '' cfg; do
-                  echo "  - \`${cfg#"$out"/}\`: $(jq -c '{runtime, handler, regions, maxDuration, supportsResponseStreaming}' "$cfg")"
+                  echo "  - \`${cfg#"$out"/}\`: $(jq -c '{runtime, handler, launcherType, regions, maxDuration, supportsResponseStreaming, supportsCancellation}' "$cfg")"
                 done
+            echo "- tamanho da Function: $(du -sh "$out/functions" | cut -f1)"
           } >>"$GITHUB_STEP_SUMMARY"
 
       - name: Atestar o tarball (provenance)
@@ -160,6 +160,8 @@ jobs:
           fi
           echo "url=${url}" >>"$GITHUB_OUTPUT"
           echo "- deployment: ${url} (meta artifactSha256=${ARTIFACT_SHA256})" >>"$GITHUB_STEP_SUMMARY"
+          # Diagnóstico (região e Functions como a Vercel registrou); não decide o resultado.
+          vercel inspect "$url" --token "${VERCEL_TOKEN}" || echo "::warning::vercel inspect falhou"
 
       - name: Smoke na URL única (protegida) com vercel curl
         env:
@@ -215,3 +217,13 @@ jobs:
               exit 1
             fi
           done
+
+      - name: Logs de runtime da deployment (só em falha)
+        if: failure() && steps.deploy.outputs.url != ''
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
+          DEPLOYMENT_URL: ${{ steps.deploy.outputs.url }}
+        # As mensagens da API nunca trazem valores de env (env.ts); o boot recusado aparece aqui.
+        run: vercel logs --deployment "$DEPLOYMENT_URL" --since 30m --json --token "${VERCEL_TOKEN}"

@@ -1,23 +1,20 @@
-import { readFileSync } from 'node:fs'
 import { Server } from 'node:http'
 import { afterAll, describe, expect, it, vi } from 'vitest'
 
 /**
- * `src/server.ts` como o runtime da Vercel o carrega (zero-config Fastify, `@vercel/node`):
+ * `src/server.ts` como o launcher `Nodejs` da Vercel carrega o handler da Function (o
+ * `dist/server.mjs` no Build Output API de `scripts/build-vercel-output.ts`, ADR 0017):
  *
  * 1. troca `http.Server.prototype.listen` por um interceptador que só captura o servidor (não
  *    abre porta nem chama callback);
- * 2. faz `import()` do entrypoint e espera o módulo avaliar;
+ * 2. faz `import()` do handler e espera o módulo avaliar;
  * 3. se o servidor ainda não foi capturado, espera até 1 s;
  * 4. restaura o `listen` e o chama de verdade numa porta efêmera, encaminhando as requisições.
  *
- * Se o `server.ts` aguardasse o `listen` no topo do módulo, o passo 2 nunca terminaria. Este teste
- * reproduz esse protocolo (lido do builder da Vercel CLI 65.11.0) e precisa ser revisto se o spike
- * F1 (b) mostrar outro comportamento.
+ * Se o `server.ts` aguardasse o `listen` no topo do módulo, o passo 2 nunca terminaria. O protocolo
+ * foi lido do `@vercel/node` da Vercel CLI 65.11.0; o deploy real fica no spike F1 (b).
  */
 
-/** Regex com que o builder `@vercel/fastify` confirma que o entrypoint importa o Fastify. */
-const VERCEL_FASTIFY_IMPORT = /(?:from|require|import)\s*(?:\(\s*)?["']fastify["']\s*(?:\))?/g
 const CAPTURE_WAIT_MS = 1000
 
 let captured: Server | undefined
@@ -33,11 +30,6 @@ afterAll(async () => {
 })
 
 describe('server.ts no runtime da Vercel', () => {
-  it('é reconhecido como entrypoint Fastify pelo builder zero-config', () => {
-    const source = readFileSync(new URL('../../src/server.ts', import.meta.url), 'utf8')
-    expect(source.match(VERCEL_FASTIFY_IMPORT)).not.toBeNull()
-  })
-
   it('termina o import sem abrir porta, entrega o servidor e atende depois do listen real', async () => {
     vi.stubEnv('APP_ENV', 'ci')
     vi.stubEnv('WEB_ORIGIN', 'https://develop--teko-web.netlify.app')

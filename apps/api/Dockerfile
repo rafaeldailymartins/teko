@@ -1,6 +1,6 @@
 # Imagem da API do Tekó SÓ para a stack efêmera de CI (infra/ci: e2e, k6, ZAP, evals) e para
-# rodar localmente em Docker. Nunca é publicada: produção e staging rodam na Vercel (zero-config
-# Fastify a partir de src/server.ts) e o Plano B no Render (build nativo do Render). O runner do
+# rodar localmente em Docker. Nunca é publicada: produção e staging rodam na Vercel (Build Output
+# API com o mesmo bundle do tsdown, scripts/build-vercel-output.ts) e o Plano B no Render (build nativo do Render). O runner do
 # Actions é amd64, a arquitetura-alvo; a imagem não depende de arm64.
 #
 # Build a partir da RAIZ do monorepo (o contexto precisa de pnpm-lock.yaml e packages/shared):
