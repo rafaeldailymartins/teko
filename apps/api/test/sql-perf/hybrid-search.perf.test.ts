@@ -18,22 +18,26 @@ import { createTestDatabase, type TestDatabase } from '../setup/database.ts'
  *   o HNSW pelo KNN exato sobre o GiST (mais barato e exato), e continua sem `Seq Scan`;
  * - com o HNSW forçado e filtro seletivo, o braço vetorial devolve k linhas (iterative scan do
  *   pgvector 0.8, `relaxed_order`);
- * - a instrução inteira fica abaixo de 150 ms (mediana aquecida) nos dois perfis, numa máquina da
- *   velocidade típica do runner do CI.
+ * - a instrução inteira fica abaixo de 150 ms (mediana aquecida) nos dois perfis, em qualquer
+ *   runner até a velocidade de referência.
  *
  * A velocidade do runner do GitHub varia de um run para outro: sem mudança no SQL, a mediana com
  * uma família foi de 96 a 160 ms entre PRs, e as duas medidas sobem juntas no runner lento. Por
  * isso o teto é relativo à máquina: um KNN exato por força bruta sobre os 100k vetores (sem índice
  * nem o SQL da busca, só CPU e leitura do heap) mede a velocidade do runner, e o teto vira
- * `150 ms × max(1, referência ÷ REFERENCE_BASELINE_MS)`. Num runner típico ou mais rápido o teto é
- * 150 ms (nunca afrouxa); num lento, cresce na proporção medida. Regressão da busca continua
- * reprovando, porque a referência não depende dela.
+ * `150 ms × max(1, referência ÷ REFERENCE_BASELINE_MS)`. Regressão da busca continua reprovando,
+ * porque a referência não depende dela.
+ *
+ * Calibração (7 runs do CI em 2026-11-12, PR #50): referência de 172 a 281 ms, busca com uma
+ * família de 100 a 140 ms. A busca cresce menos que a referência (+40% contra +64%), então a
+ * referência de corte fica no topo da faixa observada: em todo runner medido o teto é 150 ms, e
+ * só um runner mais lento que todos eles ganha folga, menor que a lentidão real.
  */
 
 const SEED_SQL = readFileSync(new URL('../../perf/seed/synthetic.sql', import.meta.url), 'utf8')
 const LATENCY_BUDGET_MS = 150
-/** Mediana da referência num runner típico do CI (`ubuntu-24.04`). Em calibração: infinito = teto fixo. */
-const REFERENCE_BASELINE_MS = Number.POSITIVE_INFINITY
+/** Referência de corte: a maior mediana observada no runner `ubuntu-24.04` do CI (281 ms). */
+const REFERENCE_BASELINE_MS = 280
 const RUNS = 15
 const ALL_FAMILIES = ['efd-icms-ipi', 'efd-reinf', 'rcte', 'cte', 'efd-go', 'tabelas-go']
 const QUESTION = 'prazo de pagamento do imposto no regime especial de substituição tributária'
