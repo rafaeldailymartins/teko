@@ -1164,7 +1164,7 @@ function labelsOf(
     .filter((version) => version.draft.displaySegments !== version.draft.segments)
     .map((version) => version.validDuring.from)
     .filter((from): from is IsoDate => from !== null)
-    .sort()
+    .sort(compareCodeUnits)
   const oldFrom = oldStarts[0] ?? null
   const labels: ParsedLabel[] = [
     {
