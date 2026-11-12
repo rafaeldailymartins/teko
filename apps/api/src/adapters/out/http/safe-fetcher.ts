@@ -173,7 +173,7 @@ function tooLarge(url: URL, maxBytes: number): BlockedRequestError {
  * Transporte real: `https.request` (ou `http.request`, nos saltos em http que o `checkUrl`
  * aceitou) com o `lookup` validado e sem agente compartilhado.
  */
-const nodeTransport: Transport = (request) =>
+export const nodeTransport: Transport = (request) =>
   new Promise((resolve, reject) => {
     const send: typeof httpsRequest = request.url.protocol === 'http:' ? httpRequest : httpsRequest
     const outgoing = send(
