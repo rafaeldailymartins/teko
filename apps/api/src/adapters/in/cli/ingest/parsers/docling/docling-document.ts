@@ -10,6 +10,11 @@ import { ParseError } from '../parser.ts'
  * e áreas chave-valor) e as tabelas (`tables[].data.table_cells`, com os índices de linha e coluna
  * de cada célula). A `grid` de `TableData` é um campo calculado (a mesma informação das células) e
  * não é lida: a grade é remontada aqui a partir de `table_cells`. A página vem de `prov[0].page_no`.
+ *
+ * Figuras (`pictures`) saem inteiras, com os filhos: sem OCR, os filhos são os rótulos que o
+ * Docling achou dentro do desenho (fluxogramas dos Guias EFD-GO: "Contribuinte goiano", "=",
+ * aspas soltas), que fora da imagem só poluem o texto do tópico. Legenda de figura não é filho
+ * (fica em `captions`) e não aparece nos PDFs do corpus.
  */
 
 const refSchema = z.object({ $ref: z.string() })
@@ -50,6 +55,7 @@ const doclingDocumentSchema = z.object({
   groups: z.array(groupItemSchema).default([]),
   texts: z.array(textItemSchema).default([]),
   tables: z.array(tableItemSchema).default([]),
+  pictures: z.array(z.object({ self_ref: z.string() })).default([]),
 })
 
 type DoclingDocument = z.infer<typeof doclingDocumentSchema>
@@ -110,7 +116,7 @@ function tableRows(table: TableItem): string[][] {
   return rows
 }
 
-const POINTER = /^#\/(texts|groups|tables)\/(\d+)$/
+const POINTER = /^#\/(texts|groups|tables|pictures)\/(\d+)$/
 
 /** Blocos de uma parte, na ordem de leitura do `body` (busca em profundidade pelos `$ref`). */
 function blocksOf(doc: DoclingDocument, part: number): DoclingBlock[] {
@@ -127,6 +133,13 @@ function blocksOf(doc: DoclingDocument, part: number): DoclingBlock[] {
     }
     const collection = match[1]
     const index = Number(match[2])
+    if (collection === 'pictures') {
+      if (doc.pictures[index] === undefined) {
+        throw new ParseError(`Referência quebrada no DoclingDocument (parte ${part + 1}): ${ref}`)
+      }
+      // A figura e os rótulos de dentro dela não viram blocos (ver o comentário do módulo).
+      return
+    }
     if (collection === 'texts') {
       const item = doc.texts[index]
       if (item === undefined) {

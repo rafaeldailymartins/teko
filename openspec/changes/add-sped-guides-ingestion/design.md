@@ -31,7 +31,10 @@ por curadoria fora do repositório e define as chaves, títulos e rótulos que o
 
 - **Leitura do DoclingDocument pela árvore `body`.** A ordem de leitura vem dos `$ref` do `body`
   (busca em profundidade, incluindo filhos de grupos e legendas de tabelas), e não da ordem de
-  `texts`. Itens `furniture` e rótulos `page_header`/`page_footer` saem. A grade das tabelas é
+  `texts`. Itens `furniture` e rótulos `page_header`/`page_footer` saem. Figuras (`pictures`)
+  saem com os filhos: sem OCR, os filhos são rótulos soltos de fluxogramas (Guias EFD-GO, NTs
+  2023-001 e 2026-001), ruído fora da imagem; o primeiro run real (2026-11-12) parou nelas porque o
+  leitor recusava `#/pictures/N`. A grade das tabelas é
   remontada de `table_cells` (a `grid` é campo calculado do `TableData`); célula mesclada fica só
   na primeira posição, para não duplicar texto. Documentos em várias partes (`page_range`) são
   ordenados pela menor página de cada parte (o Docling mantém o número da página original).
