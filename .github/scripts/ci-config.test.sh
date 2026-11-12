@@ -179,6 +179,8 @@ check "ingest: lock-pr e corpus-eval rodam com o extract pulado (!cancelled() e 
   yq_true '[.jobs."lock-pr", .jobs."corpus-eval" | .if | (test("!cancelled\\(\\)") and test("needs\\.load\\.result == .success."))] | all' "$ingest"
 check "ingest: corpus-eval com o reranker do Workers AI (ADR 0027)" \
   bash -c "yq -r '.jobs.\"corpus-eval\".steps[].env.RERANKER_PROVIDER // \"\"' '$ingest' | grep -qx 'workers-ai'"
+check "ingest: corpus-eval avalia o corpus real (EVAL_CORPUS=staging)" \
+  bash -c "yq -r '.jobs.\"corpus-eval\".steps[].env.EVAL_CORPUS // \"\"' '$ingest' | grep -qx 'staging'"
 check "ingest: load com --migrate só no staging" \
   bash -c "grep -Eq 'ingest load --target staging .*--migrate' '$ingest'"
 check "ingest: código 75 do load não é falha" \

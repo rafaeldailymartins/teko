@@ -750,12 +750,15 @@
     provisions: ["go:efd-go:item:4-1"]
     doc_version: Guia Prático da EFD de Goiás versão 5.8 (atualização de 02/10/2025)
     validity: { from: "2025-10-02", to: null }
+    # No staging há o Guia 5.9 (16/03/2026), que muda o tópico 4.1 e fecha a redação do 5.8; a
+    # fixture só tem o 5.8.
+    staging_validity: { from: "2025-10-02", to: "2026-03-16" }
     facts: ["O registro C173 passa a ser obrigatório à partir de 01/03/2023"]
   tags: [efd-go-tabelas, efd-go]
   source_url: https://goias.gov.br/economia/wp-content/uploads/sites/45/2025/10/Guia_pratico_5.8.pdf
   source_quote: O registro C173 passa a ser obrigatório à partir de 01/03/2023.
-  curated_by: claude-opus-5.5 (curadoria assistida; revisado pelo mantenedor)
-  reviewed_at: "2026-11-11"
+  curated_by: claude-opus-5.5 (curadoria assistida; revisado pelo mantenedor; staging_validity em 2026-11-12)
+  reviewed_at: "2026-11-12"
 
 - id: tabgo-go000002-2024
   question: Qual código de ajuste da apuração de Goiás uso para o débito da restituição de crédito de ICMS recebida em moeda?
@@ -820,21 +823,24 @@
 # Recusas (6): fora da cobertura indexada (antes da primeira versão, depois do verified_at
 # 2026-11-10, Anexos do RCTE antes da onda C3)
 
+# Antes de toda a EFD ICMS/IPI indexada: o Guia mais antigo é o 3.1.9 (leiaute 2025), e a NT mais
+# antiga, a 2023.001 (09/11/2023), cujos itens já cobrem 2024 no staging (até 2026-11-12 o caso
+# usava 2024-03, que só ficava fora da cobertura na fixture).
 - id: recusa-efd-antes-da-cobertura
   question: Como preencher a quantidade do item no C170 da nota fiscal de entrada?
-  periodo_apuracao: "2024-03"
+  periodo_apuracao: "2022-03"
   reference_source: periodo_apuracao
   locale: pt-BR
   families: [efd-icms-ipi]
   expected:
     status: refused
-    reference_date: "2024-03-01"
+    reference_date: "2022-03-01"
     refusal_reason: out_of_coverage
   tags: [recusa, antes-da-cobertura]
   source_url: https://www.gov.br/sped/pt-br/assuntos/escrituracoes-digitais/efd-icms-ipi/manuais-e-documentos-tecnicos/guia-pratico-efd-versao-3-1-9.pdf
   source_quote: "Atualização: 13 de maio de 2025"
-  curated_by: claude-opus-5.5 (curadoria assistida; revisado pelo mantenedor)
-  reviewed_at: "2026-11-11"
+  curated_by: claude-opus-5.5 (curadoria assistida; revisado pelo mantenedor; data movida em 2026-11-12)
+  reviewed_at: "2026-11-12"
 
 - id: recusa-reinf-antes-da-cobertura
   question: Quais retenções informar no evento de pagamentos a pessoa jurídica da EFD-Reinf?

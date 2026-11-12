@@ -48,6 +48,11 @@ export const goldenCaseSchema = z
       doc_version: z.string().min(1).optional(),
       /** Vigência da redação esperada (a do primeiro dispositivo de `provisions`). */
       validity: validityIntervalSchema.optional(),
+      /**
+       * Vigência no corpus real do staging (`corpus-eval`), quando difere da fixture: o staging tem
+       * documentos que a fixture não tem (ex.: um Guia posterior que fecha a vigência).
+       */
+      staging_validity: validityIntervalSchema.optional(),
       /** Fatos que a resposta gerada precisa conter (generation evals). */
       facts: z.array(z.string().min(1)).default([]),
       /** Datas candidatas de `needs_clarification`. */
