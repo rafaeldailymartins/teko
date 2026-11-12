@@ -181,6 +181,8 @@ check "ingest: corpus-eval com o reranker do Workers AI (ADR 0027)" \
   bash -c "yq -r '.jobs.\"corpus-eval\".steps[].env.RERANKER_PROVIDER // \"\"' '$ingest' | grep -qx 'workers-ai'"
 check "ingest: corpus-eval avalia o corpus real (EVAL_CORPUS=staging)" \
   bash -c "yq -r '.jobs.\"corpus-eval\".steps[].env.EVAL_CORPUS // \"\"' '$ingest' | grep -qx 'staging'"
+check "ingest: corpus-eval com os limites do corpus real (retrieval-corpus), que nunca ficam abaixo da fixture no recall" \
+  bash -c "yq -r '.jobs.\"corpus-eval\".steps[].run // \"\"' '$ingest' | grep -q 'eval:retrieval:check:corpus' && jq -e '.\"retrieval-corpus\".\"recall@10\" >= .retrieval.\"recall@10\" and .\"retrieval-corpus\".vigencia == 1 and .\"retrieval-corpus\".recusa == 1' apps/api/evals/thresholds.json >/dev/null"
 check "ingest: load com --migrate só no staging" \
   bash -c "grep -Eq 'ingest load --target staging .*--migrate' '$ingest'"
 check "ingest: código 75 do load não é falha" \

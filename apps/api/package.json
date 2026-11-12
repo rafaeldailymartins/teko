@@ -29,7 +29,8 @@
     "db:generate": "drizzle-kit generate",
     "test:sql-perf": "vitest run --project sql-perf",
     "eval:retrieval": "promptfoo eval -c evals/retrieval/promptfooconfig.yaml --no-cache --no-write --no-progress-bar --no-table -o reports/retrieval-evals.json",
-    "eval:retrieval:check": "node evals/scripts/check-thresholds.ts reports/retrieval-evals.json retrieval"
+    "eval:retrieval:check": "node evals/scripts/check-thresholds.ts reports/retrieval-evals.json retrieval",
+    "eval:retrieval:check:corpus": "node evals/scripts/check-thresholds.ts reports/retrieval-evals.json retrieval-corpus"
   },
   "dependencies": {
     "@fastify/cors": "catalog:",

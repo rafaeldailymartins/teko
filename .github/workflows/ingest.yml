@@ -728,8 +728,10 @@ jobs:
           CF_AI_TOKEN: ${{ secrets.CF_AI_TOKEN }}
         run: pnpm --filter @teko/api eval:retrieval
 
-      - name: Gate das retrieval evals (thresholds.json)
-        run: pnpm --filter @teko/api eval:retrieval:check
+      # Limites próprios do corpus real (seção retrieval-corpus): trava contra regressão no nível
+      # medido, separada do gate da fixture do PR.
+      - name: Gate das retrieval evals (thresholds.json, retrieval-corpus)
+        run: pnpm --filter @teko/api eval:retrieval:check:corpus
 
       - name: Guardar o resultado das evals
         if: ${{ !cancelled() }}

@@ -43,6 +43,13 @@ pergunta em linguagem natural não casa bem com o texto técnico.
 - ~3,5 neurons por pergunta, do mesmo orçamento diário da ingestão (10 mil neurons).
 - O modelo foi treinado em inglês e chinês; o ganho em português foi conferido antes da decisão,
   mas perguntas muito fora do vocabulário do corpus podem piorar.
+- **Gate do `corpus-eval` separado do da fixture** (decisão do mantenedor em 2026-11-12). O
+  `corpus-eval` usa a seção `retrieval-corpus` do `thresholds.json`: os mesmos gates da fixture,
+  exceto MRR ≥ 0,65, uma trava contra regressão no nível medido (cerca de 0,68, menos a margem de
+  um caso do golden e da variação entre runs), que só sobe. O 0,70 foi calibrado na fixture, que
+  tem um décimo dos chunks; mantido no corpus real, deixaria todo run vermelho e esconderia
+  regressões de verdade. A meta de 0,70 no corpus real é da F4 (reescrita da pergunta). O gate da
+  fixture no PR não muda.
 
 ## Alternativas consideradas
 
