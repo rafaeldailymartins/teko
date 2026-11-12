@@ -28,6 +28,8 @@ export const retrievalOutputSchema = z.object({
    * staging (`corpus-eval`), que usa `staging_validity` quando o caso a define.
    */
   corpus: z.enum(['fixture', 'staging']).optional(),
+  /** Candidatos antes do reranker, na ordem do RRF (só com `EVAL_POOL_SIZE`; ADR 0027). */
+  pool: z.array(z.object({ stableKey: z.string(), text: z.string() })).optional(),
   /**
    * Estado no banco de cada dispositivo esperado que ficou fora do top-k (só no `corpus-eval` e no
    * provider local): separa dado faltando (sem redação na data, `pending`, sem embedding) de ranking.
