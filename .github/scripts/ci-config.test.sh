@@ -63,6 +63,9 @@ check "ci-gate depende do workflow ci (que inclui o sonar)" \
 
 # --- Gates da F2: mutação, sql-perf, migration-guard e retrieval evals entram no ci-gate --------
 check "ci-gate depende de mutation e perf"   bash -c "yq -e '.jobs.\"ci-gate\".needs | contains([\"mutation\", \"perf\"])' .github/workflows/pr-gate.yml >/dev/null"
+# Só mutation e perf podem pular (workflows só com jobs filtrados por escopo); ci e security, nunca.
+check "ci-gate aceita skip só de mutation e perf" \
+  bash -c "yq -r '.jobs.\"ci-gate\".steps[] | select(.uses // \"\" | test(\"alls-green\")) | .with.\"allowed-skips\"' .github/workflows/pr-gate.yml | jq -e 'sort == [\"mutation\", \"perf\"]' >/dev/null"
 check "lint roda os testes do migration-guard" job_runs_match lint 'bash .github/scripts/migration-guard.test.sh'
 check "migration-guard roda o script com os labels do PR" job_runs_match migration-guard 'bash .github/scripts/migration-guard.sh'
 check "retrieval-evals aplica o gate do thresholds.json" job_runs_match retrieval-evals 'eval:retrieval:check'

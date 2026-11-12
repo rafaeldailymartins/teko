@@ -124,6 +124,9 @@ jobs:
         with:
           jobs: ${{ toJSON(needs) }}
           # Jobs que podem terminar como `skipped` sem reprovar o gate. Nenhum job deste workflow é
-          # condicional: o filtro por escopo acontece dentro de ci.yml, mutation.yml e perf.yml. Os
-          # que vierem com `if:` aqui (e2e, evals) entram nesta lista.
-          allowed-skips: "[]"
+          # condicional: o filtro por escopo acontece dentro de ci.yml, mutation.yml e perf.yml. Mas
+          # o mutation.yml e o perf.yml só têm jobs filtrados: num PR sem pacote afetado (só
+          # corpus/, como o PR do corpus.lock.json), todos pulam e o GitHub reporta o workflow
+          # chamado inteiro como `skipped`. Falha continua sendo `failure`. O ci.yml sempre roda o
+          # lint e não entra aqui. Os que vierem com `if:` aqui (e2e, evals) entram nesta lista.
+          allowed-skips: '["mutation", "perf"]'

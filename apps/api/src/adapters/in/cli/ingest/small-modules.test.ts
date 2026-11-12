@@ -13,7 +13,7 @@ import {
   serializeCorpusLock,
   writeCorpusLock,
 } from './corpus-lock.ts'
-import { PARSERS } from './parsers/index.ts'
+import { PARSER_REVISIONS, PARSERS } from './parsers/index.ts'
 import { ParserName } from './parsers/parser.ts'
 import { parseTableVersions, tableDownloadUrl, WsTabelasError } from './ws-tabelas.ts'
 
@@ -62,6 +62,15 @@ describe('parsers/index', () => {
     for (const parser of Object.values(PARSERS)) {
       expect(typeof parser).toBe('function')
     }
+  })
+
+  it('cada parser tem uma revisão inteira positiva (ADR 0026)', () => {
+    expect(Object.keys(PARSER_REVISIONS).sort()).toEqual(Object.values(ParserName).sort())
+    for (const revision of Object.values(PARSER_REVISIONS)) {
+      expect(Number.isInteger(revision) && revision >= 1).toBe(true)
+    }
+    // A correção do registro 0000 e das linhas fundidas (#33) sobe o docling-guia para 2.
+    expect(PARSER_REVISIONS[ParserName.DoclingGuia]).toBe(2)
   })
 })
 

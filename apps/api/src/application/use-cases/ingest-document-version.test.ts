@@ -241,8 +241,9 @@ function fakeRepository(options: {
       recorder.calls.push(`document:${document.slug}:${document.jurisdiction}`)
       return Promise.resolve('doc')
     },
-    insertDocumentVersion: ({ blobRaw }) => {
-      recorder.calls.push(`version:${String(blobRaw)}`)
+    insertDocumentVersion: ({ blobRaw, parserRevision }) => {
+      const revision = parserRevision === 1 ? '' : `:rev${String(parserRevision)}`
+      recorder.calls.push(`version:${String(blobRaw)}${revision}`)
       return Promise.resolve('dv')
     },
     closePreviousDocumentVersions: (_doc, _dv, from) => {
@@ -351,17 +352,47 @@ const command = (src: ParsedSource) => ({
   source: src,
   blobRaw: 'raw',
   blobDocling: null,
+  parserRevision: 1,
 })
 
 describe('IngestDocumentVersion', () => {
   it('sha256 já publicado: unchanged, sem banco nem embeddings', async () => {
-    const { ingest, recorder, requested } = setup({ existing: { id: 'dv0', status: 'published' } })
+    const { ingest, recorder, requested } = setup({
+      existing: { id: 'dv0', status: 'published', parserRevision: 1 },
+    })
     expect(await ingest(command(source([version('Art. 1. Texto.')])))).toEqual({
       status: 'unchanged',
       documentVersionId: 'dv0',
     })
     expect(recorder.calls).toEqual([])
     expect(requested).toEqual([])
+  })
+
+  it('sha256 publicado com revisão do parser maior ou igual: unchanged (ADR 0026)', async () => {
+    const newer = setup({ existing: { id: 'dv0', status: 'published', parserRevision: 3 } })
+    expect(
+      await newer.ingest({ ...command(source([version('Art. 1. Texto.')])), parserRevision: 2 }),
+    ).toEqual({ status: 'unchanged', documentVersionId: 'dv0' })
+    expect(newer.recorder.calls).toEqual([])
+  })
+
+  it('sha256 publicado com revisão menor do parser: reprocessa a mesma versão', async () => {
+    const { ingest, recorder, requested } = setup({
+      existing: { id: 'dv0', status: 'published', parserRevision: 1 },
+      open: [open('velha', 'go:rcte:art:1', '#Art. 1. Redação velha.', iv('2000-01-01'))],
+    })
+    const result = await ingest({
+      ...command(source([version('Art. 1. Redação corrigida.', iv('2000-01-01'))])),
+      parserRevision: 2,
+    })
+    expect(result).toMatchObject({
+      status: 'published',
+      reprocessed: true,
+      provisionVersionsNew: 1,
+      knowledgeClosed: 1,
+    })
+    expect(requested).toEqual(['RCTE > Art. 1\n\nArt. 1. Redação corrigida.'])
+    expect(recorder.calls).toContain('version:raw:rev2')
   })
 
   it('aborta acima da guarda de tamanho', async () => {
@@ -386,7 +417,7 @@ describe('IngestDocumentVersion', () => {
 
   it('publica: ordem das operações, fontes, fila de revisão e contagens', async () => {
     const { ingest, recorder, requested } = setup({
-      existing: { id: 'dv-falha', status: 'failed' },
+      existing: { id: 'dv-falha', status: 'failed', parserRevision: 1 },
       open: [
         open('velha', 'go:rcte:art:1', '#Art. 1. Redação velha.', iv('2000-01-01')),
         open('igual', 'go:rcte:art:1', '#Art. 1. Igual.', iv('1990-01-01', '2000-01-01')),
@@ -420,6 +451,7 @@ describe('IngestDocumentVersion', () => {
     expect(result).toEqual({
       status: 'published',
       documentVersionId: 'dv',
+      reprocessed: false,
       provisionVersionsNew: 3,
       provisionVersionsWidened: 0,
       provisionVersionsSplit: 0,

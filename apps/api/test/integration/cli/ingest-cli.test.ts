@@ -7,7 +7,7 @@ import pg from 'pg'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { runIngestDiscover } from '#adapters/in/cli/ingest/discover.ts'
 import { runIngestLoad } from '#adapters/in/cli/ingest/load.ts'
-import { PARSERS } from '#adapters/in/cli/ingest/parsers/index.ts'
+import { PARSER_REVISIONS, PARSERS } from '#adapters/in/cli/ingest/parsers/index.ts'
 import { buildCorpusConfig, type CorpusConfig } from '#adapters/in/cli/ingest/sources.ts'
 import { buildZip } from '#adapters/in/cli/ingest/testing/zip-builder.ts'
 import { sha256ContentHasher } from '#adapters/out/crypto/sha256-content-hasher.ts'
@@ -212,6 +212,7 @@ async function load(
       config: cfg,
       blobs,
       parsers: PARSERS,
+      parserRevisions: PARSER_REVISIONS,
       overrides: new Map(),
       hasher: sha256ContentHasher,
       useCases: context.container.useCases,
