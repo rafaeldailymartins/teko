@@ -46,9 +46,9 @@ export interface HybridSearchDeps {
   readonly limit: number
   /** `null` = sem reranker (ordem do RRF). */
   readonly reranker: RerankerPort | null
-  /** Candidatos pedidos à instrução quando há reranker (ADR 0027: 30). */
+  /** Candidatos pedidos à instrução quando há reranker (ADR 0027: 40). */
   readonly rerankCandidates: number
-  /** Teto do reranker antes de manter a ordem do RRF (ADR 0027: 2 s). */
+  /** Teto do reranker antes de manter a ordem do RRF (ADR 0027: 3 s). */
   readonly rerankTimeoutMs: number
 }
 

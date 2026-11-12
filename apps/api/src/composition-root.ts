@@ -93,9 +93,9 @@ const QUESTION_EMBEDDING_TIMEOUT_MS = 3000
 /** Evidências devolvidas pela busca híbrida. */
 const SEARCH_LIMIT = 12
 /** Candidatos que o reranker reordena antes do corte em `SEARCH_LIMIT` (ADR 0027). */
-const RERANK_CANDIDATES = 30
+const RERANK_CANDIDATES = 40
 /** Teto do reranker antes de manter a ordem do RRF. */
-const RERANK_TIMEOUT_MS = 2000
+const RERANK_TIMEOUT_MS = 3000
 
 /** Reranker do `RERANKER_PROVIDER`, ou `null` (o `parseEnv` já exigiu as credenciais). */
 export function createReranker(env: Env): RerankerPort | null {
