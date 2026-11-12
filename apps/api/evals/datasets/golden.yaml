@@ -183,13 +183,16 @@
     provisions: ["br:efd-icms-ipi:reg:E110:campo:02"]
     doc_version: Guia Prático EFD-ICMS/IPI versão 3.1.9 (atualização de 13/05/2025)
     validity: { from: "2025-01-01", to: "2026-01-01" }
+    # No staging há o Guia 3.1.6 (leiaute 2024, portal antigo, ADR 0028) com o mesmo texto do campo:
+    # a reconciliação alarga a redação para 2024 (ADR 0025); a fixture só tem o 3.1.9.
+    staging_validity: { from: "2024-01-01", to: "2026-01-01" }
     facts: ["CFOP 5605"]
   pair: efd-e110-vltotdeb
   tags: [efd-icms-ipi, validacao]
   source_url: https://www.gov.br/sped/pt-br/assuntos/escrituracoes-digitais/efd-icms-ipi/manuais-e-documentos-tecnicos/guia-pratico-efd-versao-3-1-9.pdf
   source_quote: os documentos complementares extemporâneos (COD_SIT com valor igual ‘07’) e os documentos fiscais com CFOP 5605
-  curated_by: claude-opus-5.5 (curadoria assistida; revisado pelo mantenedor)
-  reviewed_at: "2026-11-11"
+  curated_by: claude-opus-5.5 (curadoria assistida; revisado pelo mantenedor; staging_validity em 2026-11-12)
+  reviewed_at: "2026-11-12"
 
 - id: efd-e110-vltotdeb-2026
   question: Quais documentos ficam fora do valor total dos débitos na apuração do ICMS próprio (E110)?
