@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { FAMILIES } from '#domain/corpus/family.ts'
 import { IngestTarget } from './cli-common.ts'
 import { ParserName } from './parsers/parser.ts'
-import { SourceFormat, SourceMode } from './sources.ts'
+import { HTTP_PINNED_HOSTS, SourceFormat, SourceMode } from './sources.ts'
 
 /**
  * Contratos de arquivo entre os jobs do `ingest.yml`:
@@ -13,9 +13,17 @@ import { SourceFormat, SourceMode } from './sources.ts'
  * - `<out>/extract-matrix.json`: as partes do Docling que faltam no store `corpus-docling`, no
  *   formato que o job `extract` valida (`id` = `<sha256>[-p<início>-<fim>]`, `file` relativo,
  *   `url` https, `pageRange`, `ocr`, `timeoutSeconds`).
+ *
+ * URL de download em http só nos hosts com exceção (ADR 0028), como no manifesto e no `SafeFetcher`.
  */
 
 const sha256Schema = z.string().regex(/^[0-9a-f]{64}$/)
+const downloadUrlSchema = z
+  .url({ protocol: /^https?$/ })
+  .refine(
+    (value) => value.startsWith('https://') || HTTP_PINNED_HOSTS.has(new URL(value).hostname),
+    { error: 'http só nos hosts com exceção (ADR 0028)' },
+  )
 const relativeFileSchema = z
   .string()
   .regex(/^[A-Za-z0-9._/-]+$/)
@@ -48,8 +56,8 @@ const planItemSchema = z.strictObject({
   format: z.enum(SourceFormat),
   version: z.string().nullable(),
   /** URL pedida (para tabelas do WS, com `idTabela` e `versao`) e URL final, depois de redirects. */
-  url: z.url({ protocol: /^https$/ }),
-  finalUrl: z.url({ protocol: /^https$/ }),
+  url: downloadUrlSchema,
+  finalUrl: downloadUrlSchema,
   sha256: sha256Schema,
   bytes: z.int().nonnegative(),
   file: relativeFileSchema,

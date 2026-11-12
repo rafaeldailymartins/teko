@@ -198,6 +198,27 @@ describe('ingest discover', () => {
   })
 })
 
+describe('ingest discover: fonte fixada em http (ADR 0028)', () => {
+  const url = 'http://sped.rfb.gov.br/arquivo/download/7233'
+  const finalUrl = 'http://sped.rfb.gov.br/estatico/guia.pdf'
+
+  it('grava um plano que o load aceita, com a URL http pedida e a final', async () => {
+    const fetcher = fakeFetcher({
+      ...DEFAULT_RESPONSES,
+      [url]: { status: 200, url: finalUrl, headers: {}, body: GUIA_PDF },
+    })
+    const { code } = await discover([], fetcher, testCorpusConfig({ guiaUrl: url }))
+    expect(code).toBe(0)
+    const plan = readPlan()
+    expect(plan.errors).toEqual([])
+    expect(plan.items[0]).toMatchObject({ url, finalUrl, origin: 'source' })
+    expect(readMatrix()[0]?.url).toBe(finalUrl)
+    const [first, ...rest] = plan.items
+    const foreign = { ...plan, items: [{ ...first, url: 'http://www.gov.br/x' }, ...rest] }
+    expect(planSchema.safeParse(foreign).success).toBe(false)
+  })
+})
+
 describe('parseDiscoverArgs', () => {
   it.each([
     [['--out', 'x'], /--target/],
