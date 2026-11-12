@@ -4,6 +4,7 @@ import {
   createContainer,
   createEmbeddings,
   createHttpOptions,
+  createReranker,
   createRuntime,
   logBackgroundFailure,
   reviewStatusesFor,
@@ -174,6 +175,19 @@ describe('serviços do corpus (F2)', () => {
       }),
     )
     expect(workersAi?.dimensions).toBe(1024)
+  })
+
+  it('createReranker só monta o Workers AI com RERANKER_PROVIDER=workers-ai (ADR 0027)', () => {
+    expect(createReranker(parseEnv(BASE))).toBeNull()
+    const reranker = createReranker(
+      parseEnv({
+        ...BASE,
+        RERANKER_PROVIDER: 'workers-ai',
+        CF_ACCOUNT_ID: '0123456789abcdef0123456789abcdef',
+        CF_AI_TOKEN: 'token-de-teste-com-20-chars',
+      }),
+    )
+    expect(reranker?.model).toBe('@cf/baai/bge-reranker-base')
   })
 
   it('sem DATABASE_URL, a busca e a escrita do corpus ficam de fora', async () => {

@@ -38,13 +38,12 @@ export interface WorkersAiOptions {
   readonly onUsage?: (usage: { readonly neurons: number | null; readonly texts: number }) => void
 }
 
-export function workersAiEndpoint(accountId: string): URL {
+/** Endpoint REST de um modelo do Workers AI (o host é fixo; o reranker usa a mesma função). */
+export function workersAiEndpoint(accountId: string, model: string = BGE_M3_MODEL): URL {
   if (!/^[0-9a-f]{32}$/.test(accountId)) {
     throw new RangeError('CF_ACCOUNT_ID inválido (esperado: 32 dígitos hexadecimais)')
   }
-  const url = new URL(
-    `https://${WORKERS_AI_HOST}/client/v4/accounts/${accountId}/ai/run/${BGE_M3_MODEL}`,
-  )
+  const url = new URL(`https://${WORKERS_AI_HOST}/client/v4/accounts/${accountId}/ai/run/${model}`)
   if (url.host !== WORKERS_AI_HOST) {
     throw new RangeError(`host inesperado para o Workers AI: ${url.host}`)
   }
