@@ -48,6 +48,10 @@ o `discover` e o `load` do CLI Node.
   no cache. Os itens da
   matriz só restauram (`fail-on-cache-miss`) e rodam com `HF_HUB_OFFLINE=1`: a conversão não toca
   a rede, e a allowlist do `extract` não inclui Hugging Face.
+- **Jobs depois do `load` com condição explícita.** `lock-pr` e `corpus-eval` usam
+  `!cancelled() && needs.load.result == 'success' && …`. Um `if:` sem função de status ganha um
+  `success()` implícito, que dá falso quando um ancestral foi pulado: no run sem PDF novo
+  (2026-11-12, `extract` pulado), os dois foram pulados com o `load` verde.
 - **Código 75 não é falha.** O `load` termina verde com `status=budget_exhausted` quando o
   orçamento diário de neurons acaba; o resumo pede outro run, que retoma pelo `embedding_cache`.
 - **Commit do lock pela API GraphQL (`createCommitOnBranch`).** Com o token da App
