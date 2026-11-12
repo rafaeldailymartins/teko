@@ -1,8 +1,18 @@
 {
   "$comment": "Gates das evals (plano: Avaliação). Média por métrica sobre os casos em que ela se aplica.",
+  "$comment_retrieval": "Retrieval evals do PR, sobre a fixture única (sem segredo): protegem o código da busca a cada mudança.",
+  "$comment_retrieval-corpus": "corpus-eval (ingest.yml), sobre o corpus real do staging: trava contra regressão no nível já medido, que só sobe. MRR 0,65 = cerca de 0,68 medido com o reranker de 40 candidatos (ADR 0027), menos a margem de um caso do golden (0,025) e da variação entre runs. Meta de MRR 0,70 na F4 (reescrita da pergunta). Decisão do mantenedor em 2026-11-12.",
   "retrieval": {
     "recall@10": 0.9,
     "mrr": 0.7,
+    "vigencia": 1,
+    "recusa": 1,
+    "clarificacao": 1,
+    "data_referencia": 1
+  },
+  "retrieval-corpus": {
+    "recall@10": 0.9,
+    "mrr": 0.65,
     "vigencia": 1,
     "recusa": 1,
     "clarificacao": 1,

@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { evaluateThresholds, renderSummary } from './check-thresholds.ts'
 
@@ -95,5 +97,22 @@ describe('renderSummary', () => {
     expect(failed).toContain('### X: REPROVADO')
     expect(failed).toContain('**Erros do provider:**\n- c: erro')
     expect(failed).not.toContain('<details>')
+  })
+})
+
+describe('thresholds.json', () => {
+  const file = JSON.parse(
+    readFileSync(fileURLToPath(new URL('../thresholds.json', import.meta.url)), 'utf8'),
+  ) as Record<string, Record<string, number>>
+
+  it('o corpus-eval tem as mesmas métricas da fixture, sem afrouxar recall, vigência e recusa', () => {
+    const fixture = file['retrieval'] ?? {}
+    const corpus = file['retrieval-corpus'] ?? {}
+    expect(Object.keys(corpus).sort()).toEqual(Object.keys(fixture).sort())
+    for (const metric of ['recall@10', 'vigencia', 'recusa', 'clarificacao', 'data_referencia']) {
+      expect(corpus[metric]).toBeGreaterThanOrEqual(fixture[metric] ?? Number.POSITIVE_INFINITY)
+    }
+    // MRR do corpus real: trava no nível medido (ADR 0027), abaixo da meta de 0,70 da fixture.
+    expect(corpus['mrr']).toBe(0.65)
   })
 })
