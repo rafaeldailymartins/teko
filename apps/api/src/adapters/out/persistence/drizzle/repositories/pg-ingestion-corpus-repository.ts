@@ -135,8 +135,16 @@ function unitOfWork(tx: Tx): IngestionUnitOfWork {
       return row.id
     },
 
-    async insertDocumentVersion({ documentId, version, runId, blobRaw, blobDocling }) {
+    async insertDocumentVersion({
+      documentId,
+      version,
+      runId,
+      blobRaw,
+      blobDocling,
+      parserRevision,
+    }) {
       const values = {
+        parserRevision,
         documentId,
         versionLabel: version.versionLabel,
         publishedOn: version.publishedOn,
@@ -450,7 +458,11 @@ export function createPgCorpusIngestionRepository(db: DrizzleDb): CorpusIngestio
   return {
     async findDocumentVersion(sha256) {
       const [row] = await db
-        .select({ id: documentVersions.id, status: documentVersions.status })
+        .select({
+          id: documentVersions.id,
+          status: documentVersions.status,
+          parserRevision: documentVersions.parserRevision,
+        })
         .from(documentVersions)
         .where(eq(documentVersions.sha256, sha256))
       if (row === undefined) {
@@ -460,7 +472,7 @@ export function createPgCorpusIngestionRepository(db: DrizzleDb): CorpusIngestio
       if (status === undefined) {
         throw new CorpusInvariantError(`status de versão desconhecido: ${row.status}`)
       }
-      return { id: row.id, status }
+      return { id: row.id, status, parserRevision: row.parserRevision }
     },
 
     openVersionsOf: (slug) => openVersions(db, sql`d.slug = ${slug}`, false),

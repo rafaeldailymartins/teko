@@ -36,7 +36,9 @@ import type { EmbedPending } from './embed-pending.ts'
  * incremental, reconciliando com o que já está no banco (plano, "Escrita, Blobs, snapshot e
  * promoção"):
  *
- * 1. sha256 já publicado → `unchanged`, sem tocar o banco nem a porta de embeddings;
+ * 1. sha256 já publicado com revisão do parser igual ou maior → `unchanged`, sem tocar o banco nem
+ *    a porta de embeddings; com revisão menor, a mesma versão de documento é reprocessada pelos
+ *    passos seguintes (ADR 0026);
  * 2. guarda de tamanho (`pg_database_size` acima do limite aborta o run);
  * 3. planejamento sem trava (`planReconciliation`) e embeddings só das redações novas, pelo
  *    `EmbedPending` (o `embedding_cache` é o checkpoint, com commit por lote). Orçamento esgotado →
@@ -69,6 +71,8 @@ interface IngestDocumentVersionCommand {
   readonly blobRaw: string | null
   /** Chave no store `corpus-docling`. */
   readonly blobDocling: string | null
+  /** Revisão atual do parser da fonte (`PARSER_REVISIONS`, ADR 0026). */
+  readonly parserRevision: number
 }
 
 type IngestDocumentVersionResult =
@@ -76,6 +80,8 @@ type IngestDocumentVersionResult =
   | {
       readonly status: 'published'
       readonly documentVersionId: string
+      /** A versão já estava publicada com revisão menor do parser e foi reprocessada. */
+      readonly reprocessed: boolean
       readonly provisionVersionsNew: number
       readonly provisionVersionsWidened: number
       /** Linhas recriadas com o trecho de vigência que a versão nova não reescreve. */
@@ -320,9 +326,10 @@ function parentsFirst(provisions: readonly ParsedProvision[]): ParsedProvision[]
 export function createIngestDocumentVersion(
   deps: IngestDocumentVersionDeps,
 ): IngestDocumentVersion {
-  return async ({ runId, source, blobRaw, blobDocling }) => {
+  return async ({ runId, source, blobRaw, blobDocling, parserRevision }) => {
     const existing = await deps.repository.findDocumentVersion(source.version.sha256)
-    if (existing?.status === DocumentVersionStatus.Published) {
+    const published = existing?.status === DocumentVersionStatus.Published
+    if (published && existing.parserRevision >= parserRevision) {
       return { status: 'unchanged', documentVersionId: existing.id }
     }
     const size = await deps.databaseUsage.sizeBytes()
@@ -369,6 +376,7 @@ export function createIngestDocumentVersion(
         runId,
         blobRaw,
         blobDocling,
+        parserRevision,
       })
       await uow.closePreviousDocumentVersions(
         documentId,
@@ -491,6 +499,6 @@ export function createIngestDocumentVersion(
         reviewItems: queued,
       }
     })
-    return { status: 'published', ...counts, neurons: embedded.neurons }
+    return { status: 'published', reprocessed: published, ...counts, neurons: embedded.neurons }
   }
 }

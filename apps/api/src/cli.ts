@@ -9,7 +9,7 @@ import { EXIT_FAILURE, EXIT_USAGE } from '#adapters/in/cli/ingest/cli-common.ts'
 import { runIngestDiscover } from '#adapters/in/cli/ingest/discover.ts'
 import { runIngestLoad } from '#adapters/in/cli/ingest/load.ts'
 import { loadOverrides } from '#adapters/in/cli/ingest/overrides-loader.ts'
-import { PARSERS } from '#adapters/in/cli/ingest/parsers/index.ts'
+import { PARSER_REVISIONS, PARSERS } from '#adapters/in/cli/ingest/parsers/index.ts'
 import { allowedHostsOf, loadCorpusConfig } from '#adapters/in/cli/ingest/sources.ts'
 import { DEFAULT_FIXTURE_DIR, seedFixtures } from '#adapters/in/cli/seed-fixtures/seed-fixtures.ts'
 import { runSnapshotExport, runSnapshotPromote } from '#adapters/in/cli/snapshot/snapshot.ts'
@@ -150,6 +150,7 @@ async function runIngest(args: readonly string[]): Promise<number> {
         config,
         blobs: io.blobs,
         parsers: PARSERS,
+        parserRevisions: PARSER_REVISIONS,
         overrides: loadOverrides(OVERRIDES_DIR),
         hasher: io.hasher,
         useCases: container.useCases,

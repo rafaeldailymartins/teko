@@ -1,0 +1,47 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "58c7fb31-b259-4cdd-b9ab-6c87e09969d0",
+  "prevIds": [
+    "3bc6c2f9-2baf-4625-bd03-7986455de6cf"
+  ],
+  "footprints": [
+    {
+      "statementType": "add_column",
+      "statementTarget": [
+        "column",
+        "corpus",
+        "document_versions",
+        "parser_revision"
+      ],
+      "writes": [
+        "s|col|corpus.document_versions.parser_revision",
+        "n|col|corpus.document_versions.parser_revision",
+        "e|col|corpus.document_versions.parser_revision"
+      ],
+      "reads": [
+        "n|tbl|corpus.document_versions",
+        "n|sch|corpus"
+      ]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "document_versions",
+        "name": "parser_revision",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "1",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    }
+  ]
+}
