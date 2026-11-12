@@ -4,6 +4,7 @@ import {
   CORPUS_USER_AGENT,
   createSafeFetcher,
   createSafeLookup,
+  isTransientNetworkError,
   normalizeHeaders,
   type ResolvedAddress,
   type Resolver,
@@ -20,7 +21,7 @@ function ok(body = 'conteúdo', headers: Record<string, string> = {}): Transport
 }
 
 function setup(options: {
-  responses?: TransportResponse[]
+  responses?: (TransportResponse | Error)[]
   resolver?: Resolver
   allowedHosts?: string[]
 }) {
@@ -29,7 +30,10 @@ function setup(options: {
   const transport: Transport = (request) => {
     calls.push(request)
     const next = queue.shift()
-    return next === undefined ? Promise.reject(new Error('sem resposta')) : Promise.resolve(next)
+    if (next === undefined) {
+      return Promise.reject(new Error('sem resposta'))
+    }
+    return next instanceof Error ? Promise.reject(next) : Promise.resolve(next)
   }
   let clock = 0
   const sleeps: number[] = []
@@ -201,6 +205,70 @@ describe('createSafeFetcher: cabeçalhos, ritmo e teto', () => {
     expect(calls[0]?.signal.aborted).toBe(false)
     controller.abort()
     expect(calls[0]?.signal.aborted).toBe(true)
+  })
+})
+
+describe('createSafeFetcher: novas tentativas', () => {
+  const reset = () => Object.assign(new Error('read ECONNRESET'), { code: 'ECONNRESET' })
+  const status = (code: number): TransportResponse => ({
+    status: code,
+    headers: {},
+    body: new Uint8Array(),
+  })
+
+  it('tenta de novo erro de rede transitório e 503, com espera de 2 s e depois 4 s', async () => {
+    const { fetcher, calls, sleeps } = setup({ responses: [reset(), status(503), ok('enfim')] })
+    const response = await fetcher.fetch({ url: `https://${HOST}/guia.pdf` })
+    expect(new TextDecoder().decode(response.body)).toBe('enfim')
+    expect(calls).toHaveLength(3)
+    // Entre as tentativas: 2 s e 4 s (o intervalo de 1 s por host cabe dentro delas).
+    expect(sleeps).toEqual([2000, 4000])
+  })
+
+  it('depois de 3 tentativas devolve a última resposta 5xx ou repassa o último erro', async () => {
+    const statuses = setup({ responses: [status(502), status(504), status(503)] })
+    await expect(statuses.fetcher.fetch({ url: `https://${HOST}/x` })).resolves.toMatchObject({
+      status: 503,
+    })
+    expect(statuses.calls).toHaveLength(3)
+    const errors = setup({ responses: [reset(), reset(), reset()] })
+    await expect(errors.fetcher.fetch({ url: `https://${HOST}/x` })).rejects.toThrow('ECONNRESET')
+    expect(errors.calls).toHaveLength(3)
+  })
+
+  it('não tenta de novo 404, erro desconhecido, bloqueio de segurança nem cancelamento', async () => {
+    const notFound = setup({ responses: [status(404)] })
+    await expect(notFound.fetcher.fetch({ url: `https://${HOST}/x` })).resolves.toMatchObject({
+      status: 404,
+    })
+    expect(notFound.calls).toHaveLength(1)
+    const unknown = setup({ responses: [new Error('bug no parser'), ok()] })
+    await expect(unknown.fetcher.fetch({ url: `https://${HOST}/x` })).rejects.toThrow('bug')
+    expect(unknown.calls).toHaveLength(1)
+    const blocked = setup({ responses: [new BlockedRequestError('teto'), ok()] })
+    await expect(blocked.fetcher.fetch({ url: `https://${HOST}/x` })).rejects.toThrow('teto')
+    const controller = new AbortController()
+    controller.abort()
+    const aborted = setup({ responses: [reset(), ok()] })
+    await expect(
+      aborted.fetcher.fetch({ url: `https://${HOST}/x`, signal: controller.signal }),
+    ).rejects.toThrow('ECONNRESET')
+    expect(aborted.calls).toHaveLength(1)
+  })
+
+  it('isTransientNetworkError reconhece código no erro, na causa e o socket hang up', () => {
+    expect(isTransientNetworkError(reset())).toBe(true)
+    expect(
+      isTransientNetworkError(
+        new Error('fetch failed', { cause: Object.assign(new Error('x'), { code: 'EAI_AGAIN' }) }),
+      ),
+    ).toBe(true)
+    expect(isTransientNetworkError(new Error('socket hang up'))).toBe(true)
+    expect(isTransientNetworkError(Object.assign(new Error('x'), { code: 'ENOTFOUND' }))).toBe(
+      false,
+    )
+    expect(isTransientNetworkError(new BlockedRequestError('ECONNRESET'))).toBe(false)
+    expect(isTransientNetworkError('ECONNRESET')).toBe(false)
   })
 })
 

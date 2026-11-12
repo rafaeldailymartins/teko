@@ -19,7 +19,11 @@ import { isBlockedAddress } from './ip-policy.ts'
  *    derruba a requisição: um DNS que muda entre a checagem e a conexão (rebinding) não passa;
  * 3. no máximo 1 requisição por segundo por host (os saltos de redirect contam);
  * 4. no máximo 3 redirects, cada destino revalidado do passo 1;
- * 5. teto de bytes (cabeçalho `content-length` e contagem do corpo) e timeout.
+ * 5. teto de bytes (cabeçalho `content-length` e contagem do corpo) e timeout;
+ * 6. até 2 novas tentativas (2 s e 4 s de espera) para erro de rede transitório (`ECONNRESET`,
+ *    `ETIMEDOUT`, "socket hang up"…) e 502/503/504, dentro do mesmo timeout total; bloqueio de
+ *    segurança e cancelamento nunca são repetidos. Um `ECONNRESET` do site da Sefaz-GO derrubava o
+ *    `discover` inteiro (ingest de 2026-11-12).
  *
  * O User-Agent é fixo e não pode ser trocado pelo chamador. Sem `accept-encoding`: o corpo vem
  * como publicado, e o sha256 é o do arquivo.
@@ -30,6 +34,39 @@ const DEFAULT_MAX_BYTES = 200 * 1024 * 1024
 const MAX_REDIRECTS = 3
 const MIN_INTERVAL_MS = 1000
 const DEFAULT_TIMEOUT_MS = 300_000
+/** Tentativas além da primeira para erro de rede transitório ou 502/503/504. */
+const DEFAULT_RETRIES = 2
+/** Espera antes da 1ª nova tentativa; dobra a cada uma (2 s, 4 s). */
+const DEFAULT_RETRY_DELAY_MS = 2000
+
+/** Códigos de erro de socket e DNS que costumam passar sozinhos. */
+const TRANSIENT_ERROR_CODES: ReadonlySet<string> = new Set([
+  'ECONNRESET',
+  'ETIMEDOUT',
+  'ECONNREFUSED',
+  'EPIPE',
+  'EAI_AGAIN',
+  'ENETUNREACH',
+  'EHOSTUNREACH',
+])
+/** Respostas de servidor ou gateway temporariamente indisponível. */
+const TRANSIENT_STATUSES: ReadonlySet<number> = new Set([502, 503, 504])
+
+/**
+ * Erro de rede que vale tentar de novo: os códigos de `TRANSIENT_ERROR_CODES` (no erro ou na
+ * causa) e o "socket hang up" do `node:https`. Bloqueio de segurança e cancelamento nunca são.
+ */
+export function isTransientNetworkError(error: unknown): boolean {
+  if (error instanceof BlockedRequestError || !(error instanceof Error)) {
+    return false
+  }
+  const codes = [error, error.cause].map((item) =>
+    item instanceof Error && 'code' in item ? String(item.code) : '',
+  )
+  return (
+    codes.some((code) => TRANSIENT_ERROR_CODES.has(code)) || /socket hang up/i.test(error.message)
+  )
+}
 
 const REDIRECT_STATUSES: ReadonlySet<number> = new Set([301, 302, 303, 307, 308])
 /** Cabeçalhos que o chamador não define (identidade e conexão ficam com o adapter). */
@@ -81,6 +118,10 @@ export interface SafeFetcherOptions {
   readonly maxRedirects?: number
   readonly defaultMaxBytes?: number
   readonly timeoutMs?: number
+  /** Novas tentativas para erro de rede transitório ou 502/503/504 (padrão: 2). */
+  readonly retries?: number
+  /** Espera antes da primeira nova tentativa, dobrada a cada uma (padrão: 2 s). */
+  readonly retryDelayMs?: number
 }
 
 function defaultResolver(hostname: string): Promise<readonly ResolvedAddress[]> {
@@ -204,6 +245,8 @@ export function createSafeFetcher(options: SafeFetcherOptions): SafeFetcher {
   const minInterval = options.minIntervalMs ?? MIN_INTERVAL_MS
   const maxRedirects = options.maxRedirects ?? MAX_REDIRECTS
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS
+  const retries = options.retries ?? DEFAULT_RETRIES
+  const retryDelayMs = options.retryDelayMs ?? DEFAULT_RETRY_DELAY_MS
   const lookup = createSafeLookup(resolver)
   const nextSlot = new Map<string, number>()
 
@@ -264,6 +307,32 @@ export function createSafeFetcher(options: SafeFetcherOptions): SafeFetcher {
     return headers
   }
 
+  /**
+   * Um salto (DNS, intervalo do host e transporte), com novas tentativas para erro de rede
+   * transitório ou 502/503/504, espaçadas por `retryDelayMs` dobrado a cada uma. Tudo dentro do
+   * mesmo `signal` (teto total e cancelamento): abortado, não tenta de novo.
+   */
+  async function hop(
+    transportRequest: Omit<TransportRequest, 'lookup'>,
+  ): Promise<TransportResponse> {
+    for (let attempt = 0; ; attempt += 1) {
+      const last = attempt >= retries
+      try {
+        await checkDns(transportRequest.url.hostname)
+        await throttle(transportRequest.url.hostname)
+        const response = await transport({ ...transportRequest, lookup })
+        if (last || !TRANSIENT_STATUSES.has(response.status)) {
+          return response
+        }
+      } catch (error) {
+        if (last || transportRequest.signal.aborted || !isTransientNetworkError(error)) {
+          throw error
+        }
+      }
+      await sleep(retryDelayMs * 2 ** attempt)
+    }
+  }
+
   return {
     async fetch(request: SafeFetchRequest): Promise<SafeFetchResponse> {
       const method = request.method ?? 'GET'
@@ -274,9 +343,7 @@ export function createSafeFetcher(options: SafeFetcherOptions): SafeFetcher {
         request.signal === undefined ? timeout : AbortSignal.any([request.signal, timeout])
       let url = checkUrl(request.url)
       for (let redirects = 0; ; redirects += 1) {
-        await checkDns(url.hostname)
-        await throttle(url.hostname)
-        const response = await transport({ url, method, headers, maxBytes, signal, lookup })
+        const response = await hop({ url, method, headers, maxBytes, signal })
         if (response.body.byteLength > maxBytes) {
           throw tooLarge(url, maxBytes)
         }
