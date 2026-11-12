@@ -113,6 +113,15 @@ const PARSERS: Record<ParserName, Parser> = {
   [ParserName.SpedTabelas]: fakeParser,
 }
 
+/** Revisões distintas por parser, para o teste conferir que o `load` passa a da fonte. */
+const PARSER_REVISIONS: Record<ParserName, number> = {
+  [ParserName.GoHtmlStateMachine]: 1,
+  [ParserName.DoclingGuia]: 2,
+  [ParserName.DoclingGeneric]: 3,
+  [ParserName.ReinfXsd]: 4,
+  [ParserName.SpedTabelas]: 5,
+}
+
 interface Recorder {
   readonly ingested: IngestDocumentVersionCommand[]
   readonly finished: { status: string; report: Readonly<Record<string, unknown>> }[]
@@ -154,6 +163,7 @@ function useCases(
         const result = options.ingest?.(command, recorder.ingested.length - 1) ?? {
           status: 'published' as const,
           documentVersionId: `dv-${String(recorder.ingested.length)}`,
+          reprocessed: false,
           provisionVersionsNew: 1,
           provisionVersionsWidened: 0,
           provisionVersionsSplit: 0,
@@ -198,6 +208,7 @@ function deps(cases: LoadUseCases, extra: Partial<IngestLoadDeps> = {}) {
     config,
     blobs,
     parsers: PARSERS,
+    parserRevisions: PARSER_REVISIONS,
     overrides: new Map(),
     hasher: sha256ContentHasher,
     useCases: cases,
@@ -261,6 +272,8 @@ describe('ingest load', () => {
       'tabela-go-5-5:Tabela 5.5 consolidado',
       'leiautes-efd-reinf:REINF 2.1.2',
     ])
+    // Cada documento leva a revisão do próprio parser (ADR 0026).
+    expect(recorder.ingested.map((command) => command.parserRevision)).toEqual([2, 3, 3, 1, 5, 4])
     const guiaSha = sha256(GUIA_PDF)
     const guia = recorder.ingested[0]
     expect(guia?.blobRaw).toBe(`efd-icms-ipi/guia-pratico-efd-icms-ipi/3.2.4/${guiaSha}.pdf`)
@@ -342,6 +355,7 @@ describe('ingest load', () => {
           : {
               status: 'published',
               documentVersionId: 'dv',
+              reprocessed: false,
               provisionVersionsNew: 1,
               provisionVersionsWidened: 0,
               provisionVersionsSplit: 0,

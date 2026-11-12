@@ -260,6 +260,7 @@ describe('PgCorpusIngestionRepository', () => {
         runId: 'run',
         blobRaw: null,
         blobDocling: null,
+        parserRevision: 1,
       })
       expect(await uow.closePreviousDocumentVersions(documentId, dv, '2026-06-01')).toBe(1)
       const ids = await uow.upsertProvisions(documentId, [
@@ -430,6 +431,7 @@ describe('PgCorpusIngestionRepository', () => {
           runId: 'r',
           blobRaw: null,
           blobDocling: null,
+          parserRevision: 1,
         }),
       ),
     ).rejects.toThrow(/não gravada/)

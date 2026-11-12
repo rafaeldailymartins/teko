@@ -72,6 +72,8 @@ export interface IngestLoadDeps {
   readonly config: CorpusConfig
   readonly blobs: BlobStore
   readonly parsers: Readonly<Record<ParserName, Parser>>
+  /** Revisão de cada parser (`PARSER_REVISIONS`, ADR 0026). */
+  readonly parserRevisions: Readonly<Record<ParserName, number>>
   /** Resoluções de `corpus/overrides/` (chave `(stable_key, note_hash)`). */
   readonly overrides: ReadonlyMap<string, Override>
   /** O mesmo hasher do `IngestDocumentVersion` (o `note_hash` precisa bater com a fila). */
@@ -181,6 +183,8 @@ type LoadReport = {
   neurons?: number
   provisionVersionsNew?: number
   reviewItems?: number
+  /** Versões já publicadas com revisão menor do parser, reprocessadas neste run. */
+  reprocessed?: number
   corpusVersion?: number
   manifestKey?: string
   lockChanged?: boolean
@@ -305,6 +309,7 @@ async function loadItem(
     source: resolved,
     blobRaw: rawKey,
     blobDocling: docling.blobKeys[0] ?? null,
+    parserRevision: context.deps.parserRevisions[item.parser],
   })
   return {
     sourceId: item.sourceId,
@@ -362,6 +367,12 @@ export async function runIngestLoad(
         (exhausted?.status === 'budget_exhausted' ? exhausted.neurons : 0),
       provisionVersionsNew: sumPublished(outcomes, 'provisionVersionsNew'),
       reviewItems: sumPublished(outcomes, 'reviewItems'),
+      reprocessed: outcomes.filter(
+        (outcome) =>
+          'result' in outcome &&
+          outcome.result.status === 'published' &&
+          outcome.result.reprocessed,
+      ).length,
     })
     await deps.useCases.finishIngestionRun({ runId, status, report })
     if (parsed.report !== null) {

@@ -16,3 +16,18 @@ export const PARSERS: Readonly<Record<ParserName, Parser>> = {
   [ParserName.ReinfXsd]: parseReinfXsd,
   [ParserName.SpedTabelas]: parseSpedTabela,
 }
+
+/**
+ * Revisão de cada parser (ADR 0026). Sobe quando a mudança altera a saída para um arquivo já
+ * ingerido (extração, chave, vigência ou texto): o próximo run reprocessa as versões de documento
+ * publicadas com revisão menor. Refatoração sem efeito na saída não sobe.
+ *
+ * - `docling-guia` 2: título do bloco junto ao do registro 0000 e linhas fundidas pelo TableFormer.
+ */
+export const PARSER_REVISIONS: Readonly<Record<ParserName, number>> = {
+  [ParserName.GoHtmlStateMachine]: 1,
+  [ParserName.DoclingGuia]: 2,
+  [ParserName.DoclingGeneric]: 1,
+  [ParserName.ReinfXsd]: 1,
+  [ParserName.SpedTabelas]: 1,
+}

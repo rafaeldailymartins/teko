@@ -89,6 +89,7 @@ describe('reingestão da mesma versão', () => {
       source: V1,
       blobRaw: 'rcte/rcte/dec-1/raw.htm',
       blobDocling: null,
+      parserRevision: 1,
     })
     expect(published).toMatchObject({
       status: 'published',
@@ -107,6 +108,7 @@ describe('reingestão da mesma versão', () => {
       source: V1,
       blobRaw: null,
       blobDocling: null,
+      parserRevision: 1,
     })
     await useCases.finishIngestionRun({ runId: second.runId, status: 'succeeded', report: {} })
     expect(again).toEqual({
@@ -122,6 +124,64 @@ describe('reingestão da mesma versão', () => {
     expect(rows[0]).toEqual({ neurons: 0, docs: 0, status: 'succeeded' })
   })
 
+  it('revisão maior do parser reprocessa a mesma versão: fecha só o que mudou (ADR 0026)', async () => {
+    const { container, spy } = context()
+    const { useCases } = container
+    const first = await useCases.startIngestionRun({ target: 'staging', gitSha: 'a'.repeat(40) })
+    const published = await useCases.ingestDocumentVersion({
+      runId: first.runId,
+      source: V1,
+      blobRaw: null,
+      blobDocling: null,
+      parserRevision: 1,
+    })
+    await useCases.finishIngestionRun({ runId: first.runId, status: 'succeeded', report: {} })
+    spy.reset()
+    // Mesmo arquivo (mesmo sha256), saída corrigida do parser no art. 901; o resto igual.
+    const corrected = rcteSource('dec-1', '2026-01-10', [
+      article(901, [
+        version('Art. 901. Texto corrigido pelo parser novo.', interval('2000-01-01')),
+      ]),
+      ...V1.provisions
+        .filter((provision) => !provision.stableKey.endsWith(':art:901'))
+        .map((provision) => ({ ...provision })),
+    ])
+    expect(corrected.version.sha256).toBe(V1.version.sha256)
+    const second = await useCases.startIngestionRun({ target: 'staging', gitSha: 'b'.repeat(40) })
+    const again = await useCases.ingestDocumentVersion({
+      runId: second.runId,
+      source: corrected,
+      blobRaw: null,
+      blobDocling: null,
+      parserRevision: 2,
+    })
+    await useCases.finishIngestionRun({ runId: second.runId, status: 'succeeded', report: {} })
+    expect(again).toMatchObject({
+      status: 'published',
+      reprocessed: true,
+      documentVersionId: published.status === 'published' ? published.documentVersionId : '',
+      provisionVersionsNew: 1,
+      knowledgeClosed: 1,
+    })
+    // Só o texto corrigido foi embutido; uma versão de documento, agora com a revisão 2.
+    expect(spy.texts()).toBe(1)
+    const { rows } = await owner.query<{ n: number; rev: number }>(
+      'SELECT count(*)::int AS n, max(parser_revision) AS rev FROM corpus.document_versions',
+    )
+    expect(rows[0]).toEqual({ n: 1, rev: 2 })
+    expect(await count('provision_versions', 'upper_inf(knowledge)')).toBe(6)
+    expect(await count('provision_versions', "text LIKE 'Art. 901. Texto corrigido%'")).toBe(1)
+    // O mesmo arquivo com a revisão antiga (ramo desatualizado) não desfaz a correção.
+    const stale = await useCases.ingestDocumentVersion({
+      runId: second.runId,
+      source: V1,
+      blobRaw: null,
+      blobDocling: null,
+      parserRevision: 1,
+    })
+    expect(stale.status).toBe('unchanged')
+  })
+
   it('outro sha256 com o mesmo conteúdo reaproveita as linhas e só acrescenta fontes', async () => {
     const { container, spy } = context()
     const { runId } = await container.useCases.startIngestionRun({ target: 'staging', gitSha: 'c' })
@@ -130,6 +190,7 @@ describe('reingestão da mesma versão', () => {
       source: V1,
       blobRaw: null,
       blobDocling: null,
+      parserRevision: 1,
     })
     spy.reset()
     const redownload = rcteSource('dec-1-redownload', '2026-01-10', V1.provisions)
@@ -138,6 +199,7 @@ describe('reingestão da mesma versão', () => {
       source: redownload,
       blobRaw: null,
       blobDocling: null,
+      parserRevision: 1,
     })
     expect(result).toMatchObject({
       status: 'published',
@@ -163,6 +225,7 @@ describe('orçamento de neurons', () => {
       source: V1,
       blobRaw: null,
       blobDocling: null,
+      parserRevision: 1,
     })
     expect(stopped).toEqual({
       status: 'budget_exhausted',
@@ -190,6 +253,7 @@ describe('orçamento de neurons', () => {
       source: V1,
       blobRaw: null,
       blobDocling: null,
+      parserRevision: 1,
     })
     expect(resumed).toMatchObject({ status: 'published', provisionVersionsNew: 6, neurons: 2 })
     expect(high.spy.texts()).toBe(4)
@@ -224,6 +288,7 @@ describe('anomalias', () => {
       source: anomaly,
       blobRaw: null,
       blobDocling: null,
+      parserRevision: 1,
     })
     expect(result).toMatchObject({ status: 'published', provisionVersionsNew: 4, reviewItems: 1 })
     expect(await count('provision_versions', `review_status = 'pending'`)).toBe(1)
@@ -244,6 +309,7 @@ describe('anomalias', () => {
       source: rcteSource('dec-anomalia-2', '2026-02-01', anomaly.provisions),
       blobRaw: null,
       blobDocling: null,
+      parserRevision: 1,
     })
     expect(again).toMatchObject({ status: 'published', provisionVersionsNew: 0, reviewItems: 0 })
     expect(await count('review_queue')).toBe(1)
@@ -259,6 +325,7 @@ describe('reconciliação de um consolidado novo', () => {
       source: V1,
       blobRaw: null,
       blobDocling: null,
+      parserRevision: 1,
     })
     const v2 = rcteSource('dec-2', '2026-06-01', [
       article(901, [
@@ -292,6 +359,7 @@ describe('reconciliação de um consolidado novo', () => {
       source: v2,
       blobRaw: null,
       blobDocling: null,
+      parserRevision: 1,
     })
     expect(result).toMatchObject({
       status: 'published',
@@ -370,6 +438,7 @@ describe('Guia: janela do período do leiaute', () => {
       ]),
       blobRaw: null,
       blobDocling: null,
+      parserRevision: 1,
     })
     const v2026 = await container.useCases.ingestDocumentVersion({
       runId,
@@ -383,6 +452,7 @@ describe('Guia: janela do período do leiaute', () => {
       ]),
       blobRaw: null,
       blobDocling: null,
+      parserRevision: 1,
     })
     expect(v2026).toMatchObject({
       provisionVersionsNew: 1,
@@ -419,6 +489,7 @@ describe('Guia: janela do período do leiaute', () => {
       ]),
       blobRaw: null,
       blobDocling: null,
+      parserRevision: 1,
     })
     expect(corrective).toMatchObject({
       provisionVersionsNew: 0,
@@ -494,6 +565,7 @@ describe('REINF: grupos achatados', () => {
       source,
       blobRaw: null,
       blobDocling: null,
+      parserRevision: 1,
     })
     expect(result).toMatchObject({ status: 'published', provisionVersionsNew: 3 })
     const { rows } = await owner.query<{ stable_key: string; parent: string | null }>(
@@ -518,6 +590,7 @@ describe('guarda de tamanho', () => {
         source: V1,
         blobRaw: null,
         blobDocling: null,
+        parserRevision: 1,
       }),
     ).rejects.toBeInstanceOf(DatabaseSizeLimitError)
     expect(spy.calls).toEqual([])
@@ -546,6 +619,7 @@ describe('guarda de tamanho', () => {
       source: V1,
       blobRaw: null,
       blobDocling: null,
+      parserRevision: 1,
     })
     await container.useCases.finishIngestionRun({
       runId,
