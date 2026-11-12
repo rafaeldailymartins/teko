@@ -18,6 +18,7 @@ import {
   type FieldHeader,
   type FieldRow,
   mergeContinuation,
+  splitMergedRow,
   startsField,
   toFieldRow,
   validateFieldRows,
@@ -49,9 +50,25 @@ const DISPLAY_PREFIX = 'Guia Prático EFD-ICMS/IPI'
 export const GuiaReviewReason = {
   FieldTableInvalid: 'field-table-invalid',
   FieldTableMissing: 'field-table-missing',
+  /** Linha fundida pelo TableFormer cuja descrição não se dividiu com segurança. */
+  FieldRowMerged: 'field-row-merged',
 } as const
 
 const REGISTER_HEADING = /^REGISTRO\s+([0-9A-K]\d{3})\b/
+const BLOCK_PREFIX = 'BLOCO '
+const REGISTER_MARK = ' REGISTRO '
+
+/**
+ * Título do registro, ou `null`. O Docling às vezes junta o título do bloco ao do primeiro
+ * registro dele num `section_header` só ("BLOCO 0: ABERTURA, … REGISTRO 0000: ABERTURA …"): aí o
+ * título do registro começa no " REGISTRO ".
+ */
+function registerHeading(text: string): { code: string; heading: string } | null {
+  const mark = text.startsWith(BLOCK_PREFIX) ? text.indexOf(REGISTER_MARK) : -1
+  const heading = mark < 0 ? text : text.slice(mark + 1)
+  const match = REGISTER_HEADING.exec(heading)
+  return match ? { code: match[1] ?? '', heading } : null
+}
 const OBSERVATIONS = /^Observa[çc][õo]es\s*:?\s*/i
 const FIELD_NOTE = /^Campo\s+(\d{1,3})\b/
 const INCLUSION_HEADING =
@@ -62,6 +79,7 @@ type Phase = 'description' | 'fields' | 'observations' | 'notes'
 interface RawRow {
   readonly header: FieldHeader
   cells: string[]
+  readonly mergedDescription?: boolean
 }
 
 interface RegisterDraft {
@@ -210,9 +228,9 @@ function segment(blocks: readonly DoclingBlock[]): Segmented {
 
   for (const block of blocks) {
     if (block.kind === 'text') {
-      const heading = REGISTER_HEADING.exec(block.text)
+      const heading = registerHeading(block.text)
       if (heading) {
-        const code = heading[1] ?? ''
+        const { code } = heading
         pendingInclusion = null
         if (seen.has(code)) {
           skipped.push({ stableKey: null, reason: 'duplicate-register', rawNote: block.text })
@@ -220,7 +238,7 @@ function segment(blocks: readonly DoclingBlock[]): Segmented {
           continue
         }
         seen.add(code)
-        current = newRegister(code, block.text)
+        current = newRegister(code, heading.heading)
         registers.push(current)
         continue
       }
@@ -264,7 +282,19 @@ function segment(blocks: readonly DoclingBlock[]): Segmented {
 function finalizeRows(draft: RegisterDraft): { rows: FieldRow[]; problems: string[] } {
   const problems: string[] = []
   const merged: RawRow[] = []
-  for (const row of draft.rows) {
+  // Linhas fundidas pelo TableFormer ("12 13 | VL_DOC IND_PGTO | …") viram uma linha por campo
+  // antes da costura: sem isso, "12 13" (sem número válido) continuaria o campo 11.
+  const expanded = draft.rows.flatMap((row): RawRow[] => {
+    const split = splitMergedRow(row.cells, row.header)
+    return split === null
+      ? [row]
+      : split.map((line) => ({
+          header: row.header,
+          cells: line.cells,
+          mergedDescription: line.mergedDescription,
+        }))
+  })
+  for (const row of expanded) {
     if (row.cells.every((cell) => cell === '')) {
       continue
     }
@@ -273,12 +303,15 @@ function finalizeRows(draft: RegisterDraft): { rows: FieldRow[]; problems: strin
       if (previous === undefined && !startsField(row.cells, row.header)) {
         problems.push('tabela começa sem número de campo')
       }
-      merged.push({ header: row.header, cells: [...row.cells] })
+      merged.push({ ...row, cells: [...row.cells] })
     } else {
       previous.cells = mergeContinuation(previous.cells, row.cells)
     }
   }
-  const rows = merged.map((row) => toFieldRow(row.cells, row.header))
+  const rows = merged.map((row): FieldRow => {
+    const field = toFieldRow(row.cells, row.header)
+    return row.mergedDescription === true ? { ...field, mergedDescription: true } : field
+  })
   const last = rows.at(-1)
   if (last !== undefined && draft.trailing.length > 0) {
     rows[rows.length - 1] = { ...last, rowText: [last.rowText, ...draft.trailing].join(' ') }
@@ -416,7 +449,15 @@ function buildRegister(draft: RegisterDraft, context: BuildContext): ParsedProvi
           modality: Modality.Mandatory,
           validityBasis: ValidityBasis.LeiautePeriod,
           text: notes.length > 0 ? `${row.rowText}\n${notes.join(' ')}` : row.rowText,
-          review: tableReview ?? fieldValidity.review,
+          review:
+            tableReview ??
+            fieldValidity.review ??
+            (row.mergedDescription === true
+              ? {
+                  reason: GuiaReviewReason.FieldRowMerged,
+                  rawNote: `Registro ${draft.code}, campo ${row.numero}: descrição de linhas fundidas`,
+                }
+              : undefined),
           structured: structuredOf(row),
         }),
       ],

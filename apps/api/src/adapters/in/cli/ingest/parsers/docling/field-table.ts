@@ -68,6 +68,91 @@ export interface FieldRow {
   readonly obligations: Readonly<Partial<Record<'obrigatoriedade' | 'entrada' | 'saida', string>>>
   /** Células na ordem da tabela, separadas por espaço (o texto da redação começa por ela). */
   readonly rowText: string
+  /**
+   * Linha refeita de uma fusão do TableFormer cuja descrição não pôde ser dividida com segurança:
+   * o campo leva a descrição inteira das linhas fundidas e a redação vai para revisão.
+   */
+  readonly mergedDescription?: true
+}
+
+const MERGED_NUMBERS = /^\d{1,3}(?: \d{1,3})+$/
+/** Colunas de um valor curto sem espaço por linha (o campo junta os pedaços quebrados no PDF). */
+const TOKEN_COLUMNS: ReadonlySet<FieldColumn> = new Set([
+  FieldColumn.Numero,
+  FieldColumn.Campo,
+  FieldColumn.Tipo,
+  FieldColumn.Tamanho,
+  FieldColumn.Decimais,
+  FieldColumn.Obrigatoriedade,
+  FieldColumn.Entrada,
+  FieldColumn.Saida,
+])
+
+/**
+ * Cortes da descrição fundida: começo de palavra maiúscula logo depois de palavra que termina em
+ * minúscula ("… documento fiscal Indicador do tipo …"). Valores depois de "-" ou ":" ("0 - À
+ * vista") não contam. `null` quando o número de cortes não é exatamente `count - 1`.
+ */
+function splitDescription(text: string, count: number): string[] | null {
+  const words = text.split(' ').filter((word) => word !== '')
+  const starts = [0]
+  for (let index = 1; index < words.length; index += 1) {
+    if (/^\p{Lu}/u.test(words[index] ?? '') && /\p{Ll}$/u.test(words[index - 1] ?? '')) {
+      starts.push(index)
+    }
+  }
+  if (starts.length !== count) {
+    return null
+  }
+  return starts.map((start, index) => words.slice(start, starts[index + 1]).join(' '))
+}
+
+export interface SplitRow {
+  readonly cells: string[]
+  readonly mergedDescription: boolean
+}
+
+/**
+ * Desfaz uma linha em que o TableFormer fundiu linhas consecutivas da tabela de campos: a coluna
+ * `Nº` traz vários números ("12 13") e cada coluna curta, os valores das linhas separados por
+ * espaço ("VL_DOC IND_PGTO", "N C"). Devolve `null` se a linha não é uma fusão ou se alguma
+ * coluna curta não tem um valor por linha (aí ela segue como antes, para a validação acusar).
+ */
+export function splitMergedRow(row: readonly string[], header: FieldHeader): SplitRow[] | null {
+  const numbers = cellOf(row, header, FieldColumn.Numero).trim()
+  if (!MERGED_NUMBERS.test(numbers)) {
+    return null
+  }
+  const count = numbers.split(' ').length
+  const columns: (readonly string[])[] = []
+  let mergedDescription = false
+  for (const [index, column] of header.entries()) {
+    const cell = (row[index] ?? '').trim()
+    if (column !== null && TOKEN_COLUMNS.has(column)) {
+      const tokens = cell === '' ? [] : cell.split(/\s+/)
+      if (tokens.length === 0) {
+        columns.push(Array.from({ length: count }, () => ''))
+        continue
+      }
+      if (tokens.length !== count) {
+        return null
+      }
+      columns.push(tokens)
+      continue
+    }
+    if (column === FieldColumn.Descricao) {
+      const parts = splitDescription(cell, count)
+      mergedDescription = parts === null
+      columns.push(parts ?? Array.from({ length: count }, () => cell))
+      continue
+    }
+    // Coluna desconhecida: o texto fica com a primeira linha, para não se repetir.
+    columns.push(Array.from({ length: count }, (_, line) => (line === 0 ? cell : '')))
+  }
+  return Array.from({ length: count }, (_, line) => ({
+    cells: columns.map((values) => values[line] ?? ''),
+    mergedDescription,
+  }))
 }
 
 const NUMBER = /^\d{1,3}$/
