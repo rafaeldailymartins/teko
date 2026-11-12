@@ -12,7 +12,9 @@ PR que a busca não regrediu em qualidade nem em desempenho.
 A busca MUST devolver só chunks em vigor na data de referência, com conhecimento atual, das
 famílias cobertas e com status de revisão permitido no ambiente (produção: `auto` e `approved`;
 staging: também `pending`), fundindo os braços léxico, vetorial e da referência citada por RRF
-com k = 60.
+com k = 60. Cada braço SHALL ranquear no máximo um chunk por versão de dispositivo, e a fusão
+SHALL somar os votos por versão de dispositivo, devolvendo um único chunk representante por
+versão.
 
 #### Scenario: Toda evidência em vigor
 
@@ -23,6 +25,11 @@ com k = 60.
 
 - **WHEN** a pergunta cita "art. 76, § 6º do RCTE" em 03/2004, 05/2006 e 01/2010
 - **THEN** a busca devolve, respectivamente, a redação do Dec. 5.825, a do Dec. 6.026 e a revogação pelo Dec. 7.028
+
+#### Scenario: Dispositivo partido em vários chunks
+
+- **WHEN** a versão de um dispositivo tem três chunks que casam com a pergunta
+- **THEN** a busca devolve um único resultado para essa versão, e as outras vagas do top-k ficam para outros dispositivos
 
 ### Requirement: Citação pelo documento publicado
 
@@ -82,3 +89,20 @@ ANN com filtro seletivo e mediana abaixo de 150 ms.
 
 - **WHEN** uma mudança na instrução faz o plano varrer `corpus.chunks` sequencialmente
 - **THEN** o job `sql-perf` falha e o `ci-gate` fica vermelho
+
+### Requirement: Reordenação pelo reranker
+
+Com o reranker configurado, a busca MUST pedir 40 candidatos à instrução híbrida, reordená-los pela
+nota do reranker para a pergunta e devolver os 12 primeiros; sem reranker, SHALL devolver os 12
+primeiros pela ordem do RRF. Falha do reranker ou mais de 3 s MUST manter a ordem do RRF, sem
+falhar a pergunta, e o resultado SHALL indicar se foi reordenado.
+
+#### Scenario: Campo sobe acima do registro-pai
+
+- **WHEN** a pergunta é "Quais códigos de situação do documento são aceitos no registro C100?" e o RRF põe o registro C100 em 1º e o campo 06 em 2º
+- **THEN** o reranker põe o campo 06 em 1º e o resultado é marcado como reordenado
+
+#### Scenario: Reranker fora do ar
+
+- **WHEN** o Workers AI responde erro para o reranker
+- **THEN** a busca devolve os 12 primeiros na ordem do RRF, marcados como não reordenados

@@ -22,4 +22,4 @@
 
 - [x] 4.1 `vitest run --project unit` nos testes da frente, `biome check`, `depcruise` e o typecheck sem erros nos arquivos da frente
 - [x] 4.2 Registro dos parsers em `parsers/index.ts` e chamada pelo `cli ingest load` (frente do pipeline, `add-embedding-pipeline`)
-- [ ] 4.3 Primeira ingestão real no staging pelo `ingest.yml` (depois do merge)
+- [x] 4.3 Primeira ingestão real no staging pelo `ingest.yml` (depois do merge) — runs 43219953661 a 43287466540 (2026-11-12): Guias EFD ICMS/IPI, NTs, Guias EFD-GO e REINF 2.1.1 e 2.1.2 publicados, depois das correções da gramática da `stable_key` (REINF), das figuras do DoclingDocument e do registro 0000 e das linhas fundidas do Guia
