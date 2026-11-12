@@ -4,6 +4,8 @@ import {
   allowedHostsOf,
   buildCorpusConfig,
   CorpusConfigError,
+  HTTP_PINNED_HOSTS,
+  httpHostsOf,
   loadCorpusConfig,
   type ResolvedSource,
 } from './sources.ts'
@@ -32,12 +34,34 @@ describe('corpus/sources.yaml e corpus/leiaute-periods.yaml reais', () => {
     ).toEqual([37, 38, 39, 40])
   })
 
-  it('toda fonte habilitada é https e toda pinned tem sha256', () => {
+  it('toda fonte habilitada é https (ou fixada em http no host com exceção) e toda pinned tem sha256', () => {
     for (const source of resolved) {
-      expect(source.url.startsWith('https://'), source.id).toBe(true)
+      const url = new URL(source.url)
+      if (url.protocol === 'http:') {
+        expect(HTTP_PINNED_HOSTS.has(url.hostname), source.id).toBe(true)
+        expect(source.mode, source.id).toBe('pinned')
+      } else {
+        expect(url.protocol, source.id).toBe('https:')
+      }
       if (source.mode === 'pinned') {
         expect(source.sha256, source.id).toMatch(/^[0-9a-f]{64}$/)
       }
+    }
+  })
+
+  it('resolve os Guias do portal antigo (2021 a 2024) pelo leiaute de cada ano', () => {
+    const expected: Record<string, { from: string; to: string }> = {
+      '3.0.6': { from: '2021-01-01', to: '2022-01-01' },
+      '3.0.8': { from: '2022-01-01', to: '2023-01-01' },
+      '3.1.2': { from: '2023-01-01', to: '2024-01-01' },
+      '3.1.3': { from: '2023-01-01', to: '2024-01-01' },
+      '3.1.6': { from: '2024-01-01', to: '2025-01-01' },
+    }
+    for (const [version, validDuring] of Object.entries(expected)) {
+      const source = byId(resolved, `efd-icms-ipi/guia-pratico/${version}`)
+      expect(source.versionValidDuring, version).toEqual(validDuring)
+      expect(source.url, version).toMatch(/^http:\/\/sped\.rfb\.gov\.br\//)
+      expect(source.pageRanges.length, version).toBe(3)
     }
   })
 
@@ -106,13 +130,15 @@ describe('corpus/sources.yaml e corpus/leiaute-periods.yaml reais', () => {
     expect(resolved.some((source) => source.id.startsWith('efd-reinf/nt/'))).toBe(false)
   })
 
-  it('a allowlist do SafeFetcher tem só os hosts oficiais', () => {
+  it('a allowlist do SafeFetcher tem só os hosts oficiais, e a exceção http só o portal antigo', () => {
     expect(allowedHostsOf(config)).toEqual([
       'appasp.economia.go.gov.br',
       'goias.gov.br',
+      'sped.rfb.gov.br',
       'www.gov.br',
       'www.sped.fazenda.gov.br',
     ])
+    expect(httpHostsOf(config)).toEqual(['sped.rfb.gov.br'])
   })
 })
 
@@ -176,7 +202,9 @@ describe('buildCorpusConfig: validação', () => {
 
   it.each([
     [{ ...GUIA_SOURCE, sha256: undefined }, /sha256: obrigatório no modo pinned/],
-    [{ ...GUIA_SOURCE, url: 'http://sped.rfb.gov.br/1' }, /URL https/],
+    [{ ...GUIA_SOURCE, url: 'http://www.gov.br/1' }, /URL https; http só em sped.rfb.gov.br/],
+    [{ ...GUIA_SOURCE, url: 'http://sped.rfb.gov.br/1', mode: 'live' }, /modo pinned/],
+    [{ ...GUIA_SOURCE, url: 'http://sped.rfb.gov.br/1', sha256: undefined }, /sha256: obrigatório/],
     [{ ...GUIA_SOURCE, leiaute: '999' }, /período de leiaute desconhecido/],
     [{ ...GUIA_SOURCE, leiaute: undefined }, /leiaute: obrigatório/],
     [{ ...GUIA_SOURCE, published_on: undefined }, /published_on: obrigatório/],

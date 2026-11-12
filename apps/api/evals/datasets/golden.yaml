@@ -823,18 +823,18 @@
 # Recusas (6): fora da cobertura indexada (antes da primeira versão, depois do verified_at
 # 2026-11-10, Anexos do RCTE antes da onda C3)
 
-# Antes de toda a EFD ICMS/IPI indexada: o Guia mais antigo é o 3.1.9 (leiaute 2025), e a NT mais
-# antiga, a 2023.001 (09/11/2023), cujos itens já cobrem 2024 no staging (até 2026-11-12 o caso
-# usava 2024-03, que só ficava fora da cobertura na fixture).
+# Antes de toda a EFD ICMS/IPI indexada: o Guia mais antigo do staging é o 3.0.6 (leiaute 2021,
+# portal antigo, ADR 0028), e o da fixture, o 3.1.9 (leiaute 2025). O caso usava 2024-03 até
+# 2026-11-12 (só ficava fora da cobertura na fixture) e 2022-03 até os Guias de 2021 a 2024.
 - id: recusa-efd-antes-da-cobertura
   question: Como preencher a quantidade do item no C170 da nota fiscal de entrada?
-  periodo_apuracao: "2022-03"
+  periodo_apuracao: "2020-03"
   reference_source: periodo_apuracao
   locale: pt-BR
   families: [efd-icms-ipi]
   expected:
     status: refused
-    reference_date: "2022-03-01"
+    reference_date: "2020-03-01"
     refusal_reason: out_of_coverage
   tags: [recusa, antes-da-cobertura]
   source_url: https://www.gov.br/sped/pt-br/assuntos/escrituracoes-digitais/efd-icms-ipi/manuais-e-documentos-tecnicos/guia-pratico-efd-versao-3-1-9.pdf

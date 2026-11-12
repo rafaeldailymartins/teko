@@ -83,7 +83,8 @@ Atualize esta seção no PR que fecha cada fase ou spike.
   `add-sped-guides-ingestion`, `add-parser-revision`, `add-reranker` e
   `fix-hybrid-search-provision-dedup`; ficam abertas `add-source-change-monitoring` (primeiro
   `source-watch` agendado) e `fix-safe-fetcher-retries` (#46). ADRs 0011, 0025
-  (reconciliação por janela, aceita pelo mantenedor em 2026-11-12), 0026 e 0027, todas accepted.
+  (reconciliação por janela, aceita pelo mantenedor em 2026-11-12), 0026, 0027 e 0028 (exceção http
+  com pin), todas accepted.
   Peças:
   - `corpus/` (fontes com sha256 reais, períodos de leiaute, overrides, lock e `watch.yaml`);
   - parsers em `apps/api/src/adapters/in/cli/ingest/parsers/`;
@@ -95,7 +96,7 @@ Atualize esta seção no PR que fecha cada fase ou spike.
 
   Medido nos arquivos oficiais: 95,8% das `NotaVigncia` do RCTE e 96,6% das do CTE, o resto
   `pending`. Desvios no plano (seção F3): staging migrado pelo `ingest load --migrate`; Guias
-  3.0.1–3.1.8 desabilitados (só http); REINF pelo pacote de XSD.
+  de 2021 a 2024 do portal antigo em http com pin (ADR 0028); REINF pelo pacote de XSD.
 
   Staging em 2026-11-12 (corpus_version 10, run 43287466540): as 36 fontes das ondas C1 e C2
   publicadas; Docling de 9 a 15 min por parte de 125 páginas (40 partes, 6 em paralelo); carga

@@ -10,7 +10,7 @@ import { runIngestDiscover } from '#adapters/in/cli/ingest/discover.ts'
 import { runIngestLoad } from '#adapters/in/cli/ingest/load.ts'
 import { loadOverrides } from '#adapters/in/cli/ingest/overrides-loader.ts'
 import { PARSER_REVISIONS, PARSERS } from '#adapters/in/cli/ingest/parsers/index.ts'
-import { allowedHostsOf, loadCorpusConfig } from '#adapters/in/cli/ingest/sources.ts'
+import { allowedHostsOf, httpHostsOf, loadCorpusConfig } from '#adapters/in/cli/ingest/sources.ts'
 import { DEFAULT_FIXTURE_DIR, seedFixtures } from '#adapters/in/cli/seed-fixtures/seed-fixtures.ts'
 import { runSnapshotExport, runSnapshotPromote } from '#adapters/in/cli/snapshot/snapshot.ts'
 import {
@@ -139,7 +139,7 @@ async function runIngest(args: readonly string[]): Promise<number> {
   }
   const env = loadCliEnv()
   const config = loadCorpusConfig(CORPUS_DIR)
-  const io = createIngestionIo(env, allowedHostsOf(config))
+  const io = createIngestionIo(env, allowedHostsOf(config), httpHostsOf(config))
   if (subcommand === 'discover') {
     return runIngestDiscover({ config, fetcher: io.fetcher, blobs: io.blobs, print }, rest)
   }
@@ -221,6 +221,7 @@ async function runWatch(args: readonly string[]): Promise<number> {
   const hosts = [...new Set([...allowedHostsOf(loadCorpusConfig(CORPUS_DIR)), ...watchHosts])].sort(
     compareCodeUnits,
   )
+  // Sem exceção http: o watch nunca baixa fontes fixadas (ADR 0028).
   const io = createIngestionIo(env, hosts)
   return runSourcesWatch({ fetcher: io.fetcher, blobs: io.blobs, clock: io.clock }, watchArgs)
 }

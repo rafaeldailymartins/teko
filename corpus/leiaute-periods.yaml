@@ -56,7 +56,8 @@ series:
         act: Atos COTEPE/ICMS 131/24 e 164/24
         note: >-
           versão 118; NT 2024.001 v1.0 e Guia 3.1.8 (3.1.7 sem efeitos). O corpus usa o Guia 3.1.9
-          neste período, como a fixture da F2 (a 3.1.8 só existe em http)
+          neste período, como a fixture da F2 (o 3.1.8 é mais antigo que o 3.1.9 já publicado no
+          staging e, ingerido depois, inverteria o conhecimento de 2025)
       - code: "020"
         from: 2026-01-01
         to: 2027-01-01

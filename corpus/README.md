@@ -40,10 +40,12 @@ páginas.
   (março a junho de 2026) são da migração do portal, não da publicação: `published_on` vem da capa
   ou do controle de alterações do próprio documento (ou do `CreationDate` do PDF, dito na nota).
 - **Guia Prático EFD ICMS/IPI.** 3.1.9 a 3.2.4 estão no gov.br (habilitadas). 3.0.1 a 3.1.8 só
-  existem no portal antigo `sped.rfb.gov.br`, que recusa https: ficam registradas com sha256 e
-  `enabled: false`, porque o `SafeFetcher` só aceita https (habilitar exige o aval do mantenedor
-  para uma exceção http com pin obrigatório). Por isso a cobertura da EFD ICMS/IPI começa em
-  2025-01-01, como na fixture. Não publicadas em lugar nenhum: o Guia 3.0 (anotado sem efeitos no
+  existem no portal antigo `sped.rfb.gov.br`, que recusa https e responde 302 para
+  `/estatico/...` no mesmo host. A exceção http com pin obrigatório (ADR 0028, aval do mantenedor
+  em 2026-11-12) habilita os Guias com efeitos de 2021 a 2024: 3.0.6, 3.0.8, 3.1.2, 3.1.3 e 3.1.6.
+  A cobertura da EFD ICMS/IPI passa a começar em 2021-01-01. Ficam desabilitados o 3.1.8 (mesmo
+  leiaute do 3.1.9 já publicado e mais antigo que ele: ingerido depois, inverteria o conhecimento
+  de 2025), as versões sem efeitos e as de 2019–2020. Não publicadas em lugar nenhum: o Guia 3.0 (anotado sem efeitos no
   Ato 44/2018) e o 2.0.21; as versões 2.0.x são anteriores ao Ato 44/2018 e ficam fora.
 - **MD5 do Ato COTEPE.** O Ato registra o MD5 de cada Guia e NT. As NTs batem; nove Guias não
   (3.0.1, 3.0.4, 3.0.5, 3.1.3, 3.1.4, 3.1.7, 3.2.1, 3.2.2 e o 3.2.4 vigente): o PDF publicado foi
