@@ -4,9 +4,9 @@
 
 ### Requirement: Reordenação pelo reranker
 
-Com o reranker configurado, a busca MUST pedir 30 candidatos à instrução híbrida, reordená-los pela
+Com o reranker configurado, a busca MUST pedir 40 candidatos à instrução híbrida, reordená-los pela
 nota do reranker para a pergunta e devolver os 12 primeiros; sem reranker, SHALL devolver os 12
-primeiros pela ordem do RRF. Falha do reranker ou mais de 2 s MUST manter a ordem do RRF, sem
+primeiros pela ordem do RRF. Falha do reranker ou mais de 3 s MUST manter a ordem do RRF, sem
 falhar a pergunta, e o resultado SHALL indicar se foi reordenado.
 
 #### Scenario: Campo sobe acima do registro-pai

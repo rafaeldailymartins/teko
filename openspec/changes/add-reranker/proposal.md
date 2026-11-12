@@ -15,8 +15,8 @@ casos subiram para a 1ª posição), com cerca de 1 neuron por pergunta, dentro 
   host fixo e o mesmo tratamento de falha do adapter de embeddings.
 - `RERANKER_PROVIDER` (`none`, padrão, ou `workers-ai`), com as credenciais `CF_ACCOUNT_ID` e
   `CF_AI_TOKEN` já usadas pelos embeddings.
-- `HybridSearch`: com reranker, pede 30 candidatos à instrução híbrida, reordena pela nota do
-  reranker (rótulo de citação e conteúdo do chunk) e devolve os 12 primeiros. Falha ou mais de 2 s
+- `HybridSearch`: com reranker, pede 40 candidatos à instrução híbrida, reordena pela nota do
+  reranker (rótulo de citação e conteúdo do chunk) e devolve os 12 primeiros. Falha ou mais de 3 s
   de reranker mantêm a ordem do RRF, sem falhar a pergunta; o resultado diz se foi reordenado.
 - `corpus-eval` (`ingest.yml`) com `RERANKER_PROVIDER=workers-ai`. As retrieval evals do PR seguem
   sem reranker (fake de embeddings, sem segredo).
