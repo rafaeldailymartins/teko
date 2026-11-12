@@ -33,6 +33,7 @@ import { createPgIngestionRunRepository } from '#adapters/out/persistence/drizzl
 import { createPgSearchRepository } from '#adapters/out/persistence/drizzle/repositories/pg-search-repository.ts'
 import { snapshotCodec } from '#adapters/out/persistence/drizzle/repositories/pg-snapshot-codec.ts'
 import { createPgSnapshotRepository } from '#adapters/out/persistence/drizzle/repositories/pg-snapshot-repository.ts'
+import { createWorkersAiRerankerAdapter } from '#adapters/out/reranker/workers-ai/workers-ai-reranker-adapter.ts'
 import { createLogger } from '#adapters/out/telemetry/logger.ts'
 import type { Container, IngestionContainer, RetrievalUseCases } from '#app/container.ts'
 import type { BackgroundTaskFailure } from '#app/ports/background-tasks.ts'
@@ -40,6 +41,7 @@ import type { BlobStore } from '#app/ports/blob-store.ts'
 import type { Clock } from '#app/ports/clock.ts'
 import type { ContentHasher } from '#app/ports/content-hasher.ts'
 import type { EmbeddingPort } from '#app/ports/embedding-port.ts'
+import type { RerankerPort } from '#app/ports/reranker-port.ts'
 import type { SafeFetcher } from '#app/ports/safe-fetcher.ts'
 import type { BatchLimits } from '#app/services/embedding-batches.ts'
 import { createLifecycle } from '#app/services/lifecycle.ts'
@@ -72,7 +74,7 @@ import { createWriteCorpus, type WriteCorpus } from '#app/use-cases/write-corpus
 import { PUBLISHABLE_REVIEW_STATUSES, ReviewStatus } from '#domain/corpus/family.ts'
 import { type BuildInfo, createBuildInfo } from '#domain/shared/build-info.ts'
 import { buildApp } from './build-app.ts'
-import { EmbeddingsProvider, type Env } from './config/env.ts'
+import { EmbeddingsProvider, type Env, RerankerProvider } from './config/env.ts'
 import {
   createPlatformAdapters,
   platformNetwork,
@@ -90,6 +92,25 @@ import {
 const QUESTION_EMBEDDING_TIMEOUT_MS = 3000
 /** Evidências devolvidas pela busca híbrida. */
 const SEARCH_LIMIT = 12
+/** Candidatos que o reranker reordena antes do corte em `SEARCH_LIMIT` (ADR 0027). */
+const RERANK_CANDIDATES = 30
+/** Teto do reranker antes de manter a ordem do RRF. */
+const RERANK_TIMEOUT_MS = 2000
+
+/** Reranker do `RERANKER_PROVIDER`, ou `null` (o `parseEnv` já exigiu as credenciais). */
+export function createReranker(env: Env): RerankerPort | null {
+  if (
+    env.RERANKER_PROVIDER === RerankerProvider.WorkersAi &&
+    env.CF_ACCOUNT_ID !== undefined &&
+    env.CF_AI_TOKEN !== undefined
+  ) {
+    return createWorkersAiRerankerAdapter({
+      accountId: env.CF_ACCOUNT_ID,
+      apiToken: env.CF_AI_TOKEN,
+    })
+  }
+  return null
+}
 
 /**
  * Status de revisão buscados: produção só `auto` e `approved`; staging inclui `pending` (anomalias
@@ -274,6 +295,9 @@ function createCorpusServices(
     reviewStatuses: reviewStatusesFor(env.APP_ENV),
     embeddingTimeoutMs: QUESTION_EMBEDDING_TIMEOUT_MS,
     limit: SEARCH_LIMIT,
+    reranker: createReranker(env),
+    rerankCandidates: RERANK_CANDIDATES,
+    rerankTimeoutMs: RERANK_TIMEOUT_MS,
   })
   return {
     retrieval: {

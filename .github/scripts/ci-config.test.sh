@@ -177,6 +177,8 @@ check "ingest: discover recusa fonte com ocr: true (sem modelo de OCR no cache)"
   bash -c "yq -r '.jobs.discover.steps[].run // \"\"' '$ingest' | grep -Fq 'any(.[]; .ocr == true)'"
 check "ingest: lock-pr e corpus-eval rodam com o extract pulado (!cancelled() e load success explícitos)" \
   yq_true '[.jobs."lock-pr", .jobs."corpus-eval" | .if | (test("!cancelled\\(\\)") and test("needs\\.load\\.result == .success."))] | all' "$ingest"
+check "ingest: corpus-eval com o reranker do Workers AI (ADR 0027)" \
+  bash -c "yq -r '.jobs.\"corpus-eval\".steps[].env.RERANKER_PROVIDER // \"\"' '$ingest' | grep -qx 'workers-ai'"
 check "ingest: load com --migrate só no staging" \
   bash -c "grep -Eq 'ingest load --target staging .*--migrate' '$ingest'"
 check "ingest: código 75 do load não é falha" \

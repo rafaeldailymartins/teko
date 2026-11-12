@@ -16,6 +16,7 @@ numeração, idioma e substituição estão na [ADR 0001](0001-record-architectu
 | [0024](0024-environments-em-pull-request.md)         | Regra de branch dos environments em eventos `pull_request`                         | accepted |
 | [0025](0025-reconciliacao-incremental-e-snapshot.md) | Reconciliação incremental do corpus e identidade no snapshot                       | proposed |
 | [0026](0026-revisao-do-parser.md)                    | Revisão do parser na identidade da versão de documento                             | accepted |
+| [0027](0027-reranker-workers-ai.md)                  | Reranker do Workers AI na busca híbrida                                            | accepted |
 
 ## Numeração e lista do plano
 
