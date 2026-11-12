@@ -24,6 +24,7 @@ function setup(options: {
   responses?: (TransportResponse | Error)[]
   resolver?: Resolver
   allowedHosts?: string[]
+  httpHosts?: string[]
 }) {
   const calls: TransportRequest[] = []
   const queue = [...(options.responses ?? [ok()])]
@@ -39,6 +40,7 @@ function setup(options: {
   const sleeps: number[] = []
   const fetcher = createSafeFetcher({
     allowedHosts: options.allowedHosts ?? [HOST, 'appasp.economia.go.gov.br'],
+    ...(options.httpHosts === undefined ? {} : { httpHosts: options.httpHosts }),
     resolver: options.resolver ?? (() => Promise.resolve(PUBLIC)),
     transport,
     now: () => clock,
@@ -84,6 +86,66 @@ describe('createSafeFetcher: URL', () => {
     expect(calls[0]?.method).toBe('GET')
     expect(calls[0]?.headers['user-agent']).toBe(CORPUS_USER_AGENT)
     expect(calls[0]?.headers['accept-encoding']).toBe('identity')
+  })
+})
+
+describe('createSafeFetcher: exceção http (ADR 0028)', () => {
+  const OLD_PORTAL = 'sped.rfb.gov.br'
+  const withException = (responses?: (TransportResponse | Error)[]) =>
+    setup({
+      allowedHosts: [HOST, OLD_PORTAL],
+      httpHosts: [OLD_PORTAL],
+      ...(responses === undefined ? {} : { responses }),
+    })
+  const redirect = (location: string): TransportResponse => ({
+    status: 302,
+    headers: { location },
+    body: new Uint8Array(),
+  })
+
+  it('aceita http na porta 80 do host com exceção e segue o redirect no mesmo host', async () => {
+    const { fetcher, calls } = withException([redirect('/estatico/guia.pdf'), ok('pdf')])
+    const response = await fetcher.fetch({ url: 'http://sped.rfb.gov.br:80/arquivo/download/7233' })
+    expect(response.url).toBe('http://sped.rfb.gov.br/estatico/guia.pdf')
+    expect(calls.map((call) => call.url.protocol)).toEqual(['http:', 'http:'])
+    expect(calls[0]?.headers['user-agent']).toBe(CORPUS_USER_AGENT)
+  })
+
+  it.each([
+    ['http://www.gov.br/x', /só https/],
+    ['http://sped.rfb.gov.br:8080/x', /porta 8080/],
+    ['http://sped.rfb.gov.br:443/x', /porta 443/],
+    ['https://sped.rfb.gov.br:80/x', /porta 80/],
+  ])('recusa %s', async (url, message) => {
+    const { fetcher, calls } = withException()
+    await expect(fetcher.fetch({ url })).rejects.toThrow(message)
+    expect(calls).toHaveLength(0)
+  })
+
+  it('recusa redirect para http de outro host', async () => {
+    const { fetcher, calls } = withException([redirect('http://www.gov.br/x')])
+    await expect(
+      fetcher.fetch({ url: 'http://sped.rfb.gov.br/arquivo/download/1' }),
+    ).rejects.toThrow(/só https/)
+    expect(calls).toHaveLength(1)
+  })
+
+  it('exceção http sem o host na allowlist continua recusada', async () => {
+    const { fetcher, calls } = setup({ httpHosts: [OLD_PORTAL] })
+    await expect(fetcher.fetch({ url: 'http://sped.rfb.gov.br/x' })).rejects.toThrow(/allowlist/)
+    expect(calls).toHaveLength(0)
+  })
+
+  it('valida o DNS também em http', async () => {
+    const { fetcher, calls } = setup({
+      allowedHosts: [OLD_PORTAL],
+      httpHosts: [OLD_PORTAL],
+      resolver: () => Promise.resolve([{ address: '127.0.0.1', family: 4 }]),
+    })
+    await expect(fetcher.fetch({ url: 'http://sped.rfb.gov.br/x' })).rejects.toBeInstanceOf(
+      BlockedRequestError,
+    )
+    expect(calls).toHaveLength(0)
   })
 })
 

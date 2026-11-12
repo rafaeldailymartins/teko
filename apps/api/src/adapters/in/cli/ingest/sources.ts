@@ -64,6 +64,13 @@ export const WS_TABELAS_VERSIONS_URL =
 export const WS_TABELAS_DOWNLOAD_URL =
   'https://www.sped.fazenda.gov.br/spedtabelas/WsConsulta/obterTabela.ashx'
 
+/**
+ * Hosts com exceção http (ADR 0028): só o portal antigo do SPED, que recusa https e é o único lugar
+ * com os Guias Práticos anteriores ao 3.1.9. Fonte habilitada nesses hosts precisa do modo
+ * `pinned` (sha256 obrigatório e conferido pelo `discover`).
+ */
+export const HTTP_PINNED_HOSTS: ReadonlySet<string> = new Set(['sped.rfb.gov.br'])
+
 const httpsUrl = z.url({ protocol: /^https$/, error: 'URL https obrigatória' })
 const anyUrl = z.url({ protocol: /^https?$/ })
 const sha256Schema = z.string().regex(/^[0-9a-f]{64}$/, { error: 'sha256 hexadecimal minúsculo' })
@@ -129,7 +136,14 @@ const sourceSchema = z
       return
     }
     if (!source.url.startsWith('https://')) {
-      issue('url', 'fonte habilitada precisa de URL https (o SafeFetcher só aceita https)')
+      if (!HTTP_PINNED_HOSTS.has(new URL(source.url).hostname)) {
+        issue(
+          'url',
+          `fonte habilitada precisa de URL https; http só em ${[...HTTP_PINNED_HOSTS].join(', ')} (ADR 0028)`,
+        )
+      } else if (source.mode !== SourceMode.Pinned) {
+        issue('mode', 'fonte em http precisa do modo pinned, com sha256 (ADR 0028)')
+      }
     }
     if (source.mode === SourceMode.Pinned && source.sha256 === undefined) {
       issue('sha256', 'obrigatório no modo pinned')
@@ -461,5 +475,16 @@ export function allowedHostsOf(config: CorpusConfig): string[] {
       hosts.add(new URL(WS_TABELAS_VERSIONS_URL).hostname)
     }
   }
+  return [...hosts].sort(compareCodeUnits)
+}
+
+/** Hosts das fontes habilitadas em http (exceção do SafeFetcher, ADR 0028), em ordem. */
+export function httpHostsOf(config: CorpusConfig): string[] {
+  const hosts = new Set(
+    config.resolved
+      .map((source) => new URL(source.url))
+      .filter((url) => url.protocol === 'http:')
+      .map((url) => url.hostname),
+  )
   return [...hosts].sort(compareCodeUnits)
 }

@@ -1,4 +1,5 @@
 import { lookup as dnsLookup, type LookupAddress } from 'node:dns'
+import { request as httpRequest } from 'node:http'
 import { request as httpsRequest } from 'node:https'
 import type { LookupFunction } from 'node:net'
 import {
@@ -13,7 +14,9 @@ import { isBlockedAddress } from './ip-policy.ts'
  * `SafeFetcher` sobre `node:https` (Segurança, SSRF, no plano). Defesas, nesta ordem, a cada salto:
  *
  * 1. a URL precisa ser `https`, sem credenciais, na porta 443 e com host da allowlist (comparação
- *    exata, sem curingas: os hosts das fontes de `corpus/sources.yaml`);
+ *    exata, sem curingas: os hosts das fontes de `corpus/sources.yaml`). Exceção (ADR 0028): `http`
+ *    na porta 80 para os hosts de `httpHosts`, que o `ingest` monta com as fontes fixadas por
+ *    sha256 do portal antigo do SPED; a integridade vem do pin, conferido pelo `discover`;
  * 2. o DNS é resolvido antes e **de novo na conexão** (`lookup` do `https.request`), e qualquer
  *    endereço privado, link-local, de metadata ou reservado (IPv4, IPv6 e IPv4 embutido em IPv6)
  *    derruba a requisição: um DNS que muda entre a checagem e a conexão (rebinding) não passa;
@@ -110,6 +113,11 @@ export type Transport = (request: TransportRequest) => Promise<TransportResponse
 export interface SafeFetcherOptions {
   /** Hosts permitidos (nome exato, minúsculo). */
   readonly allowedHosts: readonly string[]
+  /**
+   * Hosts da allowlist que também aceitam `http` na porta 80 (ADR 0028: fontes fixadas por sha256
+   * do portal antigo do SPED, que recusa https). Padrão: nenhum.
+   */
+  readonly httpHosts?: readonly string[]
   readonly resolver?: Resolver
   readonly transport?: Transport
   readonly now?: () => number
@@ -161,10 +169,14 @@ function tooLarge(url: URL, maxBytes: number): BlockedRequestError {
   )
 }
 
-/** Transporte real: `https.request` com o `lookup` validado e sem agente compartilhado. */
-const httpsTransport: Transport = (request) =>
+/**
+ * Transporte real: `https.request` (ou `http.request`, nos saltos em http que o `checkUrl`
+ * aceitou) com o `lookup` validado e sem agente compartilhado.
+ */
+const nodeTransport: Transport = (request) =>
   new Promise((resolve, reject) => {
-    const outgoing = httpsRequest(
+    const send: typeof httpsRequest = request.url.protocol === 'http:' ? httpRequest : httpsRequest
+    const outgoing = send(
       request.url,
       {
         method: request.method,
@@ -238,8 +250,9 @@ export function createSafeLookup(resolver: Resolver): LookupFunction {
 
 export function createSafeFetcher(options: SafeFetcherOptions): SafeFetcher {
   const allowed = new Set(options.allowedHosts.map((host) => host.toLowerCase()))
+  const httpHosts = new Set((options.httpHosts ?? []).map((host) => host.toLowerCase()))
   const resolver = options.resolver ?? defaultResolver
-  const transport = options.transport ?? httpsTransport
+  const transport = options.transport ?? nodeTransport
   const now = options.now ?? Date.now
   const sleep = options.sleep ?? defaultSleep
   const minInterval = options.minIntervalMs ?? MIN_INTERVAL_MS
@@ -255,16 +268,21 @@ export function createSafeFetcher(options: SafeFetcherOptions): SafeFetcher {
       throw new BlockedRequestError('URL inválida')
     }
     const url = new URL(raw)
-    if (url.protocol !== 'https:') {
-      throw new BlockedRequestError(`só https é aceito (${url.protocol} em ${url.host})`)
+    const hostname = url.hostname.toLowerCase()
+    const plainHttp = url.protocol === 'http:' && httpHosts.has(hostname)
+    if (url.protocol !== 'https:' && !plainHttp) {
+      throw new BlockedRequestError(
+        `só https é aceito (${url.protocol} em ${url.host}; http só nos hosts com exceção)`,
+      )
     }
     if (url.username !== '' || url.password !== '') {
       throw new BlockedRequestError(`URL com credenciais recusada (${url.host})`)
     }
-    if (url.port !== '' && url.port !== '443') {
+    const defaultPort = plainHttp ? '80' : '443'
+    if (url.port !== '' && url.port !== defaultPort) {
       throw new BlockedRequestError(`porta ${url.port} recusada (${url.hostname})`)
     }
-    if (!allowed.has(url.hostname.toLowerCase())) {
+    if (!allowed.has(hostname)) {
       throw new BlockedRequestError(`host fora da allowlist: ${url.hostname}`)
     }
     return url

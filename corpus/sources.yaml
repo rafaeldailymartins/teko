@@ -115,7 +115,9 @@ documents:
         timeout_seconds: 7200
         notes: >-
           Fixture da F2: cobre o leiaute 2025 (o próprio Guia lista a 3.1.8 como "para 2025").
-      # --- Só no portal antigo, em http: o SafeFetcher aceita só https (ver README) ------------
+      # --- Só no portal antigo, em http (exceção com pin obrigatório, ADR 0028; ver README) ----
+      # Habilitados os Guias com efeitos de 2021 a 2024. O 3.1.8 fica de fora: divide o leiaute 019
+      # com o 3.1.9 já publicado e é mais antigo; ingerido depois, inverteria o conhecimento de 2025.
       - id: efd-icms-ipi/guia-pratico/3.1.8
         version: 3.1.8
         url: http://sped.rfb.gov.br/arquivo/download/8012
@@ -126,7 +128,9 @@ documents:
         leiaute: "019"
         pages: 361
         enabled: false
-        disabled_reason: só em http (sped.rfb.gov.br recusa https); Ato COTEPE/ICMS 164/24, leiaute 2025
+        disabled_reason: >-
+          mesmo leiaute (019) do 3.1.9 já publicado e mais antigo: ingerido depois, fecharia o
+          conhecimento do 3.1.9 (ADR 0025); Ato COTEPE/ICMS 164/24, leiaute 2025
       - id: efd-icms-ipi/guia-pratico/3.1.7
         version: 3.1.7
         url: http://sped.rfb.gov.br/arquivo/download/8011
@@ -136,17 +140,20 @@ documents:
         published_on: 2024-08-14
         leiaute: "019"
         enabled: false
-        disabled_reason: só em http; Ato COTEPE/ICMS 131/24 (sem efeitos)
+        disabled_reason: Ato COTEPE/ICMS 131/24 (sem efeitos)
       - id: efd-icms-ipi/guia-pratico/3.1.6
         version: 3.1.6
+        version_label: Guia Prático EFD-ICMS/IPI versão 3.1.6 (atualização de 09/11/2023)
         url: http://sped.rfb.gov.br/arquivo/download/8010
         mode: pinned
         sha256: 5bb98f82fb64f31c47b7025c33f73830e974242321c89c8fed9dff7bfe14c813
         format: pdf
         published_on: 2023-11-09
         leiaute: "018"
-        enabled: false
-        disabled_reason: só em http; Ato COTEPE/ICMS 179/23, leiaute 2024
+        pages: 362
+        page_ranges: [1-125, 126-250, 251-362]
+        timeout_seconds: 7200
+        notes: Ato COTEPE/ICMS 179/23, leiaute 2024. Só no portal antigo, em http, fixado por sha256 (ADR 0028).
       - id: efd-icms-ipi/guia-pratico/3.1.5
         version: 3.1.5
         url: http://sped.rfb.gov.br/arquivo/download/8009
@@ -156,7 +163,7 @@ documents:
         published_on: 2023-08-24
         leiaute: "018"
         enabled: false
-        disabled_reason: só em http; Ato COTEPE/ICMS 134/23 (sem efeitos)
+        disabled_reason: Ato COTEPE/ICMS 134/23 (sem efeitos)
       - id: efd-icms-ipi/guia-pratico/3.1.4
         version: 3.1.4
         url: http://sped.rfb.gov.br/arquivo/download/7277
@@ -166,27 +173,33 @@ documents:
         published_on: 2023-05-18
         leiaute: "017"
         enabled: false
-        disabled_reason: só em http; Ato COTEPE/ICMS 21/23 (anotado sem efeitos)
+        disabled_reason: Ato COTEPE/ICMS 21/23 (anotado sem efeitos)
       - id: efd-icms-ipi/guia-pratico/3.1.3
         version: 3.1.3
+        version_label: Guia Prático EFD-ICMS/IPI versão 3.1.3 (atualização de 01/03/2023)
         url: http://sped.rfb.gov.br/arquivo/download/7240
         mode: pinned
         sha256: 64e9663fdd378ffcfae5d7373f8bb6673d7aa15c1424002cb73f537c38ea8698
         format: pdf
         published_on: 2023-03-01
         leiaute: "017"
-        enabled: false
-        disabled_reason: só em http; Ato COTEPE/ICMS 21/23, efeitos de 01/04/2023 a 31/12/2023
+        pages: 357
+        page_ranges: [1-125, 126-250, 251-357]
+        timeout_seconds: 7200
+        notes: Ato COTEPE/ICMS 21/23, efeitos de 01/04/2023 a 31/12/2023. Só no portal antigo, em http, fixado por sha256 (ADR 0028).
       - id: efd-icms-ipi/guia-pratico/3.1.2
         version: 3.1.2
+        version_label: Guia Prático EFD-ICMS/IPI versão 3.1.2 (atualização de 10/11/2022)
         url: http://sped.rfb.gov.br/arquivo/download/7239
         mode: pinned
         sha256: 9b1ca150639a6981501c85ee8d98ba5552d054653c83fc48d34f12035627d89f
         format: pdf
         published_on: 2022-11-10
         leiaute: "017"
-        enabled: false
-        disabled_reason: só em http; Ato COTEPE/ICMS 117/22, efeitos de 01/01/2023 a 31/03/2023
+        pages: 356
+        page_ranges: [1-125, 126-250, 251-356]
+        timeout_seconds: 7200
+        notes: Ato COTEPE/ICMS 117/22, efeitos de 01/01/2023 a 31/03/2023. Só no portal antigo, em http, fixado por sha256 (ADR 0028).
       - id: efd-icms-ipi/guia-pratico/3.1.1
         version: 3.1.1
         url: http://sped.rfb.gov.br/arquivo/download/7238
@@ -196,7 +209,7 @@ documents:
         published_on: 2022-08-04
         leiaute: "016"
         enabled: false
-        disabled_reason: só em http; Ato COTEPE/ICMS 80/22 (sem efeitos)
+        disabled_reason: Ato COTEPE/ICMS 80/22 (sem efeitos)
       - id: efd-icms-ipi/guia-pratico/3.1.0
         version: 3.1.0
         url: http://sped.rfb.gov.br/arquivo/download/7237
@@ -206,7 +219,7 @@ documents:
         published_on: 2022-05-12
         leiaute: "016"
         enabled: false
-        disabled_reason: só em http; Ato COTEPE/ICMS 21/22 (sem efeitos)
+        disabled_reason: Ato COTEPE/ICMS 21/22 (sem efeitos)
       - id: efd-icms-ipi/guia-pratico/3.0.9
         version: 3.0.9
         url: http://sped.rfb.gov.br/arquivo/download/7236
@@ -216,17 +229,20 @@ documents:
         published_on: 2022-02-23
         leiaute: "016"
         enabled: false
-        disabled_reason: só em http; Ato COTEPE/ICMS 21/22 (sem efeitos)
+        disabled_reason: Ato COTEPE/ICMS 21/22 (sem efeitos)
       - id: efd-icms-ipi/guia-pratico/3.0.8
         version: 3.0.8
+        version_label: Guia Prático EFD-ICMS/IPI versão 3.0.8 (atualização de 26/11/2021)
         url: http://sped.rfb.gov.br/arquivo/download/7235
         mode: pinned
         sha256: 00a1ca9023d6fda60b9f374340dc58e3b43082fbc4669dccd7f166c5aba4ef43
         format: pdf
         published_on: 2021-11-26
         leiaute: "016"
-        enabled: false
-        disabled_reason: só em http; Ato COTEPE/ICMS 87/21, leiaute 2022
+        pages: 331
+        page_ranges: [1-125, 126-250, 251-331]
+        timeout_seconds: 7200
+        notes: Ato COTEPE/ICMS 87/21, leiaute 2022. Só no portal antigo, em http, fixado por sha256 (ADR 0028).
       - id: efd-icms-ipi/guia-pratico/3.0.7
         version: 3.0.7
         url: http://sped.rfb.gov.br/arquivo/download/7234
@@ -236,17 +252,20 @@ documents:
         published_on: 2021-08-26
         leiaute: "016"
         enabled: false
-        disabled_reason: só em http; Ato COTEPE/ICMS 62/21 (sem efeitos)
+        disabled_reason: Ato COTEPE/ICMS 62/21 (sem efeitos)
       - id: efd-icms-ipi/guia-pratico/3.0.6
         version: 3.0.6
+        version_label: Guia Prático EFD-ICMS/IPI versão 3.0.6 (atualização de 19/11/2020)
         url: http://sped.rfb.gov.br/arquivo/download/7233
         mode: pinned
         sha256: 974e622015be2c0fca74cbd848fe279971ba72e76235405bb1fd31e70172810a
         format: pdf
         published_on: 2020-11-19
         leiaute: "015"
-        enabled: false
-        disabled_reason: só em http; Ato COTEPE/ICMS 70/20, leiaute 2021
+        pages: 339
+        page_ranges: [1-125, 126-250, 251-339]
+        timeout_seconds: 7200
+        notes: Ato COTEPE/ICMS 70/20, leiaute 2021. Só no portal antigo, em http, fixado por sha256 (ADR 0028).
       - id: efd-icms-ipi/guia-pratico/3.0.5
         version: 3.0.5
         url: http://sped.rfb.gov.br/arquivo/download/5701
@@ -256,7 +275,7 @@ documents:
         published_on: 2020-08-25
         leiaute: "015"
         enabled: false
-        disabled_reason: só em http; Ato COTEPE/ICMS 59/20 (sem efeitos)
+        disabled_reason: Ato COTEPE/ICMS 59/20 (sem efeitos)
       - id: efd-icms-ipi/guia-pratico/3.0.4
         version: 3.0.4
         url: http://sped.rfb.gov.br/arquivo/download/5700
@@ -266,7 +285,7 @@ documents:
         published_on: 2020-06-22
         leiaute: "014"
         enabled: false
-        disabled_reason: só em http; Ato COTEPE/ICMS 44/20 (sem efeitos)
+        disabled_reason: Ato COTEPE/ICMS 44/20 (sem efeitos)
       - id: efd-icms-ipi/guia-pratico/3.0.3
         version: 3.0.3
         url: http://sped.rfb.gov.br/arquivo/download/5699
@@ -276,7 +295,7 @@ documents:
         published_on: 2019-10-14
         leiaute: "014"
         enabled: false
-        disabled_reason: só em http; Ato COTEPE/ICMS 65/19, leiaute 2020
+        disabled_reason: anterior a 2021, fora da cobertura decidida (ADR 0028); Ato COTEPE/ICMS 65/19, leiaute 2020
       - id: efd-icms-ipi/guia-pratico/3.0.2
         version: 3.0.2
         url: http://sped.rfb.gov.br/arquivo/download/5698
@@ -286,7 +305,7 @@ documents:
         published_on: 2019-05-21
         leiaute: "013"
         enabled: false
-        disabled_reason: só em http; Ato COTEPE/ICMS 24/19 (sem efeitos)
+        disabled_reason: Ato COTEPE/ICMS 24/19 (sem efeitos)
       - id: efd-icms-ipi/guia-pratico/3.0.1
         version: 3.0.1
         url: http://sped.rfb.gov.br/arquivo/download/4222
@@ -296,7 +315,7 @@ documents:
         published_on: 2019-01-28
         leiaute: "013"
         enabled: false
-        disabled_reason: só em http; Ato COTEPE/ICMS 57/18, leiaute 2019
+        disabled_reason: anterior a 2021, fora da cobertura decidida (ADR 0028); Ato COTEPE/ICMS 57/18, leiaute 2019
 
   # ==============================================================================================
   # C1 — Notas Técnicas da EFD ICMS/IPI (uma por leiaute; o Ato COTEPE/ICMS institui cada uma)

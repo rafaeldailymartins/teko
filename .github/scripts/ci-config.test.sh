@@ -187,6 +187,17 @@ check "ingest: load com --migrate só no staging" \
   bash -c "grep -Eq 'ingest load --target staging .*--migrate' '$ingest'"
 check "ingest: o tamanho do staging (dbBytes do relatório) sai do load e vai ao resumo, com aviso acima de 400 MB" \
   yq_true '.jobs.load.outputs.db_bytes == "${{ steps.lock.outputs.db_bytes }}" and .jobs.summary.steps[-1].env.DB_BYTES == "${{ needs.load.outputs.db_bytes }}" and ([.jobs.load.steps[].run // "" | test("400 \\* 1024 \\* 1024")] | any)' "$ingest"
+# Exceção http (ADR 0028): a única porta 80 liberada no ingest.yml é a do portal antigo do SPED, no
+# discover (quem baixa), e a matriz do extract só aceita http desse host.
+ingest_http_exception() {
+  local endpoints port80
+  endpoints="$(tr ' ' '\n' <<<"$(yq -r '.jobs[].steps[0].with."allowed-endpoints" // ""' "$ingest")")"
+  port80="$(sort -u <<<"$(grep -E ':80$' <<<"$endpoints" || true)")"
+  [[ "$port80" == "sped.rfb.gov.br:80" ]] &&
+    [[ " $(yq -r '.jobs.discover.steps[0].with."allowed-endpoints"' "$ingest") " == *" sped.rfb.gov.br:80 "* ]] &&
+    grep -Fq 'startswith("http://sped.rfb.gov.br/")' "$ingest"
+}
+check "ingest: exceção http só para o portal antigo do SPED (porta 80 no discover e matriz)" ingest_http_exception
 check "ingest: código 75 do load não é falha" \
   bash -c "yq -r '.jobs.load.steps[].run // \"\"' '$ingest' | grep -Eq '^ *75\\)'"
 check "ingest: target de dispatch só aceita staging" \

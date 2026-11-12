@@ -327,17 +327,21 @@ export interface IngestionIo {
 }
 
 /**
- * `SafeFetcher` com a allowlist das fontes, o Netlify Blobs (com `NETLIFY_AUTH_TOKEN` e
- * `NETLIFY_SITE_ID`; o `parseEnv` exige as duas juntas) ou o store em memória (execução local) e o
- * hash de conteúdo.
+ * `SafeFetcher` com a allowlist das fontes e a exceção http das fontes fixadas (ADR 0028), o Netlify
+ * Blobs (com `NETLIFY_AUTH_TOKEN` e `NETLIFY_SITE_ID`; o `parseEnv` exige as duas juntas) ou o store
+ * em memória (execução local) e o hash de conteúdo.
  */
-export function createIngestionIo(env: Env, allowedHosts: readonly string[]): IngestionIo {
+export function createIngestionIo(
+  env: Env,
+  allowedHosts: readonly string[],
+  httpHosts: readonly string[] = [],
+): IngestionIo {
   const blobs =
     env.NETLIFY_AUTH_TOKEN !== undefined && env.NETLIFY_SITE_ID !== undefined
       ? createNetlifyBlobStore({ siteID: env.NETLIFY_SITE_ID, token: env.NETLIFY_AUTH_TOKEN })
       : createInMemoryBlobStore()
   return {
-    fetcher: createSafeFetcher({ allowedHosts }),
+    fetcher: createSafeFetcher({ allowedHosts, httpHosts }),
     blobs,
     hasher: sha256ContentHasher,
     clock: systemClock,

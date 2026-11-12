@@ -17,6 +17,7 @@ numeração, idioma e substituição estão na [ADR 0001](0001-record-architectu
 | [0025](0025-reconciliacao-incremental-e-snapshot.md) | Reconciliação incremental do corpus e identidade no snapshot                       | accepted |
 | [0026](0026-revisao-do-parser.md)                    | Revisão do parser na identidade da versão de documento                             | accepted |
 | [0027](0027-reranker-workers-ai.md)                  | Reranker do Workers AI na busca híbrida                                            | accepted |
+| [0028](0028-excecao-http-com-pin.md)                 | Exceção http com pin para os Guias do portal antigo do SPED                        | accepted |
 
 ## Numeração e lista do plano
 
