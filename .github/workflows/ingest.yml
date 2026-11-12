@@ -636,6 +636,19 @@ jobs:
           } >"${RUNNER_TEMP}/pr-body.md"
           url="$(gh pr create --repo "$REPO" --base develop --head "$branch" --title "$headline" --body-file "${RUNNER_TEMP}/pr-body.md")"
           echo "- PR do lock: ${url}" >>"$GITHUB_STEP_SUMMARY"
+          # Cada PR do lock reescreve o arquivo inteiro: o novo substitui os anteriores ainda
+          # abertos, que são fechados (com a branch apagada). Só os da própria App.
+          new_number="${url##*/}"
+          gh pr list --repo "$REPO" --state open --base develop --author "app/${APP_SLUG}" \
+            --json number,headRefName \
+            --jq '.[] | select(.headRefName | startswith("chore/corpus-lock-")) | .number' \
+            >"${RUNNER_TEMP}/old-lock-prs.txt"
+          while read -r old; do
+            [[ -z "$old" || "$old" == "$new_number" ]] && continue
+            gh pr close "$old" --repo "$REPO" --delete-branch \
+              --comment "Substituído por #${new_number}: o PR do lock mais recente reescreve o \`corpus/corpus.lock.json\` inteiro."
+            echo "- PR do lock anterior fechado: #${old}" >>"$GITHUB_STEP_SUMMARY"
+          done <"${RUNNER_TEMP}/old-lock-prs.txt"
 
   corpus-eval:
     name: corpus-eval

@@ -58,7 +58,9 @@ o `discover` e o `load` do CLI Node.
   (`actions/create-github-app-token`, `client-id` + chave privada), o GitHub assina o commit
   (Verified) sem chave no runner; a mensagem leva `Signed-off-by` do bot. Branch
   `chore/corpus-lock-<run_number>`, título `chore(ingest): …`. Um PR aberto pela App dispara o
-  `pr-gate` (o `GITHUB_TOKEN` não dispararia).
+  `pr-gate` (o `GITHUB_TOKEN` não dispararia). Cada PR reescreve o lock inteiro, e o
+  `corpus_version` sobe em todo run: o PR novo fecha os PRs do lock anteriores ainda abertos (só
+  os da própria App, com a branch apagada), para nunca haver mais de um (2026-11-12).
 - **Segredos de environment num workflow chamado.** Pela documentação do GitHub, o chamador
   precisa repassar pelo nome os segredos que os jobs com `environment` usam; o `ingest.yml`
   declara todos em `workflow_call.secrets` e o `source-watch.yml` os repassa (nunca
