@@ -116,7 +116,28 @@ describe('readDoclingBlocks', () => {
       withBody(doc, { body: { self_ref: '#/body', children: [{ $ref: ref }] } })
     expect(() => readDoclingBlocks([broken('#/texts/9')])).toThrow(/Referência quebrada/)
     expect(() => readDoclingBlocks([broken('#/tables/9')])).toThrow(/Referência quebrada/)
-    expect(() => readDoclingBlocks([broken('#/pictures/0')])).toThrow(/Referência desconhecida/)
+    expect(() => readDoclingBlocks([broken('#/pictures/0')])).toThrow(/Referência quebrada/)
+    expect(() => readDoclingBlocks([broken('#/key_value_items/0')])).toThrow(
+      /Referência desconhecida/,
+    )
+  })
+
+  it('figura sai com os rótulos de dentro dela; o texto depois dela continua', () => {
+    const doc = syntheticDocling([
+      { text: 'Antes', page: 1 },
+      { text: 'Contribuinte goiano', page: 2 },
+      { text: 'Depois', page: 2 },
+    ])
+    const patched = withBody(doc, {
+      body: {
+        self_ref: '#/body',
+        children: [{ $ref: '#/texts/0' }, { $ref: '#/pictures/0' }, { $ref: '#/texts/2' }],
+      },
+      pictures: [{ self_ref: '#/pictures/0', label: 'picture', children: [{ $ref: '#/texts/1' }] }],
+    })
+    expect(
+      readDoclingBlocks([patched]).map((block) => block.kind === 'text' && block.text),
+    ).toEqual(['Antes', 'Depois'])
   })
 
   it('parte sem nenhum item com página vai para o fim', () => {
