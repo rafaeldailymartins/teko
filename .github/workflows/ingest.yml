@@ -1,0 +1,763 @@
+# Ingestão do corpus no staging (plano: "Ingestão, vigência e avaliação"; mudanças OpenSpec
+# add-embedding-pipeline e add-docling-pdf-extraction).
+#
+#   discover (staging) → docling-models → extract (matriz, sem segredos) → load (staging)
+#     → lock-pr (App teko-release-bot) e corpus-eval (staging) → summary
+#
+# - discover: `cli ingest discover` baixa cada fonte pelo SafeFetcher, confere sha256 e pins do
+#   corpus/sources.yaml e grava `<out>/plan.json` + `<out>/extract-matrix.json` (os PDFs/XLSX sem
+#   `docling.json` no store corpus-docling, já divididos por `page_range`). Os arquivos seguem como
+#   o artifact `ingest-downloads`.
+# - docling-models: garante o cache dos modelos do Docling (`docling-<hash do uv.lock>`); é o único
+#   job que grava o cache, para os itens da matriz não disputarem o save.
+# - extract: um job por item, `teko-ingest convert` (tools/ingest) → artifact
+#   `docling-<sha256>[-p<início>-<fim>]`. Sem segredos e sem environment; HF_HUB_OFFLINE garante
+#   que o Docling só usa os modelos do cache.
+# - load: `cli ingest load --migrate` (desvio consciente da F3: o staging ainda não tinha migrações;
+#   só com --target staging) sobe raw/docling ao Blobs, grava as versões, embeddings (orçamento
+#   EMBED_NEURON_BUDGET), cobertura, snapshot e atualiza corpus/corpus.lock.json. Código 75 =
+#   orçamento de neurons do dia acabou: o job termina verde com status `budget_exhausted` e o
+#   próximo run retoma pelo embedding_cache.
+# - lock-pr: abre o PR `chore(ingest): …` do corpus/corpus.lock.json com o token da App
+#   teko-release-bot (commit pela API GraphQL, assinado pelo GitHub, com Signed-off-by).
+# - corpus-eval: retrieval evals (promptfoo, provider in-process) contra o staging, com embeddings
+#   reais do Workers AI e o role teko_app.
+#
+# Produção nunca é tocada aqui: ela só recebe o corpus pelo `promote` do release.
+name: Ingest
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Ambiente (só staging; produção recebe o corpus pelo promote do release)
+        type: choice
+        options: [staging]
+        default: staging
+      family:
+        description: Família do corpus (vazio = todas)
+        type: string
+        default: ""
+      bulk:
+        description: Carga em massa (HNSW criado depois da carga; só staging)
+        type: boolean
+        default: false
+  workflow_call:
+    inputs:
+      target:
+        type: string
+        default: staging
+      family:
+        type: string
+        default: ""
+      bulk:
+        type: boolean
+        default: false
+    # Num workflow chamado, o segredo do environment só chega ao job com `environment: staging` se
+    # o chamador o repassar pelo nome (docs do GitHub: "Using inputs and secrets in a reusable
+    # workflow"); por isso todos estão declarados aqui. Nunca `secrets: inherit`.
+    secrets:
+      RELEASE_APP_PRIVATE_KEY:
+        description: Chave privada da App teko-release-bot (segredo do repositório), para o PR do lock.
+        required: true
+      NETLIFY_AUTH_TOKEN:
+        description: PAT da Netlify (environment staging), para o Netlify Blobs.
+        required: false
+      NEON_STAGING_MIGRATE_URL:
+        description: URL direta do owner do teko-staging (environment staging).
+        required: false
+      NEON_STAGING_APP_URL:
+        description: URL do teko_app no teko-staging (environment staging), para o corpus-eval.
+        required: false
+      NEON_API_KEY_STAGING:
+        description: API key do Neon (environment staging), para medir as CU-h do run.
+        required: false
+      CF_ACCOUNT_ID:
+        description: Conta do Cloudflare (environment staging), Workers AI.
+        required: false
+      CF_AI_TOKEN:
+        description: Token do Workers AI (environment staging).
+        required: false
+
+permissions: {}
+
+concurrency:
+  # Prefixo literal: chamado pelo source-watch, `github.workflow` seria o nome do chamador. Uma
+  # ingestão nunca é cancelada no meio (a escrita é por versão de documento, mas o run soma neurons).
+  group: ingest-staging
+  cancel-in-progress: false
+
+env:
+  TURBO_TELEMETRY_DISABLED: "1"
+  NEXT_TELEMETRY_DISABLED: "1"
+
+jobs:
+  discover:
+    name: discover
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    environment: staging
+    permissions:
+      contents: read
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+      count: ${{ steps.matrix.outputs.count }}
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          egress-policy: block
+          allowed-endpoints: >
+            github.com:443
+            api.github.com:443
+            codeload.github.com:443
+            objects.githubusercontent.com:443
+            raw.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+            results-receiver.actions.githubusercontent.com:443
+            *.actions.githubusercontent.com:443
+            *.blob.core.windows.net:443
+            registry.npmjs.org:443
+            nodejs.org:443
+            api.netlify.com:443
+            *.s3.us-east-2.amazonaws.com:443
+            *.s3.dualstack.us-east-2.amazonaws.com:443
+            www.gov.br:443
+            sped.rfb.gov.br:443
+            www.sped.fazenda.gov.br:443
+            goias.gov.br:443
+            www.goias.gov.br:443
+            appasp.economia.go.gov.br:443
+
+      - name: Conferir entradas e configuração do environment staging
+        env:
+          TARGET: ${{ inputs.target }}
+          FAMILY: ${{ inputs.family }}
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ vars.NETLIFY_SITE_ID }}
+          NEON_STAGING_PROJECT_ID: ${{ vars.NEON_STAGING_PROJECT_ID }}
+        run: |
+          if [[ "$TARGET" != staging ]]; then
+            echo "::error title=ingest::target '${TARGET}' não é aceito: a ingestão só roda no staging (produção recebe o corpus pelo promote do release)."
+            exit 1
+          fi
+          if [[ ! "$FAMILY" =~ ^[a-z0-9-]*$ ]]; then
+            echo "::error title=ingest::family inválida: use o id da família (ex.: rcte, efd-icms-ipi) ou vazio."
+            exit 1
+          fi
+          missing=()
+          [[ -n "$NETLIFY_AUTH_TOKEN" ]] || missing+=("segredo NETLIFY_AUTH_TOKEN")
+          [[ -n "$NETLIFY_SITE_ID" ]] || missing+=("variável NETLIFY_SITE_ID (id do site tekoia: Site configuration > Site details)")
+          [[ -n "$NEON_STAGING_PROJECT_ID" ]] || missing+=("variável NEON_STAGING_PROJECT_ID (medição de CU-h)")
+          if (( ${#missing[@]} > 0 )); then
+            printf -v list '%s; ' "${missing[@]}"
+            echo "::error title=ingest::Faltam no environment 'staging': ${list%; }. Cadastre com 'gh variable set NOME --env staging' (ou 'gh secret set' para o segredo)."
+            exit 1
+          fi
+
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      - name: Build da CLI (@teko/api → dist/cli.mjs)
+        run: pnpm --filter @teko/api build
+
+      - name: Descobrir versões das fontes (cli ingest discover)
+        env:
+          FAMILY: ${{ inputs.family }}
+          OUT: ${{ runner.temp }}/ingest
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ vars.NETLIFY_SITE_ID }}
+        run: |
+          args=(ingest discover --target staging --out "$OUT")
+          [[ -n "$FAMILY" ]] && args+=(--family "$FAMILY")
+          node apps/api/dist/cli.mjs "${args[@]}"
+
+      - name: Matriz do extract (validada)
+        id: matrix
+        env:
+          MATRIX_FILE: ${{ runner.temp }}/ingest/extract-matrix.json
+        run: |
+          if [[ ! -f "$MATRIX_FILE" ]]; then
+            echo "::error title=ingest::O discover não gravou extract-matrix.json."
+            exit 1
+          fi
+          # Cada item vira parâmetro de um job sem segredos: id, caminho e page_range passam por
+          # validação estrita antes de entrar na matriz.
+          jq -e '
+            type == "array" and length <= 256 and all(.[];
+              (.id | type == "string" and test("^[0-9a-f]{64}(-p[0-9]+-[0-9]+)?$")) and
+              (.file | type == "string" and test("^[A-Za-z0-9._/-]+$") and (contains("..") | not) and (startswith("/") | not)) and
+              (.sourceId | type == "string" and test("^[a-z0-9][a-z0-9./_-]*$")) and
+              (.url | type == "string" and startswith("https://")) and
+              ((.pageRange // null) == null or (.pageRange | type == "string" and test("^[0-9]+-[0-9]+$"))) and
+              ((.ocr // false) | type == "boolean") and
+              ((.timeoutSeconds // 3600) | type == "number" and . > 0 and . <= 18000)
+            )' "$MATRIX_FILE" >/dev/null || {
+            echo "::error title=ingest::extract-matrix.json fora do contrato (no máximo 256 itens; ver tools/ingest/README.md)."
+            exit 1
+          }
+          count="$(jq 'length' "$MATRIX_FILE")"
+          echo "count=${count}" >>"$GITHUB_OUTPUT"
+          echo "matrix=$(jq -c '{include: [.[] | {id, file, sourceId, url, pageRange: (.pageRange // ""), ocr: (.ocr // false), timeoutSeconds: (.timeoutSeconds // 3600)}]}' "$MATRIX_FILE")" >>"$GITHUB_OUTPUT"
+          echo "- discover: ${count} item(ns) para o Docling" >>"$GITHUB_STEP_SUMMARY"
+
+      - name: Guardar os arquivos baixados
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ingest-downloads
+          path: ${{ runner.temp }}/ingest
+          if-no-files-found: error
+          retention-days: 3
+
+  docling-models:
+    name: docling-models
+    needs: discover
+    if: needs.discover.outputs.count != '0'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: tools/ingest
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          egress-policy: block
+          allowed-endpoints: >
+            github.com:443
+            api.github.com:443
+            codeload.github.com:443
+            objects.githubusercontent.com:443
+            raw.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+            results-receiver.actions.githubusercontent.com:443
+            *.actions.githubusercontent.com:443
+            *.blob.core.windows.net:443
+            pypi.org:443
+            files.pythonhosted.org:443
+            download.pytorch.org:443
+            download-r2.pytorch.org:443
+            huggingface.co:443
+            *.huggingface.co:443
+            *.hf.co:443
+            modelscope.cn:443
+            www.modelscope.cn:443
+
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Restaurar o cache dos modelos do Docling
+        id: cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: tools/ingest/.cache/docling-models
+          key: docling-${{ hashFiles('tools/ingest/uv.lock') }}
+
+      - name: Instalar uv
+        if: steps.cache.outputs.cache-hit != 'true'
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          version: 0.13.7
+          working-directory: tools/ingest
+          enable-cache: false
+
+      - name: Baixar os modelos (docling-tools)
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          uv sync --frozen --extra docling
+          uv run --frozen docling-tools models download --output-dir .cache/docling-models
+
+      - name: Salvar o cache dos modelos
+        if: steps.cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: tools/ingest/.cache/docling-models
+          key: docling-${{ hashFiles('tools/ingest/uv.lock') }}
+
+  extract:
+    name: extract (${{ matrix.id }})
+    needs: [discover, docling-models]
+    if: needs.discover.outputs.count != '0'
+    runs-on: ubuntu-24.04
+    # Documentos de mais de 5 h são divididos por page_range no corpus/sources.yaml.
+    timeout-minutes: 330
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      max-parallel: 6
+      matrix: ${{ fromJSON(needs.discover.outputs.matrix) }}
+    defaults:
+      run:
+        working-directory: tools/ingest
+    env:
+      HF_HUB_OFFLINE: "1"
+      TRANSFORMERS_OFFLINE: "1"
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          egress-policy: block
+          allowed-endpoints: >
+            github.com:443
+            api.github.com:443
+            codeload.github.com:443
+            objects.githubusercontent.com:443
+            raw.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+            results-receiver.actions.githubusercontent.com:443
+            *.actions.githubusercontent.com:443
+            *.blob.core.windows.net:443
+            pypi.org:443
+            files.pythonhosted.org:443
+            download.pytorch.org:443
+            download-r2.pytorch.org:443
+
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Instalar uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          version: 0.13.7
+          working-directory: tools/ingest
+          enable-cache: true
+
+      - name: Sincronizar ambiente com o Docling (uv.lock congelado)
+        run: uv sync --frozen --extra docling
+
+      - name: Restaurar os modelos do Docling
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: tools/ingest/.cache/docling-models
+          key: docling-${{ hashFiles('tools/ingest/uv.lock') }}
+          fail-on-cache-miss: true
+
+      - name: Baixar os arquivos do discover
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: ingest-downloads
+          path: tools/ingest/work/in
+
+      - name: Converter com o Docling (teko-ingest convert)
+        env:
+          ITEM_FILE: ${{ matrix.file }}
+          ITEM_SOURCE_ID: ${{ matrix.sourceId }}
+          ITEM_URL: ${{ matrix.url }}
+          ITEM_PAGE_RANGE: ${{ matrix.pageRange }}
+          ITEM_OCR: ${{ matrix.ocr }}
+          ITEM_TIMEOUT: ${{ matrix.timeoutSeconds }}
+        run: |
+          args=(convert "work/in/${ITEM_FILE}" --source-id "$ITEM_SOURCE_ID" --url "$ITEM_URL"
+            --out work/out --artifacts-path .cache/docling-models --timeout "$ITEM_TIMEOUT")
+          [[ -n "$ITEM_PAGE_RANGE" ]] && args+=(--page-range "$ITEM_PAGE_RANGE")
+          [[ "$ITEM_OCR" == true ]] && args+=(--ocr)
+          start="$(date +%s)"
+          uv run --frozen teko-ingest "${args[@]}"
+          echo "- extract \`${ITEM_SOURCE_ID}\` ${ITEM_PAGE_RANGE:+(páginas ${ITEM_PAGE_RANGE}) }em $(( ($(date +%s) - start) / 60 )) min" >>"$GITHUB_STEP_SUMMARY"
+
+      - name: Guardar a saída do Docling
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: docling-${{ matrix.id }}
+          path: tools/ingest/work/out
+          if-no-files-found: error
+          retention-days: 3
+
+  load:
+    name: load
+    needs: [discover, extract]
+    # Roda sem extract quando nenhum PDF/XLSX precisa de Docling (o job extract fica skipped).
+    if: >-
+      ${{ !cancelled() && needs.discover.result == 'success'
+      && contains(fromJSON('["success", "skipped"]'), needs.extract.result) }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    environment: staging
+    permissions:
+      contents: read
+    outputs:
+      status: ${{ steps.load.outputs.status }}
+      lock_changed: ${{ steps.lock.outputs.changed }}
+      corpus_version: ${{ steps.lock.outputs.corpus_version }}
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          egress-policy: block
+          allowed-endpoints: >
+            github.com:443
+            api.github.com:443
+            codeload.github.com:443
+            objects.githubusercontent.com:443
+            raw.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+            results-receiver.actions.githubusercontent.com:443
+            *.actions.githubusercontent.com:443
+            *.blob.core.windows.net:443
+            registry.npmjs.org:443
+            nodejs.org:443
+            api.netlify.com:443
+            *.s3.us-east-2.amazonaws.com:443
+            *.s3.dualstack.us-east-2.amazonaws.com:443
+            api.cloudflare.com:443
+            console.neon.tech:443
+            *.neon.tech:5432
+
+      - name: Conferir segredos e variáveis do environment staging
+        env:
+          NEON_STAGING_MIGRATE_URL: ${{ secrets.NEON_STAGING_MIGRATE_URL }}
+          NEON_API_KEY_STAGING: ${{ secrets.NEON_API_KEY_STAGING }}
+          CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+          CF_AI_TOKEN: ${{ secrets.CF_AI_TOKEN }}
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ vars.NETLIFY_SITE_ID }}
+          NEON_STAGING_PROJECT_ID: ${{ vars.NEON_STAGING_PROJECT_ID }}
+        run: |
+          missing=()
+          for name in NEON_STAGING_MIGRATE_URL NEON_API_KEY_STAGING CF_ACCOUNT_ID CF_AI_TOKEN NETLIFY_AUTH_TOKEN NETLIFY_SITE_ID NEON_STAGING_PROJECT_ID; do
+            [[ -n "${!name}" ]] || missing+=("$name")
+          done
+          if (( ${#missing[@]} > 0 )); then
+            printf -v list '%s, ' "${missing[@]}"
+            echo "::error title=ingest::Faltam no environment 'staging': ${list%, } (NETLIFY_SITE_ID e NEON_STAGING_PROJECT_ID são variáveis; os demais, segredos)."
+            exit 1
+          fi
+          if [[ "$NEON_STAGING_MIGRATE_URL" != postgresql://* && "$NEON_STAGING_MIGRATE_URL" != postgres://* ]]; then
+            echo "::error title=ingest::NEON_STAGING_MIGRATE_URL precisa começar com postgresql:// (URL direta do owner)."
+            exit 1
+          fi
+
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      - name: Build da CLI (@teko/api → dist/cli.mjs)
+        run: pnpm --filter @teko/api build
+
+      - name: Baixar os arquivos do discover
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: ingest-downloads
+          path: ${{ runner.temp }}/ingest
+
+      - name: Baixar as saídas do Docling
+        if: needs.discover.outputs.count != '0'
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: docling-*
+          path: ${{ runner.temp }}/docling
+          merge-multiple: true
+
+      - name: Carregar no staging (cli ingest load --migrate)
+        id: load
+        env:
+          PLAN: ${{ runner.temp }}/ingest/plan.json
+          DOCLING_DIR: ${{ runner.temp }}/docling
+          REPORT: ${{ runner.temp }}/ingest-report.json
+          BULK: ${{ inputs.bulk }}
+          DATABASE_URL: ${{ secrets.NEON_STAGING_MIGRATE_URL }}
+          EMBEDDINGS_PROVIDER: workers-ai
+          CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+          CF_AI_TOKEN: ${{ secrets.CF_AI_TOKEN }}
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ vars.NETLIFY_SITE_ID }}
+          NEON_API_KEY_STAGING: ${{ secrets.NEON_API_KEY_STAGING }}
+          NEON_STAGING_PROJECT_ID: ${{ vars.NEON_STAGING_PROJECT_ID }}
+        run: |
+          mkdir -p "$DOCLING_DIR"
+          # --report: JSON do run (neurons, linhas, versões, CU-h) para o artifact e a prova do orçamento.
+          args=(ingest load --target staging --plan "$PLAN" --docling-dir "$DOCLING_DIR" --migrate --report "$REPORT")
+          [[ "$BULK" == true ]] && args+=(--bulk)
+          set +e
+          node apps/api/dist/cli.mjs "${args[@]}"
+          code=$?
+          set -e
+          case "$code" in
+            0)
+              echo "status=published" >>"$GITHUB_OUTPUT"
+              ;;
+            75)
+              # EX_TEMPFAIL: o orçamento diário de neurons acabou; o próximo run retoma pelo cache.
+              echo "status=budget_exhausted" >>"$GITHUB_OUTPUT"
+              echo "::warning title=ingest::Orçamento diário de neurons esgotado (código 75): a ingestão retoma no próximo run, a partir do embedding_cache."
+              ;;
+            *)
+              echo "::error title=ingest::cli ingest load terminou com código ${code}."
+              exit "$code"
+              ;;
+          esac
+
+      - name: Conferir o corpus/corpus.lock.json
+        id: lock
+        run: |
+          # `status --porcelain` pega também o arquivo criado pela primeira vez (não rastreado).
+          if [[ -z "$(git status --porcelain -- corpus/corpus.lock.json)" ]]; then
+            echo "changed=false" >>"$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >>"$GITHUB_OUTPUT"
+            git diff --stat -- corpus/corpus.lock.json
+          fi
+          echo "corpus_version=$(jq -r '.corpusVersion // empty' corpus/corpus.lock.json 2>/dev/null || true)" >>"$GITHUB_OUTPUT"
+
+      - name: Guardar o corpus.lock.json
+        if: steps.lock.outputs.changed == 'true'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          # Um arquivo só: fica na raiz do artifact (corpus.lock.json).
+          name: corpus-lock
+          path: corpus/corpus.lock.json
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Guardar o relatório do run
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ingest-report
+          path: ${{ runner.temp }}/ingest-report.json
+          if-no-files-found: ignore
+          retention-days: 30
+
+  lock-pr:
+    name: lock-pr
+    needs: load
+    if: needs.load.outputs.lock_changed == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    # O token da App (não o GITHUB_TOKEN) é o que dispara o pr-gate no PR aberto.
+    permissions: {}
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          egress-policy: block
+          allowed-endpoints: >
+            github.com:443
+            api.github.com:443
+            results-receiver.actions.githubusercontent.com:443
+            *.actions.githubusercontent.com:443
+            *.blob.core.windows.net:443
+
+      - name: Conferir a App teko-release-bot
+        env:
+          CLIENT_ID: ${{ vars.RELEASE_APP_CLIENT_ID }}
+          PRIVATE_KEY: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+        run: |
+          if [[ -z "$CLIENT_ID" || -z "$PRIVATE_KEY" ]]; then
+            echo "::error title=ingest::Faltam a variável RELEASE_APP_CLIENT_ID ou o segredo RELEASE_APP_PRIVATE_KEY (nível do repositório)."
+            exit 1
+          fi
+
+      - name: Token da App teko-release-bot
+        id: app-token
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          client-id: ${{ vars.RELEASE_APP_CLIENT_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
+
+      - name: Baixar o corpus.lock.json
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: corpus-lock
+          path: ${{ runner.temp }}/lock
+
+      - name: Abrir o PR do lock (commit assinado pela API)
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          APP_SLUG: ${{ steps.app-token.outputs.app-slug }}
+          REPO: ${{ github.repository }}
+          RUN_NUMBER: ${{ github.run_number }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          CORPUS_VERSION: ${{ needs.load.outputs.corpus_version }}
+          LOCK_FILE: ${{ runner.temp }}/lock/corpus.lock.json
+        run: |
+          set -euo pipefail
+          jq -e 'type == "object"' "$LOCK_FILE" >/dev/null
+          branch="chore/corpus-lock-${RUN_NUMBER}"
+          base_sha="$(gh api "repos/${REPO}/git/ref/heads/develop" --jq .object.sha)"
+          gh api "repos/${REPO}/git/refs" -f ref="refs/heads/${branch}" -f sha="$base_sha" >/dev/null
+          bot_id="$(gh api "users/${APP_SLUG}%5Bbot%5D" --jq .id)"
+          signoff="Signed-off-by: ${APP_SLUG}[bot] <${bot_id}+${APP_SLUG}[bot]@users.noreply.github.com>"
+          headline="chore(ingest): atualiza o corpus.lock.json${CORPUS_VERSION:+ (corpus_version ${CORPUS_VERSION})}"
+          body="$(printf 'Snapshot exportado pelo ingest.yml no staging (%s).\n\n%s' "$RUN_URL" "$signoff")"
+          # createCommitOnBranch: o GitHub assina o commit em nome da App (commit "Verified").
+          jq -n \
+            --arg repo "$REPO" --arg branch "$branch" --arg oid "$base_sha" \
+            --arg headline "$headline" --arg body "$body" \
+            --arg contents "$(base64 -w0 "$LOCK_FILE")" \
+            '{query: "mutation($input: CreateCommitOnBranchInput!) { createCommitOnBranch(input: $input) { commit { oid url } } }",
+              variables: {input: {
+                branch: {repositoryNameWithOwner: $repo, branchName: $branch},
+                expectedHeadOid: $oid,
+                message: {headline: $headline, body: $body},
+                fileChanges: {additions: [{path: "corpus/corpus.lock.json", contents: $contents}]}
+              }}}' >"${RUNNER_TEMP}/commit.json"
+          gh api graphql --input "${RUNNER_TEMP}/commit.json" --jq '.data.createCommitOnBranch.commit.url'
+          {
+            echo "## O que muda"
+            echo
+            echo "Atualiza o \`corpus/corpus.lock.json\` com o snapshot exportado pela ingestão no staging${CORPUS_VERSION:+ (corpus_version ${CORPUS_VERSION})}."
+            echo
+            echo "- Run: ${RUN_URL}"
+            echo "- A promoção para produção acontece no release (job \`promote-corpus\`), nunca aqui."
+            echo "- Confira o job \`corpus-eval\` do mesmo run antes do merge."
+          } >"${RUNNER_TEMP}/pr-body.md"
+          url="$(gh pr create --repo "$REPO" --base develop --head "$branch" --title "$headline" --body-file "${RUNNER_TEMP}/pr-body.md")"
+          echo "- PR do lock: ${url}" >>"$GITHUB_STEP_SUMMARY"
+
+  corpus-eval:
+    name: corpus-eval
+    needs: load
+    if: needs.load.result == 'success' && needs.load.outputs.status == 'published'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    environment: staging
+    permissions:
+      contents: read
+    env:
+      PROMPTFOO_DISABLE_TELEMETRY: "1"
+      PROMPTFOO_DISABLE_SHARING: "1"
+      PROMPTFOO_DISABLE_REMOTE_GENERATION: "true"
+      PROMPTFOO_DISABLE_UPDATE: "1"
+      PROMPTFOO_FAILED_TEST_EXIT_CODE: "0"
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          egress-policy: block
+          allowed-endpoints: >
+            github.com:443
+            api.github.com:443
+            codeload.github.com:443
+            objects.githubusercontent.com:443
+            raw.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+            results-receiver.actions.githubusercontent.com:443
+            *.actions.githubusercontent.com:443
+            *.blob.core.windows.net:443
+            registry.npmjs.org:443
+            nodejs.org:443
+            api.cloudflare.com:443
+            *.neon.tech:5432
+
+      - name: Conferir segredos do environment staging
+        env:
+          NEON_STAGING_APP_URL: ${{ secrets.NEON_STAGING_APP_URL }}
+          CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+          CF_AI_TOKEN: ${{ secrets.CF_AI_TOKEN }}
+        run: |
+          missing=()
+          for name in NEON_STAGING_APP_URL CF_ACCOUNT_ID CF_AI_TOKEN; do
+            [[ -n "${!name}" ]] || missing+=("$name")
+          done
+          if (( ${#missing[@]} > 0 )); then
+            printf -v list '%s, ' "${missing[@]}"
+            echo "::error title=ingest::Faltam segredos no environment 'staging': ${list%, }."
+            exit 1
+          fi
+
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      - name: Retrieval evals contra o staging (embeddings reais, role teko_app)
+        env:
+          APP_ENV: ci
+          DATABASE_URL: ${{ secrets.NEON_STAGING_APP_URL }}
+          EMBEDDINGS_PROVIDER: workers-ai
+          CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+          CF_AI_TOKEN: ${{ secrets.CF_AI_TOKEN }}
+        run: pnpm --filter @teko/api eval:retrieval
+
+      - name: Gate das retrieval evals (thresholds.json)
+        run: pnpm --filter @teko/api eval:retrieval:check
+
+      - name: Guardar o resultado das evals
+        if: ${{ !cancelled() }}
+        continue-on-error: true
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: corpus-eval
+          path: apps/api/reports/retrieval-evals.json
+          if-no-files-found: ignore
+          retention-days: 30
+
+  summary:
+    name: summary
+    needs: [discover, docling-models, extract, load, lock-pr, corpus-eval]
+    if: ${{ always() }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions: {}
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          egress-policy: block
+          allowed-endpoints: >
+            github.com:443
+            api.github.com:443
+            results-receiver.actions.githubusercontent.com:443
+            *.actions.githubusercontent.com:443
+
+      - name: Resumo da ingestão
+        env:
+          FAMILY: ${{ inputs.family }}
+          BULK: ${{ inputs.bulk }}
+          DISCOVER: ${{ needs.discover.result }}
+          COUNT: ${{ needs.discover.outputs.count }}
+          MODELS: ${{ needs.docling-models.result }}
+          EXTRACT: ${{ needs.extract.result }}
+          LOAD: ${{ needs.load.result }}
+          LOAD_STATUS: ${{ needs.load.outputs.status }}
+          CORPUS_VERSION: ${{ needs.load.outputs.corpus_version }}
+          LOCK_CHANGED: ${{ needs.load.outputs.lock_changed }}
+          LOCK_PR: ${{ needs.lock-pr.result }}
+          EVAL: ${{ needs.corpus-eval.result }}
+        run: |
+          {
+            echo "### Ingestão no staging"
+            echo
+            echo "Família: \`${FAMILY:-todas}\` · bulk: \`${BULK}\`"
+            echo
+            echo "| Etapa | Resultado |"
+            echo "|---|---|"
+            echo "| discover | ${DISCOVER} (${COUNT:-0} item(ns) para o Docling) |"
+            echo "| docling-models | ${MODELS} |"
+            echo "| extract | ${EXTRACT} |"
+            echo "| load | ${LOAD} (${LOAD_STATUS:-sem status}) |"
+            echo "| corpus.lock.json | ${LOCK_CHANGED:-false}${CORPUS_VERSION:+ (corpus_version ${CORPUS_VERSION})} |"
+            echo "| lock-pr | ${LOCK_PR} |"
+            echo "| corpus-eval | ${EVAL} |"
+            if [[ "$LOAD_STATUS" == budget_exhausted ]]; then
+              echo
+              echo "> Orçamento diário de neurons esgotado (código 75): rode de novo amanhã; a ingestão retoma pelo embedding_cache."
+            fi
+          } >>"$GITHUB_STEP_SUMMARY"
+          # O resumo não esconde falha: qualquer etapa vermelha deixa o run vermelho.
+          for result in "$DISCOVER" "$MODELS" "$EXTRACT" "$LOAD" "$LOCK_PR" "$EVAL"; do
+            [[ "$result" == failure || "$result" == cancelled ]] && exit 1
+          done
+          exit 0

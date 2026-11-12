@@ -1,0 +1,220 @@
+# Monitoramento diário das fontes do corpus (plano: "Monitoramento de mudanças"; mudança OpenSpec
+# add-source-change-monitoring).
+#
+# Dois jobs com environments diferentes, para o PAT da Netlify e as URLs de banco nunca ficarem
+# juntos:
+#   - detect (environment staging): `cli sources-watch` faz os GETs condicionais (ETag e
+#     Last-Modified em corpus-manifests/watch-state.json, no Blobs), grava discovered.json (Blobs e
+#     artifact) e expõe as mudanças como outputs. Não toca o banco.
+#   - mark-coverage (environment corpus-watch): `cli coverage-mark` com o role teko_watch nos dois
+#     projetos do Neon. Sem mudança, um único UPDATE de verified_at por banco; com mudança, também
+#     a lacuna [effectiveFrom, ∞) e o gap_reason. Só recebe NEON_PROD_WATCH_URL e
+#     NEON_STAGING_WATCH_URL.
+# Mudança em fonte `live` dispara o ingest.yml no staging (workflow_call); a promoção para produção
+# nunca é automática (PR do lock + release). Página que não pôde ser verificada não avança o
+# verified_at da família, e o job `watch-errors` deixa o run vermelho.
+name: Source watch
+
+on:
+  schedule:
+    # 09:00 UTC = 06:00 em America/Sao_Paulo.
+    - cron: "0 9 * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: source-watch
+  cancel-in-progress: false
+
+env:
+  TURBO_TELEMETRY_DISABLED: "1"
+
+jobs:
+  detect:
+    name: detect
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    environment: staging
+    permissions:
+      contents: read
+    outputs:
+      has_changes: ${{ steps.scope.outputs.has_changes }}
+      live_changes: ${{ steps.scope.outputs.live_changes }}
+      family: ${{ steps.scope.outputs.family }}
+      families: ${{ steps.scope.outputs.families }}
+      has_errors: ${{ steps.scope.outputs.has_errors }}
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          # audit nas duas primeiras semanas (padrão do repositório); os hosts observados viram a
+          # allowlist em `block`, como a do ingest.yml.
+          egress-policy: audit
+
+      - name: Conferir o PAT e o site da Netlify (environment staging)
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ vars.NETLIFY_SITE_ID }}
+        run: |
+          missing=()
+          [[ -n "$NETLIFY_AUTH_TOKEN" ]] || missing+=("segredo NETLIFY_AUTH_TOKEN")
+          [[ -n "$NETLIFY_SITE_ID" ]] || missing+=("variável NETLIFY_SITE_ID (id do site tekoia)")
+          if (( ${#missing[@]} > 0 )); then
+            printf -v list '%s; ' "${missing[@]}"
+            echo "::error title=source-watch::Faltam no environment 'staging': ${list%; }."
+            exit 1
+          fi
+
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      - name: Build da CLI (@teko/api → dist/cli.mjs)
+        run: pnpm --filter @teko/api build
+
+      - name: Verificar as fontes (cli sources-watch)
+        env:
+          OUT: ${{ runner.temp }}/watch
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ vars.NETLIFY_SITE_ID }}
+        run: node apps/api/dist/cli.mjs sources-watch --config corpus/watch.yaml --out "$OUT"
+
+      - name: Mudanças detectadas (outputs)
+        id: scope
+        env:
+          DISCOVERED: ${{ runner.temp }}/watch/discovered.json
+        run: |
+          jq -e '.schemaVersion == 1' "$DISCOVERED" >/dev/null
+          has_changes="$(jq '(.changes | length) > 0' "$DISCOVERED")"
+          live_changes="$(jq '[.changes[] | select(.mode == "live" and .status == "new")] | length > 0' "$DISCOVERED")"
+          families="$(jq -c '[.changes | group_by(.family)[] | {family: .[0].family, effectiveFrom: (map(.effectiveFrom) | min)}]' "$DISCOVERED")"
+          # Uma família só: o ingest roda só ela; mais de uma: todas.
+          family="$(jq -r '[.changes[] | select(.mode == "live" and .status == "new") | .family] | unique | if length == 1 then .[0] else "" end' "$DISCOVERED")"
+          has_errors="$(jq '(.errors | length) > 0' "$DISCOVERED")"
+          {
+            echo "has_changes=${has_changes}"
+            echo "live_changes=${live_changes}"
+            echo "families=${families}"
+            echo "family=${family}"
+            echo "has_errors=${has_errors}"
+          } >>"$GITHUB_OUTPUT"
+          {
+            echo "### Source watch ($(jq -r .runDate "$DISCOVERED"))"
+            echo
+            echo "| Família | Tipo | Modo | Situação | Versão | Desde |"
+            echo "|---|---|---|---|---|---|"
+            jq -r '.changes[] | "| \(.family) | \(.kind) | \(.mode) | \(.status) | \(.versionLabel // .sourceUrl) | \(.effectiveFrom) |"' "$DISCOVERED"
+            echo
+            jq -r 'if (.errors | length) > 0 then "Erros (famílias sem avanço do verified_at): " + ([.errors[] | "\(.pageId): \(.message)"] | join("; ")) else "Sem erros de verificação." end' "$DISCOVERED"
+          } >>"$GITHUB_STEP_SUMMARY"
+          # TODO(F6): evento ao Sentry quando has_changes=true (ainda não há DSN para o Actions).
+
+      - name: Guardar o discovered.json
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: discovered
+          path: ${{ runner.temp }}/watch/discovered.json
+          if-no-files-found: error
+          retention-days: 30
+
+  mark-coverage:
+    name: mark-coverage
+    needs: detect
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment: corpus-watch
+    permissions:
+      contents: read
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          egress-policy: audit
+
+      - name: Conferir as URLs do teko_watch (environment corpus-watch)
+        env:
+          NEON_PROD_WATCH_URL: ${{ secrets.NEON_PROD_WATCH_URL }}
+          NEON_STAGING_WATCH_URL: ${{ secrets.NEON_STAGING_WATCH_URL }}
+        run: |
+          missing=()
+          [[ -n "$NEON_PROD_WATCH_URL" ]] || missing+=("NEON_PROD_WATCH_URL")
+          [[ -n "$NEON_STAGING_WATCH_URL" ]] || missing+=("NEON_STAGING_WATCH_URL")
+          if (( ${#missing[@]} > 0 )); then
+            printf -v list '%s, ' "${missing[@]}"
+            echo "::error title=source-watch::Faltam segredos no environment 'corpus-watch': ${list%, } (role teko_watch, host -pooler)."
+            exit 1
+          fi
+
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      - name: Build da CLI (@teko/api → dist/cli.mjs)
+        run: pnpm --filter @teko/api build
+
+      - name: Baixar o discovered.json do detect
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: discovered
+          path: ${{ runner.temp }}/watch
+
+      - name: Marcar a cobertura (cli coverage-mark, role teko_watch)
+        env:
+          DISCOVERED: ${{ runner.temp }}/watch/discovered.json
+          NEON_PROD_WATCH_URL: ${{ secrets.NEON_PROD_WATCH_URL }}
+          NEON_STAGING_WATCH_URL: ${{ secrets.NEON_STAGING_WATCH_URL }}
+        run: node apps/api/dist/cli.mjs coverage-mark --discovered "$DISCOVERED"
+
+  ingest:
+    name: ingest
+    needs: detect
+    if: needs.detect.outputs.live_changes == 'true'
+    uses: ./.github/workflows/ingest.yml
+    permissions:
+      contents: read
+    with:
+      target: staging
+      family: ${{ needs.detect.outputs.family }}
+      bulk: false
+    # Os segredos que o ingest.yml declara, pelo nome (nunca `secrets: inherit`). Os do environment
+    # staging não existem neste job (que não tem environment): o GitHub repassa o nome, e o valor do
+    # environment chega só aos jobs do ingest.yml que declaram `environment: staging`.
+    secrets:
+      RELEASE_APP_PRIVATE_KEY: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+      NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+      NEON_STAGING_MIGRATE_URL: ${{ secrets.NEON_STAGING_MIGRATE_URL }}
+      NEON_STAGING_APP_URL: ${{ secrets.NEON_STAGING_APP_URL }}
+      NEON_API_KEY_STAGING: ${{ secrets.NEON_API_KEY_STAGING }}
+      CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+      CF_AI_TOKEN: ${{ secrets.CF_AI_TOKEN }}
+
+  watch-errors:
+    name: watch-errors
+    needs: [detect, mark-coverage]
+    if: ${{ always() && needs.detect.result == 'success' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions: {}
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          egress-policy: audit
+
+      - name: Falhar se alguma página não pôde ser verificada
+        env:
+          HAS_ERRORS: ${{ needs.detect.outputs.has_errors }}
+        run: |
+          if [[ "$HAS_ERRORS" == true ]]; then
+            echo "::error title=source-watch::Alguma página do corpus/watch.yaml não pôde ser verificada; o verified_at dessas famílias não avançou (ver o resumo do job detect)."
+            exit 1
+          fi

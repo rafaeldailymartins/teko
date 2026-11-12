@@ -280,3 +280,49 @@ def test_parser_lists_both_subcommands() -> None:
     help_text = cli.build_parser().format_help()
     assert "manifest" in help_text
     assert "convert" in help_text
+
+
+def test_manifest_with_page_range_names_the_part(
+    pdf: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    args = ["manifest", str(pdf), "--source-id", "s", "--url", URL, "--page-range", "1-120"]
+    assert main([*args, "--docling-version", "2.146.0"]) == EXIT_OK
+    data = json.loads(capsys.readouterr().out)
+    digest = hashlib.sha256(pdf.read_bytes()).hexdigest()
+    assert data["output_path"] == f"{digest}-p1-120/docling.json"
+    assert data["page_range"] == [1, 120]
+    assert data["part"] == "p1-120"
+
+
+def test_convert_with_page_range(
+    pdf: Path,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    docling_factory: ConverterFactory,
+) -> None:
+    out = tmp_path / "out"
+    args = ["convert", str(pdf), "--source-id", "s", "--url", URL, "--out", str(out)]
+    assert main([*args, "--page-range", "121-366"]) == EXIT_OK
+    manifest = ExtractionManifest.from_json(capsys.readouterr().out)
+    assert (out / f"{manifest.sha256}-p121-366" / "manifest.json").is_file()
+    [converter] = docling_factory.instances
+    assert converter.page_ranges == [(121, 366)]
+
+
+@pytest.mark.parametrize("page_range", ["0-5", "9-3", "1", "a-b"])
+def test_invalid_page_range_exits_2(pdf: Path, page_range: str) -> None:
+    with pytest.raises(SystemExit) as excinfo:
+        main(["manifest", str(pdf), "--source-id", "s", "--url", URL, "--page-range", page_range])
+    assert excinfo.value.code == EXIT_INVALID_INPUT
+
+
+@pytest.mark.usefixtures("docling_factory")
+def test_convert_unsupported_format_exits_2(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    (tmp_path / "leiaute.docx").write_bytes(b"PK")
+    code = main(["convert", "leiaute.docx", "--source-id", "s", "--url", URL])
+    assert code == EXIT_INVALID_INPUT
+    assert "formato não suportado" in capsys.readouterr().err

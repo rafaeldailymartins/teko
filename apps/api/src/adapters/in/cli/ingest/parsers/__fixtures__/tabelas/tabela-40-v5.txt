@@ -1,0 +1,14 @@
+versão=5 TIPO_UTIL, DESC_TIPO, DT_INI, DT_FIM
+GO01|Dedução do ICMS normal|01012009|
+GO02|Compensação de auto de infração|01012009|
+GO03|Transferência de crédito|01012009|
+GO04|Restituição de crédito em moeda|01012009|
+GO05|Dedução do ICMS Substituição Tributária apurado no mês (Substituto)|01012009|
+GO06|Compensação com documento de arrecadação (Substituição Tributária)|01012009|
+GO07|Estorno de Crédito|01012009|
+GO08|Dedução do ICMS Operações não Incentivadas - FOMENTAR/PRODUZIR|01012009|
+GO09|Dedução do ICMS média - FOMENTAR/PRODUZIR|01012009|
+GO10|Dedução do ICMS parcela não Financiada - FOMENTAR/PRODUZIR|01012009|
+GO11|Ressarcimento.|01012022|
+GO12|Compensação DARE de PROTEGE|01102023|
+GO13|Compensação de contribuição ao FUNDEINFRA.|01102024|

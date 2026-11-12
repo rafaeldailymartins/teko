@@ -3,16 +3,18 @@
 Decisões de arquitetura do Tekó no formato [MADR 4](https://adr.github.io/madr/). Regras de
 numeração, idioma e substituição estão na [ADR 0001](0001-record-architecture-decisions.md).
 
-| ADR                                           | Título                                                                   | Status   |
-| --------------------------------------------- | ------------------------------------------------------------------------ | -------- |
-| [0001](0001-record-architecture-decisions.md) | Registrar decisões de arquitetura em ADRs                                | accepted |
-| [0002](0002-supply-chain-pnpm.md)             | Supply chain de dependências com pnpm 12                                 | accepted |
-| [0003](0003-f1-spikes.md)                     | Resultados dos spikes da F1                                              | accepted |
-| [0004](0004-vercel-hobby-api.md)              | API no Vercel Hobby (uma Function Fluid, dois projetos, `gru1`) + Render | accepted |
-| [0009](0009-vigencia-bitemporal.md)           | Vigência bitemporal e cobertura limitada pelo `verified_at`              | accepted |
-| [0010](0010-busca-hibrida-rrf.md)             | Busca híbrida numa instrução SQL, RRF k = 60, filtrada por vigência      | accepted |
-| [0017](0017-vercel-build-output-tsdown.md)    | Deploy `--prebuilt` de um `.vercel/output` montado do bundle do tsdown   | accepted |
-| [0024](0024-environments-em-pull-request.md)  | Regra de branch dos environments em eventos `pull_request`               | accepted |
+| ADR                                                  | Título                                                                             | Status   |
+| ---------------------------------------------------- | ---------------------------------------------------------------------------------- | -------- |
+| [0001](0001-record-architecture-decisions.md)        | Registrar decisões de arquitetura em ADRs                                          | accepted |
+| [0002](0002-supply-chain-pnpm.md)                    | Supply chain de dependências com pnpm 12                                           | accepted |
+| [0003](0003-f1-spikes.md)                            | Resultados dos spikes da F1                                                        | accepted |
+| [0004](0004-vercel-hobby-api.md)                     | API no Vercel Hobby (uma Function Fluid, dois projetos, `gru1`) + Render           | accepted |
+| [0009](0009-vigencia-bitemporal.md)                  | Vigência bitemporal e cobertura limitada pelo `verified_at`                        | accepted |
+| [0010](0010-busca-hibrida-rrf.md)                    | Busca híbrida numa instrução SQL, RRF k = 60, filtrada por vigência                | accepted |
+| [0011](0011-docling-e-parser-rcte.md)                | Docling (TableFormer V1 ACCURATE) para PDF e máquina de estados HTML para RCTE/CTE | accepted |
+| [0017](0017-vercel-build-output-tsdown.md)           | Deploy `--prebuilt` de um `.vercel/output` montado do bundle do tsdown             | accepted |
+| [0024](0024-environments-em-pull-request.md)         | Regra de branch dos environments em eventos `pull_request`                         | accepted |
+| [0025](0025-reconciliacao-incremental-e-snapshot.md) | Reconciliação incremental do corpus e identidade no snapshot                       | proposed |
 
 ## Numeração e lista do plano
 

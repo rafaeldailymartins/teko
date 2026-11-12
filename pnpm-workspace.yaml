@@ -58,6 +58,11 @@ overrides:
   promptfoo>pdf-parse: "-"
   promptfoo>@aws/bedrock-token-generator: "-"
   promptfoo>@modelcontextprotocol/server-filesystem: "-"
+  # Uma cópia só da API do OpenTelemetry. O @netlify/blobs (F3) traz o @netlify/otel, cujos SDKs
+  # pedem `@opentelemetry/api <1.10.0`; com duas cópias (1.9.1 e 1.10.0), o pnpm resolvia o vitest
+  # com peers diferentes por pacote e o @fast-check/vitest do shared via outra instância ("failed
+  # to find the current suite"). Rever quando o @netlify/otel aceitar a 1.10.
+  "@opentelemetry/api": 1.9.1
 
 catalog:
   # Ferramentas da raiz
@@ -114,7 +119,11 @@ catalog:
   "@types/pg": 8.23.1
   "@testcontainers/postgresql": 12.2.1
   promptfoo: 0.125.1
-  yaml: 2.9.1 # já vinha na árvore (promptfoo e outros); lê o golden.yaml nas evals e nos testes
+  yaml: 2.9.1 # já vinha na árvore (promptfoo e outros); golden.yaml e, na F3, corpus/sources.yaml no CLI
+
+  # Ingestão (F3)
+  htmlparser2: 12.0.0 # máquina de estados do RCTE/CTE e XSD da REINF (xmlMode)
+  "@netlify/blobs": 11.1.7 # 11.1.8 e 11.1.9 ainda dentro da janela de 7 dias em 2026-11-11
 
   # Web
   next: 16.4.5

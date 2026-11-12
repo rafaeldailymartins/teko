@@ -1,0 +1,28 @@
+# Exemplo de arquivo de overrides (o `_` no início faz o `ingest load` ignorá-lo). Copie para um
+# arquivo sem `_` (ex.: `rcte.yaml`) e ajuste. Schema: corpus/overrides/README.md e
+# apps/api/src/domain/corpus/overrides.ts. Os valores abaixo são ilustrativos.
+
+# A redação vale como o parser leu.
+- stable_key: go:rcte:art:76:par:2
+  note_hash: 0f0e0d0c0b0a09080706050403020100f0e0d0c0b0a09080706050403020100a
+  action: approve
+  reason: "A nota diz 30.09.08 e a redação seguinte começa em 01.10.09: lacuna confirmada no DOE."
+  reviewed_by: mantenedor
+  reviewed_at: 2026-11-11
+
+# A redação fica gravada como rejected (fora da busca e do pv_no_overlap).
+- stable_key: go:rcte:art:76:par:5:inc:I
+  note_hash: 1f1e1d1c1b1a19181716151413121110f1e1d1c1b1a19181716151413121110b
+  action: reject
+  reason: "Nota com data ilegível (230.09.03) e redação duplicada na fonte."
+  reviewed_by: mantenedor
+  reviewed_at: 2026-11-11
+
+# A redação vale com o intervalo [from, to) decidido na revisão (to: null = vigente).
+- stable_key: go:cte:art:44
+  note_hash: 2f2e2d2c2b2a29282726252423222120f2e2d2c2b2a29282726252423222120c
+  action: set_interval
+  valid_during: { from: 1997-01-01, to: null }
+  reason: "Reestruturação da lei com vigência em 01.01.97 (art. 44 trocou de conteúdo)."
+  reviewed_by: mantenedor
+  reviewed_at: 2026-11-11

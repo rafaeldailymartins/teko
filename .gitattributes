@@ -4,3 +4,8 @@
 *.ico binary
 *.pdf binary
 *.woff2 binary
+
+# Fixtures dos parsers da ingestão e do watch: bytes como publicados (cp1252, CRLF), sem normalização de fim
+# de linha (o SHA-1 das tabelas e os offsets do HTML dependem disso).
+apps/api/src/adapters/in/cli/ingest/parsers/__fixtures__/** -text
+apps/api/src/adapters/in/cli/sources-watch/__fixtures__/** -text

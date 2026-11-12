@@ -32,8 +32,11 @@ describe('parseStableKey', () => {
       'br:efd-reinf:evt:R-2010:grupo:infoServTom:campo:vlrTotalBruto',
       'go:tabelas-go:tab:5-1-1:cod:GO000001',
       'go:rcte:art:76-A:par:unico:inc:IV-A:ali:b-1:item:2-1',
+      'go:rcte:art:167-S-B:par:1',
       'go:efd-go:cap:III:sec:2:item:5',
       'go:rcte-anexos:anexo:VIII:item:1',
+      'br:efd-icms-ipi:nt:2025-001:item:3-1',
+      'br:efd-reinf:nt:2026-005',
     ]) {
       expect(isStableKey(key)).toBe(true)
     }
@@ -47,8 +50,11 @@ describe('parseStableKey', () => {
     ['go:rcte:art', 'segmentos devem vir em pares tipo:valor'],
     ['go:rcte:artigo:1', 'tipo de segmento desconhecido: artigo'],
     ['go:rcte:art:abc', 'valor inválido para art: abc'],
+    ['go:rcte:art:167-S-B-C', 'valor inválido para art: 167-S-B-C'],
     ['go:rcte:inc:2', 'valor inválido para inc: 2'],
     ['br:efd-icms-ipi:reg:Z100', 'valor inválido para reg: Z100'],
+    ['br:efd-icms-ipi:nt:2025001', 'valor inválido para nt: 2025001'],
+    ['br:efd-icms-ipi:nt:25-001', 'valor inválido para nt: 25-001'],
     ['go:rcte:art:1:toString:x', 'tipo de segmento desconhecido: toString'],
   ])('rejeita %s (%s)', (key, reason) => {
     expect(() => parseStableKey(key)).toThrow(new InvalidStableKeyError(key, reason))

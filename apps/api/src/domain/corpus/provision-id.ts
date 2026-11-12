@@ -8,13 +8,14 @@ import { type Family, isFamily, jurisdictionOf } from './family.ts'
  *     <jurisdição>:<família>(:<tipo>:<valor>)+
  *
  * Exemplos: `go:rcte:art:76:par:6:inc:II`, `br:efd-icms-ipi:reg:C170:campo:07`,
- * `br:efd-reinf:evt:R-2010:campo:vlrTotalBruto`, `go:tabelas-go:tab:5-1-1:cod:GO000001`.
+ * `br:efd-reinf:evt:R-2010:campo:vlrTotalBruto`, `go:tabelas-go:tab:5-1-1:cod:GO000001`,
+ * `br:efd-icms-ipi:nt:2025-001:item:3-1`.
  */
 
 /** Tipos de segmento aceitos e o formato do valor de cada um. */
 const SEGMENT_VALUE = {
-  /** Artigo, com sufixo de letra opcional (`76`, `76-A`). */
-  art: /^\d{1,4}(?:-[A-Z])?$/,
+  /** Artigo, com até dois sufixos de letra (`76`, `76-A`, `167-S-B`). */
+  art: /^\d{1,4}(?:-[A-Z]){0,2}$/,
   /** Parágrafo (`1` a `99`, `unico`). */
   par: /^(?:\d{1,2}(?:-[A-Z])?|unico)$/,
   /** Inciso em algarismos romanos, com sufixo de letra opcional (`II`, `IV-A`). */
@@ -39,6 +40,8 @@ const SEGMENT_VALUE = {
   tab: /^\d{1,2}(?:-\d{1,2}){0,3}$/,
   /** Código de tabela (`GO000001`, `GO10`). */
   cod: /^[A-Z0-9]{1,12}$/,
+  /** Nota Técnica, `ano-nnn` (NT 2025.001 → `2025-001`): `br:efd-icms-ipi:nt:2025-001:item:3-1`. */
+  nt: /^\d{4}-\d{3}$/,
 } as const satisfies Record<string, RegExp>
 
 type SegmentKind = keyof typeof SEGMENT_VALUE

@@ -1,6 +1,12 @@
 import { AppEnv } from '@teko/shared/contracts'
 import type { FastifyBaseLogger, FastifyInstance } from 'fastify'
+import type { FixtureCorpusReader } from '#adapters/in/cli/eval-fixture/eval-fixture.ts'
+import type {
+  CoverageMarkTarget,
+  WatchDatabaseUrl,
+} from '#adapters/in/cli/sources-watch/run-coverage-mark.ts'
 import type { HttpOptions } from '#adapters/in/http/http-options.ts'
+import { createNetlifyBlobStore } from '#adapters/out/blobs/netlify-blob-store.ts'
 import { systemClock } from '#adapters/out/clock/system-clock.ts'
 import { sha256ContentHasher } from '#adapters/out/crypto/sha256-content-hasher.ts'
 import { createWorkersAiEmbeddingAdapter } from '#adapters/out/embeddings/workers-ai/workers-ai-embedding-adapter.ts'
@@ -8,21 +14,55 @@ import {
   createFakeEmbeddingAdapter,
   readEmbeddingFixture,
 } from '#adapters/out/fakes/fake-embedding-adapter.ts'
+import { createInMemoryBlobStore } from '#adapters/out/fakes/in-memory-blob-store.ts'
+import { createSafeFetcher } from '#adapters/out/http/safe-fetcher.ts'
+import { createNeonComputeUsage } from '#adapters/out/neon/neon-compute-usage.ts'
 import { createDatabase, type Database } from '#adapters/out/persistence/drizzle/client.ts'
 import { runMigrations } from '#adapters/out/persistence/drizzle/migrate.ts'
 import { createPgCorpusWriter } from '#adapters/out/persistence/drizzle/repositories/pg-corpus-writer.ts'
 import { createPgCoverageRepository } from '#adapters/out/persistence/drizzle/repositories/pg-coverage-repository.ts'
+import { createPgCoverageWatchRepository } from '#adapters/out/persistence/drizzle/repositories/pg-coverage-watch-repository.ts'
+import { createPgEmbeddingCache } from '#adapters/out/persistence/drizzle/repositories/pg-embedding-cache.ts'
+import { createPgFixtureCorpusReader } from '#adapters/out/persistence/drizzle/repositories/pg-fixture-corpus-reader.ts'
+import { createPgCorpusIngestionRepository } from '#adapters/out/persistence/drizzle/repositories/pg-ingestion-corpus-repository.ts'
+import {
+  createPgDatabaseUsage,
+  createPgVectorIndexMaintenance,
+} from '#adapters/out/persistence/drizzle/repositories/pg-ingestion-database.ts'
+import { createPgIngestionRunRepository } from '#adapters/out/persistence/drizzle/repositories/pg-ingestion-run-repository.ts'
 import { createPgSearchRepository } from '#adapters/out/persistence/drizzle/repositories/pg-search-repository.ts'
+import { snapshotCodec } from '#adapters/out/persistence/drizzle/repositories/pg-snapshot-codec.ts'
+import { createPgSnapshotRepository } from '#adapters/out/persistence/drizzle/repositories/pg-snapshot-repository.ts'
 import { createLogger } from '#adapters/out/telemetry/logger.ts'
-import type { Container, RetrievalUseCases } from '#app/container.ts'
+import type { Container, IngestionContainer, RetrievalUseCases } from '#app/container.ts'
 import type { BackgroundTaskFailure } from '#app/ports/background-tasks.ts'
+import type { BlobStore } from '#app/ports/blob-store.ts'
 import type { Clock } from '#app/ports/clock.ts'
+import type { ContentHasher } from '#app/ports/content-hasher.ts'
 import type { EmbeddingPort } from '#app/ports/embedding-port.ts'
+import type { SafeFetcher } from '#app/ports/safe-fetcher.ts'
+import type { BatchLimits } from '#app/services/embedding-batches.ts'
 import { createLifecycle } from '#app/services/lifecycle.ts'
+import {
+  createNeuronBudget,
+  createNeuronMeter,
+  DEFAULT_EMBED_NEURON_BUDGET,
+  type NeuronMeter,
+  type UsageReport,
+} from '#app/services/neuron-budget.ts'
 import { createStreamBudget } from '#app/services/stream-budget.ts'
 import { createCheckCoverage } from '#app/use-cases/check-coverage.ts'
+import { createEmbedPending } from '#app/use-cases/embed-pending.ts'
+import { createExportSnapshot } from '#app/use-cases/export-snapshot.ts'
 import { createGetHealth } from '#app/use-cases/get-health.ts'
 import { createHybridSearch } from '#app/use-cases/hybrid-search.ts'
+import {
+  createIngestDocumentVersion,
+  DEFAULT_MAX_DATABASE_BYTES,
+} from '#app/use-cases/ingest-document-version.ts'
+import { createFinishIngestionRun, createStartIngestionRun } from '#app/use-cases/ingestion-run.ts'
+import { createPromoteSnapshot } from '#app/use-cases/promote-snapshot.ts'
+import { createRefreshCoverage } from '#app/use-cases/refresh-coverage.ts'
 import {
   createResolveReferenceDate,
   type ResolveReferenceDate,
@@ -62,7 +102,10 @@ export function reviewStatusesFor(appEnv: Env['APP_ENV']): readonly ReviewStatus
 }
 
 /** Adapter de embeddings do `EMBEDDINGS_PROVIDER` (o `parseEnv` já exigiu o que cada um precisa). */
-export function createEmbeddings(env: Env): EmbeddingPort | null {
+export function createEmbeddings(
+  env: Env,
+  options: { readonly onUsage?: (usage: UsageReport) => void } = {},
+): EmbeddingPort | null {
   if (env.EMBEDDINGS_PROVIDER === EmbeddingsProvider.Fake && env.EMBEDDINGS_FIXTURE_PATH) {
     return createFakeEmbeddingAdapter({
       fixture: readEmbeddingFixture(env.EMBEDDINGS_FIXTURE_PATH),
@@ -78,9 +121,137 @@ export function createEmbeddings(env: Env): EmbeddingPort | null {
     return createWorkersAiEmbeddingAdapter({
       accountId: env.CF_ACCOUNT_ID,
       apiToken: env.CF_AI_TOKEN,
+      ...(options.onUsage === undefined ? {} : { onUsage: options.onUsage }),
     })
   }
   return null
+}
+
+/**
+ * Embeddings da ingestão com medição: o Workers AI informa o custo real pelo `onUsage`; qualquer
+ * outro provedor (o fake de fixture) é embrulhado para registrar a chamada sem custo informado, e
+ * o `EmbedPending` cobra a estimativa conservadora.
+ */
+function meteredEmbeddings(env: Env, meter: NeuronMeter): EmbeddingPort | null {
+  if (env.EMBEDDINGS_PROVIDER === EmbeddingsProvider.WorkersAi) {
+    return createEmbeddings(env, { onUsage: (usage) => meter.record(usage) })
+  }
+  const inner = createEmbeddings(env)
+  return inner === null ? null : withUnreportedUsage(inner, meter)
+}
+
+function withUnreportedUsage(inner: EmbeddingPort, meter: NeuronMeter): EmbeddingPort {
+  return {
+    model: inner.model,
+    dimensions: inner.dimensions,
+    async embed(texts, options) {
+      const vectors = await inner.embed(texts, options)
+      meter.record({ neurons: null, texts: texts.length })
+      return vectors
+    },
+  }
+}
+
+/** Configuração da ingestão que vem do env (o `config/env.ts` valida; ver relatório da F3). */
+export interface IngestionConfig {
+  /** URL direta do owner (`NEON_*_MIGRATE_URL`): a ingestão e a promoção escrevem no corpus. */
+  readonly databaseUrl: string
+  /** `EMBED_NEURON_BUDGET` (padrão 8.000). */
+  readonly embedNeuronBudget?: number
+  /** Guarda de tamanho (padrão 800 MB). */
+  readonly maxDatabaseBytes?: number
+  /** `NEON_API_KEY_STAGING` e `NEON_STAGING_PROJECT_ID` (opcionais: sem eles, `cu_seconds` nulo). */
+  readonly neonApiKey?: string
+  readonly neonProjectId?: string
+}
+
+/** Peças que vêm de fora (adapters das frentes D e E, ou fakes nos testes). */
+export interface IngestionDeps {
+  /** Netlify Blobs (Actions) ou o store em memória (testes e execução local). */
+  readonly blobStore: BlobStore
+  readonly clock?: Clock
+  /** Substitui os embeddings do env (testes); recebe o medidor para informar o custo. */
+  readonly embeddings?: (meter: NeuronMeter) => EmbeddingPort
+  /** `fetch` da API do Neon (testes). */
+  readonly fetch?: typeof fetch
+  /** Limites dos lotes de embedding (testes; o padrão é o do plano: 50 itens, 48 mil tokens). */
+  readonly embeddingBatchLimits?: BatchLimits
+}
+
+/** Conexões do pool da ingestão: 2 lotes de embedding em voo e a transação da versão. */
+const INGESTION_MAX_CONNECTIONS = 4
+
+export function createIngestionContainer(
+  env: Env,
+  config: IngestionConfig,
+  deps: IngestionDeps,
+): IngestionContainer {
+  const clock = deps.clock ?? systemClock
+  const meter = createNeuronMeter()
+  const embeddings = deps.embeddings?.(meter) ?? meteredEmbeddings(env, meter)
+  if (embeddings === null) {
+    throw new Error('a ingestão exige EMBEDDINGS_PROVIDER configurado')
+  }
+  const database = createDatabase({
+    url: config.databaseUrl,
+    applicationName: 'teko-ingest',
+    maxConnections: INGESTION_MAX_CONNECTIONS,
+  })
+  const runs = createPgIngestionRunRepository(database.db)
+  const repository = createPgCorpusIngestionRepository(database.db)
+  const cache = createPgEmbeddingCache(database.db)
+  const databaseUsage = createPgDatabaseUsage(database.db)
+  const neuronBudget = createNeuronBudget({
+    runs,
+    clock,
+    daily: config.embedNeuronBudget ?? DEFAULT_EMBED_NEURON_BUDGET,
+  })
+  const embedPending = createEmbedPending({
+    embeddings,
+    cache,
+    runs,
+    budget: neuronBudget,
+    meter,
+    ...(deps.embeddingBatchLimits === undefined ? {} : { batchLimits: deps.embeddingBatchLimits }),
+  })
+  const runDeps = {
+    runs,
+    clock,
+    databaseUsage,
+    vectorIndex: createPgVectorIndexMaintenance(database.db),
+    compute: createNeonComputeUsage({
+      apiKey: config.neonApiKey,
+      projectId: config.neonProjectId,
+      ...(deps.fetch === undefined ? {} : { fetch: deps.fetch }),
+    }),
+  }
+  const snapshotDeps = {
+    snapshots: createPgSnapshotRepository(database.pool),
+    codec: snapshotCodec,
+    blobs: deps.blobStore,
+    clock,
+  }
+  return {
+    neuronBudget,
+    useCases: {
+      startIngestionRun: createStartIngestionRun(runDeps),
+      finishIngestionRun: createFinishIngestionRun(runDeps),
+      embedPending,
+      ingestDocumentVersion: createIngestDocumentVersion({
+        repository,
+        cache,
+        embedPending,
+        embeddingModel: embeddings.model,
+        hasher: sha256ContentHasher,
+        databaseUsage,
+        maxDatabaseBytes: config.maxDatabaseBytes ?? DEFAULT_MAX_DATABASE_BYTES,
+      }),
+      refreshCoverage: createRefreshCoverage({ repository }),
+      exportSnapshot: createExportSnapshot(snapshotDeps),
+      promoteSnapshot: createPromoteSnapshot(snapshotDeps),
+    },
+    close: () => database.close(),
+  }
 }
 
 interface CorpusServices {
@@ -120,6 +291,75 @@ function createCorpusServices(
       embeddings,
       hasher: sha256ContentHasher,
     }),
+  }
+}
+
+/** Peças de E/S da ingestão e do watch (adapters de saída montados só aqui). */
+export interface IngestionIo {
+  readonly fetcher: SafeFetcher
+  readonly blobs: BlobStore
+  readonly hasher: ContentHasher
+  readonly clock: Clock
+}
+
+/**
+ * `SafeFetcher` com a allowlist das fontes, o Netlify Blobs (com `NETLIFY_AUTH_TOKEN` e
+ * `NETLIFY_SITE_ID`; o `parseEnv` exige as duas juntas) ou o store em memória (execução local) e o
+ * hash de conteúdo.
+ */
+export function createIngestionIo(env: Env, allowedHosts: readonly string[]): IngestionIo {
+  const blobs =
+    env.NETLIFY_AUTH_TOKEN !== undefined && env.NETLIFY_SITE_ID !== undefined
+      ? createNetlifyBlobStore({ siteID: env.NETLIFY_SITE_ID, token: env.NETLIFY_AUTH_TOKEN })
+      : createInMemoryBlobStore()
+  return {
+    fetcher: createSafeFetcher({ allowedHosts }),
+    blobs,
+    hasher: sha256ContentHasher,
+    clock: systemClock,
+  }
+}
+
+/** Leitor do corpus no formato da fixture (`cli eval-fixture`), sobre `DATABASE_URL`. */
+export function createFixtureCorpusReader(
+  env: Env,
+): FixtureCorpusReader & { close(): Promise<void> } {
+  if (env.DATABASE_URL === undefined) {
+    throw new Error('eval-fixture exige DATABASE_URL (banco do staging; teko_app basta)')
+  }
+  const database = createDatabase({
+    url: env.DATABASE_URL,
+    applicationName: 'teko-eval-fixture',
+    maxConnections: 1,
+  })
+  const reader = createPgFixtureCorpusReader(database.db)
+  return {
+    readDocuments: (selection) => reader.readDocuments(selection),
+    readCoverage: (families) => reader.readCoverage(families),
+    close: () => database.close(),
+  }
+}
+
+/**
+ * Alvos do `cli coverage-mark`: um pool de 1 conexão por banco (role `teko_watch`). Não passa pelo
+ * `parseEnv`: o environment `corpus-watch` só tem as duas URLs.
+ */
+export function createCoverageMarkTargets(urls: readonly WatchDatabaseUrl[]): {
+  readonly targets: CoverageMarkTarget[]
+  close(): Promise<void>
+} {
+  const databases = urls.map((entry) => ({
+    name: entry.name,
+    database: createDatabase({ url: entry.url, applicationName: 'teko-watch', maxConnections: 1 }),
+  }))
+  return {
+    targets: databases.map(({ name, database }) => ({
+      name,
+      repository: createPgCoverageWatchRepository(database.db),
+    })),
+    close: async () => {
+      await Promise.all(databases.map(({ database }) => database.close()))
+    },
   }
 }
 

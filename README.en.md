@@ -56,8 +56,12 @@ force**. It covers EFD ICMS/IPI, EFD-REINF and the rules of the state of Goiás 
 
 > [!NOTE]
 > **Early development.** The monorepo skeleton, the quality gates, the local infrastructure and the
-> platform spikes are done (phases F0 and F1). The next phase brings the validity domain, the
-> schema and the hybrid search. Nothing is published and answers are not usable yet.
+> platform spikes are done (phases F0 and F1), and so are the validity domain, the corpus schema
+> and the hybrid search, evaluated on a fixture of real texts (phase F2).
+> The ingestion of the official sources (EFD ICMS/IPI, EFD-Reinf, RCTE, CTE, EFD-GO and Goiás
+> tables), the embeddings and daily change monitoring are implemented (phase F3); the first staging
+> load runs on Actions. The next phase brings the full API. Nothing is published and
+> answers are not usable yet.
 
 ## 🧱 Tech stack
 
@@ -65,10 +69,10 @@ force**. It covers EFD ICMS/IPI, EFD-REINF and the rules of the state of Goiás 
 | ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
 | 🖥️ Web     | Next.js 16 static export (no functions) on Netlify, React 19, Tailwind CSS 4, next-intl (pt-BR and en), Feature-Sliced Design                  |
 | ⚙️ API     | Fastify 5 on Node.js 24, hexagonal architecture, Zod contracts shared through `@teko/shared`; a single Vercel Function (Fluid compute, `gru1`) |
-| 🗄️ Data    | PostgreSQL 18 + pgvector (Neon in `aws-sa-east-1`; Docker locally), hybrid search with RRF                                                     |
+| 🗄️ Data    | PostgreSQL 18 + pgvector (Neon in `aws-sa-east-1`; Docker locally), Drizzle ORM with `pg`, hybrid search with RRF                              |
 | 🤖 AI      | BGE-M3 embeddings (Cloudflare Workers AI), Gemini free tier with Groq as fallback                                                              |
 | 📥 Ingest  | Python with Docling (TableFormer `ACCURATE`) for the PDFs, and SPED's External Tables web service                                              |
-| 🧰 Tooling | pnpm 12 with a strict supply-chain policy, Turborepo, Biome, Vitest, Stryker, OpenSpec, lefthook, git-cliff                                    |
+| 🧰 Tooling | pnpm 12 with a strict supply-chain policy, Turborepo, Biome, Vitest, Stryker, promptfoo, OpenSpec, lefthook, git-cliff                         |
 
 ## 🏗️ Architecture
 
@@ -111,17 +115,20 @@ gate.
 Everything below fails the pull request instead of warning. The `ci-gate` check aggregates the
 jobs and is required to merge into `develop` and `main`.
 
-| Gate                      | Tool                                                              |
-| ------------------------- | ----------------------------------------------------------------- |
-| 🎨 Formatting and lint    | Biome, with no warnings                                           |
-| 🧩 Architecture           | dependency-cruiser (hexagonal), Steiger (FSD), `turbo boundaries` |
-| 🧹 Dead code and monorepo | knip, sherif, jscpd                                               |
-| 🔤 Types                  | strict `tsc` and type-coverage ≥ 99%                              |
-| 🧪 Coverage               | Vitest: ≥ 95% of lines in the API and in `shared`                 |
-| 🧬 Mutation               | Stryker, minimum score of 70                                      |
-| 🔐 Security               | CodeQL, Semgrep, gitleaks, osv-scanner, zizmor, dependency review |
-| 📦 Supply chain           | pnpm with releases at least 7 days old and provenance             |
-| 📐 Specs                  | `openspec validate --all --strict`                                |
+| Gate                      | Tool                                                                                                                                                 |
+| ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 🎨 Formatting and lint    | Biome with no warnings, ruff in the Python ingestion, actionlint on the workflows                                                                    |
+| 🧩 Architecture           | dependency-cruiser (hexagonal), Steiger (FSD), `turbo boundaries`                                                                                    |
+| 🧹 Dead code and monorepo | knip, sherif, jscpd                                                                                                                                  |
+| 🔤 Types                  | strict `tsc` and type-coverage ≥ 99%; pyright in the ingestion                                                                                       |
+| 🧪 Coverage               | Vitest: ≥ 95% of lines in the API's domain and application layers and in `shared`, ≥ 80% in the adapters and the web                                 |
+| 🧬 Mutation               | Stryker, minimum score of 70                                                                                                                         |
+| 🔎 Retrieval              | retrieval evals (promptfoo) on the real-text fixture: recall@10 ≥ 0.9, MRR ≥ 0.7; validity, refusal, clarification and reference date with no errors |
+| ⚡ Performance            | `sql-perf` of the hybrid search over 100k chunks: no Seq Scan and a median under 150 ms                                                              |
+| 🗃️ Migrations             | `migration-guard`: expand/contract only, a published migration is immutable                                                                          |
+| 🔐 Security               | CodeQL, Semgrep, gitleaks, osv-scanner, zizmor, dependency review, pip-audit                                                                         |
+| 📦 Supply chain           | pnpm with releases at least 7 days old and provenance                                                                                                |
+| 📐 Specs                  | `openspec validate --all --strict`                                                                                                                   |
 
 ## 🔒 Security
 

@@ -60,7 +60,7 @@ export interface ProvisionVersionRecord {
   readonly chunks: readonly ChunkRecord[]
 }
 
-export interface ProvisionRecord {
+interface ProvisionRecord {
   readonly stableKey: string
   readonly kind: string
   readonly parentStableKey: string | null

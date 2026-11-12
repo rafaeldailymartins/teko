@@ -1,7 +1,10 @@
-"""Manifesto de uma extração Docling (``out/<sha256>/manifest.json``).
+"""Manifesto de uma extração Docling (``out/<saída>/manifest.json``).
 
 O manifesto é o contrato entre este job e o pipeline Node: identifica a fonte do corpus, o
-arquivo exato que foi convertido (sha256), a versão do Docling usada e onde ficou a saída.
+arquivo exato que foi convertido (sha256), a versão do Docling usada, onde ficou a saída e, para
+documentos longos divididos por ``page_range``, qual parte (intervalo de páginas) foi convertida.
+O diretório da saída é ``<sha256>`` para o documento inteiro e ``<sha256>-p<início>-<fim>`` para
+uma parte (ver :func:`output_dir_name`).
 """
 
 import hashlib
@@ -17,9 +20,14 @@ from urllib.parse import urlsplit
 from teko_ingest.paths import resolve_file
 
 MANIFEST_SCHEMA_VERSION: Final = 1
-"""Versão do formato do manifesto; muda quando um campo muda de significado."""
+"""Versão do formato do manifesto; muda quando um campo muda de significado.
+
+``page_range`` e ``part`` foram acrescentados na F3 sem mudar a versão: são opcionais na leitura
+(ausentes = documento inteiro) e sempre gravados (``null`` para o documento inteiro).
+"""
 
 _SHA256_RE: Final = re.compile(r"[0-9a-f]{64}")
+_PAGE_RANGE_RE: Final = re.compile(r"([0-9]+)-([0-9]+)")
 _ALLOWED_URL_SCHEMES: Final = frozenset({"http", "https"})
 _FIELDS: Final = frozenset(
     {
@@ -30,12 +38,66 @@ _FIELDS: Final = frozenset(
         "docling_version",
         "created_at",
         "output_path",
+        "page_range",
+        "part",
     },
 )
+_PAGE_RANGE_SHAPE: Final = "campo 'page_range' deve ser null ou [início, fim]"
 
 
 class ManifestError(ValueError):
     """O manifesto (ou o JSON de origem) é inválido."""
+
+
+@dataclass(frozen=True, slots=True)
+class PageRange:
+    """Intervalo de páginas fechado e com base 1 (o ``page_range`` do Docling).
+
+    Attributes:
+        start: Primeira página convertida (>= 1).
+        end: Última página convertida (>= ``start``).
+
+    """
+
+    start: int
+    end: int
+
+    def __post_init__(self) -> None:
+        """Valida os limites."""
+        if type(self.start) is not int or type(self.end) is not int:
+            msg = "page_range deve ter dois inteiros"
+            raise ManifestError(msg)
+        if self.start < 1 or self.end < self.start:
+            msg = f"page_range inválido: {self.start}-{self.end} (início >= 1 e fim >= início)"
+            raise ManifestError(msg)
+
+    @property
+    def part(self) -> str:
+        """Rótulo da parte, usado no nome da saída e do artifact (``p<início>-<fim>``)."""
+        return f"p{self.start}-{self.end}"
+
+    def as_tuple(self) -> tuple[int, int]:
+        """Tupla ``(início, fim)`` no formato aceito por ``DocumentConverter.convert``."""
+        return (self.start, self.end)
+
+    @classmethod
+    def parse(cls, text: str) -> Self:
+        """Lê ``"<início>-<fim>"`` (ex.: ``"1-120"``).
+
+        Raises:
+            ManifestError: se o texto não tiver o formato ou os limites forem inválidos.
+
+        """
+        match = _PAGE_RANGE_RE.fullmatch(text.strip())
+        if match is None:
+            msg = f"page_range deve ter o formato <início>-<fim>: {text!r}"
+            raise ManifestError(msg)
+        return cls(int(match.group(1)), int(match.group(2)))
+
+
+def output_dir_name(digest: str, page_range: PageRange | None) -> str:
+    """Nome do diretório da saída: ``<sha256>`` ou ``<sha256>-p<início>-<fim>``."""
+    return digest if page_range is None else f"{digest}-{page_range.part}"
 
 
 def sha256_file(path: Path, *, root: Path) -> str:
@@ -62,6 +124,21 @@ def _require_str(data: Mapping[str, object], key: str) -> str:
     return value
 
 
+def _parse_page_range(value: object) -> PageRange | None:
+    if value is None:
+        return None
+    if not isinstance(value, list):
+        raise ManifestError(_PAGE_RANGE_SHAPE)
+    items = cast("list[object]", value)
+    if len(items) != 2:  # noqa: PLR2004 - par início/fim
+        raise ManifestError(_PAGE_RANGE_SHAPE)
+    start, end = items
+    if type(start) is not int or type(end) is not int:
+        msg = "page_range deve ter dois inteiros"
+        raise ManifestError(msg)
+    return PageRange(start, end)
+
+
 def _validate_output_path(value: str) -> None:
     if not value:
         msg = "output_path não pode ser vazio"
@@ -86,6 +163,7 @@ class ExtractionManifest:
         docling_version: Versão do pacote ``docling`` que produziu a saída.
         created_at: Instante da extração, com fuso; é normalizado para UTC.
         output_path: Caminho POSIX da saída, relativo ao diretório ``out/``.
+        page_range: Páginas convertidas quando o documento foi dividido; ``None`` = inteiro.
         schema_version: Versão do formato do manifesto.
 
     """
@@ -96,6 +174,7 @@ class ExtractionManifest:
     docling_version: str
     created_at: datetime
     output_path: str
+    page_range: PageRange | None = None
     schema_version: int = field(default=MANIFEST_SCHEMA_VERSION)
 
     def __post_init__(self) -> None:
@@ -123,7 +202,12 @@ class ExtractionManifest:
         # A dataclass é congelada; a normalização acontece uma única vez, na construção.
         object.__setattr__(self, "created_at", self.created_at.astimezone(UTC))
 
-    def to_dict(self) -> dict[str, str | int]:
+    @property
+    def part(self) -> str | None:
+        """Rótulo da parte (``p<início>-<fim>``), ou ``None`` para o documento inteiro."""
+        return None if self.page_range is None else self.page_range.part
+
+    def to_dict(self) -> dict[str, str | int | list[int] | None]:
         """Converte para um dicionário serializável em JSON."""
         return {
             "schema_version": self.schema_version,
@@ -133,6 +217,8 @@ class ExtractionManifest:
             "docling_version": self.docling_version,
             "created_at": self.created_at.isoformat(),
             "output_path": self.output_path,
+            "page_range": None if self.page_range is None else list(self.page_range.as_tuple()),
+            "part": self.part,
         }
 
     def to_json(self) -> str:
@@ -156,6 +242,11 @@ class ExtractionManifest:
         except ValueError as exc:
             msg = f"created_at não é ISO 8601: {raw_created_at!r}"
             raise ManifestError(msg) from exc
+        page_range = _parse_page_range(data.get("page_range"))
+        expected_part = None if page_range is None else page_range.part
+        if data.get("part") != expected_part:
+            msg = f"campo 'part' deve ser {expected_part!r}, coerente com page_range"
+            raise ManifestError(msg)
         return cls(
             schema_version=schema_version,
             source_id=_require_str(data, "source_id"),
@@ -164,6 +255,7 @@ class ExtractionManifest:
             docling_version=_require_str(data, "docling_version"),
             created_at=created_at,
             output_path=_require_str(data, "output_path"),
+            page_range=page_range,
         )
 
     @classmethod

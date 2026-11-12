@@ -1,10 +1,5 @@
 import { sql } from 'drizzle-orm'
-import type {
-  CorpusSnapshot,
-  CorpusWriter,
-  DocumentRecord,
-  ProvisionRecord,
-} from '#app/ports/corpus-writer.ts'
+import type { CorpusSnapshot, CorpusWriter, DocumentRecord } from '#app/ports/corpus-writer.ts'
 import type { DrizzleDb } from '../client.ts'
 import {
   amendments,
@@ -18,6 +13,7 @@ import {
   provisions,
   provisionVersions,
 } from '../schema/corpus.ts'
+import { groupByLevel } from './pg-ingestion-provision-levels.ts'
 
 /**
  * `CorpusWriter` sobre o Drizzle (URL do owner, conexão direta). Tudo numa transação: uma falha
@@ -62,11 +58,6 @@ function take<T>(values: readonly T[], index: number, what: string): T {
     throw new CorpusInvariantError(`faltou ${what} na posição ${String(index)}`)
   }
   return value
-}
-
-/** Pais antes dos filhos: ordena pela profundidade da chave (estável). */
-function byDepth(items: readonly ProvisionRecord[]): ProvisionRecord[] {
-  return [...items].sort((a, b) => a.stableKey.split(':').length - b.stableKey.split(':').length)
 }
 
 interface WrittenCounts {
@@ -114,7 +105,7 @@ async function writeDocument(
     (batch) => tx.insert(documentVersions).values(batch),
   )
 
-  const ordered = byDepth(doc.provisions)
+  const ordered = doc.provisions
   const provisionIds = await newIds(tx, ordered.length)
   const provisionIdByKey = new Map(
     ordered.map((provision, index) => [
@@ -137,10 +128,13 @@ async function writeDocument(
       sortPath: provision.sortPath,
     }
   })
-  // Um lote por nível de profundidade: o pai sempre existe antes do comando que insere o filho.
-  const byLevel = Map.groupBy(provisionRows, (row) => row.stableKey.split(':').length)
-  for (const level of [...byLevel.keys()].sort((a, b) => a - b)) {
-    await insertInBatches(byLevel.get(level) ?? [], (batch) => tx.insert(provisions).values(batch))
+  // Um lote por nível na cadeia de pais: o pai sempre existe antes do comando que insere o filho.
+  const rowByKey = new Map(provisionRows.map((row) => [row.stableKey, row]))
+  for (const level of groupByLevel(ordered)) {
+    await insertInBatches(
+      level.flatMap((provision) => rowByKey.get(provision.stableKey) ?? []),
+      (batch) => tx.insert(provisions).values(batch),
+    )
   }
 
   const versions = doc.provisions.flatMap((provision) =>

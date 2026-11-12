@@ -3,10 +3,17 @@ import type { BuildInfo } from '#domain/shared/build-info.ts'
 import type { BackgroundTasks } from './ports/background-tasks.ts'
 import type { ClientIp } from './ports/client-ip.ts'
 import type { Lifecycle } from './services/lifecycle.ts'
+import type { NeuronBudget } from './services/neuron-budget.ts'
 import type { StreamBudget } from './services/stream-budget.ts'
 import type { CheckCoverage } from './use-cases/check-coverage.ts'
+import type { EmbedPending } from './use-cases/embed-pending.ts'
+import type { ExportSnapshot } from './use-cases/export-snapshot.ts'
 import type { GetHealth } from './use-cases/get-health.ts'
 import type { HybridSearch } from './use-cases/hybrid-search.ts'
+import type { IngestDocumentVersion } from './use-cases/ingest-document-version.ts'
+import type { FinishIngestionRun, StartIngestionRun } from './use-cases/ingestion-run.ts'
+import type { PromoteSnapshot } from './use-cases/promote-snapshot.ts'
+import type { RefreshCoverage } from './use-cases/refresh-coverage.ts'
 import type { ResolveReferenceDate } from './use-cases/resolve-reference-date.ts'
 import type { RetrieveEvidence } from './use-cases/retrieve-evidence.ts'
 import type { WriteCorpus } from './use-cases/write-corpus.ts'
@@ -26,6 +33,28 @@ interface UseCases {
   readonly retrieval: RetrievalUseCases | null
   /** Escrita do corpus (seed da fixture; ingestão na F3). Exige a URL do owner. */
   readonly writeCorpus: WriteCorpus | null
+}
+
+/**
+ * Casos de uso da ingestão (CLI `ingest` e `snapshot`, só no Actions e localmente; URL do owner).
+ * Montados por `createIngestionContainer` em `composition-root.ts`.
+ */
+interface IngestionUseCases {
+  readonly startIngestionRun: StartIngestionRun
+  readonly finishIngestionRun: FinishIngestionRun
+  readonly ingestDocumentVersion: IngestDocumentVersion
+  readonly embedPending: EmbedPending
+  readonly refreshCoverage: RefreshCoverage
+  readonly exportSnapshot: ExportSnapshot
+  readonly promoteSnapshot: PromoteSnapshot
+}
+
+export interface IngestionContainer {
+  readonly useCases: IngestionUseCases
+  /** Orçamento diário de neurons (para o relatório do run). */
+  readonly neuronBudget: NeuronBudget
+  /** Fecha o pool do Postgres. */
+  close(): Promise<void>
 }
 
 /**

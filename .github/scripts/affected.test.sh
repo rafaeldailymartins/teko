@@ -60,6 +60,8 @@ all='{"web":true,"api":true,"shared":true,"ingest":true,"rag":true,"llm":true,"p
 none='{"web":false,"api":false,"shared":false,"ingest":false,"rag":false,"llm":false,"packages":false}'
 packages_only='{"web":true,"api":true,"shared":true,"ingest":false,"rag":false,"llm":false,"packages":true}'
 ingest_only='{"web":false,"api":false,"shared":false,"ingest":true,"rag":false,"llm":false,"packages":false}'
+api_ingest='{"web":false,"api":true,"shared":false,"ingest":true,"rag":false,"llm":false,"packages":true}'
+api_only='{"web":false,"api":true,"shared":false,"ingest":false,"rag":false,"llm":false,"packages":true}'
 
 failures=0
 cases=0
@@ -141,6 +143,17 @@ expect_tasks "shared: --affected roda os checks de api e web" \
 
 # --- Grupos por caminho e controles negativos ---------------------------------------------------
 expect_scope "tools/ingest: só ingest" "$ingest_only" push tools/ingest/pyproject.toml
+expect_scope "corpus/watch.yaml: só ingest" "$ingest_only" push corpus/watch.yaml
+# Arquivos da API no grupo ingest: o turbo marca a api e o grupo por caminho marca o ingest.
+expect_scope "cli/sources-watch: api + ingest" "$api_ingest" push \
+  apps/api/src/adapters/in/cli/sources-watch/watch-config.ts
+expect_scope "cli/snapshot: api + ingest" "$api_ingest" push \
+  apps/api/src/adapters/in/cli/snapshot/novo-arquivo.ts
+expect_scope "domain/corpus: api + ingest" "$api_ingest" push \
+  apps/api/src/domain/corpus/family.ts
+# Controle negativo: outro adapter de entrada da API não é ingestão.
+expect_scope "adapters/in/http: só api" "$api_only" push \
+  apps/api/src/adapters/in/http/novo-arquivo.ts
 expect_scope "docs: nada afetado" "$none" push docs/adr/0002-supply-chain-pnpm.md README.md
 expect_scope "pull_request contra origin/develop" "$packages_only" pull_request \
   packages/shared/src/errors/codes.ts
@@ -149,6 +162,8 @@ expect_scope "pull_request contra origin/develop" "$packages_only" pull_request 
 global_files=(
   .github/workflows/ci.yml
   .github/workflows/pr-gate.yml
+  .github/workflows/ingest.yml
+  .github/workflows/source-watch.yml
   .github/actions/setup/action.yml
   .github/scripts/affected.sh
   .github/affected-paths.yml

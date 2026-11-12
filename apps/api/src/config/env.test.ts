@@ -225,6 +225,84 @@ describe('parseEnv', () => {
     })
   })
 
+  describe('ingestão (F3)', () => {
+    const SITE_ID = '0b7c1a2e-3f4d-4e5a-9b6c-7d8e9f0a1b2c'
+    const TOKEN = 'nfp_token-de-teste-com-mais-de-20'
+    const NEON_KEY = 'napi_chave-de-teste-com-mais-de-20'
+
+    it('aplica os padrões do orçamento e da guarda de tamanho', () => {
+      const env = parseEnv(DEV_ENV)
+      expect(env.EMBED_NEURON_BUDGET).toBe(8000)
+      expect(env.INGEST_MAX_DB_BYTES).toBe(800 * 1024 * 1024)
+      expect(env.NETLIFY_AUTH_TOKEN).toBeUndefined()
+      expect(env.NEON_API_KEY_STAGING).toBeUndefined()
+    })
+
+    it('aceita Blobs e Neon completos e converte os números', () => {
+      const env = parseEnv({
+        ...DEV_ENV,
+        NETLIFY_AUTH_TOKEN: TOKEN,
+        NETLIFY_SITE_ID: SITE_ID,
+        NEON_API_KEY_STAGING: NEON_KEY,
+        NEON_STAGING_PROJECT_ID: 'snowy-sea-123456',
+        EMBED_NEURON_BUDGET: '5000',
+        INGEST_MAX_DB_BYTES: '1000',
+      })
+      expect(env).toMatchObject({
+        NETLIFY_SITE_ID: SITE_ID,
+        NEON_STAGING_PROJECT_ID: 'snowy-sea-123456',
+        EMBED_NEURON_BUDGET: 5000,
+        INGEST_MAX_DB_BYTES: 1000,
+      })
+    })
+
+    it('exige os pares juntos, sem citar o valor do segredo', () => {
+      const problems = problemsOf({
+        ...DEV_ENV,
+        NETLIFY_AUTH_TOKEN: TOKEN,
+        NEON_STAGING_PROJECT_ID: 'p1',
+      })
+      expect(problems).toEqual([
+        'NETLIFY_SITE_ID: NETLIFY_AUTH_TOKEN e NETLIFY_SITE_ID vêm juntas (Netlify Blobs da ingestão)',
+        'NEON_API_KEY_STAGING: NEON_API_KEY_STAGING e NEON_STAGING_PROJECT_ID vêm juntas (medição de CU-h da ingestão)',
+      ])
+      expect(problems.join('\n')).not.toContain(TOKEN)
+      expect(
+        problemsOf({ ...DEV_ENV, NETLIFY_SITE_ID: SITE_ID, NEON_API_KEY_STAGING: NEON_KEY }),
+      ).toEqual([
+        'NETLIFY_AUTH_TOKEN: NETLIFY_AUTH_TOKEN e NETLIFY_SITE_ID vêm juntas (Netlify Blobs da ingestão)',
+        'NEON_STAGING_PROJECT_ID: NEON_API_KEY_STAGING e NEON_STAGING_PROJECT_ID vêm juntas (medição de CU-h da ingestão)',
+      ])
+    })
+
+    it.each([
+      ['NETLIFY_SITE_ID', 'tekoia'],
+      ['NETLIFY_AUTH_TOKEN', 'curto'],
+      ['NEON_STAGING_PROJECT_ID', 'Projeto Inválido'],
+      ['EMBED_NEURON_BUDGET', '10001'],
+      ['EMBED_NEURON_BUDGET', '-1'],
+      ['INGEST_MAX_DB_BYTES', '0'],
+    ])('rejeita %s=%j', (key, value) => {
+      expect(problemsOf({ ...DEV_ENV, [key]: value }).join('\n')).toMatch(
+        new RegExp(`^${key}:`, 'm'),
+      )
+    })
+
+    it('proíbe as credenciais da ingestão na API publicada', () => {
+      const problems = problemsOf({
+        ...PROD_ENV,
+        NETLIFY_AUTH_TOKEN: TOKEN,
+        NETLIFY_SITE_ID: SITE_ID,
+        NEON_API_KEY_STAGING: NEON_KEY,
+        NEON_STAGING_PROJECT_ID: 'p1',
+      })
+      expect(problems).toEqual([
+        'NETLIFY_AUTH_TOKEN: proibida com RUNTIME_TARGET=render (só a CLI de ingestão usa)',
+        'NEON_API_KEY_STAGING: proibida com RUNTIME_TARGET=render (só a CLI de ingestão usa)',
+      ])
+    })
+  })
+
   it('derruba o boot com *_BASE_URL de provedor, mas não com outros *_BASE_URL', () => {
     const problems = problemsOf({
       ...DEV_ENV,

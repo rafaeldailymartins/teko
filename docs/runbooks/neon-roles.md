@@ -18,8 +18,10 @@ O bloco de grants da migração só age sobre roles que já existem. Em cada pro
 configura: rode de novo o bloco `DO $$ ... $$` da migração `*_constraints-grants` como owner (ele é
 idempotente) ou crie uma migração nova com o mesmo bloco.
 
-No `teko-staging`, o `teko_app` já existe desde o spike F1 (d), com os timeouts gravados; falta o
-`teko_watch`.
+Estado em 2026-11-11: os quatro roles existem. O `teko_app` do `teko-staging` vem do spike F1 (d),
+com os timeouts gravados; o `teko_watch` do staging e os dois roles do `teko-prod` foram criados com
+este script. Os quatro segredos da tabela abaixo estão gravados nos environments. Nenhuma migração
+rodou ainda nos projetos reais.
 
 ## Como rodar
 

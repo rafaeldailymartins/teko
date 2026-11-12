@@ -1,0 +1,2304 @@
+{
+  "schema_name": "DoclingDocument",
+  "version": "1.10.0",
+  "name": "guia-go-5-9",
+  "origin": {
+    "mimetype": "application/pdf",
+    "binary_hash": 0,
+    "filename": "guia-go-5-9.pdf"
+  },
+  "furniture": {
+    "self_ref": "#/furniture",
+    "children": [],
+    "content_layer": "furniture",
+    "name": "_root_",
+    "label": "unspecified"
+  },
+  "body": {
+    "self_ref": "#/body",
+    "children": [
+      {
+        "$ref": "#/texts/0"
+      },
+      {
+        "$ref": "#/texts/1"
+      },
+      {
+        "$ref": "#/texts/2"
+      },
+      {
+        "$ref": "#/texts/3"
+      },
+      {
+        "$ref": "#/texts/4"
+      },
+      {
+        "$ref": "#/texts/5"
+      },
+      {
+        "$ref": "#/texts/6"
+      },
+      {
+        "$ref": "#/texts/7"
+      },
+      {
+        "$ref": "#/texts/8"
+      },
+      {
+        "$ref": "#/texts/9"
+      },
+      {
+        "$ref": "#/texts/10"
+      },
+      {
+        "$ref": "#/texts/11"
+      },
+      {
+        "$ref": "#/texts/12"
+      },
+      {
+        "$ref": "#/texts/13"
+      },
+      {
+        "$ref": "#/texts/14"
+      },
+      {
+        "$ref": "#/texts/15"
+      },
+      {
+        "$ref": "#/tables/0"
+      },
+      {
+        "$ref": "#/texts/16"
+      },
+      {
+        "$ref": "#/tables/1"
+      },
+      {
+        "$ref": "#/texts/17"
+      },
+      {
+        "$ref": "#/texts/18"
+      },
+      {
+        "$ref": "#/texts/19"
+      },
+      {
+        "$ref": "#/texts/20"
+      },
+      {
+        "$ref": "#/texts/21"
+      },
+      {
+        "$ref": "#/texts/22"
+      },
+      {
+        "$ref": "#/texts/23"
+      },
+      {
+        "$ref": "#/texts/24"
+      },
+      {
+        "$ref": "#/texts/25"
+      },
+      {
+        "$ref": "#/texts/26"
+      },
+      {
+        "$ref": "#/texts/27"
+      },
+      {
+        "$ref": "#/texts/28"
+      },
+      {
+        "$ref": "#/texts/29"
+      },
+      {
+        "$ref": "#/texts/30"
+      },
+      {
+        "$ref": "#/texts/31"
+      },
+      {
+        "$ref": "#/texts/32"
+      },
+      {
+        "$ref": "#/texts/33"
+      },
+      {
+        "$ref": "#/texts/34"
+      },
+      {
+        "$ref": "#/texts/35"
+      },
+      {
+        "$ref": "#/texts/36"
+      },
+      {
+        "$ref": "#/texts/37"
+      },
+      {
+        "$ref": "#/texts/38"
+      },
+      {
+        "$ref": "#/texts/39"
+      },
+      {
+        "$ref": "#/texts/40"
+      },
+      {
+        "$ref": "#/texts/41"
+      },
+      {
+        "$ref": "#/texts/42"
+      },
+      {
+        "$ref": "#/texts/43"
+      },
+      {
+        "$ref": "#/texts/44"
+      },
+      {
+        "$ref": "#/texts/45"
+      },
+      {
+        "$ref": "#/tables/2"
+      },
+      {
+        "$ref": "#/texts/47"
+      },
+      {
+        "$ref": "#/texts/48"
+      },
+      {
+        "$ref": "#/texts/49"
+      },
+      {
+        "$ref": "#/texts/50"
+      },
+      {
+        "$ref": "#/texts/51"
+      }
+    ],
+    "content_layer": "body",
+    "name": "_root_",
+    "label": "unspecified"
+  },
+  "groups": [],
+  "texts": [
+    {
+      "self_ref": "#/texts/0",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "furniture",
+      "label": "page_header",
+      "prov": [
+        {
+          "page_no": 26,
+          "bbox": {
+            "l": 58.18,
+            "t": 770.92,
+            "r": 439.93,
+            "b": 761.84,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [0, 67]
+        }
+      ],
+      "orig": "GUIA PRÁTICO DA ESCRITURAÇÃO FISCAL DIGITAL (EFD ICMS/IPI) DE GOIÁS",
+      "text": "GUIA PRÁTICO DA ESCRITURAÇÃO FISCAL DIGITAL (EFD ICMS/IPI) DE GOIÁS"
+    },
+    {
+      "self_ref": "#/texts/1",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "body",
+      "label": "text",
+      "prov": [
+        {
+          "page_no": 26,
+          "bbox": {
+            "l": 55.32,
+            "t": 757.66,
+            "r": 486.36,
+            "b": 748.44,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [0, 77]
+        }
+      ],
+      "orig": "_____________________________________________________________________________",
+      "text": "_____________________________________________________________________________"
+    },
+    {
+      "self_ref": "#/texts/2",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "body",
+      "label": "section_header",
+      "prov": [
+        {
+          "page_no": 26,
+          "bbox": {
+            "l": 54.72,
+            "t": 713.67,
+            "r": 181.2,
+            "b": 702.53,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [0, 17]
+        }
+      ],
+      "orig": "1.3 PROTEGE GOIÁS",
+      "text": "1.3 PROTEGE GOIÁS",
+      "level": 1
+    },
+    {
+      "self_ref": "#/texts/3",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "body",
+      "label": "text",
+      "prov": [
+        {
+          "page_no": 26,
+          "bbox": {
+            "l": 54.84,
+            "t": 668.03,
+            "r": 537.79,
+            "b": 580.97,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [0, 348]
+        }
+      ],
+      "orig": "Os contribuintes que utilizam benefícios fiscais sujeitos à contribuição do PROTEGE deverão informar mensalmente o valor total da contribuição ao Protege, no REGISTRO E115: INFORMAÇÕES ADCIONAIS DA APURAÇÃO - VALORES DECLARATORIOS se houverem códigos específicos na tabela 5.2 - TABELA DE INFORMAÇÕES ADICIONAIS DA APURACÃO - VALORES DECLARATÓRIOS.",
+      "text": "Os contribuintes que utilizam benefícios fiscais sujeitos à contribuição do PROTEGE deverão informar mensalmente o valor total da contribuição ao Protege, no REGISTRO E115: INFORMAÇÕES ADCIONAIS DA APURAÇÃO - VALORES DECLARATORIOS se houverem códigos específicos na tabela 5.2 - TABELA DE INFORMAÇÕES ADICIONAIS DA APURACÃO - VALORES DECLARATÓRIOS."
+    },
+    {
+      "self_ref": "#/texts/4",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "body",
+      "label": "text",
+      "prov": [
+        {
+          "page_no": 26,
+          "bbox": {
+            "l": 54.84,
+            "t": 566.39,
+            "r": 538.01,
+            "b": 421.25,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [0, 655]
+        }
+      ],
+      "orig": "A utilização dos benefícios fiscais contidos no Art. 1º, § 3º do anexo IX do RCTE é condicionada a que o contribuinte contribua com o percentual ali indicado, a ser aplicado sobre o montante da diferença, entre o valor do imposto calculado com aplicação da tributação integral e o calculado com utilização de benefício fiscal, para o Fundo de Proteção Social do Estado de Goiás - PROTEGE GOIÁS (Lei nº 14.469/03, art. 9, II e § 4º) e efetuando o registro dos valores recolhidos no REG E115: INFORMAÇÕES ADCIONAIS DA APURAÇÃO - VALORES DECLARATORIOS, conforme os códigos da tabela 5.2 - TABELA DE INFORMAÇÕES ADICIONAIS DA APURACÃO - VALORES DECLARATÓRIOS.",
+      "text": "A utilização dos benefícios fiscais contidos no Art. 1º, § 3º do anexo IX do RCTE é condicionada a que o contribuinte contribua com o percentual ali indicado, a ser aplicado sobre o montante da diferença, entre o valor do imposto calculado com aplicação da tributação integral e o calculado com utilização de benefício fiscal, para o Fundo de Proteção Social do Estado de Goiás - PROTEGE GOIÁS (Lei nº 14.469/03, art. 9, II e § 4º) e efetuando o registro dos valores recolhidos no REG E115: INFORMAÇÕES ADCIONAIS DA APURAÇÃO - VALORES DECLARATORIOS, conforme os códigos da tabela 5.2 - TABELA DE INFORMAÇÕES ADICIONAIS DA APURACÃO - VALORES DECLARATÓRIOS."
+    },
+    {
+      "self_ref": "#/texts/5",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "body",
+      "label": "text",
+      "prov": [
+        {
+          "page_no": 26,
+          "bbox": {
+            "l": 54.84,
+            "t": 406.55,
+            "r": 537.8,
+            "b": 377.33,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [0, 166]
+        }
+      ],
+      "orig": "Deverá ser gerado o registro E115, com valor da contribuição e seu respectivo código, somente no período em que houver utilização do benefício descrito na tabela 5.2.",
+      "text": "Deverá ser gerado o registro E115, com valor da contribuição e seu respectivo código, somente no período em que houver utilização do benefício descrito na tabela 5.2."
+    },
+    {
+      "self_ref": "#/texts/6",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "body",
+      "label": "text",
+      "prov": [
+        {
+          "page_no": 26,
+          "bbox": {
+            "l": 106.8,
+            "t": 362.75,
+            "r": 436.4,
+            "b": 352.85,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [0, 59]
+        }
+      ],
+      "orig": "Os códigos do PROTEGE Goiás constam no Anexo II desse Guia.",
+      "text": "Os códigos do PROTEGE Goiás constam no Anexo II desse Guia."
+    },
+    {
+      "self_ref": "#/texts/7",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "body",
+      "label": "section_header",
+      "prov": [
+        {
+          "page_no": 26,
+          "bbox": {
+            "l": 54.72,
+            "t": 313.47,
+            "r": 471.39,
+            "b": 302.33,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [0, 58]
+        }
+      ],
+      "orig": "1.3.1 PROTEGE GOIÁS SOBRE BENEFÍCIOS FISCAIS - RESTITUIÇÂO",
+      "text": "1.3.1 PROTEGE GOIÁS SOBRE BENEFÍCIOS FISCAIS - RESTITUIÇÂO",
+      "level": 1
+    },
+    {
+      "self_ref": "#/texts/8",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "body",
+      "label": "text",
+      "prov": [
+        {
+          "page_no": 26,
+          "bbox": {
+            "l": 54.84,
+            "t": 282.47,
+            "r": 538.01,
+            "b": 214.73,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [0, 319]
+        }
+      ],
+      "orig": "Nos casos de restituição de PROTEGE em que o Despacho Autorizativo conceder a restituição do valor pago indevidamente com códigos de recolhimento 4014/4402/4888/4990 e 5017, na forma de compensação sobre os respectivos recolhimentos futuros, o contribuinte deverá adotar os seguintes procedimentos e lançamentos na EFD:",
+      "text": "Nos casos de restituição de PROTEGE em que o Despacho Autorizativo conceder a restituição do valor pago indevidamente com códigos de recolhimento 4014/4402/4888/4990 e 5017, na forma de compensação sobre os respectivos recolhimentos futuros, o contribuinte deverá adotar os seguintes procedimentos e lançamentos na EFD:"
+    },
+    {
+      "self_ref": "#/texts/9",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "body",
+      "label": "section_header",
+      "prov": [
+        {
+          "page_no": 26,
+          "bbox": {
+            "l": 106.8,
+            "t": 200.02,
+            "r": 306.61,
+            "b": 190.13,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [0, 38]
+        }
+      ],
+      "orig": "Apropriação do valor a ser restituído:",
+      "text": "Apropriação do valor a ser restituído:",
+      "level": 1
+    },
+    {
+      "self_ref": "#/texts/10",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "body",
+      "label": "text",
+      "prov": [
+        {
+          "page_no": 26,
+          "bbox": {
+            "l": 55.32,
+            "t": 175.84,
+            "r": 537.88,
+            "b": 130.16,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [0, 323]
+        }
+      ],
+      "orig": "Registro E115 - Informar o valor a ser compensado no campo 3 VL_INF_ADIC e o número do Despacho autorizativo no campo 4 DESCR_COMPL_AJ, utilizando os códigos abaixo no campo 2 COD_INF_ADIC do registro E115, em conformidade com o código de recolhimento utilizado no documento de arrecadação que ensejou a restituição, sendo:",
+      "text": "Registro E115 - Informar o valor a ser compensado no campo 3 VL_INF_ADIC e o número do Despacho autorizativo no campo 4 DESCR_COMPL_AJ, utilizando os códigos abaixo no campo 2 COD_INF_ADIC do registro E115, em conformidade com o código de recolhimento utilizado no documento de arrecadação que ensejou a restituição, sendo:"
+    },
+    {
+      "self_ref": "#/texts/11",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "body",
+      "label": "text",
+      "prov": [
+        {
+          "page_no": 26,
+          "bbox": {
+            "l": 55.32,
+            "t": 91.42,
+            "r": 486.36,
+            "b": 82.2,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [0, 77]
+        }
+      ],
+      "orig": "_____________________________________________________________________________",
+      "text": "_____________________________________________________________________________"
+    },
+    {
+      "self_ref": "#/texts/12",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "furniture",
+      "label": "page_footer",
+      "prov": [
+        {
+          "page_no": 26,
+          "bbox": {
+            "l": 55.32,
+            "t": 78.16,
+            "r": 107,
+            "b": 69.08,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [0, 8]
+        }
+      ],
+      "orig": "SEFAZ/GO",
+      "text": "SEFAZ/GO"
+    },
+    {
+      "self_ref": "#/texts/13",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "furniture",
+      "label": "page_footer",
+      "prov": [
+        {
+          "page_no": 26,
+          "bbox": {
+            "l": 447.84,
+            "t": 78.16,
+            "r": 471.67,
+            "b": 69.08,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [0, 6]
+        }
+      ],
+      "orig": "- 26 -",
+      "text": "- 26 -"
+    },
+    {
+      "self_ref": "#/texts/14",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "body",
+      "label": "section_header",
+      "prov": [
+        {
+          "page_no": 27,
+          "bbox": {
+            "l": 68.28,
+            "t": 770.92,
+            "r": 450.03,
+            "b": 761.84,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [0, 67]
+        }
+      ],
+      "orig": "GUIA PRÁTICO DA ESCRITURAÇÃO FISCAL DIGITAL (EFD ICMS/IPI) DE GOIÁS",
+      "text": "GUIA PRÁTICO DA ESCRITURAÇÃO FISCAL DIGITAL (EFD ICMS/IPI) DE GOIÁS",
+      "level": 1
+    },
+    {
+      "self_ref": "#/texts/15",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "body",
+      "label": "text",
+      "prov": [
+        {
+          "page_no": 27,
+          "bbox": {
+            "l": 68.28,
+            "t": 757.66,
+            "r": 499.32,
+            "b": 748.44,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [0, 77]
+        }
+      ],
+      "orig": "_____________________________________________________________________________",
+      "text": "_____________________________________________________________________________"
+    },
+    {
+      "self_ref": "#/texts/16",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "body",
+      "label": "text",
+      "prov": [
+        {
+          "page_no": 27,
+          "bbox": {
+            "l": 55.08,
+            "t": 491.44,
+            "r": 537.57,
+            "b": 457.88,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [0, 232]
+        }
+      ],
+      "orig": "Registro 1200 - Informar o valor no campo 2 COD_AJ_APUR o código de ajuste em consonância com o(os) lançado(s) no registro E115, informando no campo 4 CRED_APR o valor da restituição, por meio dos seguintes códigos, conforme o caso:",
+      "text": "Registro 1200 - Informar o valor no campo 2 COD_AJ_APUR o código de ajuste em consonância com o(os) lançado(s) no registro E115, informando no campo 4 CRED_APR o valor da restituição, por meio dos seguintes códigos, conforme o caso:"
+    },
+    {
+      "self_ref": "#/texts/17",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "body",
+      "label": "section_header",
+      "prov": [
+        {
+          "page_no": 27,
+          "bbox": {
+            "l": 106.56,
+            "t": 191.62,
+            "r": 219.82,
+            "b": 181.73,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [0, 22]
+        }
+      ],
+      "orig": "Utilização do crédito:",
+      "text": "Utilização do crédito:",
+      "level": 1
+    },
+    {
+      "self_ref": "#/texts/18",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "body",
+      "label": "text",
+      "prov": [
+        {
+          "page_no": 27,
+          "bbox": {
+            "l": 55.08,
+            "t": 167.32,
+            "r": 528.91,
+            "b": 158.24,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [0, 95]
+        }
+      ],
+      "orig": "Registro 1200 - Informar no campo 6 CRED_UTIL o valor a ser abatido do recolhimento do PROTEGE.",
+      "text": "Registro 1200 - Informar no campo 6 CRED_UTIL o valor a ser abatido do recolhimento do PROTEGE."
+    },
+    {
+      "self_ref": "#/texts/19",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "body",
+      "label": "text",
+      "prov": [
+        {
+          "page_no": 27,
+          "bbox": {
+            "l": 55.08,
+            "t": 149.92,
+            "r": 537.54,
+            "b": 128.6,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [0, 165]
+        }
+      ],
+      "orig": "Registro 1210 - Informar no campo 2 TIPO_UTIL somente o código GO12 \"Compensação DARE de PROTEGE \" e no campo 4 VL_CRED_UTIL o valor a ser abatido nos recolhimentos.",
+      "text": "Registro 1210 - Informar no campo 2 TIPO_UTIL somente o código GO12 \"Compensação DARE de PROTEGE \" e no campo 4 VL_CRED_UTIL o valor a ser abatido nos recolhimentos."
+    },
+    {
+      "self_ref": "#/texts/20",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "body",
+      "label": "text",
+      "prov": [
+        {
+          "page_no": 27,
+          "bbox": {
+            "l": 55.08,
+            "t": 120.28,
+            "r": 537.58,
+            "b": 98.96,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [0, 114]
+        }
+      ],
+      "orig": "OBS: os valores a serem restituídos nunca poderão ser compensados com valores das apurações E110/E220/E310 da EFD.",
+      "text": "OBS: os valores a serem restituídos nunca poderão ser compensados com valores das apurações E110/E220/E310 da EFD."
+    },
+    {
+      "self_ref": "#/texts/21",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "body",
+      "label": "text",
+      "prov": [
+        {
+          "page_no": 27,
+          "bbox": {
+            "l": 68.28,
+            "t": 91.42,
+            "r": 499.32,
+            "b": 82.2,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [0, 77]
+        }
+      ],
+      "orig": "_____________________________________________________________________________",
+      "text": "_____________________________________________________________________________"
+    },
+    {
+      "self_ref": "#/texts/22",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "body",
+      "label": "text",
+      "prov": [
+        {
+          "page_no": 27,
+          "bbox": {
+            "l": 68.28,
+            "t": 78.16,
+            "r": 169.39,
+            "b": 69.08,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [0, 18]
+        }
+      ],
+      "orig": "ECONOMIA/GO - 27 -",
+      "text": "ECONOMIA/GO - 27 -"
+    },
+    {
+      "self_ref": "#/texts/23",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "furniture",
+      "label": "page_header",
+      "prov": [
+        {
+          "page_no": 28,
+          "bbox": {
+            "l": 58.18,
+            "t": 770.92,
+            "r": 439.93,
+            "b": 761.84,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [0, 67]
+        }
+      ],
+      "orig": "GUIA PRÁTICO DA ESCRITURAÇÃO FISCAL DIGITAL (EFD ICMS/IPI) DE GOIÁS",
+      "text": "GUIA PRÁTICO DA ESCRITURAÇÃO FISCAL DIGITAL (EFD ICMS/IPI) DE GOIÁS"
+    },
+    {
+      "self_ref": "#/texts/24",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "body",
+      "label": "text",
+      "prov": [
+        {
+          "page_no": 28,
+          "bbox": {
+            "l": 55.32,
+            "t": 757.66,
+            "r": 486.36,
+            "b": 748.44,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [0, 77]
+        }
+      ],
+      "orig": "_____________________________________________________________________________",
+      "text": "_____________________________________________________________________________"
+    },
+    {
+      "self_ref": "#/texts/25",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "body",
+      "label": "section_header",
+      "prov": [
+        {
+          "page_no": 28,
+          "bbox": {
+            "l": 54.72,
+            "t": 712.35,
+            "r": 157.19,
+            "b": 701.21,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [0, 14]
+        }
+      ],
+      "orig": "1.4 FUNDEINFRA",
+      "text": "1.4 FUNDEINFRA",
+      "level": 1
+    },
+    {
+      "self_ref": "#/texts/26",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "body",
+      "label": "text",
+      "prov": [
+        {
+          "page_no": 28,
+          "bbox": {
+            "l": 54.84,
+            "t": 666.95,
+            "r": 537.79,
+            "b": 599.09,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [0, 301]
+        }
+      ],
+      "orig": "Os contribuintes que utilizam benefícios fiscais sujeitos à contribuição do FUNDEINFRA deverão informar mensalmente o valor total da contribuição ao FUNDEINFRA, no REGISTRO E115: INFORMAÇÕES ADCIONAIS DA APURAÇÃO - VALORES DECLARATÓRIOS com os códigos específicos na tabela 5.2 - TABELA DE INFORMAÇÕES",
+      "text": "Os contribuintes que utilizam benefícios fiscais sujeitos à contribuição do FUNDEINFRA deverão informar mensalmente o valor total da contribuição ao FUNDEINFRA, no REGISTRO E115: INFORMAÇÕES ADCIONAIS DA APURAÇÃO - VALORES DECLARATÓRIOS com os códigos específicos na tabela 5.2 - TABELA DE INFORMAÇÕES"
+    },
+    {
+      "self_ref": "#/texts/27",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "body",
+      "label": "text",
+      "prov": [
+        {
+          "page_no": 28,
+          "bbox": {
+            "l": 54.84,
+            "t": 589.67,
+            "r": 371.39,
+            "b": 579.77,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [0, 47]
+        }
+      ],
+      "orig": "ADICIONAIS DA APURACÃO - VALORES DECLARATÓRIOS.",
+      "text": "ADICIONAIS DA APURACÃO - VALORES DECLARATÓRIOS."
+    },
+    {
+      "self_ref": "#/texts/28",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "body",
+      "label": "text",
+      "prov": [
+        {
+          "page_no": 28,
+          "bbox": {
+            "l": 54.84,
+            "t": 565.07,
+            "r": 537.99,
+            "b": 497.21,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [0, 300]
+        }
+      ],
+      "orig": "O valor calculado conforme índices estabelecidos no Anexo Único do Decreto nº 10.187/22, deverá ser informado no registro E115, com o valor da contribuição e seu respectivo código. A informação será prestada somente no período em que houver a utilização de benefício fiscal que enseja o recolhimento.",
+      "text": "O valor calculado conforme índices estabelecidos no Anexo Único do Decreto nº 10.187/22, deverá ser informado no registro E115, com o valor da contribuição e seu respectivo código. A informação será prestada somente no período em que houver a utilização de benefício fiscal que enseja o recolhimento."
+    },
+    {
+      "self_ref": "#/texts/29",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "body",
+      "label": "text",
+      "prov": [
+        {
+          "page_no": 28,
+          "bbox": {
+            "l": 106.8,
+            "t": 482.63,
+            "r": 455.12,
+            "b": 472.73,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [0, 61]
+        }
+      ],
+      "orig": "Os códigos do FUNDEINFRA Goiás constam no Anexo V desse Guia.",
+      "text": "Os códigos do FUNDEINFRA Goiás constam no Anexo V desse Guia."
+    },
+    {
+      "self_ref": "#/texts/30",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "body",
+      "label": "section_header",
+      "prov": [
+        {
+          "page_no": 28,
+          "bbox": {
+            "l": 54.72,
+            "t": 433.23,
+            "r": 216.91,
+            "b": 422.09,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [0, 22]
+        }
+      ],
+      "orig": "1.5 ICMS DE IMPORTAÇÃO",
+      "text": "1.5 ICMS DE IMPORTAÇÃO",
+      "level": 1
+    },
+    {
+      "self_ref": "#/texts/31",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "body",
+      "label": "text",
+      "prov": [
+        {
+          "page_no": 28,
+          "bbox": {
+            "l": 54.84,
+            "t": 384.83,
+            "r": 537.99,
+            "b": 355.61,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [0, 166]
+        }
+      ],
+      "orig": "Os contribuintes que importam mercadorias e possuem Termo de Acordo - TARE para debitar o ICMS de importação na apuração do ICMS. Devem utilizar os seguintes códigos.",
+      "text": "Os contribuintes que importam mercadorias e possuem Termo de Acordo - TARE para debitar o ICMS de importação na apuração do ICMS. Devem utilizar os seguintes códigos."
+    },
+    {
+      "self_ref": "#/texts/32",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "body",
+      "label": "text",
+      "prov": [
+        {
+          "page_no": 28,
+          "bbox": {
+            "l": 141.84,
+            "t": 341.15,
+            "r": 537.89,
+            "b": 292.49,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [0, 160]
+        }
+      ],
+      "orig": " TARE que autoriza o débito do ICMS de importação, sem parcelamento, utilizar o registro C197com o código da Tabela 5.3 na EFD, por meio dos seguintes códigos:",
+      "text": " TARE que autoriza o débito do ICMS de importação, sem parcelamento, utilizar o registro C197com o código da Tabela 5.3 na EFD, por meio dos seguintes códigos:"
+    },
+    {
+      "self_ref": "#/texts/33",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "body",
+      "label": "text",
+      "prov": [
+        {
+          "page_no": 28,
+          "bbox": {
+            "l": 141.84,
+            "t": 283.19,
+            "r": 492.76,
+            "b": 273.29,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [0, 61]
+        }
+      ],
+      "orig": "GO40009034para ICMS Próprio ou Operações Não Incentivadas; e,",
+      "text": "GO40009034para ICMS Próprio ou Operações Não Incentivadas; e,"
+    },
+    {
+      "self_ref": "#/texts/34",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "body",
+      "label": "text",
+      "prov": [
+        {
+          "page_no": 28,
+          "bbox": {
+            "l": 141.84,
+            "t": 263.99,
+            "r": 421.67,
+            "b": 254.09,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [0, 48]
+        }
+      ],
+      "orig": "GO40009035 para ICMS das Operações Incentivadas.",
+      "text": "GO40009035 para ICMS das Operações Incentivadas."
+    },
+    {
+      "self_ref": "#/texts/35",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "body",
+      "label": "text",
+      "prov": [
+        {
+          "page_no": 28,
+          "bbox": {
+            "l": 141.84,
+            "t": 225.23,
+            "r": 537.77,
+            "b": 176.57,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [0, 164]
+        }
+      ],
+      "orig": " TARE que autoriza o débito do ICMS de importação de forma parcelada, utilizar o registro E111 com o código da Tabela 5.1.1 na EFD, por meio dos seguintes códigos:",
+      "text": " TARE que autoriza o débito do ICMS de importação de forma parcelada, utilizar o registro E111 com o código da Tabela 5.1.1 na EFD, por meio dos seguintes códigos:"
+    },
+    {
+      "self_ref": "#/texts/36",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "body",
+      "label": "text",
+      "prov": [
+        {
+          "page_no": 28,
+          "bbox": {
+            "l": 141.84,
+            "t": 167.39,
+            "r": 483.77,
+            "b": 138.17,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [0, 107]
+        }
+      ],
+      "orig": "GO000029 para ICMS Próprio ou Operações Não Incentivadas; e, GO000030 para ICMS das Operações Incentivadas.",
+      "text": "GO000029 para ICMS Próprio ou Operações Não Incentivadas; e, GO000030 para ICMS das Operações Incentivadas."
+    },
+    {
+      "self_ref": "#/texts/37",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "body",
+      "label": "text",
+      "prov": [
+        {
+          "page_no": 28,
+          "bbox": {
+            "l": 55.32,
+            "t": 91.42,
+            "r": 486.36,
+            "b": 82.2,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [0, 77]
+        }
+      ],
+      "orig": "_____________________________________________________________________________",
+      "text": "_____________________________________________________________________________"
+    },
+    {
+      "self_ref": "#/texts/38",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "furniture",
+      "label": "page_footer",
+      "prov": [
+        {
+          "page_no": 28,
+          "bbox": {
+            "l": 55.32,
+            "t": 78.16,
+            "r": 107,
+            "b": 69.08,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [0, 8]
+        }
+      ],
+      "orig": "SEFAZ/GO",
+      "text": "SEFAZ/GO"
+    },
+    {
+      "self_ref": "#/texts/39",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "furniture",
+      "label": "page_footer",
+      "prov": [
+        {
+          "page_no": 28,
+          "bbox": {
+            "l": 447.84,
+            "t": 78.16,
+            "r": 471.67,
+            "b": 69.08,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [0, 6]
+        }
+      ],
+      "orig": "- 28 -",
+      "text": "- 28 -"
+    },
+    {
+      "self_ref": "#/texts/40",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "furniture",
+      "label": "page_header",
+      "prov": [
+        {
+          "page_no": 29,
+          "bbox": {
+            "l": 68.28,
+            "t": 770.92,
+            "r": 450.03,
+            "b": 761.84,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [0, 67]
+        }
+      ],
+      "orig": "GUIA PRÁTICO DA ESCRITURAÇÃO FISCAL DIGITAL (EFD ICMS/IPI) DE GOIÁS",
+      "text": "GUIA PRÁTICO DA ESCRITURAÇÃO FISCAL DIGITAL (EFD ICMS/IPI) DE GOIÁS"
+    },
+    {
+      "self_ref": "#/texts/41",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "body",
+      "label": "text",
+      "prov": [
+        {
+          "page_no": 29,
+          "bbox": {
+            "l": 68.28,
+            "t": 757.66,
+            "r": 499.32,
+            "b": 748.44,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [0, 77]
+        }
+      ],
+      "orig": "_____________________________________________________________________________",
+      "text": "_____________________________________________________________________________"
+    },
+    {
+      "self_ref": "#/texts/42",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "body",
+      "label": "section_header",
+      "prov": [
+        {
+          "page_no": 29,
+          "bbox": {
+            "l": 54.48,
+            "t": 674.43,
+            "r": 509.81,
+            "b": 663.29,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [0, 61]
+        }
+      ],
+      "orig": "2.TÓPICOS - CONTRIBUINTES COM PROGRAMAS DE INCENTIVOS FISCAIS",
+      "text": "2.TÓPICOS - CONTRIBUINTES COM PROGRAMAS DE INCENTIVOS FISCAIS",
+      "level": 1
+    },
+    {
+      "self_ref": "#/texts/43",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "body",
+      "label": "section_header",
+      "prov": [
+        {
+          "page_no": 29,
+          "bbox": {
+            "l": 54.48,
+            "t": 642.03,
+            "r": 274.53,
+            "b": 630.89,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [0, 38]
+        }
+      ],
+      "orig": "2.1 Fomentar, Produzir e Microproduzir",
+      "text": "2.1 Fomentar, Produzir e Microproduzir",
+      "level": 1
+    },
+    {
+      "self_ref": "#/texts/44",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "body",
+      "label": "text",
+      "prov": [
+        {
+          "page_no": 29,
+          "bbox": {
+            "l": 54.6,
+            "t": 611.03,
+            "r": 537.56,
+            "b": 581.81,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [0, 169]
+        }
+      ],
+      "orig": "Os estabelecimentos industriais enquadrados como beneficiários dos programas Fomentar, Produzir e Microproduzir devem adotar os procedimentos estabelecidos nesse título.",
+      "text": "Os estabelecimentos industriais enquadrados como beneficiários dos programas Fomentar, Produzir e Microproduzir devem adotar os procedimentos estabelecidos nesse título."
+    },
+    {
+      "self_ref": "#/texts/45",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "body",
+      "label": "text",
+      "prov": [
+        {
+          "page_no": 29,
+          "bbox": {
+            "l": 54.6,
+            "t": 567.11,
+            "r": 537.78,
+            "b": 460.37,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [0, 436]
+        }
+      ],
+      "orig": "As informações prestadas pelo contribuinte no relatório denominado \"Demonstrativo da Apuração Mensal - Fomentar/Produzir/Microproduzir\", instituído pela Instrução Normativa Nº 885/2007-GSF, deverão ser informadas na EFD no REGISTRO E115: INFORMAÇÕES ADICIONAIS DA APURAÇÃO - VALORES DECLARATORIOS, conforme os códigos da tabela 5.2 - TABELA DE INFORMAÇÕES ADICIONAIS DA APURACÃO - VALORES DECLARATÓRIOS, definidos no Anexo I deste guia.",
+      "text": "As informações prestadas pelo contribuinte no relatório denominado \"Demonstrativo da Apuração Mensal - Fomentar/Produzir/Microproduzir\", instituído pela Instrução Normativa Nº 885/2007-GSF, deverão ser informadas na EFD no REGISTRO E115: INFORMAÇÕES ADICIONAIS DA APURAÇÃO - VALORES DECLARATORIOS, conforme os códigos da tabela 5.2 - TABELA DE INFORMAÇÕES ADICIONAIS DA APURACÃO - VALORES DECLARATÓRIOS, definidos no Anexo I deste guia."
+    },
+    {
+      "self_ref": "#/texts/46",
+      "parent": {
+        "$ref": "#/tables/2"
+      },
+      "children": [],
+      "content_layer": "body",
+      "label": "caption",
+      "prov": [
+        {
+          "page_no": 29,
+          "bbox": {
+            "l": 54.48,
+            "t": 433.69,
+            "r": 464.95,
+            "b": 425.54,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [0, 74]
+        }
+      ],
+      "orig": "REGISTRO E115: INFORMAÇÕES ADICIONAIS DA APURAÇÃO - VALORES DECLARATÓRIOS.",
+      "text": "REGISTRO E115: INFORMAÇÕES ADICIONAIS DA APURAÇÃO - VALORES DECLARATÓRIOS."
+    },
+    {
+      "self_ref": "#/texts/47",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "body",
+      "label": "text",
+      "prov": [
+        {
+          "page_no": 29,
+          "bbox": {
+            "l": 54.6,
+            "t": 307.07,
+            "r": 537.64,
+            "b": 258.53,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [0, 247]
+        }
+      ],
+      "orig": "O contribuinte deverá informar mensalmente todos os códigos relacionados no anexo I, havendo ou não movimentação no período. Não havendo valor a ser informado para um determinado código, preencher o correspondente campo \"VL_INF_ADIC\" com zero (0).",
+      "text": "O contribuinte deverá informar mensalmente todos os códigos relacionados no anexo I, havendo ou não movimentação no período. Não havendo valor a ser informado para um determinado código, preencher o correspondente campo \"VL_INF_ADIC\" com zero (0)."
+    },
+    {
+      "self_ref": "#/texts/48",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "body",
+      "label": "text",
+      "prov": [
+        {
+          "page_no": 29,
+          "bbox": {
+            "l": 54.6,
+            "t": 243.83,
+            "r": 537.64,
+            "b": 214.73,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [0, 92]
+        }
+      ],
+      "orig": "O campo \"DESCR_COMPL_AJ\" não precisará ser informado para os códigos descritos nesse título.",
+      "text": "O campo \"DESCR_COMPL_AJ\" não precisará ser informado para os códigos descritos nesse título."
+    },
+    {
+      "self_ref": "#/texts/49",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "body",
+      "label": "text",
+      "prov": [
+        {
+          "page_no": 29,
+          "bbox": {
+            "l": 54.6,
+            "t": 199.91,
+            "r": 537.65,
+            "b": 132.05,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [0, 323]
+        }
+      ],
+      "orig": "O REGISTRO E115: INFORMAÇÕES ADICIONAIS DA APURAÇÃO - VALORES DECLARATÓRIOS é meramente declaratório, portanto os valores de deduções ali informados não são computados na apuração do imposto de forma automática, assim, é imprescindível que as deduções efetuadas para abater dos valores do ICMS devido sejam obrigatoriamente",
+      "text": "O REGISTRO E115: INFORMAÇÕES ADICIONAIS DA APURAÇÃO - VALORES DECLARATÓRIOS é meramente declaratório, portanto os valores de deduções ali informados não são computados na apuração do imposto de forma automática, assim, é imprescindível que as deduções efetuadas para abater dos valores do ICMS devido sejam obrigatoriamente"
+    },
+    {
+      "self_ref": "#/texts/50",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "body",
+      "label": "text",
+      "prov": [
+        {
+          "page_no": 29,
+          "bbox": {
+            "l": 68.28,
+            "t": 91.42,
+            "r": 499.32,
+            "b": 82.2,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [0, 77]
+        }
+      ],
+      "orig": "_____________________________________________________________________________",
+      "text": "_____________________________________________________________________________"
+    },
+    {
+      "self_ref": "#/texts/51",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "furniture",
+      "label": "page_footer",
+      "prov": [
+        {
+          "page_no": 29,
+          "bbox": {
+            "l": 68.28,
+            "t": 78.16,
+            "r": 169.39,
+            "b": 69.08,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [0, 18]
+        }
+      ],
+      "orig": "ECONOMIA/GO - 29 -",
+      "text": "ECONOMIA/GO - 29 -"
+    }
+  ],
+  "pictures": [],
+  "tables": [
+    {
+      "self_ref": "#/tables/0",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "body",
+      "label": "table",
+      "prov": [
+        {
+          "page_no": 27,
+          "bbox": {
+            "l": 43.79,
+            "t": 733.84,
+            "r": 569.59,
+            "b": 511.87,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [0, 0]
+        }
+      ],
+      "captions": [],
+      "references": [],
+      "footnotes": [],
+      "data": {
+        "table_cells": [
+          {
+            "row_span": 1,
+            "col_span": 1,
+            "start_row_offset_idx": 0,
+            "end_row_offset_idx": 1,
+            "start_col_offset_idx": 0,
+            "end_col_offset_idx": 1,
+            "text": "GO000158",
+            "column_header": false,
+            "row_header": false,
+            "row_section": false,
+            "fillable": false
+          },
+          {
+            "row_span": 1,
+            "col_span": 1,
+            "start_row_offset_idx": 0,
+            "end_row_offset_idx": 1,
+            "start_col_offset_idx": 1,
+            "end_col_offset_idx": 2,
+            "text": "Restituição do PROTEGE sob a forma de compensação, deduzida de futura contribuição ao PROTEGE sobre benefícios fiscais do Anexo IX do RCTE, com código de recolhimento \"4014\" - Art. 4º, § 3º da IN 639/03-GSF c/c Art. 490-A, §1º do RCTE.",
+            "column_header": false,
+            "row_header": false,
+            "row_section": false,
+            "fillable": false
+          },
+          {
+            "row_span": 1,
+            "col_span": 1,
+            "start_row_offset_idx": 1,
+            "end_row_offset_idx": 2,
+            "start_col_offset_idx": 0,
+            "end_col_offset_idx": 1,
+            "text": "GO000159",
+            "column_header": false,
+            "row_header": false,
+            "row_section": false,
+            "fillable": false
+          },
+          {
+            "row_span": 1,
+            "col_span": 1,
+            "start_row_offset_idx": 1,
+            "end_row_offset_idx": 2,
+            "start_col_offset_idx": 1,
+            "end_col_offset_idx": 2,
+            "text": "Restituição do PROTEGE sob a forma de compensação, deduzida de futura contribuição ao PROTEGE sobre a fruição do PRODUZIR/FOMENTAR - Lei 20.367/18, com código de recolhimento \"4888\" - Art. 4º, § 3º da IN 639/03-GSF c/c Art. 490-A, §1º do RCTE.",
+            "column_header": false,
+            "row_header": false,
+            "row_section": false,
+            "fillable": false
+          },
+          {
+            "row_span": 1,
+            "col_span": 1,
+            "start_row_offset_idx": 2,
+            "end_row_offset_idx": 3,
+            "start_col_offset_idx": 0,
+            "end_col_offset_idx": 1,
+            "text": "GO000160",
+            "column_header": false,
+            "row_header": false,
+            "row_section": false,
+            "fillable": false
+          },
+          {
+            "row_span": 1,
+            "col_span": 1,
+            "start_row_offset_idx": 2,
+            "end_row_offset_idx": 3,
+            "start_col_offset_idx": 1,
+            "end_col_offset_idx": 2,
+            "text": "Restituição do PROTEGE sob a forma de compensação, deduzida de futura contribuição ao PROTEGE sobre a fruição do PROGOIÁS - Lei 20.787/20, com código de recolhimento \"4990\" - Art. 4º, § 3º da IN 639/03-GSF c/c Art. 490-A, §1º do RCTE.",
+            "column_header": false,
+            "row_header": false,
+            "row_section": false,
+            "fillable": false
+          },
+          {
+            "row_span": 1,
+            "col_span": 1,
+            "start_row_offset_idx": 3,
+            "end_row_offset_idx": 4,
+            "start_col_offset_idx": 0,
+            "end_col_offset_idx": 1,
+            "text": "GO000161",
+            "column_header": false,
+            "row_header": false,
+            "row_section": false,
+            "fillable": false
+          },
+          {
+            "row_span": 1,
+            "col_span": 1,
+            "start_row_offset_idx": 3,
+            "end_row_offset_idx": 4,
+            "start_col_offset_idx": 1,
+            "end_col_offset_idx": 2,
+            "text": "Restituição do PROTEGE sob a forma de compensação, deduzida de futura contribuição ao PROTEGE sobre a fruição do PROGOIÁS RURAL - Lei 21.066/21, com código de recolhimento \"5017\" - Art. 4º, § 3º da IN 639/03-GSF c/c Art. 490-A, §1º do RCTE.",
+            "column_header": false,
+            "row_header": false,
+            "row_section": false,
+            "fillable": false
+          },
+          {
+            "row_span": 1,
+            "col_span": 1,
+            "start_row_offset_idx": 4,
+            "end_row_offset_idx": 5,
+            "start_col_offset_idx": 0,
+            "end_col_offset_idx": 1,
+            "text": "GO000166",
+            "column_header": false,
+            "row_header": false,
+            "row_section": false,
+            "fillable": false
+          },
+          {
+            "row_span": 1,
+            "col_span": 1,
+            "start_row_offset_idx": 4,
+            "end_row_offset_idx": 5,
+            "start_col_offset_idx": 1,
+            "end_col_offset_idx": 2,
+            "text": "Restituição do PROTEGE sob a forma de compensação,deduzida de futura contribuição ao PROTEGE sobre a fruição do FOMENTAR/PRODUZIR - Lei 18.360/13,com código de recolhimento \"4402\"- Art. 1º,Par. Único, Inciso I da IN 1188/14-GSF c/c Art. 490-A, §1º do RCTE.",
+            "column_header": false,
+            "row_header": false,
+            "row_section": false,
+            "fillable": false
+          }
+        ],
+        "num_rows": 5,
+        "num_cols": 2,
+        "orientation": "rot_0"
+      },
+      "annotations": []
+    },
+    {
+      "self_ref": "#/tables/1",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [],
+      "content_layer": "body",
+      "label": "table",
+      "prov": [
+        {
+          "page_no": 27,
+          "bbox": {
+            "l": 50.84,
+            "t": 434.67,
+            "r": 549.02,
+            "b": 212.62,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [0, 0]
+        }
+      ],
+      "captions": [],
+      "references": [],
+      "footnotes": [],
+      "data": {
+        "table_cells": [
+          {
+            "row_span": 1,
+            "col_span": 1,
+            "start_row_offset_idx": 0,
+            "end_row_offset_idx": 1,
+            "start_col_offset_idx": 0,
+            "end_col_offset_idx": 1,
+            "text": "GO090065",
+            "column_header": false,
+            "row_header": false,
+            "row_section": false,
+            "fillable": false
+          },
+          {
+            "row_span": 1,
+            "col_span": 1,
+            "start_row_offset_idx": 0,
+            "end_row_offset_idx": 1,
+            "start_col_offset_idx": 1,
+            "end_col_offset_idx": 2,
+            "text": "Crédito de restituição do PROTEGE sobre benefícios fiscais do Anexo IX do RCTE, com código de recolhimento \"4014\" - Art. 4º, § 3º da IN 639/03-GSF c/c Art. 490-A, §1º do RCTE.",
+            "column_header": false,
+            "row_header": false,
+            "row_section": false,
+            "fillable": false
+          },
+          {
+            "row_span": 1,
+            "col_span": 1,
+            "start_row_offset_idx": 1,
+            "end_row_offset_idx": 2,
+            "start_col_offset_idx": 0,
+            "end_col_offset_idx": 1,
+            "text": "GO090066",
+            "column_header": false,
+            "row_header": false,
+            "row_section": false,
+            "fillable": false
+          },
+          {
+            "row_span": 1,
+            "col_span": 1,
+            "start_row_offset_idx": 1,
+            "end_row_offset_idx": 2,
+            "start_col_offset_idx": 1,
+            "end_col_offset_idx": 2,
+            "text": "Crédito de restituição do PROTEGE sobre a fruição do PRODUZIR/FOMENTAR - Lei 20.367/18, com código de recolhimento \"4888\" - Art. 4º, § 3º da IN 639/03-GSF c/c Art. 490-A, §1º do RCTE.",
+            "column_header": false,
+            "row_header": false,
+            "row_section": false,
+            "fillable": false
+          },
+          {
+            "row_span": 1,
+            "col_span": 1,
+            "start_row_offset_idx": 2,
+            "end_row_offset_idx": 3,
+            "start_col_offset_idx": 0,
+            "end_col_offset_idx": 1,
+            "text": "GO090067",
+            "column_header": false,
+            "row_header": false,
+            "row_section": false,
+            "fillable": false
+          },
+          {
+            "row_span": 1,
+            "col_span": 1,
+            "start_row_offset_idx": 2,
+            "end_row_offset_idx": 3,
+            "start_col_offset_idx": 1,
+            "end_col_offset_idx": 2,
+            "text": "Crédito de restituição do PROTEGE sobre a fruição do PROGOIÁS - Lei 20.787/20, com código de recolhimento \"4990\" - Art. 4º, § 3º da IN 639/03-GSF c/c Art. 490-A, §1º do RCTE.",
+            "column_header": false,
+            "row_header": false,
+            "row_section": false,
+            "fillable": false
+          },
+          {
+            "row_span": 1,
+            "col_span": 1,
+            "start_row_offset_idx": 3,
+            "end_row_offset_idx": 4,
+            "start_col_offset_idx": 0,
+            "end_col_offset_idx": 1,
+            "text": "GO090068",
+            "column_header": false,
+            "row_header": false,
+            "row_section": false,
+            "fillable": false
+          },
+          {
+            "row_span": 1,
+            "col_span": 1,
+            "start_row_offset_idx": 3,
+            "end_row_offset_idx": 4,
+            "start_col_offset_idx": 1,
+            "end_col_offset_idx": 2,
+            "text": "Crédito de restituição do PROTEGE sobre a fruição do PROGOIÁS RURAL - Lei 21.066/21, com código de recolhimento \"5017\" - Art. 4º, § 3º da IN 639/03-GSF c/c Art. 490-A, §1º do RCTE.",
+            "column_header": false,
+            "row_header": false,
+            "row_section": false,
+            "fillable": false
+          },
+          {
+            "row_span": 1,
+            "col_span": 1,
+            "start_row_offset_idx": 4,
+            "end_row_offset_idx": 5,
+            "start_col_offset_idx": 0,
+            "end_col_offset_idx": 1,
+            "text": "GO090069",
+            "column_header": false,
+            "row_header": false,
+            "row_section": false,
+            "fillable": false
+          },
+          {
+            "row_span": 1,
+            "col_span": 1,
+            "start_row_offset_idx": 4,
+            "end_row_offset_idx": 5,
+            "start_col_offset_idx": 1,
+            "end_col_offset_idx": 2,
+            "text": "Crédito de restituição do PROTEGE sobre a fruição do FOMENTAR/PRODUZIR - Lei 18.360/13, com código de recolhimento \"4402\" - Art. 1º, Parágrafo Único, Inciso I da IN 1188/14-GSF c/c Art. 490-A, §1º do RCTE.",
+            "column_header": false,
+            "row_header": false,
+            "row_section": false,
+            "fillable": false
+          }
+        ],
+        "num_rows": 5,
+        "num_cols": 2,
+        "orientation": "rot_0"
+      },
+      "annotations": []
+    },
+    {
+      "self_ref": "#/tables/2",
+      "parent": {
+        "$ref": "#/body"
+      },
+      "children": [
+        {
+          "$ref": "#/texts/46"
+        }
+      ],
+      "content_layer": "body",
+      "label": "table",
+      "prov": [
+        {
+          "page_no": 29,
+          "bbox": {
+            "l": 50.41,
+            "t": 424.35,
+            "r": 481.41,
+            "b": 339.49,
+            "coord_origin": "BOTTOMLEFT"
+          },
+          "charspan": [0, 0]
+        }
+      ],
+      "captions": [
+        {
+          "$ref": "#/texts/46"
+        }
+      ],
+      "references": [],
+      "footnotes": [],
+      "data": {
+        "table_cells": [
+          {
+            "row_span": 1,
+            "col_span": 1,
+            "start_row_offset_idx": 0,
+            "end_row_offset_idx": 1,
+            "start_col_offset_idx": 0,
+            "end_col_offset_idx": 1,
+            "text": "Nº",
+            "column_header": true,
+            "row_header": false,
+            "row_section": false,
+            "fillable": false
+          },
+          {
+            "row_span": 1,
+            "col_span": 1,
+            "start_row_offset_idx": 0,
+            "end_row_offset_idx": 1,
+            "start_col_offset_idx": 1,
+            "end_col_offset_idx": 2,
+            "text": "Campo",
+            "column_header": true,
+            "row_header": false,
+            "row_section": false,
+            "fillable": false
+          },
+          {
+            "row_span": 1,
+            "col_span": 1,
+            "start_row_offset_idx": 0,
+            "end_row_offset_idx": 1,
+            "start_col_offset_idx": 2,
+            "end_col_offset_idx": 3,
+            "text": "Descrição",
+            "column_header": true,
+            "row_header": false,
+            "row_section": false,
+            "fillable": false
+          },
+          {
+            "row_span": 1,
+            "col_span": 1,
+            "start_row_offset_idx": 0,
+            "end_row_offset_idx": 1,
+            "start_col_offset_idx": 3,
+            "end_col_offset_idx": 4,
+            "text": "Tipo",
+            "column_header": true,
+            "row_header": false,
+            "row_section": false,
+            "fillable": false
+          },
+          {
+            "row_span": 1,
+            "col_span": 1,
+            "start_row_offset_idx": 0,
+            "end_row_offset_idx": 1,
+            "start_col_offset_idx": 4,
+            "end_col_offset_idx": 5,
+            "text": "Tam",
+            "column_header": true,
+            "row_header": false,
+            "row_section": false,
+            "fillable": false
+          },
+          {
+            "row_span": 1,
+            "col_span": 1,
+            "start_row_offset_idx": 0,
+            "end_row_offset_idx": 1,
+            "start_col_offset_idx": 5,
+            "end_col_offset_idx": 6,
+            "text": "Dec",
+            "column_header": true,
+            "row_header": false,
+            "row_section": false,
+            "fillable": false
+          },
+          {
+            "row_span": 1,
+            "col_span": 1,
+            "start_row_offset_idx": 0,
+            "end_row_offset_idx": 1,
+            "start_col_offset_idx": 6,
+            "end_col_offset_idx": 7,
+            "text": "Obrig",
+            "column_header": true,
+            "row_header": false,
+            "row_section": false,
+            "fillable": false
+          },
+          {
+            "row_span": 1,
+            "col_span": 1,
+            "start_row_offset_idx": 1,
+            "end_row_offset_idx": 2,
+            "start_col_offset_idx": 0,
+            "end_col_offset_idx": 1,
+            "text": "01",
+            "column_header": false,
+            "row_header": false,
+            "row_section": false,
+            "fillable": false
+          },
+          {
+            "row_span": 1,
+            "col_span": 1,
+            "start_row_offset_idx": 1,
+            "end_row_offset_idx": 2,
+            "start_col_offset_idx": 1,
+            "end_col_offset_idx": 2,
+            "text": "REG",
+            "column_header": false,
+            "row_header": false,
+            "row_section": false,
+            "fillable": false
+          },
+          {
+            "row_span": 1,
+            "col_span": 1,
+            "start_row_offset_idx": 1,
+            "end_row_offset_idx": 2,
+            "start_col_offset_idx": 2,
+            "end_col_offset_idx": 3,
+            "text": "Texto fixo contendo \"E115\"",
+            "column_header": false,
+            "row_header": false,
+            "row_section": false,
+            "fillable": false
+          },
+          {
+            "row_span": 1,
+            "col_span": 1,
+            "start_row_offset_idx": 1,
+            "end_row_offset_idx": 2,
+            "start_col_offset_idx": 3,
+            "end_col_offset_idx": 4,
+            "text": "C",
+            "column_header": false,
+            "row_header": false,
+            "row_section": false,
+            "fillable": false
+          },
+          {
+            "row_span": 1,
+            "col_span": 1,
+            "start_row_offset_idx": 1,
+            "end_row_offset_idx": 2,
+            "start_col_offset_idx": 4,
+            "end_col_offset_idx": 5,
+            "text": "004",
+            "column_header": false,
+            "row_header": false,
+            "row_section": false,
+            "fillable": false
+          },
+          {
+            "row_span": 1,
+            "col_span": 1,
+            "start_row_offset_idx": 1,
+            "end_row_offset_idx": 2,
+            "start_col_offset_idx": 5,
+            "end_col_offset_idx": 6,
+            "text": "-",
+            "column_header": false,
+            "row_header": false,
+            "row_section": false,
+            "fillable": false
+          },
+          {
+            "row_span": 1,
+            "col_span": 1,
+            "start_row_offset_idx": 1,
+            "end_row_offset_idx": 2,
+            "start_col_offset_idx": 6,
+            "end_col_offset_idx": 7,
+            "text": "O",
+            "column_header": false,
+            "row_header": false,
+            "row_section": false,
+            "fillable": false
+          },
+          {
+            "row_span": 1,
+            "col_span": 1,
+            "start_row_offset_idx": 2,
+            "end_row_offset_idx": 3,
+            "start_col_offset_idx": 0,
+            "end_col_offset_idx": 1,
+            "text": "02",
+            "column_header": false,
+            "row_header": false,
+            "row_section": false,
+            "fillable": false
+          },
+          {
+            "row_span": 1,
+            "col_span": 1,
+            "start_row_offset_idx": 2,
+            "end_row_offset_idx": 3,
+            "start_col_offset_idx": 1,
+            "end_col_offset_idx": 2,
+            "text": "COD_INF_ADIC",
+            "column_header": false,
+            "row_header": false,
+            "row_section": false,
+            "fillable": false
+          },
+          {
+            "row_span": 1,
+            "col_span": 1,
+            "start_row_offset_idx": 2,
+            "end_row_offset_idx": 3,
+            "start_col_offset_idx": 2,
+            "end_col_offset_idx": 3,
+            "text": "Código da informação adicional conforme tabela a ser definida pelas SEFAZ, conforme tabela definida no item 5.2.",
+            "column_header": false,
+            "row_header": false,
+            "row_section": false,
+            "fillable": false
+          },
+          {
+            "row_span": 1,
+            "col_span": 1,
+            "start_row_offset_idx": 2,
+            "end_row_offset_idx": 3,
+            "start_col_offset_idx": 3,
+            "end_col_offset_idx": 4,
+            "text": "C",
+            "column_header": false,
+            "row_header": false,
+            "row_section": false,
+            "fillable": false
+          },
+          {
+            "row_span": 1,
+            "col_span": 1,
+            "start_row_offset_idx": 2,
+            "end_row_offset_idx": 3,
+            "start_col_offset_idx": 4,
+            "end_col_offset_idx": 5,
+            "text": "008*",
+            "column_header": false,
+            "row_header": false,
+            "row_section": false,
+            "fillable": false
+          },
+          {
+            "row_span": 1,
+            "col_span": 1,
+            "start_row_offset_idx": 2,
+            "end_row_offset_idx": 3,
+            "start_col_offset_idx": 5,
+            "end_col_offset_idx": 6,
+            "text": "-",
+            "column_header": false,
+            "row_header": false,
+            "row_section": false,
+            "fillable": false
+          },
+          {
+            "row_span": 1,
+            "col_span": 1,
+            "start_row_offset_idx": 2,
+            "end_row_offset_idx": 3,
+            "start_col_offset_idx": 6,
+            "end_col_offset_idx": 7,
+            "text": "O",
+            "column_header": false,
+            "row_header": false,
+            "row_section": false,
+            "fillable": false
+          },
+          {
+            "row_span": 1,
+            "col_span": 1,
+            "start_row_offset_idx": 3,
+            "end_row_offset_idx": 4,
+            "start_col_offset_idx": 0,
+            "end_col_offset_idx": 1,
+            "text": "03",
+            "column_header": false,
+            "row_header": false,
+            "row_section": false,
+            "fillable": false
+          },
+          {
+            "row_span": 1,
+            "col_span": 1,
+            "start_row_offset_idx": 3,
+            "end_row_offset_idx": 4,
+            "start_col_offset_idx": 1,
+            "end_col_offset_idx": 2,
+            "text": "VL_INF_ADIC",
+            "column_header": false,
+            "row_header": false,
+            "row_section": false,
+            "fillable": false
+          },
+          {
+            "row_span": 1,
+            "col_span": 1,
+            "start_row_offset_idx": 3,
+            "end_row_offset_idx": 4,
+            "start_col_offset_idx": 2,
+            "end_col_offset_idx": 3,
+            "text": "Valor referente à informação adicional",
+            "column_header": false,
+            "row_header": false,
+            "row_section": false,
+            "fillable": false
+          },
+          {
+            "row_span": 1,
+            "col_span": 1,
+            "start_row_offset_idx": 3,
+            "end_row_offset_idx": 4,
+            "start_col_offset_idx": 3,
+            "end_col_offset_idx": 4,
+            "text": "N",
+            "column_header": false,
+            "row_header": false,
+            "row_section": false,
+            "fillable": false
+          },
+          {
+            "row_span": 1,
+            "col_span": 1,
+            "start_row_offset_idx": 3,
+            "end_row_offset_idx": 4,
+            "start_col_offset_idx": 4,
+            "end_col_offset_idx": 5,
+            "text": "-",
+            "column_header": false,
+            "row_header": false,
+            "row_section": false,
+            "fillable": false
+          },
+          {
+            "row_span": 1,
+            "col_span": 1,
+            "start_row_offset_idx": 3,
+            "end_row_offset_idx": 4,
+            "start_col_offset_idx": 5,
+            "end_col_offset_idx": 6,
+            "text": "02",
+            "column_header": false,
+            "row_header": false,
+            "row_section": false,
+            "fillable": false
+          },
+          {
+            "row_span": 1,
+            "col_span": 1,
+            "start_row_offset_idx": 3,
+            "end_row_offset_idx": 4,
+            "start_col_offset_idx": 6,
+            "end_col_offset_idx": 7,
+            "text": "O",
+            "column_header": false,
+            "row_header": false,
+            "row_section": false,
+            "fillable": false
+          },
+          {
+            "row_span": 1,
+            "col_span": 1,
+            "start_row_offset_idx": 4,
+            "end_row_offset_idx": 5,
+            "start_col_offset_idx": 0,
+            "end_col_offset_idx": 1,
+            "text": "04",
+            "column_header": false,
+            "row_header": false,
+            "row_section": false,
+            "fillable": false
+          },
+          {
+            "row_span": 1,
+            "col_span": 1,
+            "start_row_offset_idx": 4,
+            "end_row_offset_idx": 5,
+            "start_col_offset_idx": 1,
+            "end_col_offset_idx": 2,
+            "text": "DESCR_COMPL_AJ",
+            "column_header": false,
+            "row_header": false,
+            "row_section": false,
+            "fillable": false
+          },
+          {
+            "row_span": 1,
+            "col_span": 1,
+            "start_row_offset_idx": 4,
+            "end_row_offset_idx": 5,
+            "start_col_offset_idx": 2,
+            "end_col_offset_idx": 3,
+            "text": "Descrição complementar do ajuste",
+            "column_header": false,
+            "row_header": false,
+            "row_section": false,
+            "fillable": false
+          },
+          {
+            "row_span": 1,
+            "col_span": 1,
+            "start_row_offset_idx": 4,
+            "end_row_offset_idx": 5,
+            "start_col_offset_idx": 3,
+            "end_col_offset_idx": 4,
+            "text": "C",
+            "column_header": false,
+            "row_header": false,
+            "row_section": false,
+            "fillable": false
+          },
+          {
+            "row_span": 1,
+            "col_span": 1,
+            "start_row_offset_idx": 4,
+            "end_row_offset_idx": 5,
+            "start_col_offset_idx": 4,
+            "end_col_offset_idx": 5,
+            "text": "-",
+            "column_header": false,
+            "row_header": false,
+            "row_section": false,
+            "fillable": false
+          },
+          {
+            "row_span": 1,
+            "col_span": 1,
+            "start_row_offset_idx": 4,
+            "end_row_offset_idx": 5,
+            "start_col_offset_idx": 5,
+            "end_col_offset_idx": 6,
+            "text": "-",
+            "column_header": false,
+            "row_header": false,
+            "row_section": false,
+            "fillable": false
+          },
+          {
+            "row_span": 1,
+            "col_span": 1,
+            "start_row_offset_idx": 4,
+            "end_row_offset_idx": 5,
+            "start_col_offset_idx": 6,
+            "end_col_offset_idx": 7,
+            "text": "OC",
+            "column_header": false,
+            "row_header": false,
+            "row_section": false,
+            "fillable": false
+          }
+        ],
+        "num_rows": 5,
+        "num_cols": 7,
+        "orientation": "rot_0"
+      },
+      "annotations": []
+    }
+  ],
+  "key_value_items": [],
+  "form_items": [],
+  "pages": {
+    "26": {
+      "size": {
+        "width": 595.32,
+        "height": 841.92
+      },
+      "page_no": 26
+    },
+    "27": {
+      "size": {
+        "width": 595.32,
+        "height": 841.92
+      },
+      "page_no": 27
+    },
+    "28": {
+      "size": {
+        "width": 595.32,
+        "height": 841.92
+      },
+      "page_no": 28
+    },
+    "29": {
+      "size": {
+        "width": 595.32,
+        "height": 841.92
+      },
+      "page_no": 29
+    }
+  }
+}

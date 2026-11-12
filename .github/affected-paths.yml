@@ -4,11 +4,16 @@
 # web/api/shared vêm do `turbo query affected --packages`, não daqui.
 # Mudar este arquivo marca todos os grupos como afetados.
 
-# Ingestão: pipeline Python, corpus versionado e o CLI de ingestão da API.
+# Ingestão: pipeline Python, corpus versionado (inclui corpus/watch.yaml), o domínio do corpus, os
+# CLIs da API (ingest, sources-watch, snapshot, eval-fixture, seed-fixtures) e os workflows de
+# ingestão e monitoramento (que, como todo workflow, também marcam tudo como afetado).
 ingest:
   - tools/ingest/**
   - corpus/**
-  - apps/api/src/adapters/in/cli/ingest/**
+  - apps/api/src/domain/corpus/**
+  - apps/api/src/adapters/in/cli/**
+  - .github/workflows/ingest.yml
+  - .github/workflows/source-watch.yml
 
 # Recuperação (RAG): casos de uso, persistência, evals, fixtures de corpus e o domínio de vigência.
 rag:

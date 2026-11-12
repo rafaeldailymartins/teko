@@ -21,7 +21,8 @@
       "!**/__generated__",
       "!**/drizzle/migrations",
       "!pnpm-lock.yaml",
-      "!openspec/changes/archive"
+      "!openspec/changes/archive",
+      "!apps/api/src/adapters/in/cli/ingest/parsers/__fixtures__/**/*.htm"
     ]
   },
   "formatter": {

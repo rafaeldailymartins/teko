@@ -55,9 +55,12 @@ EFD ICMS/IPI, a EFD-REINF e as regras de Goiás (RCTE e EFD-GO).
 
 > [!NOTE]
 > **Desenvolvimento inicial.** O esqueleto do monorepo, os gates de qualidade, a infraestrutura
-> local e os spikes de plataforma estão prontos (fases F0 e F1). A próxima fase traz o domínio de
-> vigência, o schema e a busca híbrida. Nada está publicado e as respostas ainda não são
-> utilizáveis.
+> local e os spikes de plataforma estão prontos (fases F0 e F1), assim como o domínio de vigência,
+> o schema do corpus e a busca híbrida, avaliados sobre uma fixture de textos reais (fase F2).
+> A ingestão das fontes oficiais (EFD ICMS/IPI, EFD-Reinf, RCTE, CTE, EFD-GO e tabelas de Goiás),
+> os embeddings e o monitoramento diário de mudanças estão implementados (fase F3); a primeira
+> carga do staging roda pelo Actions. A próxima fase traz a API completa. Nada está publicado e
+> as respostas ainda não são utilizáveis.
 
 ## 🧱 Stack
 
@@ -65,10 +68,10 @@ EFD ICMS/IPI, a EFD-REINF e as regras de Goiás (RCTE e EFD-GO).
 | -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 🖥️ Web         | Next.js 16 com export estático (sem functions) na Netlify, React 19, Tailwind CSS 4, next-intl (pt-BR e en), Feature-Sliced Design                 |
 | ⚙️ API         | Fastify 5 em Node.js 24, arquitetura hexagonal, contratos Zod compartilhados via `@teko/shared`; uma única Vercel Function (Fluid compute, `gru1`) |
-| 🗄️ Dados       | PostgreSQL 18 + pgvector (Neon em `aws-sa-east-1`; Docker localmente), busca híbrida com RRF                                                       |
+| 🗄️ Dados       | PostgreSQL 18 + pgvector (Neon em `aws-sa-east-1`; Docker localmente), Drizzle ORM com `pg`, busca híbrida com RRF                                 |
 | 🤖 IA          | Embeddings BGE-M3 (Cloudflare Workers AI), Gemini no plano gratuito com fallback no Groq                                                           |
 | 📥 Ingestão    | Python com Docling (TableFormer `ACCURATE`) para os PDFs e o WS de Tabelas Externas do SPED                                                        |
-| 🧰 Ferramentas | pnpm 12 com política estrita de supply chain, Turborepo, Biome, Vitest, Stryker, OpenSpec, lefthook, git-cliff                                     |
+| 🧰 Ferramentas | pnpm 12 com política estrita de supply chain, Turborepo, Biome, Vitest, Stryker, promptfoo, OpenSpec, lefthook, git-cliff                          |
 
 ## 🏗️ Arquitetura
 
@@ -111,17 +114,20 @@ OpenSpec e todos os gates.
 Tudo abaixo reprova o PR em vez de só avisar. O check `ci-gate` agrega os jobs e é obrigatório para
 entrar em `develop` e `main`.
 
-| Gate                       | Ferramenta                                                        |
-| -------------------------- | ----------------------------------------------------------------- |
-| 🎨 Formatação e lint       | Biome, sem warnings                                               |
-| 🧩 Arquitetura             | dependency-cruiser (hexagonal), Steiger (FSD), `turbo boundaries` |
-| 🧹 Código morto e monorepo | knip, sherif, jscpd                                               |
-| 🔤 Tipos                   | `tsc` estrito e type-coverage ≥ 99%                               |
-| 🧪 Cobertura               | Vitest: ≥ 95% de linhas na API e no `shared`                      |
-| 🧬 Mutação                 | Stryker, score mínimo de 70                                       |
-| 🔐 Segurança               | CodeQL, Semgrep, gitleaks, osv-scanner, zizmor, dependency review |
-| 📦 Supply chain            | pnpm com release de pelo menos 7 dias e proveniência              |
-| 📐 Specs                   | `openspec validate --all --strict`                                |
+| Gate                       | Ferramenta                                                                                                                                 |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| 🎨 Formatação e lint       | Biome sem warnings, ruff na ingestão Python, actionlint nos workflows                                                                      |
+| 🧩 Arquitetura             | dependency-cruiser (hexagonal), Steiger (FSD), `turbo boundaries`                                                                          |
+| 🧹 Código morto e monorepo | knip, sherif, jscpd                                                                                                                        |
+| 🔤 Tipos                   | `tsc` estrito e type-coverage ≥ 99%; pyright na ingestão                                                                                   |
+| 🧪 Cobertura               | Vitest: ≥ 95% de linhas no domínio e na aplicação da API e no `shared`, ≥ 80% nos adapters e na web                                        |
+| 🧬 Mutação                 | Stryker, score mínimo de 70                                                                                                                |
+| 🔎 Recuperação             | retrieval evals (promptfoo) sobre a fixture real: recall@10 ≥ 0,9, MRR ≥ 0,7; vigência, recusa, clarificação e data de referência sem erro |
+| ⚡ Desempenho              | `sql-perf` da busca híbrida sobre 100 mil chunks: sem Seq Scan e mediana abaixo de 150 ms                                                  |
+| 🗃️ Migrações               | `migration-guard`: só expand/contract, migração publicada é imutável                                                                       |
+| 🔐 Segurança               | CodeQL, Semgrep, gitleaks, osv-scanner, zizmor, dependency review, pip-audit                                                               |
+| 📦 Supply chain            | pnpm com release de pelo menos 7 dias e proveniência                                                                                       |
+| 📐 Specs                   | `openspec validate --all --strict`                                                                                                         |
 
 ## 🔒 Segurança
 

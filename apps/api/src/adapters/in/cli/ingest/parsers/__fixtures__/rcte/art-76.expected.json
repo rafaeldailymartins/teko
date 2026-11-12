@@ -1,0 +1,747 @@
+{
+  "document": {
+    "slug": "rcte",
+    "family": "rcte",
+    "title": "Regulamento do Código Tributário do Estado de Goiás (RCTE) - Decreto nº 4.852/1997",
+    "issuer": "Governo do Estado de Goiás - Secretaria de Estado da Economia",
+    "sourceUrl": "https://appasp.economia.go.gov.br/Legislacao/arquivos/Rcte/RCTE.htm"
+  },
+  "version": {
+    "versionLabel": "RCTE consolidado até o Decreto nº 10.986, de 16.09.26",
+    "publishedOn": "2026-09-16",
+    "validDuring": {
+      "from": "2026-09-16",
+      "to": null
+    },
+    "consolidatedUntil": "Decreto nº 10.986, de 16.09.26",
+    "actRef": "Decreto nº 4.852, de 29.12.97",
+    "sha256": "2108d0c740d3905baa0b4ef1717b8a65e1d74b97e989916f2e7d8418b9c3da24"
+  },
+  "replacementWindow": {
+    "from": null,
+    "to": null
+  },
+  "provisions": [
+    {
+      "stableKey": "go:rcte:art:76",
+      "kind": "artigo",
+      "sortPath": "0076",
+      "headingPath": "RCTE > TÍTULO III - DA COMPENSAÇÃO > CAPÍTULO III - DA APURAÇÃO E DO PAGAMENTO > Seção III - Do Pagamento > Subseção IV - Do Prazo > Art. 76",
+      "versions": [
+        {
+          "displayLabel": "RCTE, art. 76",
+          "validDuring": {
+            "from": "1998-01-01",
+            "to": null
+          },
+          "modality": "mandatory",
+          "validityBasis": "legal_effect",
+          "retroactive": false,
+          "reviewStatus": "auto",
+          "text": "Art. 76. Nas situações especiais, adiante arroladas, o pagamento do ICMS devido é efetuado nos seguintes prazos:"
+        }
+      ]
+    },
+    {
+      "stableKey": "go:rcte:art:76:par:5",
+      "kind": "paragrafo",
+      "parent": "go:rcte:art:76",
+      "sortPath": "0076.p05",
+      "headingPath": "RCTE > TÍTULO III - DA COMPENSAÇÃO > CAPÍTULO III - DA APURAÇÃO E DO PAGAMENTO > Seção III - Do Pagamento > Subseção IV - Do Prazo > Art. 76 > § 5º",
+      "versions": [
+        {
+          "displayLabel": "RCTE, art. 76, § 5º",
+          "validDuring": {
+            "from": "2002-12-27",
+            "to": "2009-11-23"
+          },
+          "modality": "mandatory",
+          "validityBasis": "legal_effect",
+          "retroactive": false,
+          "reviewStatus": "auto",
+          "text": "§ 5º O contribuinte para fazer jus ao prazo especial para pagamento do ICMS previsto no inciso VI do caput deste artigo, deve:",
+          "amendment": {
+            "actLabel": "Decreto nº 5.707, de 27.12.02",
+            "actKind": "decreto",
+            "actDate": "2002-12-27",
+            "effectiveFrom": "2002-12-27",
+            "changeKind": "acrescimo",
+            "rawNote": "ACRESCIDO O § 5º AO ART. 76 PELO ART. 2º DO DECRETO Nº 5.707, DE 27.12.02 - vigência: 27.12.02."
+          }
+        },
+        {
+          "displayLabel": "RCTE, art. 76, § 5º",
+          "validDuring": {
+            "from": "2009-11-23",
+            "to": null
+          },
+          "modality": "mandatory",
+          "validityBasis": "legal_effect",
+          "retroactive": false,
+          "reviewStatus": "auto",
+          "text": "§ 5º Revogado.",
+          "amendment": {
+            "actLabel": "Decreto nº 7.028, de 18.11.09",
+            "actKind": "decreto",
+            "actDate": "2009-11-18",
+            "effectiveFrom": "2009-11-23",
+            "changeKind": "revogacao",
+            "rawNote": "REVOGADO O § 5º DO ART. 76 PELO ART. 2º DO DECRETO Nº 7.028, DE 18.11.09 - vigência: 23.11.09."
+          }
+        }
+      ]
+    },
+    {
+      "stableKey": "go:rcte:art:76:par:5:inc:I",
+      "kind": "inciso",
+      "parent": "go:rcte:art:76:par:5",
+      "sortPath": "0076.p05.i01",
+      "headingPath": "RCTE > TÍTULO III - DA COMPENSAÇÃO > CAPÍTULO III - DA APURAÇÃO E DO PAGAMENTO > Seção III - Do Pagamento > Subseção IV - Do Prazo > Art. 76 > § 5º > inciso I",
+      "versions": [
+        {
+          "displayLabel": "RCTE, art. 76, § 5º, inciso I",
+          "validDuring": {
+            "from": "2002-12-27",
+            "to": "2003-09-12"
+          },
+          "modality": "mandatory",
+          "validityBasis": "legal_effect",
+          "retroactive": false,
+          "reviewStatus": "auto",
+          "text": "I - aplicar recurso no Programa Estadual de Incentivo à Cultura - GOYAZES -, equivalente a, no mínimo, 5% (cinco por cento) da média do valor do imposto apurado em regime normal e por substituição tributária pelas operações anteriores, no trimestre imediatamente anterior à aplicação;",
+          "amendment": {
+            "actLabel": "Decreto nº 5.707, de 27.12.02",
+            "actKind": "decreto",
+            "actDate": "2002-12-27",
+            "effectiveFrom": "2002-12-27",
+            "changeKind": "acrescimo",
+            "rawNote": "ACRESCIDO O § 5º AO ART. 76 PELO ART. 2º DO DECRETO Nº 5.707, DE 27.12.02 - vigência: 27.12.02."
+          }
+        },
+        {
+          "displayLabel": "RCTE, art. 76, § 5º, inciso I",
+          "validDuring": {
+            "from": "2003-09-12",
+            "to": "2003-09-30"
+          },
+          "modality": "mandatory",
+          "validityBasis": "legal_effect",
+          "retroactive": false,
+          "reviewStatus": "auto",
+          "text": "I - aplicar recurso no Programa Estadual de Incentivo à Cultura - GOYAZES -, equivalente a, no mínimo, 5% (cinco por cento) da média do valor do imposto a pagar, apurado em regime normal e por substituição tributária pelas operações anteriores, no trimestre imediatamente anterior à aplicação;",
+          "amendment": {
+            "actLabel": "Decreto nº 5.825, de 05.09.03",
+            "actKind": "decreto",
+            "actDate": "2003-09-05",
+            "effectiveFrom": "2003-09-12",
+            "changeKind": "nova_redacao",
+            "rawNote": "CONFERIDA NOVA REDAÇÃO AO INCISO I DO § 5º DO ART. 76 PELO ART. 2º DO DECRETO Nº 5.825, DE 05.09.03 - vigência: 12.09.03."
+          }
+        },
+        {
+          "displayLabel": "RCTE, art. 76, § 5º, inciso I",
+          "validDuring": {
+            "from": "2003-09-30",
+            "to": "2007-08-21"
+          },
+          "modality": "mandatory",
+          "validityBasis": "legal_effect",
+          "retroactive": false,
+          "reviewStatus": "auto",
+          "text": "I - aplicar recurso no Programa Estadual de Incentivo à Cultura - GOYAZES - ou no Programa Estadual de Incentivo ao Esporte - PROESPORTE -, equivalente a, no mínimo, 5% (cinco por cento) da média do valor do imposto a pagar, apurado em regime normal e por substituição tributária pelas operações anteriores, no trimestre imediatamente anterior à aplicação;",
+          "amendment": {
+            "actLabel": "Decreto nº 5.834, de 30.09.03",
+            "actKind": "decreto",
+            "actDate": "2003-09-30",
+            "effectiveFrom": "2003-09-30",
+            "changeKind": "nova_redacao",
+            "rawNote": "CONFERIDA NOVA REDAÇÃO AO INCISO i DO § 5º do ART. 76 PELO ART. 1º DO DECRETO Nº 5.834, DE 30.09.03 - vigência: 30.09.03."
+          }
+        },
+        {
+          "displayLabel": "RCTE, art. 76, § 5º, inciso I",
+          "validDuring": {
+            "from": "2007-08-21",
+            "to": "2009-11-23"
+          },
+          "modality": "mandatory",
+          "validityBasis": "legal_effect",
+          "retroactive": false,
+          "reviewStatus": "auto",
+          "text": "I - aplicar recurso no Programa Estadual de Incentivo à Cultura - GOYAZES - ou no Programa Estadual de Incentivo ao Esporte - PROESPORTE -, equivalente a, no mínimo, 5% (cinco por cento) da média do valor do imposto a pagar, apurado em regime normal e por substituição tributária pelas operações anteriores, nos últimos três meses, contados a partir do segundo mês anterior à solicitação da manifestação da Secretaria da Fazenda de que trata o § 7º;",
+          "amendment": {
+            "actLabel": "Decreto nº 6.659, de 16.08.07",
+            "actKind": "decreto",
+            "actDate": "2007-08-16",
+            "effectiveFrom": "2007-08-21",
+            "changeKind": "nova_redacao",
+            "rawNote": "CONFERIDA NOVA REDAÇÃO AO inciso i do § 5º DO ART. 76 PELO ART. 2º DO DECRETO Nº 6.659, DE 16.08.07 - vigência: 21.08.07."
+          }
+        }
+      ]
+    },
+    {
+      "stableKey": "go:rcte:art:76:par:5:inc:II",
+      "kind": "inciso",
+      "parent": "go:rcte:art:76:par:5",
+      "sortPath": "0076.p05.i02",
+      "headingPath": "RCTE > TÍTULO III - DA COMPENSAÇÃO > CAPÍTULO III - DA APURAÇÃO E DO PAGAMENTO > Seção III - Do Pagamento > Subseção IV - Do Prazo > Art. 76 > § 5º > inciso II",
+      "versions": [
+        {
+          "displayLabel": "RCTE, art. 76, § 5º, inciso II",
+          "validDuring": {
+            "from": "2002-12-27",
+            "to": "2003-09-12"
+          },
+          "modality": "mandatory",
+          "validityBasis": "legal_effect",
+          "retroactive": false,
+          "reviewStatus": "auto",
+          "text": "II - ser autorizado, caso a caso, por despacho do Secretário da Fazenda, observada a conveniência e a oportunidade para a Administração Tributária.",
+          "amendment": {
+            "actLabel": "Decreto nº 5.707, de 27.12.02",
+            "actKind": "decreto",
+            "actDate": "2002-12-27",
+            "effectiveFrom": "2002-12-27",
+            "changeKind": "acrescimo",
+            "rawNote": "ACRESCIDO O § 5º AO ART. 76 PELO ART. 2º DO DECRETO Nº 5.707, DE 27.12.02 - vigência: 27.12.02."
+          }
+        },
+        {
+          "displayLabel": "RCTE, art. 76, § 5º, inciso II",
+          "validDuring": {
+            "from": "2003-09-12",
+            "to": "2009-11-23"
+          },
+          "modality": "mandatory",
+          "validityBasis": "legal_effect",
+          "retroactive": false,
+          "reviewStatus": "auto",
+          "text": "II - ser autorizado, caso a caso, por despacho do Secretário da Fazenda.",
+          "amendment": {
+            "actLabel": "Decreto nº 5.825, de 05.09.03",
+            "actKind": "decreto",
+            "actDate": "2003-09-05",
+            "effectiveFrom": "2003-09-12",
+            "changeKind": "nova_redacao",
+            "rawNote": "CONFERIDA NOVA REDAÇÃO AO inciso Ii do § 5º DO ART. 76 PELO ART. 2º DO DECRETO Nº 5.825, DE 05.09.03 - vigência: 12.09.03."
+          }
+        }
+      ]
+    },
+    {
+      "stableKey": "go:rcte:art:76:par:6",
+      "kind": "paragrafo",
+      "parent": "go:rcte:art:76",
+      "sortPath": "0076.p06",
+      "headingPath": "RCTE > TÍTULO III - DA COMPENSAÇÃO > CAPÍTULO III - DA APURAÇÃO E DO PAGAMENTO > Seção III - Do Pagamento > Subseção IV - Do Prazo > Art. 76 > § 6º",
+      "versions": [
+        {
+          "displayLabel": "RCTE, art. 76, § 6º",
+          "validDuring": {
+            "from": "2003-09-12",
+            "to": "2004-11-04"
+          },
+          "modality": "mandatory",
+          "validityBasis": "legal_effect",
+          "retroactive": false,
+          "reviewStatus": "auto",
+          "text": "§ 6º Excepcionalmente, para projeto de valor igual ,ou superior a R$ 300.000,00 (trezentos mil reais), o Secretário da Fazenda, visando a preservação da arrecadação, pode, mediante análise individual, definir prazos diversos dos referidos no inciso VI do caput deste artigo.",
+          "amendment": {
+            "actLabel": "Decreto nº 5.825, de 05.09.03",
+            "actKind": "decreto",
+            "actDate": "2003-09-05",
+            "effectiveFrom": "2003-09-12",
+            "changeKind": "acrescimo",
+            "rawNote": "ACRESCIDO DO § 6º AO ART. 76 PELO ART. 2º DO DECRETO Nº 5.825, DE 05.09.03 - vigência: 12.09.03."
+          }
+        },
+        {
+          "displayLabel": "RCTE, art. 76, § 6º",
+          "validDuring": {
+            "from": "2004-11-04",
+            "to": "2009-11-23"
+          },
+          "modality": "mandatory",
+          "validityBasis": "legal_effect",
+          "retroactive": false,
+          "reviewStatus": "auto",
+          "text": "§ 6º Observado o disposto no § 5º, quando o contribuinte aplicar nos Programas GOYAZES ou PROESPORTE, isoladamente, valor igual ou superior a 40.000,00 (quarenta mil reais), o Secretário da Fazenda, visando a preservação da arrecadação, pode, mediante análise individual, definir prazos diversos dos referidos no inciso VI do caput deste artigo.",
+          "amendment": {
+            "actLabel": "Decreto nº 6.026, de 27.10.04",
+            "actKind": "decreto",
+            "actDate": "2004-10-27",
+            "effectiveFrom": "2004-11-04",
+            "changeKind": "nova_redacao",
+            "rawNote": "CONFERIDA NOVA REDAÇÃO AO § 6º DO ART 76 PELO ART. 1º DO DECRETO Nº 6.026, DE 27.10.04 - vigência: 04.11.04."
+          }
+        },
+        {
+          "displayLabel": "RCTE, art. 76, § 6º",
+          "validDuring": {
+            "from": "2009-11-23",
+            "to": null
+          },
+          "modality": "mandatory",
+          "validityBasis": "legal_effect",
+          "retroactive": false,
+          "reviewStatus": "auto",
+          "text": "§ 6º Revogado.",
+          "amendment": {
+            "actLabel": "Decreto nº 7.028, de 18.11.09",
+            "actKind": "decreto",
+            "actDate": "2009-11-18",
+            "effectiveFrom": "2009-11-23",
+            "changeKind": "revogacao",
+            "rawNote": "REVOGADO O § 6º DO ART. 76 PELO ART. 2º DO DECRETO Nº 7.028, DE 18.11.09 - vigência: 23.11.09."
+          }
+        }
+      ]
+    },
+    {
+      "stableKey": "go:rcte:art:76:par:7",
+      "kind": "paragrafo",
+      "parent": "go:rcte:art:76",
+      "sortPath": "0076.p07",
+      "headingPath": "RCTE > TÍTULO III - DA COMPENSAÇÃO > CAPÍTULO III - DA APURAÇÃO E DO PAGAMENTO > Seção III - Do Pagamento > Subseção IV - Do Prazo > Art. 76 > § 7º",
+      "versions": [
+        {
+          "displayLabel": "RCTE, art. 76, § 7º",
+          "validDuring": {
+            "from": "2004-11-04",
+            "to": "2009-11-23"
+          },
+          "modality": "mandatory",
+          "validityBasis": "legal_effect",
+          "retroactive": false,
+          "reviewStatus": "auto",
+          "text": "§ 7º Previamente ao depósito do recurso na conta bancária específica vinculada ao projeto ou ao Programa, conforme o caso, o contribuinte deve obter da Secretaria da Fazenda a manifestação favorável sobre a viabilidade financeira da concessão do prazo especial.",
+          "amendment": {
+            "actLabel": "Decreto nº 6.026, de 27.10.04",
+            "actKind": "decreto",
+            "actDate": "2004-10-27",
+            "effectiveFrom": "2004-11-04",
+            "changeKind": "acrescimo",
+            "rawNote": "ACRESCIDO O § 7º AO ART 76 PELO ART. 1º DO DECRETO Nº 6.026, DE 27.10.04 - vigência: 04.11.04."
+          }
+        },
+        {
+          "displayLabel": "RCTE, art. 76, § 7º",
+          "validDuring": {
+            "from": "2009-11-23",
+            "to": null
+          },
+          "modality": "mandatory",
+          "validityBasis": "legal_effect",
+          "retroactive": false,
+          "reviewStatus": "auto",
+          "text": "§ 7º Revogado.",
+          "amendment": {
+            "actLabel": "Decreto nº 7.028, de 18.11.09",
+            "actKind": "decreto",
+            "actDate": "2009-11-18",
+            "effectiveFrom": "2009-11-23",
+            "changeKind": "revogacao",
+            "rawNote": "REVOGADO O § 7º DO ART. 76 PELO ART. 2º DO DECRETO Nº 7.028, DE 18.11.09 - vigência: 23.11.09."
+          }
+        }
+      ]
+    },
+    {
+      "stableKey": "go:rcte:art:76:par:8",
+      "kind": "paragrafo",
+      "parent": "go:rcte:art:76",
+      "sortPath": "0076.p08",
+      "headingPath": "RCTE > TÍTULO III - DA COMPENSAÇÃO > CAPÍTULO III - DA APURAÇÃO E DO PAGAMENTO > Seção III - Do Pagamento > Subseção IV - Do Prazo > Art. 76 > § 8º",
+      "versions": [
+        {
+          "displayLabel": "RCTE, art. 76, § 8º",
+          "validDuring": {
+            "from": "2019-12-01",
+            "to": "2026-07-28"
+          },
+          "modality": "mandatory",
+          "validityBasis": "legal_effect",
+          "retroactive": true,
+          "reviewStatus": "auto",
+          "text": "§ 8º A RFB exigirá, antes da entrega da mercadoria ou bem ao importador, a exibição do comprovante de pagamento do ICMS ou da GLME, de acordo com o art. 12, §§ 2º e 3º da Lei Complementar nº 87, de 13 de setembro de 1996, exceto se o pagamento ou a solicitação de exoneração for feito(a) por meio do módulo \"Pagamento Centralizado\", do Portal Único de Comércio Exterior (Convênio ICMS 85/09, cláusula quarta).",
+          "amendment": {
+            "actLabel": "Decreto nº 9.716, de 22.09.20",
+            "actKind": "decreto",
+            "actDate": "2020-09-22",
+            "effectiveFrom": "2019-12-01",
+            "changeKind": "acrescimo",
+            "rawNote": "ACRESCIDO O § 8º AO ART. 76 PELO ART. 1º DO dECRETO Nº 9.716, DE 22.09.20 - vIGÊNCIA: 01.12.19"
+          }
+        },
+        {
+          "displayLabel": "RCTE, art. 76, § 8º",
+          "validDuring": {
+            "from": "2026-07-28",
+            "to": null
+          },
+          "modality": "mandatory",
+          "validityBasis": "legal_effect",
+          "retroactive": false,
+          "reviewStatus": "auto",
+          "text": "§ 8º A RFB deve exigir, antes da entrega da mercadoria ou bem ao importador, a exibição do comprovante de pagamento do ICMS ou da GLME, de acordo com os §§ 2º e 3º do art. 12 da Lei Complementar nº 87, de 13 de setembro de 1996, exceto se o resultado da análise do pagamento ou da exoneração for informado pelo fisco estadual ao módulo de “Pagamento Centralizado do Portal Único de Comércio Exterior” (Convênio ICMS 85/09, cláusula quarta).",
+          "amendment": {
+            "actLabel": "Decreto nº 10.968, de 28.07.26",
+            "actKind": "decreto",
+            "actDate": "2026-07-28",
+            "effectiveFrom": "2026-07-28",
+            "changeKind": "nova_redacao",
+            "rawNote": "CONFERIDA NOVA REDAÇÃO ao § 8º DO ART 76 PELO ART. 1º DO DECRETO Nº 10.968, DE 28.07.26 - vigência: 28.07.26."
+          }
+        }
+      ]
+    },
+    {
+      "stableKey": "go:rcte:art:76:par:8-A",
+      "kind": "paragrafo",
+      "parent": "go:rcte:art:76",
+      "sortPath": "0076.p08A",
+      "headingPath": "RCTE > TÍTULO III - DA COMPENSAÇÃO > CAPÍTULO III - DA APURAÇÃO E DO PAGAMENTO > Seção III - Do Pagamento > Subseção IV - Do Prazo > Art. 76 > § 8º-A",
+      "versions": [
+        {
+          "displayLabel": "RCTE, art. 76, § 8º-A",
+          "validDuring": {
+            "from": "2026-07-28",
+            "to": null
+          },
+          "modality": "mandatory",
+          "validityBasis": "legal_effect",
+          "retroactive": false,
+          "reviewStatus": "auto",
+          "text": "§ 8º-A Em qualquer hipótese de recolhimento ou exoneração do ICMS, uma das vias do comprovante de recolhimento ou da GLME deve acompanhar a mercadoria ou bem em seu trânsito, podendo ser dispensado, por meio de ato do Secretário de Estado da Economia, nos casos de circulação dentro do Estado de Goiás (Convênio ICMS 85/09, cláusula quarta, § 1º).",
+          "amendment": {
+            "actLabel": "Decreto nº 10.968, de 28.07.26",
+            "actKind": "decreto",
+            "actDate": "2026-07-28",
+            "effectiveFrom": "2026-07-28",
+            "changeKind": "acrescimo",
+            "rawNote": "ACRESCIDO O § 8º-A AO ART 76 PELO ART. 1º DO DECRETO Nº 10.968, DE 28.07.26 - vigência: 28.07.26."
+          }
+        }
+      ]
+    },
+    {
+      "stableKey": "go:rcte:art:76:par:9",
+      "kind": "paragrafo",
+      "parent": "go:rcte:art:76",
+      "sortPath": "0076.p09",
+      "headingPath": "RCTE > TÍTULO III - DA COMPENSAÇÃO > CAPÍTULO III - DA APURAÇÃO E DO PAGAMENTO > Seção III - Do Pagamento > Subseção IV - Do Prazo > Art. 76 > § 9º",
+      "versions": [
+        {
+          "displayLabel": "RCTE, art. 76, § 9º",
+          "validDuring": {
+            "from": "2024-04-16",
+            "to": "2026-07-28"
+          },
+          "modality": "mandatory",
+          "validityBasis": "legal_effect",
+          "retroactive": true,
+          "reviewStatus": "auto",
+          "text": "§ 9º Quando o desembaraço aduaneiro de combustíveis derivados de petróleo se efetivar em território de unidade da Federação diversa daquela do importador situado no Estado de Goiás, deve ser exigida também a manifestação do Fisco da unidade federada de desembaraço da mercadoria em relação à:",
+          "amendment": {
+            "actLabel": "Decreto nº 10.636, de 03.02.25",
+            "actKind": "decreto",
+            "actDate": "2025-02-03",
+            "effectiveFrom": "2024-04-16",
+            "changeKind": "acrescimo",
+            "rawNote": "ACRESCIDO O § 9º AO ART. 76, PELO ART. 1º DO DECRETO Nº 10.636, DE 03.02.25 – VIGÊNCIA: 16.04.24"
+          }
+        },
+        {
+          "displayLabel": "RCTE, art. 76, § 9º",
+          "validDuring": {
+            "from": "2026-07-28",
+            "to": null
+          },
+          "modality": "mandatory",
+          "validityBasis": "legal_effect",
+          "retroactive": false,
+          "reviewStatus": "auto",
+          "text": "§ 9º Quando o desembaraço aduaneiro se verificar em território de unidade da Federação distinta daquela do importador ou adquirente, deve ser observado o seguinte:",
+          "amendment": {
+            "actLabel": "Decreto nº 10.968, de 28.07.26",
+            "actKind": "decreto",
+            "actDate": "2026-07-28",
+            "effectiveFrom": "2026-07-28",
+            "changeKind": "nova_redacao",
+            "rawNote": "CONFERIDA NOVA REDAÇÃO ao § 9º DO ART 76 PELO ART. 1º DO DECRETO Nº 10.968, DE 28.07.26 - vigência: 28.07.26."
+          }
+        }
+      ]
+    },
+    {
+      "stableKey": "go:rcte:art:76:par:9:inc:I",
+      "kind": "inciso",
+      "parent": "go:rcte:art:76:par:9",
+      "sortPath": "0076.p09.i01",
+      "headingPath": "RCTE > TÍTULO III - DA COMPENSAÇÃO > CAPÍTULO III - DA APURAÇÃO E DO PAGAMENTO > Seção III - Do Pagamento > Subseção IV - Do Prazo > Art. 76 > § 9º > inciso I",
+      "versions": [
+        {
+          "displayLabel": "RCTE, art. 76, § 9º, inciso I",
+          "validDuring": {
+            "from": "2024-04-16",
+            "to": "2026-07-28"
+          },
+          "modality": "mandatory",
+          "validityBasis": "legal_effect",
+          "retroactive": true,
+          "reviewStatus": "auto",
+          "text": "I - regularidade do valor do imposto recolhido, quando for devido, acompanhada da memória de cálculo, respeitadas as alíquotas específicas previstas no § 8º do art. 27 da Lei nº 11.651, de 26 de dezembro de 1991; e",
+          "amendment": {
+            "actLabel": "Decreto nº 10.636, de 03.02.25",
+            "actKind": "decreto",
+            "actDate": "2025-02-03",
+            "effectiveFrom": "2024-04-16",
+            "changeKind": "acrescimo",
+            "rawNote": "ACRESCIDO O § 9º AO ART. 76, PELO ART. 1º DO DECRETO Nº 10.636, DE 03.02.25 – VIGÊNCIA: 16.04.24"
+          }
+        },
+        {
+          "displayLabel": "RCTE, art. 76, § 9º, inciso I",
+          "validDuring": {
+            "from": "2026-07-28",
+            "to": null
+          },
+          "modality": "mandatory",
+          "validityBasis": "legal_effect",
+          "retroactive": false,
+          "reviewStatus": "auto",
+          "text": "I - o recolhimento do ICMS, se devido, deve ser feito em Guia Nacional de Recolhimento de Tributos Estaduais - GNRE, prevista em normas de convênio, com indicação da unidade federada beneficiária, ou Documento de Arrecadação de Receita Estadual - DARE, exceto no caso de celebração e implementação de convênio com a RFB para débito automático do imposto em conta bancária indicada pelo importador (Convênio ICMS 85/09, cláusula primeira);",
+          "amendment": {
+            "actLabel": "Decreto nº 10.968, de 28.07.26",
+            "actKind": "decreto",
+            "actDate": "2026-07-28",
+            "effectiveFrom": "2026-07-28",
+            "changeKind": "nova_redacao",
+            "rawNote": "CONFERIDA NOVA REDAÇÃO ao § 9º DO ART 76 PELO ART. 1º DO DECRETO Nº 10.968, DE 28.07.26 - vigência: 28.07.26."
+          }
+        }
+      ]
+    },
+    {
+      "stableKey": "go:rcte:art:76:par:9:inc:II",
+      "kind": "inciso",
+      "parent": "go:rcte:art:76:par:9",
+      "sortPath": "0076.p09.i02",
+      "headingPath": "RCTE > TÍTULO III - DA COMPENSAÇÃO > CAPÍTULO III - DA APURAÇÃO E DO PAGAMENTO > Seção III - Do Pagamento > Subseção IV - Do Prazo > Art. 76 > § 9º > inciso II",
+      "versions": [
+        {
+          "displayLabel": "RCTE, art. 76, § 9º, inciso II",
+          "validDuring": {
+            "from": "2024-04-16",
+            "to": "2026-07-28"
+          },
+          "modality": "mandatory",
+          "validityBasis": "legal_effect",
+          "retroactive": true,
+          "reviewStatus": "auto",
+          "text": "II - validade da Guia de Liberação de Mercadoria Estrangeira - GLME emitida, que só pode ser admitida nos casos previstos no § 1º do art. 9º do Anexo XVII e no § 1º do art. 9º do Anexo XIX, ambos deste Regulamento, desde que sejam cumpridos os requisitos neles exigidos.",
+          "amendment": {
+            "actLabel": "Decreto nº 10.636, de 03.02.25",
+            "actKind": "decreto",
+            "actDate": "2025-02-03",
+            "effectiveFrom": "2024-04-16",
+            "changeKind": "acrescimo",
+            "rawNote": "ACRESCIDO O § 9º AO ART. 76, PELO ART. 1º DO DECRETO Nº 10.636, DE 03.02.25 – VIGÊNCIA: 16.04.24"
+          }
+        },
+        {
+          "displayLabel": "RCTE, art. 76, § 9º, inciso II",
+          "validDuring": {
+            "from": "2026-07-28",
+            "to": null
+          },
+          "modality": "mandatory",
+          "validityBasis": "legal_effect",
+          "retroactive": false,
+          "reviewStatus": "auto",
+          "text": "II - no caso de importação de combustível derivado de petróleo, deve ser exigida também a manifestação do Fisco da unidade federada de desembaraço da mercadoria em relação à (Convênio ICMS 85/09, cláusula quarta, § 2º):",
+          "amendment": {
+            "actLabel": "Decreto nº 10.968, de 28.07.26",
+            "actKind": "decreto",
+            "actDate": "2026-07-28",
+            "effectiveFrom": "2026-07-28",
+            "changeKind": "nova_redacao",
+            "rawNote": "CONFERIDA NOVA REDAÇÃO ao § 9º DO ART 76 PELO ART. 1º DO DECRETO Nº 10.968, DE 28.07.26 - vigência: 28.07.26."
+          }
+        }
+      ]
+    },
+    {
+      "stableKey": "go:rcte:art:76:par:9:inc:II:ali:a",
+      "kind": "alinea",
+      "parent": "go:rcte:art:76:par:9:inc:II",
+      "sortPath": "0076.p09.i02.aa",
+      "headingPath": "RCTE > TÍTULO III - DA COMPENSAÇÃO > CAPÍTULO III - DA APURAÇÃO E DO PAGAMENTO > Seção III - Do Pagamento > Subseção IV - Do Prazo > Art. 76 > § 9º > inciso II > alínea \"a\"",
+      "versions": [
+        {
+          "displayLabel": "RCTE, art. 76, § 9º, inciso II, alínea \"a\"",
+          "validDuring": {
+            "from": "2026-07-28",
+            "to": null
+          },
+          "modality": "mandatory",
+          "validityBasis": "legal_effect",
+          "retroactive": false,
+          "reviewStatus": "auto",
+          "text": "a) regularidade do valor do imposto recolhido, quando devido, acompanhada da memória de cálculo, respeitadas as alíquotas específicas previstas no § 8º do art. 27 da Lei nº 11.651, de 26 de dezembro de 1991; e",
+          "amendment": {
+            "actLabel": "Decreto nº 10.968, de 28.07.26",
+            "actKind": "decreto",
+            "actDate": "2026-07-28",
+            "effectiveFrom": "2026-07-28",
+            "changeKind": "nova_redacao",
+            "rawNote": "CONFERIDA NOVA REDAÇÃO ao § 9º DO ART 76 PELO ART. 1º DO DECRETO Nº 10.968, DE 28.07.26 - vigência: 28.07.26."
+          }
+        }
+      ]
+    },
+    {
+      "stableKey": "go:rcte:art:76:par:9:inc:II:ali:b",
+      "kind": "alinea",
+      "parent": "go:rcte:art:76:par:9:inc:II",
+      "sortPath": "0076.p09.i02.ab",
+      "headingPath": "RCTE > TÍTULO III - DA COMPENSAÇÃO > CAPÍTULO III - DA APURAÇÃO E DO PAGAMENTO > Seção III - Do Pagamento > Subseção IV - Do Prazo > Art. 76 > § 9º > inciso II > alínea \"b\"",
+      "versions": [
+        {
+          "displayLabel": "RCTE, art. 76, § 9º, inciso II, alínea \"b\"",
+          "validDuring": {
+            "from": "2026-07-28",
+            "to": null
+          },
+          "modality": "mandatory",
+          "validityBasis": "legal_effect",
+          "retroactive": false,
+          "reviewStatus": "auto",
+          "text": "b) validade da GLME emitida, que só pode ser admitida nos casos previstos no § 1º do art. 9º do Anexo XVII e no § 1º do art. 9º do Anexo XIX, ambos deste Regulamento, desde que sejam cumpridos os requisitos neles exigidos; e",
+          "amendment": {
+            "actLabel": "Decreto nº 10.968, de 28.07.26",
+            "actKind": "decreto",
+            "actDate": "2026-07-28",
+            "effectiveFrom": "2026-07-28",
+            "changeKind": "nova_redacao",
+            "rawNote": "CONFERIDA NOVA REDAÇÃO ao § 9º DO ART 76 PELO ART. 1º DO DECRETO Nº 10.968, DE 28.07.26 - vigência: 28.07.26."
+          }
+        }
+      ]
+    },
+    {
+      "stableKey": "go:rcte:art:76:par:9:inc:III",
+      "kind": "inciso",
+      "parent": "go:rcte:art:76:par:9",
+      "sortPath": "0076.p09.i03",
+      "headingPath": "RCTE > TÍTULO III - DA COMPENSAÇÃO > CAPÍTULO III - DA APURAÇÃO E DO PAGAMENTO > Seção III - Do Pagamento > Subseção IV - Do Prazo > Art. 76 > § 9º > inciso III",
+      "versions": [
+        {
+          "displayLabel": "RCTE, art. 76, § 9º, inciso III",
+          "validDuring": {
+            "from": "2026-07-28",
+            "to": null
+          },
+          "modality": "mandatory",
+          "validityBasis": "legal_effect",
+          "retroactive": false,
+          "reviewStatus": "auto",
+          "text": "III - no caso de importação de nafta não petroquímica classificada na NCM/SH 2710.12.49, deve ser exigida também a manifestação do Fisco da unidade federada de desembaraço da mercadoria em relação à regularidade do ICMS recolhido por substituição tributária nos termos do Convênio ICMS nº 181, de 6 de dezembro de 2024 (Convênio ICMS 85/09, cláusula quarta, § 2º-A).",
+          "amendment": {
+            "actLabel": "Decreto nº 10.968, de 28.07.26",
+            "actKind": "decreto",
+            "actDate": "2026-07-28",
+            "effectiveFrom": "2026-07-28",
+            "changeKind": "nova_redacao",
+            "rawNote": "CONFERIDA NOVA REDAÇÃO ao § 9º DO ART 76 PELO ART. 1º DO DECRETO Nº 10.968, DE 28.07.26 - vigência: 28.07.26."
+          }
+        }
+      ]
+    },
+    {
+      "stableKey": "go:rcte:art:76:par:9-A",
+      "kind": "paragrafo",
+      "parent": "go:rcte:art:76",
+      "sortPath": "0076.p09A",
+      "headingPath": "RCTE > TÍTULO III - DA COMPENSAÇÃO > CAPÍTULO III - DA APURAÇÃO E DO PAGAMENTO > Seção III - Do Pagamento > Subseção IV - Do Prazo > Art. 76 > § 9º-A",
+      "versions": [
+        {
+          "displayLabel": "RCTE, art. 76, § 9º-A",
+          "validDuring": {
+            "from": "2026-07-28",
+            "to": null
+          },
+          "modality": "mandatory",
+          "validityBasis": "legal_effect",
+          "retroactive": false,
+          "reviewStatus": "auto",
+          "text": "§ 9º-A O disposto no inciso I do § 9º deste artigo aplica-se também às aquisições em licitação pública de bens ou mercadorias importados do exterior e apreendidos ou abandonados (Convênio ICMS 85/09, cláusula segunda).",
+          "amendment": {
+            "actLabel": "Decreto nº 10.968, de 28.07.26",
+            "actKind": "decreto",
+            "actDate": "2026-07-28",
+            "effectiveFrom": "2026-07-28",
+            "changeKind": "acrescimo",
+            "rawNote": "acrescido o § 9º-A DO ART 76 PELO ART. 1º DO DECRETO Nº 10.968, DE 28.07.26 - vigência: 28.07.26."
+          }
+        }
+      ]
+    },
+    {
+      "stableKey": "go:rcte:art:76:par:10",
+      "kind": "paragrafo",
+      "parent": "go:rcte:art:76",
+      "sortPath": "0076.p10",
+      "headingPath": "RCTE > TÍTULO III - DA COMPENSAÇÃO > CAPÍTULO III - DA APURAÇÃO E DO PAGAMENTO > Seção III - Do Pagamento > Subseção IV - Do Prazo > Art. 76 > § 10º",
+      "versions": [
+        {
+          "displayLabel": "RCTE, art. 76, § 10º",
+          "validDuring": {
+            "from": "2024-04-16",
+            "to": "2026-07-28"
+          },
+          "modality": "mandatory",
+          "validityBasis": "legal_effect",
+          "retroactive": true,
+          "reviewStatus": "auto",
+          "text": "§ 10. A mercadoria não deverá ser liberada quando não for apresentada a manifestação de que trata o § 9º deste artigo ou quando a opinião emitida for contrária à liberação, e caberá ao importador/adquirente pagar ou complementar o imposto devido ou sanar os erros apontados, conforme o caso.",
+          "amendment": {
+            "actLabel": "Decreto nº 10.636, de 03.02.25",
+            "actKind": "decreto",
+            "actDate": "2025-02-03",
+            "effectiveFrom": "2024-04-16",
+            "changeKind": "acrescimo",
+            "rawNote": "ACRESCIDO O § 10 AO ART. 76, PELO ART. 1º DO DECRETO Nº 10.636, DE 03.02.25 – VIGÊNCIA: 16.04.24"
+          }
+        },
+        {
+          "displayLabel": "RCTE, art. 76, § 10º",
+          "validDuring": {
+            "from": "2026-07-28",
+            "to": null
+          },
+          "modality": "mandatory",
+          "validityBasis": "legal_effect",
+          "retroactive": false,
+          "reviewStatus": "auto",
+          "text": "§ 10. A mercadoria não deve ser liberada quando não for apresentada a manifestação de que tratam os incisos II e III do § 9º deste artigo ou quando emitida de forma contrária à liberação, cabendo ao importador ou adquirente pagar ou complementar o imposto devido ou sanar os erros apontados, conforme o caso (Convênio ICMS 85/09, cláusula quarta, § 3º).",
+          "amendment": {
+            "actLabel": "Decreto nº 10.968, de 28.07.26",
+            "actKind": "decreto",
+            "actDate": "2026-07-28",
+            "effectiveFrom": "2026-07-28",
+            "changeKind": "nova_redacao",
+            "rawNote": "CONFERIDA NOVA REDAÇÃO ao § 10 DO ART 76 PELO ART. 1º DO DECRETO Nº 10.968, DE 28.07.26 - vigência: 28.07.26."
+          }
+        }
+      ]
+    }
+  ],
+  "skipped": [],
+  "stats": {
+    "notesTotal": 14,
+    "notesParsed": 14,
+    "notesToReview": 0
+  }
+}

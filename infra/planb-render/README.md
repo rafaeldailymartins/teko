@@ -2,11 +2,13 @@
 
 Contingência da produção quando a Vercel Hobby deixa de servir a API: pausa de cerca de 30 dias por
 estouro de cota (503 `DEPLOYMENT_PAUSED`), conta encerrada ou mudança dos termos do Hobby que
-inviabilize o projeto. O passo a passo do corte fica no runbook `docs/runbooks/vercel-paused.md`;
-este diretório guarda a definição do serviço (`render.yaml`) e o que muda em relação à Vercel.
+inviabilize o projeto. O passo a passo do corte fica no runbook `docs/runbooks/vercel-paused.md`
+(escrito na F7); este diretório guarda a definição do serviço (`render.yaml`) e o que muda em
+relação à Vercel.
 
 Fora do corte e do ensaio, o serviço fica **parado**. Só a produção tem Plano B; o staging fica
-parado durante o corte.
+parado durante o corte. A criação do serviço `teko-api-planb` no Render e o primeiro ensaio de
+corte são entregas da F7.
 
 ## O serviço
 
