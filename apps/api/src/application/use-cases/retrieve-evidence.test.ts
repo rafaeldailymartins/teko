@@ -47,7 +47,9 @@ function setup(options: {
 }) {
   const checkCoverage = vi.fn<CheckCoverage>(() => Promise.resolve(options.decision))
   const hybridSearch = vi.fn<HybridSearch>(() =>
-    Promise.resolve(options.search ?? { mode: 'hybrid', evidence: [], stableKeys: [] }),
+    Promise.resolve(
+      options.search ?? { mode: 'hybrid', evidence: [], stableKeys: [], reranked: false },
+    ),
   )
   const retrieve = createRetrieveEvidence({
     resolveReferenceDate: createResolveReferenceDate({ clock }),
@@ -97,7 +99,7 @@ describe('createRetrieveEvidence', () => {
   it('retrieval vazio: recusa no_evidence com o modo da busca', async () => {
     const { retrieve } = setup({
       decision: decision('covered'),
-      search: { mode: 'lexical_only', evidence: [], stableKeys: [] },
+      search: { mode: 'lexical_only', evidence: [], stableKeys: [], reranked: false },
     })
     await expect(retrieve(ask)).resolves.toMatchObject({
       outcome: RetrievalOutcome.Refused,
@@ -109,7 +111,12 @@ describe('createRetrieveEvidence', () => {
   it('max(rrf) abaixo do mínimo: recusa no_evidence', async () => {
     const { retrieve } = setup({
       decision: decision('covered'),
-      search: { mode: 'hybrid', evidence: [evidence(0.01, '2020-01-01', null)], stableKeys: [] },
+      search: {
+        mode: 'hybrid',
+        evidence: [evidence(0.01, '2020-01-01', null)],
+        stableKeys: [],
+        reranked: false,
+      },
       minEvidenceRrf: 0.02,
     })
     await expect(retrieve(ask)).resolves.toMatchObject({ reason: 'no_evidence' })
@@ -120,7 +127,12 @@ describe('createRetrieveEvidence', () => {
     const found = [evidence(0.05, '2026-07-28', null)]
     const { retrieve, hybridSearch } = setup({
       decision: decision('partial', ['efd-go']),
-      search: { mode: 'hybrid', evidence: found, stableKeys: ['go:rcte:art:76:par:8'] },
+      search: {
+        mode: 'hybrid',
+        evidence: found,
+        stableKeys: ['go:rcte:art:76:par:8'],
+        reranked: false,
+      },
     })
     const result = await retrieve({ ...ask, signal: controller.signal })
     expect(result).toMatchObject({
@@ -146,6 +158,7 @@ describe('createRetrieveEvidence', () => {
         mode: 'hybrid',
         evidence: [evidence(0.05, '2004-11-04', '2009-11-23')],
         stableKeys: [],
+        reranked: false,
       },
     })
     const result = await retrieve({ ...ask, input: { periodoApuracao: '2006-05' } })

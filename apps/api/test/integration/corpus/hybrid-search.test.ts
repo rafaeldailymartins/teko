@@ -168,6 +168,9 @@ describe('degradação', () => {
           reviewStatuses: PUBLISHABLE_REVIEW_STATUSES,
           embeddingTimeoutMs: 3000,
           limit: 12,
+          reranker: null,
+          rerankCandidates: 30,
+          rerankTimeoutMs: 2000,
         }),
         minEvidenceRrf: 0,
       })
@@ -203,6 +206,9 @@ describe('degradação', () => {
         reviewStatuses: PUBLISHABLE_REVIEW_STATUSES,
         embeddingTimeoutMs: 3000,
         limit: 12,
+        reranker: null,
+        rerankCandidates: 30,
+        rerankTimeoutMs: 2000,
       })
       const result = await createRetrieveEvidence({
         resolveReferenceDate: container.useCases.resolveReferenceDate,

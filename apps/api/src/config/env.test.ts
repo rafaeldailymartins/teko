@@ -211,6 +211,22 @@ describe('parseEnv', () => {
         CF_AI_TOKEN: 'token-de-teste-com-20-chars',
       })
       expect(env.EMBEDDINGS_PROVIDER).toBe('workers-ai')
+      expect(env.RERANKER_PROVIDER).toBe('none')
+    })
+
+    it('o reranker do Workers AI exige as mesmas conta e token (ADR 0027)', () => {
+      expect(problemsOf({ ...DEV_ENV, RERANKER_PROVIDER: 'workers-ai' })).toEqual([
+        'CF_ACCOUNT_ID: obrigatória com RERANKER_PROVIDER=workers-ai',
+        'CF_AI_TOKEN: obrigatória com RERANKER_PROVIDER=workers-ai',
+      ])
+      expect(problemsOf({ ...DEV_ENV, RERANKER_PROVIDER: 'cohere' })).toHaveLength(1)
+      const env = parseEnv({
+        ...DEV_ENV,
+        RERANKER_PROVIDER: 'workers-ai',
+        CF_ACCOUNT_ID: '0123456789abcdef0123456789abcdef',
+        CF_AI_TOKEN: 'token-de-teste-com-20-chars',
+      })
+      expect(env.RERANKER_PROVIDER).toBe('workers-ai')
     })
 
     it('valida o formato da conta, do token e os limites numéricos', () => {

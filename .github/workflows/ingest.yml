@@ -699,11 +699,13 @@ jobs:
       - name: Setup
         uses: ./.github/actions/setup
 
-      - name: Retrieval evals contra o staging (embeddings reais, role teko_app)
+      - name: Retrieval evals contra o staging (embeddings e reranker reais, role teko_app)
         env:
           APP_ENV: ci
           DATABASE_URL: ${{ secrets.NEON_STAGING_APP_URL }}
           EMBEDDINGS_PROVIDER: workers-ai
+          # Reranker do Workers AI (ADR 0027), como a API terá em staging e produção.
+          RERANKER_PROVIDER: workers-ai
           CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
           CF_AI_TOKEN: ${{ secrets.CF_AI_TOKEN }}
         run: pnpm --filter @teko/api eval:retrieval

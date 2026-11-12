@@ -50,6 +50,13 @@ export const EmbeddingsProvider = {
 } as const
 export type EmbeddingsProvider = (typeof EmbeddingsProvider)[keyof typeof EmbeddingsProvider]
 
+/** Reranker da busca (ADR 0027): `none` mantém a ordem do RRF. */
+export const RerankerProvider = {
+  None: 'none',
+  WorkersAi: 'workers-ai',
+} as const
+export type RerankerProvider = (typeof RerankerProvider)[keyof typeof RerankerProvider]
+
 /** Postgres: `postgresql://` ou `postgres://` (Neon `-pooler` com `teko_app` no runtime). */
 const postgresUrlSchema = z
   .string()
@@ -163,6 +170,8 @@ const envSchema = z
     DRAIN_DELAY_MS: z.coerce.number().int().min(0).max(60_000).default(DEFAULT_DRAIN_DELAY_MS),
     LLM_PROVIDER: llmProviderSchema.optional(),
     EMBEDDINGS_PROVIDER: z.enum(EmbeddingsProvider).optional(),
+    /** Reranker da busca (ADR 0027); `workers-ai` usa as mesmas `CF_ACCOUNT_ID` e `CF_AI_TOKEN`. */
+    RERANKER_PROVIDER: z.enum(RerankerProvider).default(RerankerProvider.None),
     /**
      * Segredo HS256 do proxy assinado da Netlify (`x-nf-sign`), o mesmo valor gravado no site.
      * Gravado no staging desde o spike F1 (c); quem o usa é o plugin `netlifySignature`, na F4.
@@ -248,12 +257,18 @@ const envSchema = z
     ) {
       issue('EMBEDDINGS_FIXTURE_PATH', 'obrigatória com EMBEDDINGS_PROVIDER=fake')
     }
-    if (env.EMBEDDINGS_PROVIDER === EmbeddingsProvider.WorkersAi) {
+    for (const [name, provider] of [
+      ['EMBEDDINGS_PROVIDER', env.EMBEDDINGS_PROVIDER],
+      ['RERANKER_PROVIDER', env.RERANKER_PROVIDER],
+    ] as const) {
+      if (provider !== 'workers-ai') {
+        continue
+      }
       if (env.CF_ACCOUNT_ID === undefined) {
-        issue('CF_ACCOUNT_ID', 'obrigatória com EMBEDDINGS_PROVIDER=workers-ai')
+        issue('CF_ACCOUNT_ID', `obrigatória com ${name}=workers-ai`)
       }
       if (env.CF_AI_TOKEN === undefined) {
-        issue('CF_AI_TOKEN', 'obrigatória com EMBEDDINGS_PROVIDER=workers-ai')
+        issue('CF_AI_TOKEN', `obrigatória com ${name}=workers-ai`)
       }
     }
     if ((env.NETLIFY_AUTH_TOKEN === undefined) !== (env.NETLIFY_SITE_ID === undefined)) {
