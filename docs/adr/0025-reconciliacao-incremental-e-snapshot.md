@@ -1,6 +1,6 @@
 ---
 
-status: proposed
+status: accepted
 date: 2026-11-11
 decision-makers: Rafael Daily Santos Martins
 ---
