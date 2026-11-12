@@ -187,6 +187,8 @@ check "ingest: PR do lock com o token da App teko-release-bot" \
   yq_true '.jobs."lock-pr".steps[] | select(.uses // "" | test("^actions/create-github-app-token@")) | .with."client-id" == "${{ vars.RELEASE_APP_CLIENT_ID }}"' "$ingest"
 check "ingest: commit do lock com Signed-off-by e branch chore/corpus-lock-<n>" \
   bash -c "grep -Fq 'Signed-off-by: ' '$ingest' && grep -Fq 'branch=\"chore/corpus-lock-' '$ingest'"
+check "ingest: o PR do lock novo fecha os anteriores da própria App" \
+  bash -c "grep -Fq -- '--author \"app/\${APP_SLUG}\"' '$ingest' && grep -Fq 'startswith(\"chore/corpus-lock-\")' '$ingest' && grep -Fq 'gh pr close \"\$old\"' '$ingest'"
 check "ingest: falha cedo sem NETLIFY_SITE_ID ou NEON_STAGING_PROJECT_ID" \
   bash -c "yq -r '.jobs.discover.steps[].run // \"\"' '$ingest' | grep -q NETLIFY_SITE_ID && yq -r '.jobs.discover.steps[].run // \"\"' '$ingest' | grep -q NEON_STAGING_PROJECT_ID"
 
