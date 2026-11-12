@@ -1,8 +1,12 @@
 import pg from 'pg'
+import { createDatabase, type Database } from '../../src/adapters/out/persistence/drizzle/client.ts'
+import { createPgSearchRepository } from '../../src/adapters/out/persistence/drizzle/repositories/pg-search-repository.ts'
 import type { RetrievalUseCases } from '../../src/application/container.ts'
 import { RetrievalOutcome } from '../../src/application/use-cases/retrieve-evidence.ts'
-import { createContainer } from '../../src/composition-root.ts'
-import { parseEnv } from '../../src/config/env.ts'
+import { createContainer, createEmbeddings, reviewStatusesFor } from '../../src/composition-root.ts'
+import { type Env, parseEnv } from '../../src/config/env.ts'
+import { FAMILIES } from '../../src/domain/corpus/family.ts'
+import { extractProvisionRefs } from '../../src/domain/qa/provision-refs.ts'
 import { RECALL_K, type RetrievalOutput } from '../asserts/metrics.ts'
 import type { GoldenCase } from '../datasets/schema.ts'
 
@@ -25,10 +29,17 @@ interface CallContext {
 }
 
 let retrieval: RetrievalUseCases | undefined
+let cachedEnv: Env | undefined
+let poolDatabase: Database | undefined
+
+function evalEnv(): Env {
+  cachedEnv ??= parseEnv({ APP_ENV: 'ci', WEB_ORIGIN: 'http://localhost:3000', ...process.env })
+  return cachedEnv
+}
 
 function retrievalUseCases(): RetrievalUseCases {
   if (retrieval === undefined) {
-    const env = parseEnv({ APP_ENV: 'ci', WEB_ORIGIN: 'http://localhost:3000', ...process.env })
+    const env = evalEnv()
     const container = createContainer(env, {
       clock: { now: () => new Date(EVAL_CLOCK_INSTANT) },
       applicationName: 'teko-evals',
@@ -81,13 +92,54 @@ export async function retrieve(golden: GoldenCase): Promise<RetrievalOutput> {
   }))
   const top = new Set([...new Set(hits.map((hit) => hit.stableKey))].slice(0, RECALL_K))
   const missing = golden.expected.provisions.filter((key) => !top.has(key))
+  const pool = await candidatePool(golden, result.reference.value)
   return {
     ...base,
     outcome: result.outcome,
     reason: null,
     hits,
     ...(missing.length > 0 ? { diagnostics: await diagnose(missing, result.reference.value) } : {}),
+    ...(pool === null ? {} : { pool }),
   }
+}
+
+/**
+ * Candidatos da instrução híbrida antes do reranker, na ordem do RRF, com o texto que o reranker
+ * recebe ("rótulo de citação + conteúdo"). Só com `EVAL_POOL_SIZE` (o `corpus-eval` usa 50): como o
+ * reranker pontua cada par pergunta-texto sozinho, um despejo de 50 permite simular offline
+ * qualquer número de candidatos (ADR 0027).
+ */
+async function candidatePool(
+  golden: GoldenCase,
+  referenceDate: string,
+): Promise<{ stableKey: string; text: string }[] | null> {
+  const size = Number(process.env['EVAL_POOL_SIZE'] ?? '0')
+  const env = evalEnv()
+  const embeddings = createEmbeddings(env)
+  if (
+    !Number.isInteger(size) ||
+    size <= 0 ||
+    embeddings === null ||
+    env.DATABASE_URL === undefined
+  ) {
+    return null
+  }
+  poolDatabase ??= createDatabase({ url: env.DATABASE_URL, applicationName: 'teko-evals-pool' })
+  const [vector] = await embeddings.embed([golden.question])
+  const families = golden.families ?? FAMILIES
+  const evidence = await createPgSearchRepository(poolDatabase.pool).search({
+    text: golden.question,
+    embedding: vector ?? null,
+    referenceDate,
+    families,
+    stableKeys: extractProvisionRefs(golden.question, families),
+    reviewStatuses: reviewStatusesFor(env.APP_ENV),
+    limit: size,
+  })
+  return evidence.map((item) => ({
+    stableKey: item.stableKey,
+    text: `${item.citationLabel}\n${item.content}`,
+  }))
 }
 
 /**

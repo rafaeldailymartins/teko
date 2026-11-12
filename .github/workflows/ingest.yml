@@ -721,6 +721,9 @@ jobs:
           RERANKER_PROVIDER: workers-ai
           # Corpus real: a métrica de vigência usa o `staging_validity` do golden quando existe.
           EVAL_CORPUS: staging
+          # Despeja os 50 primeiros candidatos (ordem do RRF) de cada caso no relatório, para
+          # simular offline o número de candidatos do reranker (ADR 0027).
+          EVAL_POOL_SIZE: "50"
           CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
           CF_AI_TOKEN: ${{ secrets.CF_AI_TOKEN }}
         run: pnpm --filter @teko/api eval:retrieval
