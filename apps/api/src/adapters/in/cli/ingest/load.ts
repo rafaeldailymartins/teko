@@ -185,6 +185,10 @@ type LoadReport = {
   reviewItems?: number
   /** Versões já publicadas com revisão menor do parser, reprocessadas neste run. */
   reprocessed?: number
+  /** `pg_database_size` no fechamento do run. */
+  dbBytes?: number
+  /** CU-segundos do projeto Neon durante o run (null sem a API do Neon). */
+  cuSeconds?: number | null
   corpusVersion?: number
   manifestKey?: string
   lockChanged?: boolean
@@ -374,7 +378,10 @@ export async function runIngestLoad(
           outcome.result.reprocessed,
       ).length,
     })
-    await deps.useCases.finishIngestionRun({ runId, status, report })
+    // O tamanho do banco e as CU-s vão também para o arquivo do relatório (o resumo do
+    // ingest.yml mostra o tamanho contra o alvo de 400 MB do staging).
+    const usage = await deps.useCases.finishIngestionRun({ runId, status, report })
+    Object.assign(report, { dbBytes: usage.dbBytes, cuSeconds: usage.cuSeconds })
     if (parsed.report !== null) {
       writeFileSync(parsed.report, `${JSON.stringify(report, null, 2)}\n`)
     }
@@ -385,6 +392,7 @@ export async function runIngestLoad(
         chunksNew: report.chunksNew,
         neurons: report.neurons,
         corpusVersion: report.corpusVersion ?? null,
+        dbBytes: usage.dbBytes,
       }),
     )
     return exitCode

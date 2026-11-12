@@ -156,7 +156,7 @@ function useCases(
       },
       finishIngestionRun: (command) => {
         recorder.finished.push(command)
-        return Promise.resolve()
+        return Promise.resolve({ dbBytes: 123_456_789, cuSeconds: 42 })
       },
       ingestDocumentVersion: (command) => {
         recorder.ingested.push(command)
@@ -320,9 +320,12 @@ describe('ingest load', () => {
       versionLabel: 'Guia 3.2.4',
       publishedOn: '2026-07-30',
     })
+    // O relatório leva o tamanho do banco e as CU-s medidos no fechamento do run.
     expect(JSON.parse(readFileSync(report, 'utf8'))).toMatchObject({
       runId: 'run-1',
       status: 'succeeded',
+      dbBytes: 123_456_789,
+      cuSeconds: 42,
     })
     expect(JSON.parse(lines.at(-1) ?? '{}')).toEqual({
       runId: 'run-1',
@@ -330,6 +333,7 @@ describe('ingest load', () => {
       chunksNew: 12,
       neurons: 60,
       corpusVersion: 7,
+      dbBytes: 123_456_789,
     })
   })
 

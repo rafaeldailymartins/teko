@@ -36,7 +36,13 @@ interface FinishIngestionRunCommand {
 export type StartIngestionRun = (
   command: StartIngestionRunCommand,
 ) => Promise<{ readonly runId: string }>
-export type FinishIngestionRun = (command: FinishIngestionRunCommand) => Promise<void>
+/** O que o fechamento mediu: tamanho do banco e CU-segundos do run (null sem a API do Neon). */
+interface FinishedRunUsage {
+  readonly dbBytes: number
+  readonly cuSeconds: number | null
+}
+
+export type FinishIngestionRun = (command: FinishIngestionRunCommand) => Promise<FinishedRunUsage>
 
 export interface IngestionRunDeps {
   readonly runs: IngestionRunRepository
@@ -101,12 +107,8 @@ export function createFinishIngestionRun(deps: IngestionRunDeps): FinishIngestio
     const finished = await safeComputeSeconds(deps.compute)
     const cuSeconds =
       typeof started === 'number' && finished !== null ? Math.max(0, finished - started) : null
-    await deps.runs.finish({
-      runId,
-      status,
-      report,
-      cuSeconds,
-      dbBytes: await deps.databaseUsage.sizeBytes(),
-    })
+    const dbBytes = await deps.databaseUsage.sizeBytes()
+    await deps.runs.finish({ runId, status, report, cuSeconds, dbBytes })
+    return { dbBytes, cuSeconds }
   }
 }

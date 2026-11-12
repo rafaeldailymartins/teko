@@ -185,6 +185,8 @@ check "ingest: corpus-eval com os limites do corpus real (retrieval-corpus), que
   bash -c "yq -r '.jobs.\"corpus-eval\".steps[].run // \"\"' '$ingest' | grep -q 'eval:retrieval:check:corpus' && jq -e '.\"retrieval-corpus\".\"recall@10\" >= .retrieval.\"recall@10\" and .\"retrieval-corpus\".vigencia == 1 and .\"retrieval-corpus\".recusa == 1' apps/api/evals/thresholds.json >/dev/null"
 check "ingest: load com --migrate só no staging" \
   bash -c "grep -Eq 'ingest load --target staging .*--migrate' '$ingest'"
+check "ingest: o tamanho do staging (dbBytes do relatório) sai do load e vai ao resumo, com aviso acima de 400 MB" \
+  yq_true '.jobs.load.outputs.db_bytes == "${{ steps.lock.outputs.db_bytes }}" and .jobs.summary.steps[-1].env.DB_BYTES == "${{ needs.load.outputs.db_bytes }}" and ([.jobs.load.steps[].run // "" | test("400 \\* 1024 \\* 1024")] | any)' "$ingest"
 check "ingest: código 75 do load não é falha" \
   bash -c "yq -r '.jobs.load.steps[].run // \"\"' '$ingest' | grep -Eq '^ *75\\)'"
 check "ingest: target de dispatch só aceita staging" \
