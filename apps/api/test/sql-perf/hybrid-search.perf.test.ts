@@ -18,11 +18,26 @@ import { createTestDatabase, type TestDatabase } from '../setup/database.ts'
  *   o HNSW pelo KNN exato sobre o GiST (mais barato e exato), e continua sem `Seq Scan`;
  * - com o HNSW forçado e filtro seletivo, o braço vetorial devolve k linhas (iterative scan do
  *   pgvector 0.8, `relaxed_order`);
- * - a instrução inteira fica abaixo de 150 ms (mediana aquecida) nos dois perfis.
+ * - a instrução inteira fica abaixo de 150 ms (mediana aquecida) nos dois perfis, em qualquer
+ *   runner até a velocidade de referência.
+ *
+ * A velocidade do runner do GitHub varia de um run para outro: sem mudança no SQL, a mediana com
+ * uma família foi de 96 a 160 ms entre PRs, e as duas medidas sobem juntas no runner lento. Por
+ * isso o teto é relativo à máquina: um KNN exato por força bruta sobre os 100k vetores (sem índice
+ * nem o SQL da busca, só CPU e leitura do heap) mede a velocidade do runner, e o teto vira
+ * `150 ms × max(1, referência ÷ REFERENCE_BASELINE_MS)`. Regressão da busca continua reprovando,
+ * porque a referência não depende dela.
+ *
+ * Calibração (7 runs do CI em 2026-11-12, PR #50): referência de 172 a 281 ms, busca com uma
+ * família de 100 a 140 ms. A busca cresce menos que a referência (+40% contra +64%), então a
+ * referência de corte fica no topo da faixa observada: em todo runner medido o teto é 150 ms, e
+ * só um runner mais lento que todos eles ganha folga, menor que a lentidão real.
  */
 
 const SEED_SQL = readFileSync(new URL('../../perf/seed/synthetic.sql', import.meta.url), 'utf8')
 const LATENCY_BUDGET_MS = 150
+/** Referência de corte: a maior mediana observada no runner `ubuntu-24.04` do CI (281 ms). */
+const REFERENCE_BASELINE_MS = 280
 const RUNS = 15
 const ALL_FAMILIES = ['efd-icms-ipi', 'efd-reinf', 'rcte', 'cte', 'efd-go', 'tabelas-go']
 const QUESTION = 'prazo de pagamento do imposto no regime especial de substituição tributária'
@@ -93,19 +108,17 @@ async function explain(sql: string, params: unknown[], extra: readonly string[] 
   }
 }
 
-async function medianLatency(families: readonly string[]): Promise<number> {
+/**
+ * Mediana aquecida de `query(run)`: duas passadas pela mesma sequência, a primeira aquece o cache
+ * (shared buffers e páginas do HNSW e do heap) e a segunda é a medida. Uma instância de produção
+ * atende consultas o tempo todo; medir a primeira leitura de cada página mediria o disco.
+ */
+async function warmMedian(label: string, query: (run: number) => Promise<number>): Promise<number> {
   const timings: number[] = []
-  // Duas passadas pela mesma sequência de consultas: a primeira aquece o cache (shared buffers e
-  // páginas do HNSW e do heap), a segunda é a medida. Uma instância de produção atende consultas o
-  // tempo todo; medir a primeira leitura de cada página mediria o disco, não a instrução.
   for (const measuring of [false, true]) {
     for (let run = 0; run < RUNS; run += 1) {
-      const date = `${String(2011 + (run % 14))}-05-01`
       const started = performance.now()
-      const rows = await inTransaction(async () => {
-        const result = await app.query(HYBRID_SEARCH_SQL, parameters(run + 10, date, families))
-        return result.rowCount
-      })
+      const rows = await query(run)
       const elapsed = performance.now() - started
       expect(rows).toBeGreaterThan(0)
       if (measuring) {
@@ -116,9 +129,41 @@ async function medianLatency(families: readonly string[]): Promise<number> {
   timings.sort((a, b) => a - b)
   const median = timings[Math.floor(timings.length / 2)] ?? Number.POSITIVE_INFINITY
   console.log(
-    `sql-perf [${families.join(',')}]: mediana ${median.toFixed(1)} ms, máximo ${String(timings.at(-1)?.toFixed(1))} ms`,
+    `sql-perf [${label}]: mediana ${median.toFixed(1)} ms, máximo ${String(timings.at(-1)?.toFixed(1))} ms`,
   )
   return median
+}
+
+function medianLatency(families: readonly string[]): Promise<number> {
+  return warmMedian(families.join(','), (run) =>
+    inTransaction(async () => {
+      const date = `${String(2011 + (run % 14))}-05-01`
+      const result = await app.query(HYBRID_SEARCH_SQL, parameters(run + 10, date, families))
+      return result.rowCount ?? 0
+    }),
+  )
+}
+
+/** KNN exato por força bruta sobre todos os vetores (o `+ 0` impede o HNSW): velocidade do runner. */
+const REFERENCE_SQL = `SELECT c.id FROM corpus.chunks c WHERE c.embedding IS NOT NULL
+  ORDER BY (c.embedding <=> $1::halfvec(1024)) + 0 LIMIT 10`
+
+let budget: number | undefined
+
+/** Teto da mediana neste runner: `150 ms × max(1, referência ÷ REFERENCE_BASELINE_MS)`. */
+async function latencyBudget(): Promise<number> {
+  if (budget === undefined) {
+    const reference = await warmMedian('referência: KNN exato sem índice', async (run) => {
+      const result = await app.query(REFERENCE_SQL, [toVectorLiteral(randomVector(run + 100))])
+      return result.rowCount ?? 0
+    })
+    const factor = Math.max(1, reference / REFERENCE_BASELINE_MS)
+    budget = LATENCY_BUDGET_MS * factor
+    console.log(
+      `sql-perf: fator da máquina ${factor.toFixed(2)} (referência ${reference.toFixed(1)} ms ÷ ${String(REFERENCE_BASELINE_MS)} ms), teto ${budget.toFixed(1)} ms`,
+    )
+  }
+  return budget
 }
 
 beforeAll(async () => {
@@ -194,11 +239,13 @@ describe('busca híbrida sobre 100k chunks', () => {
     expect(count).toBe(ARM_LIMIT)
   })
 
-  it(`roda abaixo de ${String(LATENCY_BUDGET_MS)} ms com filtro amplo (mediana aquecida)`, async () => {
-    expect(await medianLatency(ALL_FAMILIES)).toBeLessThan(LATENCY_BUDGET_MS)
+  it(`roda abaixo de ${String(LATENCY_BUDGET_MS)} ms com filtro amplo (mediana aquecida, runner típico)`, async () => {
+    const limit = await latencyBudget()
+    expect(await medianLatency(ALL_FAMILIES)).toBeLessThan(limit)
   })
 
-  it(`roda abaixo de ${String(LATENCY_BUDGET_MS)} ms com uma família (mediana aquecida)`, async () => {
-    expect(await medianLatency(['rcte'])).toBeLessThan(LATENCY_BUDGET_MS)
+  it(`roda abaixo de ${String(LATENCY_BUDGET_MS)} ms com uma família (mediana aquecida, runner típico)`, async () => {
+    const limit = await latencyBudget()
+    expect(await medianLatency(['rcte'])).toBeLessThan(limit)
   })
 })
