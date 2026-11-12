@@ -115,6 +115,96 @@ no_unanchored_out_jscpd() {
 check "sonar.exclusions sem **/out/**" no_unanchored_out_sonar
 check ".jscpd.json sem **/out/**" no_unanchored_out_jscpd
 
+# --- Todo workflow: actions fixadas por SHA e checkout sem credenciais persistidas ---------------
+actions_pinned_by_sha() {
+  local bad
+  bad="$(yq -r '.. | select(tag == "!!map" and has("uses")) | .uses' .github/workflows/*.yml .github/actions/*/action.yml |
+    grep -Ev '^(\./|---$)|@[0-9a-f]{40}$' || true)"
+  if [[ -n "$bad" ]]; then
+    echo "     uses sem SHA: ${bad//$'\n'/, }"
+    return 1
+  fi
+}
+checkout_without_credentials() {
+  local bad
+  bad="$(yq -r '.jobs[]?.steps[]? | select(.uses // "" | test("^actions/checkout@")) | .with."persist-credentials" | tostring' \
+    .github/workflows/*.yml | grep -Ev '^(false|---)$' || true)"
+  [[ -z "$bad" ]]
+}
+check "actions fixadas por SHA (exceto as locais)" actions_pinned_by_sha
+check "todo checkout com persist-credentials: false" checkout_without_credentials
+
+# --- F3: ingest.yml (plano: Workflows; Environments e segredos) ---------------------------------
+ingest=.github/workflows/ingest.yml
+watch=.github/workflows/source-watch.yml
+
+yq_true() {
+  yq -e "$1" "$2" >/dev/null 2>&1
+}
+# Texto de um job inteiro (env, steps, with), para procurar segredos e comandos.
+job_text() {
+  yq -o=json ".jobs.\"$2\"" "$1"
+}
+
+check "ingest: harden-runner em block, como primeiro step, em todo job" \
+  yq_true '[.jobs[] | select(has("steps")) | .steps[0].uses | test("^step-security/harden-runner@")] | all' "$ingest"
+check "ingest: egress-policy block em todo job com steps" \
+  yq_true '[.jobs[] | select(has("steps")) | .steps[0].with."egress-policy" == "block"] | all' "$ingest"
+check "ingest: allowlist do discover e do load inclui api.netlify.com" \
+  yq_true '[.jobs.discover, .jobs.load | .steps[0].with."allowed-endpoints" | test("(^|\\s)api\\.netlify\\.com:443")] | all' "$ingest"
+check "ingest: allowlist do load inclui Cloudflare e Neon" \
+  yq_true '.jobs.load.steps[0].with."allowed-endpoints" | (test("api\\.cloudflare\\.com:443") and test("neon\\.tech:5432"))' "$ingest"
+check "ingest: discover, load e corpus-eval no environment staging" \
+  yq_true '[.jobs.discover, .jobs.load, .jobs."corpus-eval" | .environment == "staging"] | all' "$ingest"
+check "ingest: extract e docling-models sem environment" \
+  yq_true '[.jobs.extract, .jobs."docling-models" | has("environment") | not] | all' "$ingest"
+no_secrets_in_extract() {
+  ! grep -Eq 'secrets\.' <<<"$(job_text "$ingest" extract)$(job_text "$ingest" docling-models)"
+}
+check "ingest: extract e docling-models não leem segredos" no_secrets_in_extract
+check "ingest: extract em ubuntu-24.04 com timeout de 330 min" \
+  yq_true '.jobs.extract."runs-on" == "ubuntu-24.04" and .jobs.extract."timeout-minutes" == 330' "$ingest"
+check "ingest: cache dos modelos com a chave do uv.lock" \
+  bash -c "grep -Fq \"key: docling-\\\${{ hashFiles('tools/ingest/uv.lock') }}\" '$ingest'"
+check "ingest: modelos baixados com docling-tools no diretório do cache" \
+  bash -c "grep -Fq 'docling-tools models download --output-dir .cache/docling-models' '$ingest'"
+check "ingest: load com --migrate só no staging" \
+  bash -c "grep -Eq 'ingest load --target staging .*--migrate' '$ingest'"
+check "ingest: código 75 do load não é falha" \
+  bash -c "yq -r '.jobs.load.steps[].run // \"\"' '$ingest' | grep -Eq '^ *75\\)'"
+check "ingest: target de dispatch só aceita staging" \
+  yq_true '(.on.workflow_dispatch.inputs.target.options | length) == 1 and .on.workflow_dispatch.inputs.target.options[0] == "staging"' "$ingest"
+check "ingest: PR do lock com o token da App teko-release-bot" \
+  yq_true '.jobs."lock-pr".steps[] | select(.uses // "" | test("^actions/create-github-app-token@")) | .with."client-id" == "${{ vars.RELEASE_APP_CLIENT_ID }}"' "$ingest"
+check "ingest: commit do lock com Signed-off-by e branch chore/corpus-lock-<n>" \
+  bash -c "grep -Fq 'Signed-off-by: ' '$ingest' && grep -Fq 'branch=\"chore/corpus-lock-' '$ingest'"
+check "ingest: falha cedo sem NETLIFY_SITE_ID ou NEON_STAGING_PROJECT_ID" \
+  bash -c "yq -r '.jobs.discover.steps[].run // \"\"' '$ingest' | grep -q NETLIFY_SITE_ID && yq -r '.jobs.discover.steps[].run // \"\"' '$ingest' | grep -q NEON_STAGING_PROJECT_ID"
+
+# --- F3: source-watch.yml -------------------------------------------------------------------------
+check "source-watch: cron diário 0 9 * * *" \
+  yq_true '.on.schedule[0].cron == "0 9 * * *"' "$watch"
+check "source-watch: detect no staging e mark-coverage no corpus-watch" \
+  yq_true '.jobs.detect.environment == "staging" and .jobs."mark-coverage".environment == "corpus-watch"' "$watch"
+check "source-watch: mark-coverage depende do detect" \
+  yq_true '.jobs."mark-coverage".needs == "detect"' "$watch"
+mark_coverage_without_netlify() {
+  ! grep -q 'NETLIFY' <<<"$(job_text "$watch" mark-coverage)"
+}
+check "source-watch: mark-coverage nunca vê o PAT da Netlify" mark_coverage_without_netlify
+detect_without_database() {
+  ! grep -Eq 'NEON_[A-Z_]*URL' <<<"$(job_text "$watch" detect)"
+}
+check "source-watch: detect não toca o banco" detect_without_database
+mark_coverage_only_watch_secrets() {
+  local used
+  used="$(grep -Eo 'secrets[.][A-Z_]+' <<<"$(job_text "$watch" mark-coverage)" | sort -u)"
+  [[ "$used" == $'secrets.NEON_PROD_WATCH_URL\nsecrets.NEON_STAGING_WATCH_URL' ]]
+}
+check "source-watch: mark-coverage só com os segredos do teko_watch" mark_coverage_only_watch_secrets
+check "source-watch: dispara o ingest.yml no staging sem secrets: inherit" \
+  yq_true '.jobs.ingest.uses == "./.github/workflows/ingest.yml" and .jobs.ingest.with.target == "staging" and (.jobs.ingest.secrets | type) == "!!map"' "$watch"
+
 # --- Semgrep: as fixtures rodam no CI (GHA-4) ---------------------------------------------------
 check "security.yml roda semgrep test .semgrep/" \
   bash -c "yq -r '.jobs.semgrep.steps[].run // \"\"' .github/workflows/security.yml | grep -q 'semgrep test .semgrep/'"

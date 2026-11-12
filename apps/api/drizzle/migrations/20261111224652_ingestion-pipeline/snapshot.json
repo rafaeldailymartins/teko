@@ -1,0 +1,321 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "3bc6c2f9-2baf-4625-bd03-7986455de6cf",
+  "prevIds": [
+    "40ff076c-8252-4978-a9f8-d3a79db0f307"
+  ],
+  "footprints": [
+    {
+      "statementType": "add_column",
+      "statementTarget": [
+        "column",
+        "corpus",
+        "ingestion_runs",
+        "neurons"
+      ],
+      "writes": [
+        "s|col|corpus.ingestion_runs.neurons",
+        "n|col|corpus.ingestion_runs.neurons",
+        "e|col|corpus.ingestion_runs.neurons"
+      ],
+      "reads": [
+        "n|tbl|corpus.ingestion_runs",
+        "n|sch|corpus"
+      ]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": [
+        "column",
+        "corpus",
+        "review_queue",
+        "provision_version_id"
+      ],
+      "writes": [
+        "s|col|corpus.review_queue.provision_version_id",
+        "n|col|corpus.review_queue.provision_version_id",
+        "e|col|corpus.review_queue.provision_version_id"
+      ],
+      "reads": [
+        "n|tbl|corpus.review_queue",
+        "n|sch|corpus"
+      ]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": [
+        "column",
+        "corpus",
+        "review_queue",
+        "document_version_id"
+      ],
+      "writes": [
+        "s|col|corpus.review_queue.document_version_id",
+        "n|col|corpus.review_queue.document_version_id",
+        "e|col|corpus.review_queue.document_version_id"
+      ],
+      "reads": [
+        "n|tbl|corpus.review_queue",
+        "n|sch|corpus"
+      ]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": [
+        "column",
+        "corpus",
+        "review_queue",
+        "stable_key"
+      ],
+      "writes": [
+        "s|col|corpus.review_queue.stable_key",
+        "n|col|corpus.review_queue.stable_key",
+        "e|col|corpus.review_queue.stable_key"
+      ],
+      "reads": [
+        "n|tbl|corpus.review_queue",
+        "n|sch|corpus"
+      ]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": [
+        "column",
+        "corpus",
+        "review_queue",
+        "note_hash"
+      ],
+      "writes": [
+        "s|col|corpus.review_queue.note_hash",
+        "n|col|corpus.review_queue.note_hash",
+        "e|col|corpus.review_queue.note_hash"
+      ],
+      "reads": [
+        "n|tbl|corpus.review_queue",
+        "n|sch|corpus"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "corpus",
+        "review_queue",
+        "review_queue_open_note"
+      ],
+      "writes": [
+        "s|idx|corpus.review_queue_open_note",
+        "n|idx|corpus.review_queue_open_note",
+        "e|idx|corpus.review_queue_open_note",
+        "n|rel|corpus.review_queue_open_note"
+      ],
+      "reads": [
+        "n|tbl|corpus.review_queue",
+        "n|sch|corpus",
+        "n|col|corpus.review_queue.stable_key",
+        "n|col|corpus.review_queue.note_hash"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": [
+        "table",
+        "corpus",
+        "review_queue"
+      ],
+      "writes": [
+        "s|fk|corpus.review_queue.review_queue_provision_version_id_provision_versions_id_fkey",
+        "n|fk|corpus.review_queue.review_queue_provision_version_id_provision_versions_id_fkey",
+        "e|fk|corpus.review_queue.review_queue_provision_version_id_provision_versions_id_fkey",
+        "n|con|corpus.review_queue.review_queue_provision_version_id_provision_versions_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|corpus.review_queue",
+        "n|sch|corpus",
+        "n|tbl|corpus.provision_versions",
+        "n|sch|corpus",
+        "n|col|corpus.review_queue.provision_version_id",
+        "n|col|corpus.provision_versions.id",
+        "e|uniqueness|corpus.provision_versions.id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": [
+        "table",
+        "corpus",
+        "review_queue"
+      ],
+      "writes": [
+        "s|fk|corpus.review_queue.review_queue_document_version_id_document_versions_id_fkey",
+        "n|fk|corpus.review_queue.review_queue_document_version_id_document_versions_id_fkey",
+        "e|fk|corpus.review_queue.review_queue_document_version_id_document_versions_id_fkey",
+        "n|con|corpus.review_queue.review_queue_document_version_id_document_versions_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|corpus.review_queue",
+        "n|sch|corpus",
+        "n|tbl|corpus.document_versions",
+        "n|sch|corpus",
+        "n|col|corpus.review_queue.document_version_id",
+        "n|col|corpus.document_versions.id",
+        "e|uniqueness|corpus.document_versions.id"
+      ]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "ingestion_runs",
+        "name": "neurons",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "0",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "review_queue",
+        "name": "provision_version_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "review_queue",
+        "name": "document_version_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "review_queue",
+        "name": "stable_key",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "review_queue",
+        "name": "note_hash",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "review_queue",
+        "name": "review_queue_open_note",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "stable_key",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          },
+          {
+            "value": "note_hash",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": true,
+        "where": "\"status\" = 'open'",
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "review_queue",
+        "name": "review_queue_provision_version_id_provision_versions_id_fkey",
+        "nameExplicit": false,
+        "columns": [
+          "provision_version_id"
+        ],
+        "schemaTo": "corpus",
+        "tableTo": "provision_versions",
+        "columnsTo": [
+          "id"
+        ],
+        "onUpdate": "NO ACTION",
+        "onDelete": "NO ACTION",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "review_queue",
+        "name": "review_queue_document_version_id_document_versions_id_fkey",
+        "nameExplicit": false,
+        "columns": [
+          "document_version_id"
+        ],
+        "schemaTo": "corpus",
+        "tableTo": "document_versions",
+        "columnsTo": [
+          "id"
+        ],
+        "onUpdate": "NO ACTION",
+        "onDelete": "NO ACTION",
+        "entityType": "fks"
+      }
+    }
+  ]
+}

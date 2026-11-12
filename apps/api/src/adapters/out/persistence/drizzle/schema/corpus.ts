@@ -16,6 +16,7 @@ import {
   text,
   timestamp,
   unique,
+  uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core'
 import { datemultirange, daterange, tsvector } from './types.ts'
@@ -46,6 +47,8 @@ export const ingestionRuns = corpus.table(
     docs: integer().notNull().default(0),
     chunksNew: integer().notNull().default(0),
     neuronsEst: integer().notNull().default(0),
+    /** Custo real dos embeddings do run (soma do `onUsage`), contado contra o `EMBED_NEURON_BUDGET`. */
+    neurons: integer().notNull().default(0),
     cuSeconds: numeric({ precision: 12, scale: 3 }),
     dbBytes: bigint({ mode: 'number' }),
     report: jsonb(),
@@ -286,6 +289,10 @@ export const coverage = corpus.table(
   (t) => [check('coverage_jurisdiction', sql`${t.jurisdiction} IN ('BR', 'GO')`)],
 )
 
+/**
+ * Anomalias de vigência à espera de revisão manual. A chave `(stable_key, note_hash)` é a mesma dos
+ * `corpus/overrides/*.yaml`: um item aberto por anomalia, mesmo que a fonte seja reingerida.
+ */
 export const reviewQueue = corpus.table(
   'review_queue',
   {
@@ -297,6 +304,18 @@ export const reviewQueue = corpus.table(
     proposed: daterange(),
     status: text().notNull().default('open'),
     createdAt: createdAt(),
+    /** Redação `pending` que gerou o item. */
+    provisionVersionId: uuid().references(() => provisionVersions.id),
+    /** Versão de documento em que a anomalia apareceu pela primeira vez. */
+    documentVersionId: uuid().references(() => documentVersions.id),
+    stableKey: text(),
+    /** Hash da nota que gerou a dúvida (`reviewNoteHash`), chave dos overrides. */
+    noteHash: text(),
   },
-  (t) => [check('review_queue_status', sql`${t.status} IN ('open', 'resolved', 'dismissed')`)],
+  (t) => [
+    check('review_queue_status', sql`${t.status} IN ('open', 'resolved', 'dismissed')`),
+    uniqueIndex('review_queue_open_note')
+      .on(t.stableKey, t.noteHash)
+      .where(sql`${t.status} = 'open'`),
+  ],
 )

@@ -13,6 +13,7 @@ from teko_ingest.convert import DoclingApi
 
 class FakeInputFormat(StrEnum):
     PDF = "pdf"
+    XLSX = "xlsx"
 
 
 class FakeConversionStatus(StrEnum):
@@ -59,12 +60,20 @@ class FakeResult:
 @dataclass
 class FakeConverter:
     format_options: dict[Any, Any]
+    allowed_formats: list[Any] | None = None
     status: FakeConversionStatus = FakeConversionStatus.SUCCESS
     document: FakeDocument = field(default_factory=FakeDocument)
     converted: list[Path] = field(default_factory=lambda: [])  # noqa: PIE807
+    page_ranges: list[tuple[int, int] | None] = field(default_factory=lambda: [])  # noqa: PIE807
 
-    def convert(self, source: Path) -> FakeResult:
+    def convert(self, source: Path, *, page_range: tuple[int, int] | None = None) -> FakeResult:
+        # Como o `validate_call(strict=True)` do Docling: page_range só como tupla de 2 inteiros.
+        if page_range is not None:
+            assert isinstance(page_range, tuple)
+            assert len(page_range) == 2
+            assert all(type(item) is int for item in page_range)
         self.converted.append(source)
+        self.page_ranges.append(page_range)
         return FakeResult(status=self.status, document=self.document)
 
 
@@ -73,8 +82,17 @@ class ConverterFactory:
     status: FakeConversionStatus = FakeConversionStatus.SUCCESS
     instances: list[FakeConverter] = field(default_factory=lambda: [])  # noqa: PIE807
 
-    def __call__(self, *, format_options: dict[Any, Any]) -> FakeConverter:
-        converter = FakeConverter(format_options=format_options, status=self.status)
+    def __call__(
+        self,
+        *,
+        format_options: dict[Any, Any],
+        allowed_formats: list[Any] | None = None,
+    ) -> FakeConverter:
+        converter = FakeConverter(
+            format_options=format_options,
+            allowed_formats=allowed_formats,
+            status=self.status,
+        )
         self.instances.append(converter)
         return converter
 
@@ -99,6 +117,7 @@ def fake_api(factory: ConverterFactory, version: str = "2.146.0") -> DoclingApi:
         table_former_mode=FakeTableFormerMode,
         document_converter=factory,
         pdf_format_option=fake_options,
+        excel_format_option=fake_options,
         image_ref_mode=FakeImageRefMode,
     )
 
@@ -114,7 +133,11 @@ def fake_docling_modules(factory: ConverterFactory) -> dict[str, types.ModuleTyp
         TableFormerMode=FakeTableFormerMode,
     )
     document_converter = types.ModuleType("docling.document_converter")
-    document_converter.__dict__.update(DocumentConverter=factory, PdfFormatOption=fake_options)
+    document_converter.__dict__.update(
+        DocumentConverter=factory,
+        PdfFormatOption=fake_options,
+        ExcelFormatOption=fake_options,
+    )
     doc_types = types.ModuleType("docling_core.types.doc")
     doc_types.__dict__.update(ImageRefMode=FakeImageRefMode)
     return {

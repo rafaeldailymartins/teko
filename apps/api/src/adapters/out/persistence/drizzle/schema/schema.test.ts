@@ -56,7 +56,9 @@ describe('schema canônico', () => {
     expect(references).toContain('chunks.provision_version_id -> provision_versions')
     expect(references).toContain('provisions.parent_id -> provisions')
     expect(references).toContain('feedback.question_id -> questions')
-    expect(references).toHaveLength(14)
+    expect(references).toContain('review_queue.provision_version_id -> provision_versions')
+    expect(references).toContain('review_queue.document_version_id -> document_versions')
+    expect(references).toHaveLength(16)
   })
 
   it('índices HNSW, GIN e GiST da busca e o GIN trigram de stable_key', () => {

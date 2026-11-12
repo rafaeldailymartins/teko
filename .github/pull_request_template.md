@@ -1,7 +1,8 @@
 <!--
 O título do PR vira a mensagem do squash: use Conventional Commits, por exemplo
-`feat(api): resolve vigência por data de referência`. Escopos: web, api, shared, ingest,
-retrieval, eval, obs, i18n, auth, db, ci, deps, release, specs, docs, infra.
+`feat(api): resolve vigência por data de referência`. Escopos (commitlint.config.mjs): web, api,
+shared, ingest, retrieval, eval, obs, i18n, auth, db, ci, deps, deps-dev (Dependabot), release,
+specs, docs, infra.
 -->
 
 ## O que muda

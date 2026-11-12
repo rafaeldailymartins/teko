@@ -38,6 +38,7 @@
     "@fastify/sensible": "catalog:",
     "@fastify/swagger": "catalog:",
     "@fastify/under-pressure": "catalog:",
+    "@netlify/blobs": "catalog:",
     "@scalar/fastify-api-reference": "catalog:",
     "@teko/shared": "workspace:*",
     "@vercel/functions": "catalog:",
@@ -45,8 +46,10 @@
     "drizzle-orm": "catalog:",
     "fastify": "catalog:",
     "fastify-type-provider-zod": "catalog:",
+    "htmlparser2": "catalog:",
     "pg": "catalog:",
     "pino": "catalog:",
+    "yaml": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {
@@ -67,7 +70,6 @@
     "tsdown": "catalog:",
     "type-coverage": "catalog:",
     "typescript": "catalog:",
-    "vitest": "catalog:",
-    "yaml": "catalog:"
+    "vitest": "catalog:"
   }
 }

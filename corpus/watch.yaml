@@ -1,0 +1,93 @@
+# Páginas monitoradas pelo `sources-watch` (job `detect` do .github/workflows/source-watch.yml).
+# Loader e schema: apps/api/src/adapters/in/cli/sources-watch/watch-config.ts.
+#
+# Campos comuns: `id` (chave do estado em corpus-manifests/watch-state.json), `family`, `url`
+# (https; `{yyyy}` = ano do run em America/Sao_Paulo), `mode` (`live`: mudança dispara o
+# ingest.yml no staging; `pinned`: só registra e marca a lacuna), `encoding` (`utf-8` padrão ou
+# `windows-1252`) e `kind`:
+#   - consolidated: cabeçalho "CONSOLIDADO ATÉ O DECRETO Nº …" / "ATUALIZADO ATÉ A LEI Nº …";
+#   - act-list: lista de atos (`act`: decreto|lei), com `include`/`exclude` (regex na ementa);
+#     ato novo fica pendente até o consolidado da família alcançar o número dele;
+#   - document-index: links de documentos que casam com `documents[].pattern` (regex na URL),
+#     com `versionPattern` (regex no nome do arquivo; os grupos viram o rótulo, unidos por `.`);
+#   - tables-ws: `versao`/`hash` das tabelas `tableIds` no metadadosXml do WS de Tabelas Externas.
+#
+# Todo host daqui precisa estar na allowlist do SafeFetcher e no harden-runner do source-watch.yml.
+version: 1
+pages:
+  # --- Goiás: legislação consolidada (appasp.economia.go.gov.br, cp1252) ----------------------
+  - id: rcte-consolidado
+    family: rcte
+    kind: consolidated
+    url: https://appasp.economia.go.gov.br/Legislacao/arquivos/Rcte/RCTE.htm
+    encoding: windows-1252
+
+  - id: rcte-decretos-atualizadores
+    family: rcte
+    kind: act-list
+    act: decreto
+    url: https://appasp.economia.go.gov.br/Legislacao/arquivos/Rcte/Decretos_Atualizadores.htm
+    encoding: windows-1252
+
+  # Sumário anual dos decretos ("Decretos de <ano>", com data e DOE de cada um): pega o decreto
+  # publicado antes de entrar no consolidado. Só contam os que alteram o RCTE (ementa que começa
+  # por "Altera", "Acrescenta", "Revoga"... e cita o Decreto 4.852); os que só mexem nos Anexos
+  # VIII e IX são da onda C3 (família rcte-anexos). Um ato que só cita o RCTE sem alterá-lo (ex.:
+  # "Qualifica como prioritária a obra...") ficaria pendente para sempre, porque o consolidado
+  # nunca o alcançaria: por isso o filtro exige o verbo de alteração.
+  - id: rcte-decretos-do-ano
+    family: rcte
+    kind: act-list
+    act: decreto
+    url: https://appasp.economia.go.gov.br/Legislacao/arquivos/INDICES/sumarios/Decretos_{yyyy}.htm
+    encoding: windows-1252
+    include: '^\s*(Altera|Acrescenta|Revoga|Introduz|D[áa]\s+nova\s+reda[çc][ãa]o)\b.{0,400}?Decreto\s+n\S*\s*4\.852'
+    exclude: '^\s*Altera\s+o\s+Anexo\s+(VIII|IX)\s+do\s+Decreto'
+
+  - id: cte-consolidado
+    family: cte
+    kind: consolidated
+    url: https://appasp.economia.go.gov.br/Legislacao/arquivos/Cte/CTE.htm
+    encoding: windows-1252
+
+  - id: cte-leis-atualizadoras
+    family: cte
+    kind: act-list
+    act: lei
+    url: https://appasp.economia.go.gov.br/Legislacao/arquivos/Cte/leis_atualizadoras.htm
+    encoding: windows-1252
+
+  # --- SPED (gov.br; os links estão no JSON embutido da página) -------------------------------
+  - id: sped-efd-icms-ipi-documentos
+    family: efd-icms-ipi
+    kind: document-index
+    url: https://www.gov.br/sped/pt-br/assuntos/escrituracoes-digitais/efd-icms-ipi/manuais-e-documentos-tecnicos
+    documents:
+      - pattern: "/efd-icms-ipi/manuais-e-documentos-tecnicos/guia-pratico[^/]*$"
+        versionPattern: '(\d+)[-.](\d+)[-.](\d+)'
+      - pattern: "/efd-icms-ipi/manuais-e-documentos-tecnicos/[^/]*nota-tecnica[^/]*$"
+        versionPattern: '(\d{4})[-.](\d{3})'
+
+  - id: sped-efd-reinf-leiautes
+    family: efd-reinf
+    kind: document-index
+    url: https://www.gov.br/sped/pt-br/assuntos/escrituracoes-digitais/efd-reinf/documento-tecnicos/versao-atual/leiautes
+    documents:
+      - pattern: '/efd-reinf/documento-tecnicos/[^?#]*\.(zip|pdf|xlsx)$'
+        versionPattern: '(\d+)[-._](\d+)[-._](\d+)'
+
+  # --- Guia Prático da EFD-GO (WordPress da Economia de Goiás) ----------------------------------
+  - id: efd-go-guia-pratico
+    family: efd-go
+    kind: document-index
+    url: https://goias.gov.br/economia/guia-pratico-efd-goias/
+    documents:
+      - pattern: '/economia/wp-content/uploads/[^?#]*guia[^/]*\.pdf$'
+        versionPattern: '(\d+)[._](\d+)'
+
+  # --- WS de Tabelas Externas do SPED: tabelas de Goiás 5.1.1, 5.2, 5.3 e 5.5 -------------------
+  - id: sped-tabelas-go
+    family: tabelas-go
+    kind: tables-ws
+    url: https://www.sped.fazenda.gov.br/spedtabelas/WsConsulta/WsConsulta.asmx/consultarVersoesTabelasExternas?codigoSistema=SpedFiscal
+    tableIds: [37, 38, 39, 40]

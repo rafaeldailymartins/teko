@@ -1,0 +1,8 @@
+versão=47 COD_AJ, DESC_AJ, DT_INI, DT_FIM
+GO00000038|Crédito de ICMS ao destinatário de mercadoria, cujo recolhimento foi efetuado por armazém geral situado em UF diversa da localização do depositante, Oper. não Incentivadas PROGOIÁS/ FOMENTAR/ PRODUZIR – art. 6º, § 5º do Anexo XII do RCTE.|01102020|
+GO00000039|Crédito de ICMS ao destinatário de mercadoria, cujo recolhimento foi efetuado por armazém geral situado em UF diversa da localização do depositante, Oper. Incentivadas PROGOIÁS/ FOMENTAR/ PRODUZIR – art. 6º, § 5º do Anexo XII do RCTE.|01102020|
+GO00009036|Crédito de ICMS na aquisição de optantes do Simples Nacional, relativa à operação com venda fora do estabelecimento, por meio de nota fiscal modelo 1, Oper. Não Incentivadas PROGOIÁS/FOMENTAR/PRODUZIR – art. 23 da LC 123/2006 e Prot 10/07, § 2º, II.|01102020|
+GO00009036|Crédito de ICMS na aquisição de optantes do Simples Nacional, relativa à operação com venda fora do estabelecimento, por meio de nota fiscal modelo 1 – art. 23 da LC 123/2006 e Protocolo 10/07, § 2º, II|01012016|30092020
+GO00009037|Crédito de ICMS na aquisição de optantes do Simples Nacional, relativa à operação com venda fora do estabelecimento, por meio de nota fiscal modelo 1, Oper.  Incentivadas PROGOIÁS/FOMENTAR/PRODUZIR – art. 23 da LC 123/2006 e Prot 10/07, § 2º, II.|01102020|
+GO10000034|Recebido em transf. o Cr. out. para a empresa industrial produtora de grupos geradores de energia elét., benef. do PRODUZIR, equiv. ao valor definido no art. 11, LX, c. -RCTE - Art. 11, LX, "c" e § 22-A, Anexo IX|01122013|01012022
+GO10000037|Crédito do ICMS Retido a maior – Diferença entre Bases de Cálculo - ART. 45, XI DO ANEXO VIII DO RCTE.|01042023|

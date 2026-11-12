@@ -3,7 +3,11 @@
 Subcomandos:
 
 - ``manifest``: calcula o sha256 de um arquivo e imprime o manifesto JSON, sem converter;
-- ``convert``: converte com o Docling e grava ``<out>/<sha256>/{docling.json, manifest.json}``.
+- ``convert``: converte com o Docling (PDF ou XLSX) e grava
+  ``<out>/<sha256>[-p<início>-<fim>]/{docling.json, manifest.json}``.
+
+``--page-range <início>-<fim>`` (páginas com base 1, inclusivas) converte só uma parte de um
+documento longo; a parte (``p<início>-<fim>``) entra no manifesto e no nome do diretório da saída.
 
 Todo caminho (arquivo de entrada, ``--out``, ``--artifacts-path``) precisa ficar dentro da raiz
 ``--root`` (padrão: o diretório atual), verificada após resolver ``..`` e links simbólicos; os
@@ -26,10 +30,17 @@ from teko_ingest.convert import (
     ConversionFailedError,
     ConvertOptions,
     DoclingNotInstalledError,
+    UnsupportedFormatError,
     convert_document,
     installed_docling_version,
 )
-from teko_ingest.manifest import ExtractionManifest, ManifestError, sha256_file
+from teko_ingest.manifest import (
+    ExtractionManifest,
+    ManifestError,
+    PageRange,
+    output_dir_name,
+    sha256_file,
+)
 from teko_ingest.paths import UnsafePathError
 
 EXIT_OK: Final = 0
@@ -48,6 +59,13 @@ def _positive_float(value: str) -> float:
         msg = f"deve ser maior que zero: {value}"
         raise argparse.ArgumentTypeError(msg)
     return number
+
+
+def _page_range(value: str) -> PageRange:
+    try:
+        return PageRange.parse(value)
+    except ManifestError as exc:
+        raise argparse.ArgumentTypeError(str(exc)) from exc
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -73,6 +91,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
     common.add_argument("--source-id", required=True, help="id da fonte em corpus/sources.yaml")
     common.add_argument("--url", required=True, help="URL http(s) de origem do arquivo")
+    common.add_argument(
+        "--page-range",
+        type=_page_range,
+        help="converte só as páginas <início>-<fim> (base 1, inclusivas); a parte entra no "
+        "manifesto e no nome da saída (<sha256>-p<início>-<fim>)",
+    )
 
     manifest = commands.add_parser(
         "manifest",
@@ -85,13 +109,14 @@ def build_parser() -> argparse.ArgumentParser:
     )
     manifest.add_argument(
         "--output-path",
-        help=f"caminho da saída relativo a out/ (padrão: <sha256>/{DOCLING_JSON})",
+        help="caminho da saída relativo a out/ "
+        f"(padrão: <sha256>[-p<início>-<fim>]/{DOCLING_JSON})",
     )
 
     convert = commands.add_parser(
         "convert",
         parents=[common],
-        help="converte com o Docling (requer o extra 'docling')",
+        help="converte um PDF ou XLSX com o Docling (requer o extra 'docling')",
     )
     convert.add_argument("--out", type=Path, default=Path("out"), help="diretório de saída")
     convert.add_argument(
@@ -119,7 +144,8 @@ def _run_manifest(args: argparse.Namespace) -> int:
             "com `uv sync --extra docling`\n",
         )
         return EXIT_DOCLING_MISSING
-    output_path: str = args.output_path or f"{digest}/{DOCLING_JSON}"
+    page_range: PageRange | None = args.page_range
+    output_path: str = args.output_path or f"{output_dir_name(digest, page_range)}/{DOCLING_JSON}"
     manifest = ExtractionManifest(
         source_id=args.source_id,
         url=args.url,
@@ -127,6 +153,7 @@ def _run_manifest(args: argparse.Namespace) -> int:
         docling_version=docling_version,
         created_at=datetime.now(UTC),
         output_path=output_path,
+        page_range=page_range,
     )
     sys.stdout.write(manifest.to_json())
     return EXIT_OK
@@ -146,6 +173,7 @@ def _run_convert(args: argparse.Namespace) -> int:
             url=args.url,
             out_root=args.out,
             options=options,
+            page_range=args.page_range,
         )
     except ConversionFailedError as exc:
         sys.stderr.write(f"erro: {exc}\n")
@@ -175,6 +203,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         return EXIT_INVALID_INPUT
     except ManifestError as exc:
         sys.stderr.write(f"erro: manifesto inválido: {exc}\n")
+        return EXIT_INVALID_INPUT
+    except UnsupportedFormatError as exc:
+        sys.stderr.write(f"erro: {exc}\n")
         return EXIT_INVALID_INPUT
     except DoclingNotInstalledError as exc:
         sys.stderr.write(f"erro: {exc}\n")

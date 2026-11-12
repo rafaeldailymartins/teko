@@ -7,11 +7,14 @@ partir da F8) pelo red team. O `seed-fixtures` grava esta pasta no Postgres pelo
 
 - `documents/<slug>.json`: um documento, suas versões (snapshots ou leiautes) e os dispositivos,
   cada um com as redações e o intervalo de vigência `[from, to)` (`to: null` = vigente);
-- `coverage.json`: cobertura por família, com `verifiedAt` no relógio fixo dos testes (2026-11-10).
+- `coverage.json`: cobertura por família, com `verifiedAt` no relógio fixo dos testes (2026-11-10);
+- `questions.json`: perguntas extras dos testes de integração e do e2e, além das do golden.
 
-Os embeddings (`embeddings.json.gz`) são gerados à parte, por `pnpm fixtures:embed`, e precisam
-ser regenerados sempre que um texto desta pasta ou uma pergunta de `evals/datasets/golden.yaml`
-mudar.
+Os embeddings (`embeddings.json.gz`, vetores BGE-M3 reais indexados pelo `content_hash`) são
+gerados à parte, por `pnpm --filter @teko/api fixtures:embed`, com `CF_ACCOUNT_ID` e `CF_AI_TOKEN`
+(Workers AI) no ambiente ou no `apps/api/.env` (os mesmos valores do `tools/ingest/.env`). Regenere sempre que um texto desta pasta,
+uma pergunta de `questions.json` ou de `evals/datasets/golden.yaml`, os títulos ou o chunker
+mudarem; o script só chama a API para os hashes que faltam.
 
 ## Conteúdo
 
@@ -25,6 +28,7 @@ mudar.
 | `efd-go`       | 1          | 14           | 14                 | desde 2025-10-02 |
 | **Total**      | **9**      | **1.349**    | **1.569**          |                  |
 
+No seed, as 1.569 redações viram 1.574 chunks (as mais longas são divididas pelo chunker).
 Todas as coberturas têm `verifiedAt: 2026-11-10` e nenhuma lacuna. `rcte-anexos` (Anexos VIII e
 IX do RCTE, onda C3) não tem documento nem cobertura: perguntas sobre os Anexos são recusadas.
 Não há chunk "envenenado" de red team (fica para a F8).
@@ -158,5 +162,5 @@ nesses tópicos são só de espaçamento da extração, então cada tópico é u
 
 50 casos: EFD ICMS/IPI 15, EFD-Reinf 8, RCTE/CTE 12, EFD-GO e tabelas 5, recusas 6, ambíguos 4.
 Todos os `provisions`, `validity`, `facts` e `source_quote` dos casos respondidos saem do texto
-desta fixture. `candidates` dos ambíguos estão em ordem cronológica. Nenhum caso foi revisado
-pelo mantenedor (`reviewed_at: null`).
+desta fixture. `candidates` dos ambíguos estão em ordem cronológica. Curadoria assistida, com
+todos os casos revisados pelo mantenedor em 2026-11-11 (`reviewed_at: "2026-11-11"`).

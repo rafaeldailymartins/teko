@@ -23,12 +23,13 @@ from teko_ingest.convert import (
     ConversionFailedError,
     ConvertOptions,
     DoclingNotInstalledError,
+    UnsupportedFormatError,
     build_converter,
     convert_document,
     installed_docling_version,
     load_docling,
 )
-from teko_ingest.manifest import ExtractionManifest, ManifestError
+from teko_ingest.manifest import ExtractionManifest, ManifestError, PageRange
 from teko_ingest.paths import UnsafePathError
 
 URL = "https://www.gov.br/sped/guia.pdf"
@@ -142,6 +143,9 @@ def test_pipeline_follows_plan_defaults() -> None:
     factory = ConverterFactory()
     converter = build_converter(fake_api(factory), ConvertOptions())
 
+    assert converter.allowed_formats == [FakeInputFormat.PDF, FakeInputFormat.XLSX]
+    assert list(converter.format_options) == [FakeInputFormat.PDF, FakeInputFormat.XLSX]
+    assert converter.format_options[FakeInputFormat.XLSX] == FakeOptions({})
     format_option = converter.format_options[FakeInputFormat.PDF]
     assert isinstance(format_option, FakeOptions)
     pipeline = format_option.kwargs["pipeline_options"]
@@ -255,3 +259,86 @@ def test_installed_docling_version(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_conversion_failed_error_message(pdf: Path) -> None:
     error = ConversionFailedError(pdf, "failure")
     assert str(error) == f"conversão de '{pdf}' terminou com status 'failure'"
+
+
+def test_page_range_converts_a_part_into_its_own_directory(pdf: Path, tmp_path: Path) -> None:
+    factory = ConverterFactory()
+    out_root = tmp_path / "out"
+
+    manifest = convert_document(
+        pdf,
+        root=tmp_path,
+        source_id="efd-icms-ipi/guia-pratico/3.2.4",
+        url=URL,
+        out_root=out_root,
+        page_range=PageRange(121, 240),
+        api=fake_api(factory),
+        now=lambda: FIXED_NOW,
+    )
+
+    digest = hashlib.sha256(pdf.read_bytes()).hexdigest()
+    assert manifest.output_path == f"{digest}-p121-240/docling.json"
+    assert manifest.part == "p121-240"
+    assert manifest.page_range == PageRange(121, 240)
+    stored = ExtractionManifest.from_json(
+        (out_root / f"{digest}-p121-240" / "manifest.json").read_text(encoding="utf-8"),
+    )
+    assert stored == manifest
+    [converter] = factory.instances
+    assert converter.page_ranges == [(121, 240)]
+
+
+def test_whole_document_does_not_pass_page_range(pdf: Path, tmp_path: Path) -> None:
+    factory = ConverterFactory()
+    convert_document(
+        pdf,
+        root=tmp_path,
+        source_id="x",
+        url=URL,
+        out_root=tmp_path / "o",
+        api=fake_api(factory),
+    )
+    [converter] = factory.instances
+    assert converter.page_ranges == [None]
+
+
+@pytest.mark.parametrize("name", ["tabela.xlsx", "TABELA.XLSX"])
+def test_xlsx_is_converted(tmp_path: Path, name: str) -> None:
+    source = tmp_path / name
+    source.write_bytes(b"PK planilha")
+    factory = ConverterFactory()
+
+    manifest = convert_document(
+        source,
+        root=tmp_path,
+        source_id="efd-reinf/tabelas",
+        url="https://www.gov.br/sped/tabelas.xlsx",
+        out_root=tmp_path / "out",
+        api=fake_api(factory),
+    )
+
+    assert (tmp_path / "out" / manifest.output_path).is_file()
+    [converter] = factory.instances
+    assert converter.converted == [source.resolve()]
+
+
+@pytest.mark.parametrize("name", ["leiaute.docx", "pagina.htm", "sem-extensao"])
+def test_unsupported_format_fails_before_converting(tmp_path: Path, name: str) -> None:
+    source = tmp_path / name
+    source.write_bytes(b"conteudo")
+    factory = ConverterFactory()
+
+    with pytest.raises(UnsupportedFormatError, match="formato não suportado") as excinfo:
+        convert_document(
+            source,
+            root=tmp_path,
+            source_id="x",
+            url=URL,
+            out_root=tmp_path / "out",
+            api=fake_api(factory),
+        )
+
+    assert excinfo.value.source == source.resolve()
+    assert ".pdf, .xlsx" in str(excinfo.value)
+    assert factory.instances == []
+    assert not (tmp_path / "out").exists()

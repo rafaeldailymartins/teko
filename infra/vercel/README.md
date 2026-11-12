@@ -8,12 +8,12 @@ plataforma: o mesmo `apps/api/src/server.ts` roda na Vercel, no Render (Plano B,
 
 Este diretório guarda o que é versionável da configuração:
 
-| Arquivo               | Conteúdo                                                                               |
-| --------------------- | -------------------------------------------------------------------------------------- |
-| `firewall-rules.json` | As 3 regras custom do WAF por projeto (payloads de `vercel firewall rules add --data`) |
-| `env.production.json` | Env vars do `teko-api`: valores Config e só os **nomes** das Sensitive                 |
-| `env.staging.json`    | O mesmo para o `teko-api-staging`                                                      |
-| `README.md`           | Este checklist (aplicado na F0, reconferido à mão todo mês no relatório do `ops.yml`)  |
+| Arquivo               | Conteúdo                                                                                  |
+| --------------------- | ----------------------------------------------------------------------------------------- |
+| `firewall-rules.json` | As 3 regras custom do WAF por projeto (payloads de `vercel firewall rules add --data`)    |
+| `env.production.json` | Env vars do `teko-api`: valores Config e só os **nomes** das Sensitive                    |
+| `env.staging.json`    | O mesmo para o `teko-api-staging`                                                         |
+| `README.md`           | Este checklist (aplicado na F0, reconferido à mão todo mês no relatório do `ops.yml`, F6) |
 
 A configuração do projeto que vive no repositório fica em `apps/api/vercel.json` e
 `apps/api/.vercelignore`.
@@ -137,7 +137,9 @@ esse projeto com `--frozen-lockfile` e chamam o binário dele. No app, o único 
 `apps/api/src/adapters/out/platform/vercel` pelo dependency-cruiser.
 
 Fluxo do `deploy-api.yml` (`develop` → `teko-api-staging`; release em `main` → `teko-api`), com
-`VERCEL_TOKEN`, `VERCEL_ORG_ID` e `VERCEL_PROJECT_ID` do environment do GitHub:
+`VERCEL_TOKEN`, `VERCEL_ORG_ID` e `VERCEL_PROJECT_ID` do environment do GitHub. O workflow chega na
+F7; até lá, só o `spike-api-vercel.yml` exercita parte dele no `teko-api-staging` (bundle, tarball
+atestado, deploy `--prebuilt`, smoke e `promote`, sem migrações nem env sync):
 
 1. `pnpm install --frozen-lockfile`, `pnpm audit --prod` e osv-scanner no commit exato;
 2. sem `vercel pull` nem `vercel build` (ADR 0017): `pnpm --filter @teko/api build` (tsdown),
@@ -154,7 +156,8 @@ Fluxo do `deploy-api.yml` (`develop` → `teko-api-staging`; release em `main` �
    PATH, então o job instala o gitleaks verificado por SHA-256 num diretório que acrescenta ao
    `GITHUB_PATH`;
 5. SBOM (syft) e Grype; `actions/attest` do tarball;
-6. migrações (`drizzle-kit migrate`, a partir da F2);
+6. migrações (`drizzle-kit migrate`; as migrações existem desde a F2, e a primeira de cada projeto
+   Neon roda aqui, depois dos roles do runbook [`neon-roles.md`](../../docs/runbooks/neon-roles.md));
 7. `scripts/vercel-env-sync.ts` (F7);
 8. `gh attestation verify`, extração e `vercel deploy --prebuilt --prod --skip-domain
    --archive=tgz --meta artifactSha256=<sha256> --meta gitSha=$GITHUB_SHA`;
@@ -203,7 +206,8 @@ registrado; o resto continua aberto:
   `env.staging.json` (`APP_ENV`, `NODE_ENV`, `RUNTIME_TARGET`, `WEB_ORIGIN`,
   `FUNCTION_MAX_DURATION_S`, `LOG_LEVEL`) foram **gravadas à mão no spike** (2026-11-11, Config de
   Production, `vercel env add --no-sensitive`), com aval do mantenedor; nenhuma Sensitive. O
-  `scripts/vercel-env-sync.ts` da F7 assume isso. O `teko-api` (produção) ainda não existe;
+  `scripts/vercel-env-sync.ts` da F7 assume isso. O `teko-api` (produção) foi criado depois, só
+  com o placeholder e sem env vars (ver "Projetos");
 - [x] `under-pressure` na Vercel: com `maxEventLoopDelay: 1000`, o domínio de produção ficou em 503
   `service_paused` depois de ~10 s de ociosidade (o congelamento da instância Fluid conta como
   atraso do event loop). Na Vercel, o limite fica desligado (rafaeldailymartins/teko#8, ADR 0017);
@@ -234,4 +238,6 @@ registrado; o resto continua aberto:
   `develop`, `deploy_context` é `branch-deploy`. Sem cache na Netlify nem na Vercel, Cookie e
   Set-Cookie passam, e o proxy soma 27 ms de mediana;
 - [ ] regras do WAF: ainda não aplicadas (`/api/v1/*` direto e sem assinatura dá 404, não 403); F7;
-- [ ] cold start (p95) e o pior caso de cold start + resume do Neon dentro dos 26 s do proxy: F2.
+- [ ] cold start (p95) e o pior caso de cold start + resume do Neon dentro dos 26 s do proxy: não
+  medidos com rigor (risco residual da ADR 0003); a meta de menos de 10 s numa chamada proxiada é
+  do DoD da F7.

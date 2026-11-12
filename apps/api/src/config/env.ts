@@ -1,6 +1,7 @@
 import { AppEnv, appEnvSchema, LlmProvider, llmProviderSchema } from '@teko/shared/contracts'
 import { z } from 'zod'
 import { gitShaSchema, releaseVersionSchema, UNKNOWN_GIT_SHA } from '#domain/shared/build-info.ts'
+import { compareCodeUnits } from '#domain/shared/compare-code-units.ts'
 
 /**
  * Variáveis de ambiente da API, validadas no boot (falha imediata, antes de abrir a porta).
@@ -21,7 +22,10 @@ import { gitShaSchema, releaseVersionSchema, UNKNOWN_GIT_SHA } from '#domain/sha
  *   sistema `VERCEL_REGION` (presente em runtime) precisa ser `gru1`;
  * - o `trustProxy` nunca é um valor fixo para todas as plataformas: na Vercel é 1 salto, fixo no
  *   código (`TRUST_PROXY` é proibida); no Render vem do ensaio do Plano B (`TRUST_PROXY`
- *   obrigatória); no CI e local, a rede do Caddy (`DEFAULT_TRUST_PROXY`, só em development e ci).
+ *   obrigatória); no CI e local, a rede do Caddy (`DEFAULT_TRUST_PROXY`, só em development e ci);
+ * - ingestão (F3): `NETLIFY_AUTH_TOKEN` com `NETLIFY_SITE_ID` e `NEON_API_KEY_STAGING` com
+ *   `NEON_STAGING_PROJECT_ID` vêm aos pares, e as credenciais da ingestão são proibidas na API
+ *   publicada (`RUNTIME_TARGET` vercel ou render).
  *
  * As mensagens de erro citam só o nome da variável, nunca o valor (pode ser segredo).
  */
@@ -183,6 +187,34 @@ const envSchema = z
     CF_AI_TOKEN: z.string().min(20).optional(),
     /** Maior RRF abaixo do qual a pergunta é recusada como `no_evidence` sem chamar o LLM. */
     MIN_EVIDENCE_RRF: z.coerce.number().min(0).max(1).default(0),
+    // --- Ingestão (CLI `ingest`, `snapshot`, `eval-fixture`; só no Actions e localmente) -------
+    /**
+     * PAT da Netlify (segredo do environment `staging`) para o Netlify Blobs; vem junto com
+     * `NETLIFY_SITE_ID`. Sem os dois, a CLI usa o store em memória (execução local).
+     */
+    NETLIFY_AUTH_TOKEN: z.string().trim().min(20).optional(),
+    /** ID do site `tekoia` (variável do environment `staging`), dono dos stores do Blobs. */
+    NETLIFY_SITE_ID: z
+      .string()
+      .trim()
+      .regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i, {
+        error: 'deve ser o ID (UUID) do site na Netlify',
+      })
+      .optional(),
+    /** Orçamento diário de neurons da ingestão (Workers AI Free: 10.000/dia na conta; plano: 8.000). */
+    EMBED_NEURON_BUDGET: z.coerce.number().int().min(0).max(10_000).default(8000),
+    /** Guarda de tamanho da ingestão, em bytes (padrão 800 MB; o Neon Free tem 1 GB). */
+    INGEST_MAX_DB_BYTES: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(800 * 1024 * 1024),
+    /** API do Neon para medir os CU-s do run de ingestão no staging (sem elas, `cu_seconds` nulo). */
+    NEON_API_KEY_STAGING: z.string().trim().min(20).optional(),
+    NEON_STAGING_PROJECT_ID: z
+      .string()
+      .regex(/^[a-z0-9-]{1,64}$/, { error: 'ID de projeto Neon inválido' })
+      .optional(),
   })
   .superRefine((env, ctx) => {
     const issue = (path: string, message: string): void => {
@@ -222,6 +254,32 @@ const envSchema = z
       }
       if (env.CF_AI_TOKEN === undefined) {
         issue('CF_AI_TOKEN', 'obrigatória com EMBEDDINGS_PROVIDER=workers-ai')
+      }
+    }
+    if ((env.NETLIFY_AUTH_TOKEN === undefined) !== (env.NETLIFY_SITE_ID === undefined)) {
+      issue(
+        env.NETLIFY_AUTH_TOKEN === undefined ? 'NETLIFY_AUTH_TOKEN' : 'NETLIFY_SITE_ID',
+        'NETLIFY_AUTH_TOKEN e NETLIFY_SITE_ID vêm juntas (Netlify Blobs da ingestão)',
+      )
+    }
+    if ((env.NEON_API_KEY_STAGING === undefined) !== (env.NEON_STAGING_PROJECT_ID === undefined)) {
+      issue(
+        env.NEON_API_KEY_STAGING === undefined ? 'NEON_API_KEY_STAGING' : 'NEON_STAGING_PROJECT_ID',
+        'NEON_API_KEY_STAGING e NEON_STAGING_PROJECT_ID vêm juntas (medição de CU-h da ingestão)',
+      )
+    }
+    if (
+      env.RUNTIME_TARGET === RuntimeTarget.Vercel ||
+      env.RUNTIME_TARGET === RuntimeTarget.Render
+    ) {
+      // A API publicada nunca recebe credenciais da ingestão (Blobs e API do Neon ficam no Actions).
+      for (const name of ['NETLIFY_AUTH_TOKEN', 'NEON_API_KEY_STAGING'] as const) {
+        if (env[name] !== undefined) {
+          issue(
+            name,
+            `proibida com RUNTIME_TARGET=${env.RUNTIME_TARGET} (só a CLI de ingestão usa)`,
+          )
+        }
       }
     }
     if (!PRODUCTION_LIKE.has(env.APP_ENV)) {
@@ -278,17 +336,6 @@ export class EnvValidationError extends Error {
     this.name = 'EnvValidationError'
     this.problems = problems
   }
-}
-
-/**
- * Ordem de unidade de código UTF-16 (a do `sort()` sem argumento), explícita: nomes de variável são
- * identificadores, e a lista de problemas do boot não pode mudar com o locale ou o ICU do host.
- */
-function compareCodeUnits(a: string, b: string): number {
-  if (a < b) {
-    return -1
-  }
-  return a > b ? 1 : 0
 }
 
 function forbiddenBaseUrlProblems(source: Readonly<Record<string, string | undefined>>): string[] {
@@ -356,4 +403,15 @@ export function loadCliEnv(
   source: Readonly<Record<string, string | undefined>> = process.env,
 ): Env {
   return parseEnv({ ...CLI_ENV_DEFAULTS, ...source })
+}
+
+/**
+ * Ambiente do `coverage-mark` (job `mark-coverage`, environment `corpus-watch`): só as URLs do
+ * role `teko_watch`, sem passar pelo schema da CLI (o job não tem `DATABASE_URL`).
+ */
+export function loadWatchEnv(
+  source: Readonly<Record<string, string | undefined>> = process.env,
+): Readonly<Record<'NEON_PROD_WATCH_URL' | 'NEON_STAGING_WATCH_URL', string | undefined>> {
+  const { NEON_PROD_WATCH_URL, NEON_STAGING_WATCH_URL } = source
+  return { NEON_PROD_WATCH_URL, NEON_STAGING_WATCH_URL }
 }

@@ -166,7 +166,8 @@ forjados pelo cliente (`x-nf-client-connection-ip: 198.51.100.7`, `x-forwarded-f
   chamada direta o deixa passar forjado); a allowlist de `deploy_context` do plugin
   `netlifySignature` (F4) aceita `branch-deploy` em staging, e o valor de produção (`production`,
   esperado) é conferido no primeiro deploy de produção.
-- **Falta, por depender da F2:** o pior caso de cold start mais o resume do Neon dentro dos 26 s.
+- **Falta:** o pior caso de cold start mais o resume do Neon dentro dos 26 s. A F2 fechou sem essa
+  medição; ela entra no DoD da F7 (meta de menos de 10 s), com a API real na Vercel.
 
 ## Spike (d): Neon pelo `-pooler`
 
@@ -406,5 +407,5 @@ Ficam registrados como estão, sem medição adicional na F1:
 - **WAF** não foi aplicado na F1; as regras e o smoke do efeito chegam na F7 (spike (c)).
 - **`/pt-br/` em minúsculas**: a Netlify redireciona `/pt-BR/`, e o i18n da F5 precisa tratar
   isso (spike (a)).
-- **Pior caso de cold start + resume do Neon** dentro do corte de 26 s do proxy depende da F2
-  (spikes (c) e (d)); as medidas separadas cabem com folga.
+- **Pior caso de cold start + resume do Neon** dentro do corte de 26 s do proxy não foi medido
+  na F2 e fica para o DoD da F7 (spikes (c) e (d)); as medidas separadas cabem com folga.

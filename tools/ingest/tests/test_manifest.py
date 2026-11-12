@@ -11,6 +11,8 @@ from teko_ingest.manifest import (
     MANIFEST_SCHEMA_VERSION,
     ExtractionManifest,
     ManifestError,
+    PageRange,
+    output_dir_name,
     sha256_file,
 )
 
@@ -72,6 +74,14 @@ _manifests = st.builds(
         timezones=st.sampled_from([UTC, timezone(timedelta(hours=-3)), timezone.min]),
     ),
     output_path=st.lists(_segment, min_size=1, max_size=4).map("/".join),
+    page_range=st.none()
+    | st.integers(min_value=1, max_value=5000).flatmap(
+        lambda start: st.builds(
+            PageRange,
+            st.just(start),
+            st.integers(min_value=start, max_value=start + 5000),
+        ),
+    ),
 )
 
 
@@ -180,3 +190,82 @@ def test_sha256_file_of_empty_file(tmp_path: Path) -> None:
     target = tmp_path / "vazio.bin"
     target.write_bytes(b"")
     assert sha256_file(target, root=tmp_path) == hashlib.sha256(b"").hexdigest()
+
+
+def test_page_range_roundtrip_and_part() -> None:
+    manifest = make_manifest(page_range=[1, 120], part="p1-120", output_path=f"{SHA}-p1-120/d.json")
+    assert manifest.page_range == PageRange(1, 120)
+    assert manifest.part == "p1-120"
+    data = json.loads(manifest.to_json())
+    assert data["page_range"] == [1, 120]
+    assert data["part"] == "p1-120"
+    assert ExtractionManifest.from_json(manifest.to_json()) == manifest
+
+
+def test_whole_document_serializes_null_part() -> None:
+    data = json.loads(make_manifest().to_json())
+    assert data["page_range"] is None
+    assert data["part"] is None
+
+
+def test_manifest_without_page_range_fields_is_whole_document() -> None:
+    data = make_manifest().to_dict()
+    del data["page_range"]
+    del data["part"]
+    assert ExtractionManifest.from_dict(data).page_range is None
+
+
+@pytest.mark.parametrize(
+    ("page_range", "part", "message"),
+    [
+        ([1, 120], None, "part"),
+        ([1, 120], "p1-121", "part"),
+        (None, "p1-120", "part"),
+        ("1-120", "p1-120", "page_range"),
+        ([1], "p1-120", "page_range"),
+        ([1, 2, 3], "p1-120", "page_range"),
+        ([1, "2"], "p1-2", "inteiros"),
+        ([True, 2], "p1-2", "inteiros"),
+        ([0, 2], "p0-2", "inválido"),
+        ([5, 4], "p5-4", "inválido"),
+    ],
+)
+def test_invalid_page_range_is_rejected(page_range: object, part: object, message: str) -> None:
+    data: dict[str, object] = {**make_manifest().to_dict(), "page_range": page_range, "part": part}
+    with pytest.raises(ManifestError, match=message):
+        ExtractionManifest.from_dict(data)
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [("1-120", PageRange(1, 120)), (" 121-366 ", PageRange(121, 366)), ("7-7", PageRange(7, 7))],
+)
+def test_page_range_parse(text: str, expected: PageRange) -> None:
+    parsed = PageRange.parse(text)
+    assert parsed == expected
+    assert parsed.as_tuple() == (expected.start, expected.end)
+
+
+@pytest.mark.parametrize(
+    ("text", "message"),
+    [
+        ("1", "formato"),
+        ("1:120", "formato"),
+        ("a-b", "formato"),
+        ("0-5", "inválido"),
+        ("9-3", "inválido"),
+    ],
+)
+def test_page_range_parse_rejects(text: str, message: str) -> None:
+    with pytest.raises(ManifestError, match=message):
+        PageRange.parse(text)
+
+
+def test_page_range_requires_ints() -> None:
+    with pytest.raises(ManifestError, match="inteiros"):
+        PageRange(1.0, 2)  # pyright: ignore[reportArgumentType]
+
+
+def test_output_dir_name() -> None:
+    assert output_dir_name(SHA, None) == SHA
+    assert output_dir_name(SHA, PageRange(121, 240)) == f"{SHA}-p121-240"

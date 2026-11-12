@@ -15,8 +15,8 @@ the project has no security mailbox.
 
 Please include:
 
-- the affected component (`apps/web`, `apps/api`, `packages/shared`, `infra/`, CI workflows,
-  the published corpus) and the version, commit SHA or URL;
+- the affected component (`apps/web`, `apps/api`, `packages/shared`, `tools/ingest`, `infra/`,
+  CI workflows, the published corpus) and the version, commit SHA or URL;
 - a description of the issue and its impact;
 - step-by-step reproduction, a proof of concept, or the exact prompt/document for LLM issues;
 - any suggested mitigation.
@@ -32,8 +32,8 @@ to the latest release instead.
 | any older release   | no                                                          |
 | `develop` / staging | fixes land here first, then ship to production via a hotfix |
 
-The project is in early development (phase F1) and has no tagged release yet. Until `v0.1.0`,
-reports are handled against the `develop` branch.
+The project is in early development (phases F0 to F2 done) and has no tagged release yet. Until
+`v0.1.0`, reports are handled against the `develop` branch.
 
 ## Response targets
 
@@ -78,8 +78,8 @@ Out of scope:
 - volumetric denial of service, spam, or findings that only consume free-tier quotas;
 - reports produced only by automated scanners without a demonstrated impact;
 - missing hardening headers or best practices with no exploitable consequence;
-- incorrect or outdated legal answers that do not involve an attack. Report those as a corpus error
-  issue instead;
+- incorrect or outdated legal answers that do not involve an attack. Report those through the Bug
+  issue form instead;
 - social engineering of maintainers or users, and physical attacks.
 
 **Known limitation:** Trusted Types runs in report-only mode until `v0.2.0`. A report that only

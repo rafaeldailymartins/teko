@@ -33,7 +33,7 @@ Atualize esta seção no PR que fecha cada fase ou spike.
   quando vier, marcar a tarefa 3.7 e arquivar `bootstrap-repository-governance`.
 - **F1 (esqueleto, gates e spikes):** concluída em 2026-11-11, com a ADR 0003 `accepted` e as
   mudanças `scaffold-monorepo` e `setup-quality-gates-ci` arquivadas. CI de PR em cerca de 4 min;
-  um segredo de teste reprova o `ci-gate`. O badge do Stryker fica "unknown" até o `mutation.yml`
+  um segredo de teste reprova o `ci-gate`. O badge do Stryker passou a ter valor com o `mutation.yml`
   da F2. OpenSSF Best Practices no nível `passing` desde 2026-11-11 (projeto 16550; análise
   dinâmica marcada `Unmet` até o ZAP da F8, e release notes `N/A` até a v0.1.0). Spikes:
   - (a) web na Netlify: concluído. Site `tekoia` (time `rafael-daily-santos-martins`, a conta do
@@ -76,7 +76,30 @@ Atualize esta seção no PR que fecha cada fase ou spike.
   com `scripts/neon-roles.ts` (`teko_watch` no staging; `teko_app` e `teko_watch` na produção),
   com as URLs `-pooler` em `maintenance` e `corpus-watch`; nenhuma migração rodou ainda nos
   projetos reais (a primeira é do `deploy-api.yml`, F7). Ver `docs/runbooks/neon-roles.md`.
-- **F3 em diante:** a F3 começa quando o mantenedor decidir.
+- **F3 (ingestão C1 e C2, embeddings e watch):** código entregue em 2026-11-11, num PR só.
+  Mudanças arquivadas `add-rcte-cte-html-parser`, `add-go-code-tables-ingestion` e
+  `add-embedding-pipeline`; ficam abertas, só com as tarefas do primeiro run real,
+  `add-docling-pdf-extraction`, `add-sped-guides-ingestion` e `add-source-change-monitoring`.
+  ADRs 0011 (accepted) e 0025 (`proposed`, reconciliação por janela: precisa do aval do
+  mantenedor). Peças:
+  - `corpus/` (fontes com sha256 reais, períodos de leiaute, overrides, lock e `watch.yaml`);
+  - parsers em `apps/api/src/adapters/in/cli/ingest/parsers/`;
+  - `IngestDocumentVersion` incremental, com `embedding_cache` como checkpoint, orçamento de
+    neurons (código 75) e guarda de 800 MB;
+  - snapshot `.jsonl.zst` com promoção, `SafeFetcher` e Netlify Blobs;
+  - subcomandos `ingest`, `snapshot`, `eval-fixture`, `sources-watch` e `coverage-mark`;
+  - `ingest.yml` e `source-watch.yml`.
+
+  Medido nos arquivos oficiais: 95,8% das `NotaVigncia` do RCTE e 96,6% das do CTE, o resto
+  `pending`. Desvios no plano (seção F3): staging migrado pelo `ingest load --migrate`; Guias
+  3.0.1–3.1.8 desabilitados (só http); REINF pelo pacote de XSD. Pendências depois do merge:
+  - o mantenedor cadastra as vars `NETLIFY_SITE_ID` e `NEON_STAGING_PROJECT_ID` no environment
+    `staging`;
+  - primeiro `ingest.yml` (tempo do Docling por parte, allowlist do harden-runner, staging
+    ≤ 400 MB, neurons por dia);
+  - primeiro `source-watch` agendado (`verified_at` diário; depois passar o harden-runner dele
+    para `block`).
+- **F4 em diante:** a F4 começa quando o mantenedor decidir.
 
 ## Como trabalhar
 
@@ -104,9 +127,10 @@ Atualize esta seção no PR que fecha cada fase ou spike.
 `pnpm lint`, `pnpm typecheck`, `pnpm knip`, `pnpm lint:deps`, `pnpm lint:fsd`,
 `pnpm exec turbo boundaries`, `pnpm lint:monorepo`, `pnpm dup`, `pnpm type-coverage`,
 `pnpm spec:validate`, `pnpm check-lockfile`, `pnpm test:unit`, `pnpm test:integration`,
-`pnpm test:scripts`, `pnpm build`, `pnpm audit --audit-level low` (e o mesmo em
-`tools/vercel-cli`), `bash .github/scripts/affected.test.sh`, `bash .github/scripts/ci-config.test.sh`
-e, em `tools/ingest`, `uv run --frozen ruff check . && uv run --frozen pyright && uv run --frozen pytest`.
+`pnpm test:scripts`, `pnpm build`, `pnpm audit --prod --audit-level low` (e `pnpm audit --audit-level low`
+em `tools/vercel-cli` e `tools/netlify-cli`), `bash .github/scripts/affected.test.sh`,
+`bash .github/scripts/ci-config.test.sh`, `bash .github/scripts/migration-guard.test.sh` e, em
+`tools/ingest`, `uv run --frozen ruff check . && uv run --frozen ruff format --check . && uv run --frozen pyright && uv run --frozen pytest`.
 Workflows novos ou alterados passam pelo actionlint (Docker `rhysd/actionlint`). Mutação: o
 Stryker de cada pacote alterado, com limite de 70.
 

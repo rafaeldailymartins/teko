@@ -5,10 +5,18 @@ documentos do corpus (PDF, XLSX) com o [Docling](https://github.com/docling-proj
 grava, para cada arquivo:
 
 ```
-out/<sha256>/
+out/<sha256>[-p<início>-<fim>]/
 ├─ docling.json    # DoclingDocument (imagens como placeholder)
-└─ manifest.json   # fonte, URL, sha256, versão do Docling, created_at, caminho da saída
+└─ manifest.json   # fonte, URL, sha256, versão do Docling, created_at, caminho da saída, parte
 ```
+
+Só PDF e XLSX são aceitos (pela extensão, conferida antes da conversão; outro formato termina
+com o código `2`). Documentos longos são convertidos por partes com `--page-range <início>-<fim>`
+(páginas com base 1, inclusivas; o `page_range` do Docling, aceito pelos backends de PDF e de
+XLSX): cada parte grava a própria saída em `<sha256>-p<início>-<fim>/`, e o manifesto registra
+`page_range` (`[início, fim]`) e `part` (`p<início>-<fim>`), ambos `null` para o documento
+inteiro. O Node junta as partes na ordem de `page_range`. No `ingest.yml`, cada parte vira um
+item da matriz do job `extract` e um artifact `docling-<sha256>[-p<início>-<fim>]`.
 
 Download, chunking, embeddings, escrita no banco e upload para o Netlify Blobs ficam com o CLI
 do Node (`apps/api/src/adapters/in/cli`). Este job não usa segredos e só acessa a rede para
@@ -54,6 +62,11 @@ uv run teko-ingest manifest guia.pdf --source-id efd-icms-ipi/guia-pratico/3.1.8
 uv run docling-tools models download --output-dir .cache/docling-models
 uv run teko-ingest convert guia.pdf --source-id efd-icms-ipi/guia-pratico/3.1.8 \
   --url https://www.gov.br/sped/... --out out --artifacts-path .cache/docling-models
+
+# Só uma parte de um documento longo (divisão definida no corpus/sources.yaml)
+uv run teko-ingest convert guia.pdf --source-id efd-icms-ipi/guia-pratico/3.2.4 \
+  --url https://www.gov.br/sped/... --page-range 121-240 --out out \
+  --artifacts-path .cache/docling-models
 ```
 
 Todo caminho recebido pela CLI (o arquivo de entrada, `--out` e `--artifacts-path`) precisa ficar
