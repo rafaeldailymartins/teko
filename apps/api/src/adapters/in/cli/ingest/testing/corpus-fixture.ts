@@ -44,7 +44,9 @@ const doc = (fields: Record<string, unknown>) => ({
   ...fields,
 })
 
-export function testCorpusConfig(overrides: { guiaSha256?: string } = {}): CorpusConfig {
+export function testCorpusConfig(
+  overrides: { guiaSha256?: string; guiaUrl?: string } = {},
+): CorpusConfig {
   return buildCorpusConfig(
     {
       version: 1,
@@ -61,7 +63,7 @@ export function testCorpusConfig(overrides: { guiaSha256?: string } = {}): Corpu
               id: 'efd-icms-ipi/guia-pratico/3.2.4',
               version: '3.2.4',
               version_label: 'Guia 3.2.4',
-              url: URLS.guia,
+              url: overrides.guiaUrl ?? URLS.guia,
               mode: 'pinned',
               sha256: overrides.guiaSha256 ?? sha256(GUIA_PDF),
               format: 'pdf',
