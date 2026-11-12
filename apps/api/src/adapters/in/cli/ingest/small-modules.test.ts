@@ -15,6 +15,7 @@ import {
 } from './corpus-lock.ts'
 import { PARSER_REVISIONS, PARSERS } from './parsers/index.ts'
 import { ParserName } from './parsers/parser.ts'
+import { loadCorpusConfig } from './sources.ts'
 import { parseTableVersions, tableDownloadUrl, WsTabelasError } from './ws-tabelas.ts'
 
 const SHA = 'f'.repeat(64)
@@ -164,7 +165,12 @@ describe('corpus-lock', () => {
     expect(() => readCorpusLock(file)).toThrow(CorpusLockError)
   })
 
-  it('o corpus/corpus.lock.json versionado é o lock inicial', () => {
-    expect(readCorpusLock(repoPath('corpus', 'corpus.lock.json'))).toEqual(EMPTY_LOCK)
+  // O lock versionado muda a cada PR do lock (que pula os testes de código por escopo): o teste
+  // confere a forma e a coerência, nunca um conteúdo fixo.
+  it('o corpus/corpus.lock.json versionado é válido e só cita fontes do corpus/sources.yaml', () => {
+    const lock = readCorpusLock(repoPath('corpus', 'corpus.lock.json'))
+    expect(lock.snapshot?.corpusVersion ?? null).toBe(lock.corpusVersion)
+    const known = new Set(loadCorpusConfig(repoPath('corpus')).resolved.map((source) => source.id))
+    expect(Object.keys(lock.sources).filter((id) => !known.has(id))).toEqual([])
   })
 })
