@@ -1,8 +1,9 @@
+import pg from 'pg'
 import type { RetrievalUseCases } from '../../src/application/container.ts'
 import { RetrievalOutcome } from '../../src/application/use-cases/retrieve-evidence.ts'
 import { createContainer } from '../../src/composition-root.ts'
 import { parseEnv } from '../../src/config/env.ts'
-import type { RetrievalOutput } from '../asserts/metrics.ts'
+import { RECALL_K, type RetrievalOutput } from '../asserts/metrics.ts'
 import type { GoldenCase } from '../datasets/schema.ts'
 
 /**
@@ -67,16 +68,60 @@ export async function retrieve(golden: GoldenCase): Promise<RetrievalOutput> {
   if (result.outcome === RetrievalOutcome.Refused) {
     return { ...base, outcome: result.outcome, reason: result.reason, hits: [] }
   }
+  const hits = result.evidence.map((item) => ({
+    stableKey: item.stableKey,
+    validity: item.validity,
+    versionLabel: item.document.versionLabel,
+    rrf: item.rrf,
+  }))
+  const top = new Set([...new Set(hits.map((hit) => hit.stableKey))].slice(0, RECALL_K))
+  const missing = golden.expected.provisions.filter((key) => !top.has(key))
   return {
     ...base,
     outcome: result.outcome,
     reason: null,
-    hits: result.evidence.map((item) => ({
-      stableKey: item.stableKey,
-      validity: item.validity,
-      versionLabel: item.document.versionLabel,
-      rrf: item.rrf,
-    })),
+    hits,
+    ...(missing.length > 0 ? { diagnostics: await diagnose(missing, result.reference.value) } : {}),
+  }
+}
+
+/**
+ * Estado no banco, na data, de cada dispositivo esperado fora do top-k: as redações de
+ * conhecimento aberto que contêm a data, com o status de revisão e quantos chunks têm embedding.
+ * Só leitura, com a mesma `DATABASE_URL` da busca.
+ */
+async function diagnose(stableKeys: readonly string[], referenceDate: string) {
+  const client = new pg.Client({ connectionString: process.env['DATABASE_URL'] })
+  await client.connect()
+  try {
+    const { rows } = await client.query<{
+      stable_key: string
+      review_status: string | null
+      chunks: number
+      embedded: number
+    }>(
+      `SELECT p.stable_key, pv.review_status,
+              count(c.id)::int AS chunks, count(c.embedding)::int AS embedded
+       FROM unnest($1::text[]) AS k(stable_key)
+       JOIN corpus.provisions p ON p.stable_key = k.stable_key
+       LEFT JOIN corpus.provision_versions pv ON pv.provision_id = p.id
+         AND pv.valid_during @> $2::date AND upper_inf(pv.knowledge)
+       LEFT JOIN corpus.chunks c ON c.provision_version_id = pv.id
+       GROUP BY p.stable_key, pv.id, pv.review_status`,
+      [stableKeys, referenceDate],
+    )
+    return stableKeys.map((stableKey) => ({
+      stableKey,
+      versions: rows
+        .filter((row) => row.stable_key === stableKey && row.review_status !== null)
+        .map((row) => ({
+          reviewStatus: row.review_status ?? '',
+          chunks: row.chunks,
+          embedded: row.embedded,
+        })),
+    }))
+  } finally {
+    await client.end()
   }
 }
 
