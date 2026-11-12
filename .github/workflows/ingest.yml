@@ -546,7 +546,12 @@ jobs:
   lock-pr:
     name: lock-pr
     needs: load
-    if: needs.load.outputs.lock_changed == 'true'
+    # `if:` sem função de status ganha um success() implícito, que dá falso quando o extract foi
+    # pulado (run sem PDF novo) e pula este job junto, mesmo com o load verde. Por isso o
+    # `!cancelled()` e o resultado do load explícitos, como no próprio load.
+    if: >-
+      ${{ !cancelled() && needs.load.result == 'success'
+      && needs.load.outputs.lock_changed == 'true' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     # O token da App (não o GITHUB_TOKEN) é o que dispara o pr-gate no PR aberto.
@@ -635,7 +640,10 @@ jobs:
   corpus-eval:
     name: corpus-eval
     needs: load
-    if: needs.load.result == 'success' && needs.load.outputs.status == 'published'
+    # Mesmo motivo do lock-pr: sem `!cancelled()`, o extract pulado pula este job.
+    if: >-
+      ${{ !cancelled() && needs.load.result == 'success'
+      && needs.load.outputs.status == 'published' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     environment: staging
