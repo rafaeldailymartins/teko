@@ -82,8 +82,8 @@ Atualize esta seção no PR que fecha cada fase ou spike.
   `add-go-code-tables-ingestion`, `add-embedding-pipeline`, `add-docling-pdf-extraction`,
   `add-sped-guides-ingestion`, `add-parser-revision`, `add-reranker` e
   `fix-hybrid-search-provision-dedup`; ficam abertas `add-source-change-monitoring` (primeiro
-  `source-watch` agendado) e `fix-safe-fetcher-retries` (#46). ADRs 0011 e 0026 e 0027
-  (accepted) e 0025 (`proposed`, reconciliação por janela: precisa do aval do mantenedor).
+  `source-watch` agendado) e `fix-safe-fetcher-retries` (#46). ADRs 0011, 0025
+  (reconciliação por janela, aceita pelo mantenedor em 2026-11-12), 0026 e 0027, todas accepted.
   Peças:
   - `corpus/` (fontes com sha256 reais, períodos de leiaute, overrides, lock e `watch.yaml`);
   - parsers em `apps/api/src/adapters/in/cli/ingest/parsers/`;
