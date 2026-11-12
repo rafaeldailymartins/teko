@@ -719,6 +719,8 @@ jobs:
           EMBEDDINGS_PROVIDER: workers-ai
           # Reranker do Workers AI (ADR 0027), como a API terá em staging e produção.
           RERANKER_PROVIDER: workers-ai
+          # Corpus real: a métrica de vigência usa o `staging_validity` do golden quando existe.
+          EVAL_CORPUS: staging
           CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
           CF_AI_TOKEN: ${{ secrets.CF_AI_TOKEN }}
         run: pnpm --filter @teko/api eval:retrieval

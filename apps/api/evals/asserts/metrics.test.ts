@@ -113,6 +113,22 @@ describe('métricas de recuperação', () => {
     expect(validityCorrect(answered, output({ referenceDate: null })).score).toBeNull()
   })
 
+  it('vigência no staging usa staging_validity quando o caso a define', () => {
+    const differs = golden({
+      status: 'answered',
+      reference_date: '2006-05-01',
+      provisions: [P6],
+      validity: { from: '2004-11-04', to: null },
+      staging_validity: { from: '2004-11-04', to: '2009-11-23' },
+    })
+    const closed = output({ hits: [hit(P6)] })
+    expect(validityCorrect(differs, closed).score).toBe(0)
+    expect(validityCorrect(differs, { ...closed, corpus: 'fixture' }).score).toBe(0)
+    expect(validityCorrect(differs, { ...closed, corpus: 'staging' }).score).toBe(1)
+    // Sem staging_validity, o staging usa a mesma validity da fixture.
+    expect(validityCorrect(answered, { ...closed, corpus: 'staging' }).score).toBe(1)
+  })
+
   it('recusa e clarificação exigem o resultado exato', () => {
     const refused = golden({ status: 'refused', refusal_reason: 'out_of_coverage' })
     expect(

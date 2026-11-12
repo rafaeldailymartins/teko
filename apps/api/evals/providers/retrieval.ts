@@ -41,6 +41,11 @@ function retrievalUseCases(): RetrievalUseCases {
   return retrieval
 }
 
+/** Corpus avaliado: `EVAL_CORPUS=staging` no `corpus-eval`; o padrão é a fixture do PR. */
+export function evalCorpus(): 'fixture' | 'staging' {
+  return process.env['EVAL_CORPUS'] === 'staging' ? 'staging' : 'fixture'
+}
+
 export function referenceInput(golden: GoldenCase) {
   return golden.periodo_apuracao === undefined
     ? { referenceDate: golden.reference_date ?? '' }
@@ -132,6 +137,6 @@ export default class RetrievalProvider {
 
   async callApi(_prompt: string, context?: CallContext): Promise<{ output: string }> {
     const golden = context?.vars['golden'] as GoldenCase
-    return { output: JSON.stringify(await retrieve(golden)) }
+    return { output: JSON.stringify({ ...(await retrieve(golden)), corpus: evalCorpus() }) }
   }
 }

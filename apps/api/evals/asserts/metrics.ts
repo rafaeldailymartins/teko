@@ -24,6 +24,11 @@ export const retrievalOutputSchema = z.object({
     }),
   ),
   /**
+   * Corpus avaliado (`EVAL_CORPUS`): a fixture (retrieval evals do PR, padrão) ou o corpus real do
+   * staging (`corpus-eval`), que usa `staging_validity` quando o caso a define.
+   */
+  corpus: z.enum(['fixture', 'staging']).optional(),
+  /**
    * Estado no banco de cada dispositivo esperado que ficou fora do top-k (só no `corpus-eval` e no
    * provider local): separa dado faltando (sem redação na data, `pending`, sem embedding) de ranking.
    */
@@ -134,7 +139,10 @@ export function validityCorrect(golden: GoldenCase, output: RetrievalOutput): Me
       reason: `fora da vigência em ${date}: ${outside.map((hit) => hit.stableKey).join(', ')}`,
     }
   }
-  const expectedValidity = golden.expected.validity
+  const expectedValidity =
+    output.corpus === 'staging'
+      ? (golden.expected.staging_validity ?? golden.expected.validity)
+      : golden.expected.validity
   const [firstKey] = expectedStableKeys(golden)
   if (expectedValidity === undefined || firstKey === undefined) {
     return { score: 1, reason: 'todos os resultados em vigor na data' }
