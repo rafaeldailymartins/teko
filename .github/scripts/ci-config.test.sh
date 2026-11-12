@@ -166,8 +166,12 @@ check "ingest: extract em ubuntu-24.04 com timeout de 330 min" \
   yq_true '.jobs.extract."runs-on" == "ubuntu-24.04" and .jobs.extract."timeout-minutes" == 330' "$ingest"
 check "ingest: cache dos modelos com a chave do uv.lock" \
   bash -c "grep -Fq \"key: docling-\\\${{ hashFiles('tools/ingest/uv.lock') }}\" '$ingest'"
-check "ingest: modelos baixados com docling-tools no diretório do cache" \
-  bash -c "grep -Fq 'docling-tools models download --output-dir .cache/docling-models' '$ingest'"
+check "ingest: modelos baixados com docling-tools no diretório do cache, só layout e tableformer" \
+  bash -c "grep -Eq 'docling-tools models download --output-dir \\.cache/docling-models layout tableformer$' '$ingest'"
+check "ingest: ModelScope fora da allowlist do docling-models" \
+  bash -c "! yq -r '.jobs.\"docling-models\".steps[0].with.\"allowed-endpoints\"' '$ingest' | grep -q modelscope"
+check "ingest: discover recusa fonte com ocr: true (sem modelo de OCR no cache)" \
+  bash -c "yq -r '.jobs.discover.steps[].run // \"\"' '$ingest' | grep -Fq 'any(.[]; .ocr == true)'"
 check "ingest: load com --migrate só no staging" \
   bash -c "grep -Eq 'ingest load --target staging .*--migrate' '$ingest'"
 check "ingest: código 75 do load não é falha" \

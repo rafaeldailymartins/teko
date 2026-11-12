@@ -136,6 +136,40 @@ describe('parseReinfXsd com os XSD reais da 2.1.2 (R-2010, R-4020 e R-4080)', ()
   })
 })
 
+describe('parseReinfXsd com o R-9001 real e os nomes do pacote da 2.1.1', () => {
+  const R9001 = 'R-9001-evtTotal-v2_01_02d.xsd'
+
+  it('grupos e campos com maiúscula inicial (RTom, CRTom) entram, e todo pai existe', () => {
+    const parsed = parseReinfXsd(makeInput(SOURCE, { members: members([R9001]) }))
+    const keys = new Set(parsed.provisions.map((provision) => provision.stableKey))
+    for (const key of [
+      'br:efd-reinf:evt:R-9001:grupo:RTom',
+      'br:efd-reinf:evt:R-9001:grupo:RTom:campo:cnpjPrestador',
+      'br:efd-reinf:evt:R-9001:grupo:infoCRTom:campo:CRTom',
+      'br:efd-reinf:evt:R-9001:grupo:RPrest',
+    ]) {
+      expect(keys).toContain(key)
+    }
+    const orphans = parsed.provisions.filter(
+      (provision) => provision.parent !== undefined && !keys.has(provision.parent),
+    )
+    expect(orphans).toEqual([])
+    expect(parsed.skipped.filter((entry) => entry.reason !== 'duplicate-or-invalid-key')).toEqual(
+      [],
+    )
+  })
+
+  it('aceita o sufixo da versão no nome do XSD (`-v2_01_01-A.xsd`)', () => {
+    const named = new Map([
+      ['R-9001-evtTotal-v2_01_01-A.xsd', readFixtureBytes(`reinf/${R9001}`)],
+      ['LEIAME.txt', new TextEncoder().encode('não é XSD')],
+    ])
+    const parsed = parseReinfXsd(makeInput(SOURCE, { members: named }))
+    expect(parsed.provisions[0]?.stableKey).toBe('br:efd-reinf:evt:R-9001')
+    expect(parsed.provisions.length).toBeGreaterThan(50)
+  })
+})
+
 function xsd(body: string, extra = ''): Uint8Array {
   return new TextEncoder().encode(`<?xml version="1.0" encoding="UTF-8"?>
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">

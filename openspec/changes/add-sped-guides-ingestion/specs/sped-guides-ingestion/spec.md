@@ -98,6 +98,16 @@ leiaute em PDF. A vigência SHALL ser o período do leiaute (`leiaute_period`).
 - **WHEN** o parser lê os XSD de R-2010, R-4020 e R-4080 da versão 2.1.2
 - **THEN** os 170 dispositivos da fixture da F2 existem com o mesmo título, rótulo, `sortPath`, pai e tipo
 
+#### Scenario: Nomes do XSD como publicados
+
+- **WHEN** o R-9001 da 2.1.2 tem o grupo `RTom` e, dentro de `infoCRTom`, o campo `CRTom`
+- **THEN** as chaves são `br:efd-reinf:evt:R-9001:grupo:RTom` e `br:efd-reinf:evt:R-9001:grupo:infoCRTom:campo:CRTom`, e todo dispositivo tem o pai presente
+
+#### Scenario: Sufixo da versão no nome do arquivo
+
+- **WHEN** o pacote da 2.1.1 traz `R-9001-evtTotal-v2_01_01-A.xsd`
+- **THEN** o arquivo é lido como o XSD do evento R-9001
+
 #### Scenario: Texto a partir do XSD
 
 - **WHEN** o campo `indRetif` do R-4080 tem a restrição `1|2` e a documentação "Indicativo de Retificacao"

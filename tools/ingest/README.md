@@ -59,7 +59,8 @@ uv run teko-ingest manifest guia.pdf --source-id efd-icms-ipi/guia-pratico/3.1.8
   --url https://www.gov.br/sped/... --docling-version 2.146.0
 
 # Conversão completa (requer o extra docling)
-uv run docling-tools models download --output-dir .cache/docling-models
+# (só os modelos usados: layout e TableFormer; o OCR fica desligado)
+uv run docling-tools models download --output-dir .cache/docling-models layout tableformer
 uv run teko-ingest convert guia.pdf --source-id efd-icms-ipi/guia-pratico/3.1.8 \
   --url https://www.gov.br/sped/... --out out --artifacts-path .cache/docling-models
 
