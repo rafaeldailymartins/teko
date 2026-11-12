@@ -8,4 +8,4 @@
 
 ## 2. Corpus real
 
-- [ ] 2.1 `corpus-eval` contra o staging depois do merge, com o resultado registrado aqui
+- [x] 2.1 `corpus-eval` contra o staging depois do merge, com o resultado registrado aqui — run 43256682008: recall@10 0,775 e MRR 0,530, iguais a antes; a métrica já contava dispositivos distintos, então a deduplicação não a muda, mas libera vagas repetidas no top-12 da API

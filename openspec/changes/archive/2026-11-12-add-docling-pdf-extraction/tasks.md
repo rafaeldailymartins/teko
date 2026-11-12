@@ -10,7 +10,7 @@
 
 - [x] 2.1 Jobs `discover` → `docling-models` → `extract` → `load` → `lock-pr` / `corpus-eval` → `summary`, com harden-runner em `block` e allowlist por job — actionlint 1.7.12 (Docker)
 - [x] 2.2 Falha cedo sem `NETLIFY_SITE_ID`/`NEON_STAGING_PROJECT_ID`; só `target=staging`; código 75 como retomada; PR do lock com a App e commit pela API — `bash .github/scripts/ci-config.test.sh`
-- [ ] 2.3 Primeiro run real no staging (depois do merge, com as variáveis cadastradas): medir o tempo do Guia por parte no runner e acertar a allowlist com o insights do harden-runner
+- [x] 2.3 Primeiro run real no staging (depois do merge, com as variáveis cadastradas): medir o tempo do Guia por parte no runner e acertar a allowlist com o insights do harden-runner — run 43226999993 (2026-11-12): 40 partes de 28 PDFs, 9 a 15 min por parte de 125 páginas, 6 em paralelo, extração inteira em cerca de 75 min; allowlist: o `docling-models` passou a baixar só `layout` e `tableformer` (o OCR vinha do ModelScope, bloqueado) e `releases.astral.sh` entrou para o `setup-uv`; nenhum outro host bloqueado
 
 ## 3. Escopo afetado
 
