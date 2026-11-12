@@ -30,12 +30,15 @@ const SEGMENT_VALUE = {
   anexo: /^[IVXLC\d]{1,8}$/,
   /** Registro da EFD (`0000`, `C170`, `1400`). */
   reg: /^[0-9A-K]\d{3}$/,
-  /** Campo: número de ordem com 2 dígitos (`07`) ou nome do leiaute XML (`vlrTotalBruto`). */
-  campo: /^(?:\d{2,3}|[a-z][A-Za-z0-9]{1,40})$/,
+  /**
+   * Campo: número de ordem com 2 dígitos (`07`) ou nome do elemento no XSD do leiaute, como o
+   * pacote oficial grafa (`vlrTotalBruto`, `CRTom`).
+   */
+  campo: /^(?:\d{2,3}|[A-Za-z][A-Za-z0-9_]{1,40})$/,
   /** Evento da EFD-REINF (`R-2010`). */
   evt: /^R-\d{4}$/,
-  /** Grupo do leiaute (`infoServTom`). */
-  grupo: /^[a-z][A-Za-z0-9]{1,40}$/,
+  /** Grupo do leiaute, com o nome do elemento no XSD (`infoServTom`, `RTom`, `infoCR_CNR`). */
+  grupo: /^[A-Za-z][A-Za-z0-9_]{1,40}$/,
   /** Tabela (`5-1-1`). */
   tab: /^\d{1,2}(?:-\d{1,2}){0,3}$/,
   /** Código de tabela (`GO000001`, `GO10`). */

@@ -201,6 +201,12 @@ jobs:
             echo "::error title=ingest::extract-matrix.json fora do contrato (no máximo 256 itens; ver tools/ingest/README.md)."
             exit 1
           }
+          # O docling-models só baixa layout e tableformer; o modelo de OCR padrão do Docling vem do
+          # ModelScope, fora da allowlist. Fonte com `ocr: true` precisa primeiro do modelo no cache.
+          if jq -e 'any(.[]; .ocr == true)' "$MATRIX_FILE" >/dev/null; then
+            echo "::error title=ingest::Há fonte com ocr: true, mas o cache dos modelos não tem OCR. Inclua o modelo (e o host dele) no job docling-models antes de ligar o OCR."
+            exit 1
+          fi
           count="$(jq 'length' "$MATRIX_FILE")"
           echo "count=${count}" >>"$GITHUB_OUTPUT"
           echo "matrix=$(jq -c '{include: [.[] | {id, file, sourceId, url, pageRange: (.pageRange // ""), ocr: (.ocr // false), timeoutSeconds: (.timeoutSeconds // 3600)}]}' "$MATRIX_FILE")" >>"$GITHUB_OUTPUT"
@@ -247,8 +253,7 @@ jobs:
             huggingface.co:443
             *.huggingface.co:443
             *.hf.co:443
-            modelscope.cn:443
-            www.modelscope.cn:443
+            releases.astral.sh:443
 
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -260,7 +265,7 @@ jobs:
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: tools/ingest/.cache/docling-models
-          key: docling-${{ hashFiles('tools/ingest/uv.lock') }}
+          key: docling-${{ hashFiles('tools/ingest/uv.lock') }}-layout-tableformer
 
       - name: Instalar uv
         if: steps.cache.outputs.cache-hit != 'true'
@@ -270,18 +275,21 @@ jobs:
           working-directory: tools/ingest
           enable-cache: false
 
+      # Só os modelos que o convert usa (layout e TableFormer V1, OCR desligado). Sem a lista, o
+      # docling-tools baixa o conjunto padrão, com o OCR do RapidOCR vindo do ModelScope (modelscope.cn).
+      # Mudou a lista? Mude também o sufixo da chave do cache, aqui e no extract.
       - name: Baixar os modelos (docling-tools)
         if: steps.cache.outputs.cache-hit != 'true'
         run: |
           uv sync --frozen --extra docling
-          uv run --frozen docling-tools models download --output-dir .cache/docling-models
+          uv run --frozen docling-tools models download --output-dir .cache/docling-models layout tableformer
 
       - name: Salvar o cache dos modelos
         if: steps.cache.outputs.cache-hit != 'true'
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: tools/ingest/.cache/docling-models
-          key: docling-${{ hashFiles('tools/ingest/uv.lock') }}
+          key: docling-${{ hashFiles('tools/ingest/uv.lock') }}-layout-tableformer
 
   extract:
     name: extract (${{ matrix.id }})
@@ -321,6 +329,7 @@ jobs:
             files.pythonhosted.org:443
             download.pytorch.org:443
             download-r2.pytorch.org:443
+            releases.astral.sh:443
 
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -341,7 +350,7 @@ jobs:
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: tools/ingest/.cache/docling-models
-          key: docling-${{ hashFiles('tools/ingest/uv.lock') }}
+          key: docling-${{ hashFiles('tools/ingest/uv.lock') }}-layout-tableformer
           fail-on-cache-miss: true
 
       - name: Baixar os arquivos do discover

@@ -30,6 +30,10 @@ describe('parseStableKey', () => {
     ])
     for (const key of [
       'br:efd-reinf:evt:R-2010:grupo:infoServTom:campo:vlrTotalBruto',
+      // Nomes dos XSD oficiais com maiúscula inicial e sublinhado (R-9001, R-9015).
+      'br:efd-reinf:evt:R-9001:grupo:RTom:campo:cnpjPrestador',
+      'br:efd-reinf:evt:R-9001:grupo:infoCRTom:campo:CRTom',
+      'br:efd-reinf:evt:R-9015:grupo:infoCR_CNR:campo:indExistInfo',
       'go:tabelas-go:tab:5-1-1:cod:GO000001',
       'go:rcte:art:76-A:par:unico:inc:IV-A:ali:b-1:item:2-1',
       'go:rcte:art:167-S-B:par:1',
@@ -56,6 +60,12 @@ describe('parseStableKey', () => {
     ['br:efd-icms-ipi:nt:2025001', 'valor inválido para nt: 2025001'],
     ['br:efd-icms-ipi:nt:25-001', 'valor inválido para nt: 25-001'],
     ['go:rcte:art:1:toString:x', 'tipo de segmento desconhecido: toString'],
+    ['br:efd-reinf:evt:R-9001:grupo:1Tom', 'valor inválido para grupo: 1Tom'],
+    ['br:efd-reinf:evt:R-9001:grupo:_Tom', 'valor inválido para grupo: _Tom'],
+    ['br:efd-reinf:evt:R-9001:grupo:R', 'valor inválido para grupo: R'],
+    ['br:efd-reinf:evt:R-9001:grupo:info-Tom', 'valor inválido para grupo: info-Tom'],
+    ['br:efd-reinf:evt:R-9001:campo:_CRTom', 'valor inválido para campo: _CRTom'],
+    ['br:efd-reinf:evt:R-9001:campo:7', 'valor inválido para campo: 7'],
   ])('rejeita %s (%s)', (key, reason) => {
     expect(() => parseStableKey(key)).toThrow(new InvalidStableKeyError(key, reason))
     expect(isStableKey(key)).toBe(false)

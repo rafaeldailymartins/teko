@@ -78,6 +78,13 @@ por curadoria fora do repositório e define as chaves, títulos e rótulos que o
   aninhados ficam achatados sob o evento na chave e no título (só o grupo imediato), com `parent`
   no grupo imediato, como na fixture. O título do evento vem de uma tabela (`EVENT_TITLES`),
   porque o XSD só tem a documentação sem acentos.
+- **Nomes do XSD na chave.** Grupos e campos usam o nome do elemento como o pacote oficial grafa.
+  O primeiro run real no staging (2026-11-12) mostrou nomes com maiúscula inicial e sublinhado
+  (`RTom`, `CRTom`, `infoCR_CNR`, nos totalizadores R-9001, R-9011 e R-9015), que a gramática
+  original de `grupo` e `campo` (`[a-z][A-Za-z0-9]*`) recusava: 84 elementos iam para o log e os
+  filhos ficavam sem pai, o que o gravador recusa. A gramática passou a `[A-Za-z][A-Za-z0-9_]*`,
+  antes de qualquer chave da REINF ser gravada. O nome do arquivo também varia: `-v2_01_02d.xsd`
+  na 2.1.2 e `-v2_01_01-A.xsd` na 2.1.1.
 - **Texto da REINF.** O XSD não tem a descrição, as validações nem as condições do PDF de
   leiautes. O texto é montado com as colunas derivadas do XSD (pai, elemento, tipo, ocorrência,
   tamanho, decimais), a `xs:documentation` e os valores válidos (enumeração ou padrão `1|2`).

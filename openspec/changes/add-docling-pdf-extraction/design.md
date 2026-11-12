@@ -40,8 +40,12 @@ o `discover` e o `load` do CLI Node.
   `jq` (regex de sha256/parte, caminho relativo sem `..`, URL `https`, no máximo 256 itens) antes
   de virar parâmetro de jobs. Os valores chegam aos `run:` só por `env`.
 - **Um job grava o cache dos modelos.** `docling-models` restaura o cache
-  `docling-${{ hashFiles('tools/ingest/uv.lock') }}` e, se faltar, roda
-  `uv run docling-tools models download --output-dir .cache/docling-models` e salva. Os itens da
+  `docling-${{ hashFiles('tools/ingest/uv.lock') }}-layout-tableformer` e, se faltar, roda
+  `uv run docling-tools models download --output-dir .cache/docling-models layout tableformer` e
+  salva. Só esses dois: sem a lista, o `docling-tools` baixa o conjunto padrão, e o OCR do RapidOCR
+  vem do ModelScope (`cdn-lfs-cn-1.modelscope.cn`), que o harden-runner bloqueou no primeiro run
+  (2026-11-12). Como nenhuma fonte liga o OCR, o `discover` recusa `ocr: true` até o modelo entrar
+  no cache. Os itens da
   matriz só restauram (`fail-on-cache-miss`) e rodam com `HF_HUB_OFFLINE=1`: a conversão não toca
   a rede, e a allowlist do `extract` não inclui Hugging Face.
 - **Código 75 não é falha.** O `load` termina verde com `status=budget_exhausted` quando o
@@ -57,8 +61,8 @@ o `discover` e o `load` do CLI Node.
   `secrets: inherit`).
 - **harden-runner em `block` em todos os jobs**, com allowlist por job: GitHub e artifacts em
   todos; npm/Node nos jobs Node; fontes oficiais e `api.netlify.com` no `discover`; Netlify,
-  Cloudflare e Neon no `load`; PyPI, `download.pytorch.org` e Hugging Face/ModelScope só no
-  `docling-models`.
+  Cloudflare e Neon no `load`; PyPI, `download.pytorch.org` e Hugging Face só no
+  `docling-models`; `releases.astral.sh` (binário do uv) onde o `setup-uv` roda.
 
 ## Risks / Trade-offs
 

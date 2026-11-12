@@ -27,7 +27,8 @@ import { ParseError, type Parser } from './parser.ts'
 
 const FAMILY_LABEL = 'EFD-Reinf'
 const DISPLAY_PREFIX = 'Leiaute EFD-Reinf'
-const MEMBER = /(?:^|\/)(R-\d{4})-(evt\w+?)-v[\w]+\.xsd$/i
+// A versão no nome pode ter sufixo: `-v2_01_02d.xsd` na 2.1.2, `-v2_01_01-A.xsd` na 2.1.1.
+const MEMBER = /(?:^|\/)(R-\d{4})-(evt\w+?)-v[\w-]+\.xsd$/i
 
 /**
  * Títulos dos eventos como no leiaute em PDF (o XSD só tem a documentação sem acentos). R-2010,
