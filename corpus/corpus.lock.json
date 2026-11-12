@@ -1,7 +1,194 @@
 {
   "format": 1,
-  "corpusVersion": null,
-  "snapshot": null,
-  "updatedAt": null,
-  "sources": {}
+  "corpusVersion": 8,
+  "snapshot": {
+    "manifestKey": "snapshots/8/manifest.json",
+    "corpusVersion": 8,
+    "createdAt": "2026-11-12T18:35:07.722Z",
+    "migration": "231d25e59f001c2801e0694816ff591a1777f57cb7935d8a91fd9cfe28642229",
+    "manifestSha256": "e773eb2753c0e2671d63ef8702ce56f923dc434ad6d263919f5afa0cd5fe05b1"
+  },
+  "updatedAt": "2026-11-12",
+  "sources": {
+    "cte/consolidado": {
+      "sha256": "66cdb37cb1d990c0025888946435d5fbf367ea9f73875a4ada3c850eb2dde58c",
+      "versionLabel": "CTE atualizado até a Lei nº 24.608, de 06.11.26",
+      "publishedOn": "2026-11-06"
+    },
+    "efd-go/guia-pratico/4.2": {
+      "sha256": "510130f73ad8ee717e10a781056f0635e99830990857f7e80e6dceac166c442d",
+      "versionLabel": "Guia Prático da EFD de Goiás versão 4.2 (atualização de 13/12/2016)",
+      "publishedOn": "2016-12-13"
+    },
+    "efd-go/guia-pratico/4.3": {
+      "sha256": "aad24f659b6bb995be4cf7bef898269f9debe0a6a7bfccedc8a2f92752307a93",
+      "versionLabel": "Guia Prático da EFD de Goiás versão 4.3 (atualização de 22/02/2017)",
+      "publishedOn": "2017-02-22"
+    },
+    "efd-go/guia-pratico/4.4": {
+      "sha256": "087b3745417ec87010fbf66c6987467a158f400b390ee0c8b3636be97bb31fb2",
+      "versionLabel": "Guia Prático da EFD de Goiás versão 4.4 (atualização de 30/03/2017)",
+      "publishedOn": "2017-03-30"
+    },
+    "efd-go/guia-pratico/4.5": {
+      "sha256": "412931de1ee6b3b91568a2449a2503c47c6a52a2ed6319843d1619c749c228aa",
+      "versionLabel": "Guia Prático da EFD de Goiás versão 4.5 (atualização de 11/05/2017)",
+      "publishedOn": "2017-05-11"
+    },
+    "efd-go/guia-pratico/4.6": {
+      "sha256": "c98f2c5faa333b12a70f75df79353155ac4a4df52854f0aa17fe6a97c63d8a09",
+      "versionLabel": "Guia Prático da EFD de Goiás versão 4.6 (atualização de 03/10/2017)",
+      "publishedOn": "2017-10-03"
+    },
+    "efd-go/guia-pratico/4.7": {
+      "sha256": "6263fc52b0bdbf3a23e9fd42d8aefd59573b74a93b2e7f0b4e7258063e9c63bd",
+      "versionLabel": "Guia Prático da EFD de Goiás versão 4.7 (atualização de 22/03/2021)",
+      "publishedOn": "2021-03-22"
+    },
+    "efd-go/guia-pratico/4.8": {
+      "sha256": "73fcdd3eb1102ffad09bb0f623cd1a56980d9c793a50524e1fa8a8de929082f4",
+      "versionLabel": "Guia Prático da EFD de Goiás versão 4.8 (atualização de 06/10/2021)",
+      "publishedOn": "2021-10-06"
+    },
+    "efd-go/guia-pratico/4.9": {
+      "sha256": "4032332528dfc96294c233c484d2006a59adf874a1aa9983c04d39c60584a95d",
+      "versionLabel": "Guia Prático da EFD de Goiás versão 4.9 (atualização de 21/09/2022)",
+      "publishedOn": "2022-09-21"
+    },
+    "efd-go/guia-pratico/5.0": {
+      "sha256": "4eddafa11af57ecbf2b223eac400f4c9dfd392d492d0e612826f4aad4e5ea938",
+      "versionLabel": "Guia Prático da EFD de Goiás versão 5.0 (atualização de 16/12/2022)",
+      "publishedOn": "2022-12-16"
+    },
+    "efd-go/guia-pratico/5.1": {
+      "sha256": "9c16fc1caa21716a6bb8aa3205dcc37864ed510db3d3273fe356d1bdfa062d40",
+      "versionLabel": "Guia Prático da EFD de Goiás versão 5.1 (atualização de 11/12/2023)",
+      "publishedOn": "2023-12-11"
+    },
+    "efd-go/guia-pratico/5.2": {
+      "sha256": "0981d20ad9122b6694bac36cb5faf0a3b35d48d958f9c3e5096f58a40d04dd53",
+      "versionLabel": "Guia Prático da EFD de Goiás versão 5.2 (atualização de 21/12/2023)",
+      "publishedOn": "2023-12-21"
+    },
+    "efd-go/guia-pratico/5.3": {
+      "sha256": "a3bb86d6fdcdbe3082063a5c4b0badd15def555fe2ab58f280c0799449104f20",
+      "versionLabel": "Guia Prático da EFD de Goiás versão 5.3 (atualização de 18/04/2024)",
+      "publishedOn": "2024-04-18"
+    },
+    "efd-go/guia-pratico/5.4": {
+      "sha256": "d92bf2a556b3460c80ac3583d8e0809d5e1fcea042ee0aa8123e87fd213534db",
+      "versionLabel": "Guia Prático da EFD de Goiás versão 5.4 (atualização de 02/05/2024)",
+      "publishedOn": "2024-05-02"
+    },
+    "efd-go/guia-pratico/5.5": {
+      "sha256": "e3ac072699e37742f5b843c5ca099e6891b561f676739da69a271e024b7be159",
+      "versionLabel": "Guia Prático da EFD de Goiás versão 5.5 (atualização de 24/07/2024)",
+      "publishedOn": "2024-07-24"
+    },
+    "efd-go/guia-pratico/5.6": {
+      "sha256": "9a8f481f0e8f4cbb59743dd274d370661aa4069da95e94578ab6b1f253dbc5db",
+      "versionLabel": "Guia Prático da EFD de Goiás versão 5.6 (atualização de 12/11/2024)",
+      "publishedOn": "2024-11-12"
+    },
+    "efd-go/guia-pratico/5.7": {
+      "sha256": "ae923c38fe3406f3862b3830a3c2b824f4e03032f2bc36694db0de0574cb591e",
+      "versionLabel": "Guia Prático da EFD de Goiás versão 5.7 (atualização de 18/12/2024)",
+      "publishedOn": "2024-12-18"
+    },
+    "efd-go/guia-pratico/5.8": {
+      "sha256": "4e67a85b1350220ccb81b3b9f03455ef359c80e1b8b0128cb4c773ffd5463d29",
+      "versionLabel": "Guia Prático da EFD de Goiás versão 5.8 (atualização de 02/10/2025)",
+      "publishedOn": "2025-10-02"
+    },
+    "efd-go/guia-pratico/5.9": {
+      "sha256": "625f045550a1dfc6d38479a340103606e1c0b15c6cf55aea01cd65ba28c565c1",
+      "versionLabel": "Guia Prático da EFD de Goiás versão 5.9 (atualização de 16/03/2026)",
+      "publishedOn": "2026-03-16"
+    },
+    "efd-icms-ipi/guia-pratico/3.1.9": {
+      "sha256": "e7e064a40faaa12d47f8c2fa3c25c97981dbb2ba5bd56f5ecd39947d022b773e",
+      "versionLabel": "Guia Prático EFD-ICMS/IPI versão 3.1.9 (atualização de 13/05/2025)",
+      "publishedOn": "2025-05-13"
+    },
+    "efd-icms-ipi/guia-pratico/3.2.0": {
+      "sha256": "0997949c706ea89317b3b8b38fbd8d7d4ace0a69ca8467975daae85f61600348",
+      "versionLabel": "Guia Prático EFD-ICMS/IPI versão 3.2.0 (atualização de 30/07/2025)",
+      "publishedOn": "2025-07-30"
+    },
+    "efd-icms-ipi/guia-pratico/3.2.1": {
+      "sha256": "63fce839b01014f1924f8219cd4a0c20f4dd358c4931dcd28a58c3727fde4af9",
+      "versionLabel": "Guia Prático EFD-ICMS/IPI versão 3.2.1 (atualização de 28/10/2025)",
+      "publishedOn": "2025-10-28"
+    },
+    "efd-icms-ipi/guia-pratico/3.2.2": {
+      "sha256": "49d940a5f7cb209f0ddc8be094ea2e753ed0e2b1219200f4a3266e9b6972d22f",
+      "versionLabel": "Guia Prático EFD-ICMS/IPI versão 3.2.2 (atualização de 11/02/2026)",
+      "publishedOn": "2026-02-11"
+    },
+    "efd-icms-ipi/guia-pratico/3.2.3": {
+      "sha256": "bde603281ce8ad1e9f6f521a3df3ef825e6333497e30dfb9c01de8ecaa81c25b",
+      "versionLabel": "Guia Prático EFD-ICMS/IPI versão 3.2.3 (atualização de 06/05/2026)",
+      "publishedOn": "2026-05-06"
+    },
+    "efd-icms-ipi/guia-pratico/3.2.4": {
+      "sha256": "01e76f177996cb11b1454cbf39f19ad8ce9577876cd8c222ddf3e4aa45b6f164",
+      "versionLabel": "Guia Prático EFD-ICMS/IPI versão 3.2.4 (atualização de 30/07/2026)",
+      "publishedOn": "2026-07-30"
+    },
+    "efd-icms-ipi/nt/2023-001": {
+      "sha256": "88063e5ffaa3ebf041a1214d2633d68a2223e8a385e9a8dd88e20b4dadac8858",
+      "versionLabel": "Nota Técnica EFD ICMS IPI 2023.001 v1.2 (leiaute 018)",
+      "publishedOn": "2023-11-09"
+    },
+    "efd-icms-ipi/nt/2024-001": {
+      "sha256": "483942042ef94649a3ad694b403abbf6917b35035e04432550ded548ce225b33",
+      "versionLabel": "Nota Técnica EFD ICMS IPI 2024.001 v1.0 (leiaute 019)",
+      "publishedOn": "2024-08-15"
+    },
+    "efd-icms-ipi/nt/2025-001": {
+      "sha256": "e8ea61282ae502089539020ed2066ae5ad036d163e0b96e8f6358e6df5d4e6d7",
+      "versionLabel": "Nota Técnica EFD ICMS IPI 2025.001 v1.0 (leiaute 020)",
+      "publishedOn": "2025-05-19"
+    },
+    "efd-icms-ipi/nt/2026-001": {
+      "sha256": "380dfe253015538e7a001fb3396c917e21170f1cd3ec26bfdbf0ed2ae542560b",
+      "versionLabel": "Nota Técnica EFD ICMS IPI 2026.001 v1.0 (leiaute 021)",
+      "publishedOn": "2026-05-10"
+    },
+    "efd-reinf/leiautes/2.1.1": {
+      "sha256": "4de6f4fc3809130ea19378a9b0c600c0946a034f4e141ada9c9d2fe122c347bd",
+      "versionLabel": "Leiautes da EFD-Reinf versão 2.1.1 (ADE Cofis nº 60/2022)",
+      "publishedOn": "2022-07-08"
+    },
+    "efd-reinf/leiautes/2.1.2": {
+      "sha256": "6e4076218f19615c737691d781c694a56f88f152ed8f8a49edb0b2e5fb49e4f1",
+      "versionLabel": "Leiautes da EFD-Reinf versão 2.1.2 (ADE Cofis nº 23/2023)",
+      "publishedOn": "2023-03-16"
+    },
+    "rcte/consolidado": {
+      "sha256": "33942286b64536778ce6118140df759e53de70140c265054d9cb8ea9dac4fe04",
+      "versionLabel": "RCTE consolidado até o Decreto nº 10.986, de 16.09.26",
+      "publishedOn": "2026-09-16"
+    },
+    "tabelas-go/5-1-1": {
+      "sha256": "6dab80030aeb4c55ebe7c3e45f9d1c05b0a557243319cc602dcffc847dda38ad",
+      "versionLabel": "Tabela 5.1.1 (GO), versão 151 de 08/07/2026",
+      "publishedOn": "2026-07-08"
+    },
+    "tabelas-go/5-2": {
+      "sha256": "63aeeeb1202d78e8cca7e107d4f911624f80d4d49a706d1bffd07fa8caa60977",
+      "versionLabel": "Tabela 5.2 (GO), versão 51 de 21/09/2026",
+      "publishedOn": "2026-09-21"
+    },
+    "tabelas-go/5-3": {
+      "sha256": "6cadd53cf2f44eb452c9da348c9845cb29372b5571c185b04a48086ce7ef2d9e",
+      "versionLabel": "Tabela 5.3 (GO), versão 47 de 01/04/2026",
+      "publishedOn": "2026-04-01"
+    },
+    "tabelas-go/5-5": {
+      "sha256": "6baa95f7263b38bfa512750badfaca71db9f5a44d03e6d347d6b37432a9a414d",
+      "versionLabel": "Tabela 5.5 (GO), versão 5 de 04/11/2024",
+      "publishedOn": "2024-11-04"
+    }
+  }
 }
