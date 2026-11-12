@@ -205,6 +205,106 @@ describe('parseDoclingGuia com DoclingDocument sintético', () => {
     )
   })
 
+  it('título do bloco junto ao do primeiro registro (0000 nos Guias 3.1.9 a 3.2.3)', () => {
+    const parsed = synthetic([
+      {
+        text: 'BLOCO 0: ABERTURA, IDENTIFICAÇÃO E REFERÊNCIAS REGISTRO 0000: ABERTURA DO ARQUIVO DIGITAL',
+        label: 'section_header',
+      },
+      { table: [FIELD_HEADER, ['01', 'REG', 'Texto fixo contendo "0000"', 'C', '004', '-', 'O']] },
+    ])
+    expect(byKey(parsed, 'br:efd-icms-ipi:reg:0000').versions[0]?.text).toBe(
+      'REGISTRO 0000: ABERTURA DO ARQUIVO DIGITAL',
+    )
+    expect(fieldsOf(parsed, '0000')).toHaveLength(1)
+  })
+
+  it('desfaz linhas fundidas pelo TableFormer antes da costura (C100 do Guia 3.1.9)', () => {
+    const parsed = synthetic([
+      { text: 'REGISTRO C100: NOTA FISCAL.' },
+      {
+        table: [
+          FIELD_HEADER,
+          ['01', 'REG', 'Texto fixo contendo "C100"', 'C', '004', '-', 'O'],
+          [
+            '02 03',
+            'VL_DOC IND_PGTO',
+            'Valor total do documento fiscal Indicador do tipo de pagamento: 0 - À vista; 1 - A prazo.',
+            'N C',
+            '- 001*',
+            '02 -',
+            'O O',
+          ],
+          [
+            '04 05',
+            'TP_LIG COD_GRUPO',
+            'Tipo de Ligação 1 - Monofásico Código de grupo',
+            'N C',
+            '',
+            '- -',
+            'OC OC',
+          ],
+        ],
+      },
+    ])
+    const fields = fieldsOf(parsed, 'C100')
+    expect(fields.map((field) => field.versions[0]?.structured)).toEqual([
+      {
+        numero: '01',
+        campo: 'REG',
+        tipo: 'C',
+        tamanho: '004',
+        decimais: '-',
+        obrigatoriedade: 'O',
+      },
+      {
+        numero: '02',
+        campo: 'VL_DOC',
+        tipo: 'N',
+        tamanho: '-',
+        decimais: '02',
+        obrigatoriedade: 'O',
+      },
+      {
+        numero: '03',
+        campo: 'IND_PGTO',
+        tipo: 'C',
+        tamanho: '001*',
+        decimais: '-',
+        obrigatoriedade: 'O',
+      },
+      {
+        numero: '04',
+        campo: 'TP_LIG',
+        tipo: 'N',
+        tamanho: '',
+        decimais: '-',
+        obrigatoriedade: 'OC',
+      },
+      {
+        numero: '05',
+        campo: 'COD_GRUPO',
+        tipo: 'C',
+        tamanho: '',
+        decimais: '-',
+        obrigatoriedade: 'OC',
+      },
+    ])
+    expect(fields[1]?.versions[0]?.text).toBe('02 VL_DOC Valor total do documento fiscal N - 02 O')
+    expect(fields[2]?.versions[0]?.text).toBe(
+      '03 IND_PGTO Indicador do tipo de pagamento: 0 - À vista; 1 - A prazo. C 001* - O',
+    )
+    // A tabela passa na validação: nenhum campo vai para revisão por ela.
+    expect(fields[1]?.versions[0]?.reviewStatus).toBe(ReviewStatus.Auto)
+    // Dois cortes possíveis ("Ligação" e "Código") para duas linhas: a descrição fica inteira.
+    expect(fields[3]?.versions[0]?.text).toContain('Tipo de Ligação 1 - Monofásico Código de grupo')
+    expect(fields[3]?.versions[0]?.reviewStatus).toBe(ReviewStatus.Pending)
+    expect(fields[3]?.versions[0]?.review).toEqual({
+      reason: GuiaReviewReason.FieldRowMerged,
+      rawNote: 'Registro C100, campo 04: descrição de linhas fundidas',
+    })
+  })
+
   it('junta a linha sem número à anterior e não costura tabela com outro número de colunas', () => {
     const parsed = synthetic([
       { text: 'REGISTRO 0990: ENCERRAMENTO DO BLOCO 0.' },

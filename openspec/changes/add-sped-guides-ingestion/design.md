@@ -88,6 +88,17 @@ por curadoria fora do repositório e define as chaves, títulos e rótulos que o
   filhos ficavam sem pai, o que o gravador recusa. A gramática passou a `[A-Za-z][A-Za-z0-9_]*`,
   antes de qualquer chave da REINF ser gravada. O nome do arquivo também varia: `-v2_01_02d.xsd`
   na 2.1.2 e `-v2_01_01-A.xsd` na 2.1.1.
+- **Dois defeitos do Docling no Guia EFD ICMS/IPI.** O `corpus-eval` de 2026-11-12 mostrou campos
+  ausentes ou em `pending` nos Guias 3.1.9 a 3.2.3:
+  - o título do Bloco 0 vem junto com o do registro 0000 num `section_header` só ("BLOCO 0: … REGISTRO
+    0000: …"), e o 0000 inteiro sumia (5 dos 6 Guias); o título do registro passa a começar no
+    " REGISTRO " quando o texto começa por "BLOCO ";
+  - o TableFormer funde linhas consecutivas da tabela de campos ("12 13 | VL_DOC IND_PGTO | … | N C";
+    10 linhas nos 6 Guias), e a tabela inteira ia para revisão (`pending`, fora da busca de
+    produção). A linha é desfeita antes da costura: as colunas curtas pelos espaços, quando há um
+    valor por linha, e a descrição nos começos de palavra maiúscula depois de palavra minúscula,
+    quando o número de cortes é exato; sem isso, cada campo leva a descrição inteira e a redação vai
+    para revisão (`field-row-merged`).
 - **Texto da REINF.** O XSD não tem a descrição, as validações nem as condições do PDF de
   leiautes. O texto é montado com as colunas derivadas do XSD (pai, elemento, tipo, ocorrência,
   tamanho, decimais), a `xs:documentation` e os valores válidos (enumeração ou padrão `1|2`).
