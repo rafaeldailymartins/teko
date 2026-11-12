@@ -89,7 +89,9 @@ describe('StartIngestionRun / FinishIngestionRun', () => {
         startedAt: NOW,
       },
     ])
-    await run.finish({ runId: 'run-1', status: 'succeeded', report: { chunksNew: 3 } })
+    expect(
+      await run.finish({ runId: 'run-1', status: 'succeeded', report: { chunksNew: 3 } }),
+    ).toEqual({ dbBytes: 4096, cuSeconds: 60.5 })
     expect(run.finished).toEqual([
       {
         runId: 'run-1',

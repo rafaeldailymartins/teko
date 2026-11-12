@@ -400,6 +400,7 @@ jobs:
       status: ${{ steps.load.outputs.status }}
       lock_changed: ${{ steps.lock.outputs.changed }}
       corpus_version: ${{ steps.lock.outputs.corpus_version }}
+      db_bytes: ${{ steps.lock.outputs.db_bytes }}
     steps:
       - name: Harden runner
         uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
@@ -523,6 +524,13 @@ jobs:
             git diff --stat -- corpus/corpus.lock.json
           fi
           echo "corpus_version=$(jq -r '.corpusVersion // empty' corpus/corpus.lock.json 2>/dev/null || true)" >>"$GITHUB_OUTPUT"
+          # Tamanho do staging no fechamento do run (pg_database_size): alvo de 400 MB, guarda de
+          # 800 MB no load (o Neon Free para em 1 GB).
+          db_bytes="$(jq -r '.dbBytes // empty' "${RUNNER_TEMP}/ingest-report.json" 2>/dev/null || true)"
+          echo "db_bytes=${db_bytes}" >>"$GITHUB_OUTPUT"
+          if [[ -n "$db_bytes" ]] && (( db_bytes > 400 * 1024 * 1024 )); then
+            echo "::warning title=ingest::Staging com $(( db_bytes / 1024 / 1024 )) MB, acima do alvo de 400 MB (a guarda do load aborta em 800 MB)."
+          fi
 
       - name: Guardar o corpus.lock.json
         if: steps.lock.outputs.changed == 'true'
@@ -772,6 +780,7 @@ jobs:
           LOAD: ${{ needs.load.result }}
           LOAD_STATUS: ${{ needs.load.outputs.status }}
           CORPUS_VERSION: ${{ needs.load.outputs.corpus_version }}
+          DB_BYTES: ${{ needs.load.outputs.db_bytes }}
           LOCK_CHANGED: ${{ needs.load.outputs.lock_changed }}
           LOCK_PR: ${{ needs.lock-pr.result }}
           EVAL: ${{ needs.corpus-eval.result }}
@@ -788,6 +797,11 @@ jobs:
             echo "| extract | ${EXTRACT} |"
             echo "| load | ${LOAD} (${LOAD_STATUS:-sem status}) |"
             echo "| corpus.lock.json | ${LOCK_CHANGED:-false}${CORPUS_VERSION:+ (corpus_version ${CORPUS_VERSION})} |"
+            if [[ -n "${DB_BYTES}" ]]; then
+              echo "| tamanho do staging | $(( DB_BYTES / 1024 / 1024 )) MB (alvo ≤ 400 MB) |"
+            else
+              echo "| tamanho do staging | sem medida |"
+            fi
             echo "| lock-pr | ${LOCK_PR} |"
             echo "| corpus-eval | ${EVAL} |"
             if [[ "$LOAD_STATUS" == budget_exhausted ]]; then
