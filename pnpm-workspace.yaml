@@ -46,6 +46,9 @@ overrides:
   # Negação de serviço no parser de listagem do basic-ftp <=6.2.0 (high). Via promptfoo > proxy-agent >
   # pac-proxy-agent > get-uri (só eval; o Tekó não usa FTP nem PAC).
   get-uri>basic-ftp: 6.2.5
+  # GHSA-jpvv-r467-5p4w e GHSA-qv5m-9pm6-hqp3 (moderate). Via promptfoo (fixa 2.1.5) e
+  # @modelcontextprotocol/sdk; só eval, o Tekó não sobe o servidor MCP do promptfoo.
+  "@hono/node-server@<2.1.6": 2.1.6
   # sharp é opcional do Next (otimização de imagens), sem uso no export estático (images.unoptimized).
   # Removido: traz binários libvips sob LGPL-3.0, fora da allowlist de licenças do dependency-review.
   next>sharp: "-"
