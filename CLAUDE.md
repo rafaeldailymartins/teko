@@ -76,12 +76,15 @@ Atualize esta seção no PR que fecha cada fase ou spike.
   com `scripts/neon-roles.ts` (`teko_watch` no staging; `teko_app` e `teko_watch` na produção),
   com as URLs `-pooler` em `maintenance` e `corpus-watch`; nenhuma migração rodou ainda nos
   projetos reais (a primeira é do `deploy-api.yml`, F7). Ver `docs/runbooks/neon-roles.md`.
-- **F3 (ingestão C1 e C2, embeddings e watch):** código entregue em 2026-11-11, num PR só.
-  Mudanças arquivadas `add-rcte-cte-html-parser`, `add-go-code-tables-ingestion` e
-  `add-embedding-pipeline`; ficam abertas, só com as tarefas do primeiro run real,
-  `add-docling-pdf-extraction`, `add-sped-guides-ingestion` e `add-source-change-monitoring`.
-  ADRs 0011 (accepted) e 0025 (`proposed`, reconciliação por janela: precisa do aval do
-  mantenedor). Peças:
+- **F3 (ingestão C1 e C2, embeddings e watch):** concluída em 2026-11-12. Código entregue em
+  2026-11-11 (#25); o primeiro run real no staging, em 2026-11-12, trouxe correções em PRs
+  próprios (#26 a #46). Mudanças arquivadas `add-rcte-cte-html-parser`,
+  `add-go-code-tables-ingestion`, `add-embedding-pipeline`, `add-docling-pdf-extraction`,
+  `add-sped-guides-ingestion`, `add-parser-revision`, `add-reranker` e
+  `fix-hybrid-search-provision-dedup`; ficam abertas `add-source-change-monitoring` (primeiro
+  `source-watch` agendado) e `fix-safe-fetcher-retries` (#46). ADRs 0011 e 0026 e 0027
+  (accepted) e 0025 (`proposed`, reconciliação por janela: precisa do aval do mantenedor).
+  Peças:
   - `corpus/` (fontes com sha256 reais, períodos de leiaute, overrides, lock e `watch.yaml`);
   - parsers em `apps/api/src/adapters/in/cli/ingest/parsers/`;
   - `IngestDocumentVersion` incremental, com `embedding_cache` como checkpoint, orçamento de
@@ -92,13 +95,25 @@ Atualize esta seção no PR que fecha cada fase ou spike.
 
   Medido nos arquivos oficiais: 95,8% das `NotaVigncia` do RCTE e 96,6% das do CTE, o resto
   `pending`. Desvios no plano (seção F3): staging migrado pelo `ingest load --migrate`; Guias
-  3.0.1–3.1.8 desabilitados (só http); REINF pelo pacote de XSD. Pendências depois do merge:
-  - o mantenedor cadastra as vars `NETLIFY_SITE_ID` e `NEON_STAGING_PROJECT_ID` no environment
-    `staging`;
-  - primeiro `ingest.yml` (tempo do Docling por parte, allowlist do harden-runner, staging
-    ≤ 400 MB, neurons por dia);
+  3.0.1–3.1.8 desabilitados (só http); REINF pelo pacote de XSD.
+
+  Staging em 2026-11-12 (corpus_version 10, run 43287466540): as 36 fontes das ondas C1 e C2
+  publicadas; Docling de 9 a 15 min por parte de 125 páginas (40 partes, 6 em paralelo); carga
+  completa em cerca de 5 mil neurons. `corpus-eval` verde pela primeira vez: recall@10 0,925, MRR
+  0,681 e demais 1,00, com o reranker do Workers AI (ADR 0027) e os limites próprios do corpus real
+  (`retrieval-corpus`, MRR ≥ 0,65; a meta de 0,70 é da F4). Lições do primeiro run, já no código:
+  - o `docling-models` baixa só `layout` e `tableformer` (o OCR vinha do ModelScope, bloqueado);
+  - correção de parser só chega a arquivo já ingerido com a revisão do parser incrementada
+    (`PARSER_REVISIONS`, ADR 0026);
+  - `lock-pr` e `corpus-eval` rodam com o `extract` pulado (`!cancelled()` explícito), e o PR
+    novo do lock fecha os anteriores;
+  - o `ci-gate` aceita `mutation` e `perf` pulados (PR que só muda `corpus/`).
+
+  Pendências:
   - primeiro `source-watch` agendado (`verified_at` diário; depois passar o harden-runner dele
-    para `block`).
+    para `block`) e arquivar `add-source-change-monitoring`;
+  - conferir o tamanho do staging (`corpus.ingestion_runs.db_bytes`, alvo ≤ 400 MB);
+  - arquivar `fix-safe-fetcher-retries` depois de um run sem queda por erro de rede.
 - **F4 em diante:** a F4 começa quando o mantenedor decidir.
 
 ## Como trabalhar

@@ -18,4 +18,4 @@
 
 ## 4. Staging
 
-- [ ] 4.1 `ingest.yml` depois do merge: os seis Guias EFD ICMS/IPI reprocessados e o `corpus-eval` registrado aqui
+- [x] 4.1 `ingest.yml` depois do merge: os seis Guias EFD ICMS/IPI reprocessados e o `corpus-eval` registrado aqui — run 43264686108: os 6 Guias reprocessados (1.108 redações novas, 7 neurons, embeddings quase todos do cache); `corpus-eval` recall@10 0,875 e MRR 0,596
