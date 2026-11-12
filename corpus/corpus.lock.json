@@ -1,12 +1,12 @@
 {
   "format": 1,
-  "corpusVersion": 10,
+  "corpusVersion": 11,
   "snapshot": {
-    "manifestKey": "snapshots/10/manifest.json",
-    "corpusVersion": 10,
-    "createdAt": "2026-11-12T19:15:02.144Z",
+    "manifestKey": "snapshots/11/manifest.json",
+    "corpusVersion": 11,
+    "createdAt": "2026-11-12T23:37:57.910Z",
     "migration": "231d25e59f001c2801e0694816ff591a1777f57cb7935d8a91fd9cfe28642229",
-    "manifestSha256": "7bc0bcd6cf6ada7403d4fae9784f103af59841dffc83ed5d717eebd730e32df1"
+    "manifestSha256": "442807bbf44e3f9b2695418ae2c7261c95c830345bbc268822fa2ef77067bcc9"
   },
   "updatedAt": "2026-11-12",
   "sources": {
@@ -104,6 +104,31 @@
       "sha256": "625f045550a1dfc6d38479a340103606e1c0b15c6cf55aea01cd65ba28c565c1",
       "versionLabel": "Guia Prático da EFD de Goiás versão 5.9 (atualização de 16/03/2026)",
       "publishedOn": "2026-03-16"
+    },
+    "efd-icms-ipi/guia-pratico/3.0.6": {
+      "sha256": "974e622015be2c0fca74cbd848fe279971ba72e76235405bb1fd31e70172810a",
+      "versionLabel": "Guia Prático EFD-ICMS/IPI versão 3.0.6 (atualização de 19/11/2020)",
+      "publishedOn": "2020-11-19"
+    },
+    "efd-icms-ipi/guia-pratico/3.0.8": {
+      "sha256": "00a1ca9023d6fda60b9f374340dc58e3b43082fbc4669dccd7f166c5aba4ef43",
+      "versionLabel": "Guia Prático EFD-ICMS/IPI versão 3.0.8 (atualização de 26/11/2021)",
+      "publishedOn": "2021-11-26"
+    },
+    "efd-icms-ipi/guia-pratico/3.1.2": {
+      "sha256": "9b1ca150639a6981501c85ee8d98ba5552d054653c83fc48d34f12035627d89f",
+      "versionLabel": "Guia Prático EFD-ICMS/IPI versão 3.1.2 (atualização de 10/11/2022)",
+      "publishedOn": "2022-11-10"
+    },
+    "efd-icms-ipi/guia-pratico/3.1.3": {
+      "sha256": "64e9663fdd378ffcfae5d7373f8bb6673d7aa15c1424002cb73f537c38ea8698",
+      "versionLabel": "Guia Prático EFD-ICMS/IPI versão 3.1.3 (atualização de 01/03/2023)",
+      "publishedOn": "2023-03-01"
+    },
+    "efd-icms-ipi/guia-pratico/3.1.6": {
+      "sha256": "5bb98f82fb64f31c47b7025c33f73830e974242321c89c8fed9dff7bfe14c813",
+      "versionLabel": "Guia Prático EFD-ICMS/IPI versão 3.1.6 (atualização de 09/11/2023)",
+      "publishedOn": "2023-11-09"
     },
     "efd-icms-ipi/guia-pratico/3.1.9": {
       "sha256": "e7e064a40faaa12d47f8c2fa3c25c97981dbb2ba5bd56f5ecd39947d022b773e",
