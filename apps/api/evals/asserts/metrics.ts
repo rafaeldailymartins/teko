@@ -23,8 +23,38 @@ export const retrievalOutputSchema = z.object({
       rrf: z.number(),
     }),
   ),
+  /**
+   * Estado no banco de cada dispositivo esperado que ficou fora do top-k (só no `corpus-eval` e no
+   * provider local): separa dado faltando (sem redação na data, `pending`, sem embedding) de ranking.
+   */
+  diagnostics: z
+    .array(
+      z.object({
+        stableKey: z.string(),
+        versions: z.array(
+          z.object({ reviewStatus: z.string(), chunks: z.number(), embedded: z.number() }),
+        ),
+      }),
+    )
+    .optional(),
 })
 export type RetrievalOutput = z.infer<typeof retrievalOutputSchema>
+
+/** Resumo do estado no banco de um dispositivo que faltou: o que impede (ou não) que ele apareça. */
+export function describeMissing(output: RetrievalOutput, stableKey: string): string {
+  const diagnostic = output.diagnostics?.find((item) => item.stableKey === stableKey)
+  if (diagnostic === undefined) {
+    return stableKey
+  }
+  if (diagnostic.versions.length === 0) {
+    return `${stableKey} (sem redação na data)`
+  }
+  const states = diagnostic.versions.map(
+    (version) =>
+      `${version.reviewStatus}, ${String(version.embedded)}/${String(version.chunks)} chunks com embedding`,
+  )
+  return `${stableKey} (${states.join('; ')})`
+}
 
 export const RECALL_K = 10
 
@@ -60,7 +90,10 @@ export function recallAtK(golden: GoldenCase, output: RetrievalOutput, k = RECAL
   return {
     score: found.length / expected.length,
     reason: `${String(found.length)}/${String(expected.length)} no top-${String(k)}; faltou: ${
-      expected.filter((key) => !top.has(key)).join(', ') || 'nada'
+      expected
+        .filter((key) => !top.has(key))
+        .map((key) => describeMissing(output, key))
+        .join(', ') || 'nada'
     }`,
   }
 }

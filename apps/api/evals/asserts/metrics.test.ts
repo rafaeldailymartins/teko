@@ -3,6 +3,7 @@ import { type GoldenCase, goldenCaseSchema } from '../datasets/schema.ts'
 import { evaluateMetric, makeAssert } from './assert-factory.ts'
 import {
   clarificationCorrect,
+  describeMissing,
   type RetrievalOutput,
   rankedProvisions,
   recallAtK,
@@ -59,6 +60,18 @@ function output(overrides: Partial<RetrievalOutput> = {}): RetrievalOutput {
 }
 
 describe('métricas de recuperação', () => {
+  it('o motivo do recall diz o estado no banco do dispositivo que faltou', () => {
+    const base = output({ hits: [hit(P5)] })
+    const withDiagnostics = (
+      versions: { reviewStatus: string; chunks: number; embedded: number }[],
+    ) => recallAtK(answered, { ...base, diagnostics: [{ stableKey: P6, versions }] }).reason
+    expect(withDiagnostics([])).toBe(`0/1 no top-10; faltou: ${P6} (sem redação na data)`)
+    expect(withDiagnostics([{ reviewStatus: 'pending', chunks: 2, embedded: 1 }])).toBe(
+      `0/1 no top-10; faltou: ${P6} (pending, 1/2 chunks com embedding)`,
+    )
+    expect(describeMissing(base, P6)).toBe(P6)
+  })
+
   it('conta dispositivos distintos, na ordem', () => {
     expect(rankedProvisions(output({ hits: [hit(P5), hit(P5), hit(P6)] }))).toEqual([P5, P6])
   })
