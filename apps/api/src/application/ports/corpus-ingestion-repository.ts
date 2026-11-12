@@ -27,6 +27,8 @@ export type DocumentVersionStatus =
 export interface ExistingDocumentVersion {
   readonly id: string
   readonly status: DocumentVersionStatus
+  /** Revisão do parser que a produziu (ADR 0026). */
+  readonly parserRevision: number
 }
 
 /** Redação com conhecimento aberto (`upper_inf(knowledge)`) de um dispositivo do documento. */
@@ -94,6 +96,7 @@ export interface IngestionUnitOfWork {
     readonly runId: string
     readonly blobRaw: string | null
     readonly blobDocling: string | null
+    readonly parserRevision: number
   }): Promise<string>
   /**
    * Fecha em `from` o `valid_during` das outras versões do documento ainda em aberto que começam

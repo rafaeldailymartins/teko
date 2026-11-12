@@ -238,3 +238,21 @@ describe('busca léxica', () => {
     ).not.toBeNull()
   })
 })
+
+describe('um resultado por dispositivo', () => {
+  // O registro C100 da fixture tem três chunks por versão (a página do registro, com a tabela de
+  // campos). Antes, eles ocupavam as três primeiras vagas e empurravam o campo perguntado.
+  it('o registro de vários chunks aparece uma vez, com os votos somados, e o campo sobe', async () => {
+    // Pergunta do caso efd-c100-codsit-2025 do golden (o embedding está na fixture).
+    const result = await retrieval.hybridSearch({
+      question:
+        'Quais códigos de situação do documento são aceitos no registro C100 da nota fiscal?',
+      referenceDate: '2025-09-01',
+      families: ['efd-icms-ipi'],
+    })
+    const keys = result.evidence.map((item) => item.stableKey)
+    expect(new Set(keys).size).toBe(keys.length)
+    expect(keys.filter((key) => key === 'br:efd-icms-ipi:reg:C100')).toHaveLength(1)
+    expect(keys.slice(0, 10)).toContain('br:efd-icms-ipi:reg:C100:campo:06')
+  })
+})

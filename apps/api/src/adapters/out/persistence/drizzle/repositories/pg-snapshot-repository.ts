@@ -78,6 +78,8 @@ const TABLES: Readonly<Record<SnapshotTable, TableSpec>> = {
       col('blob_raw'),
       col('blob_docling'),
       col('status'),
+      // Snapshots anteriores ao ADR 0026 não têm a coluna: o promote usa 1 (ver o INSERT).
+      col('parser_revision', 'integer'),
     ],
     filter: `t.${EXPORTED_DOCUMENT_VERSION}`,
     orderBy: 't.id',
@@ -303,7 +305,8 @@ function mergeStatements(): readonly string[] {
        FROM snap_document_versions s LEFT JOIN corpus.document_versions dv ON dv.sha256 = s.sha256`,
     `INSERT INTO corpus.document_versions (${columnNames(t.document_versions)})
        SELECT m.id, md.id, s.version_label, s.published_on, s.valid_during, s.consolidated_until,
-              s.act_ref, s.sha256, s.blob_raw, s.blob_docling, s.status
+              s.act_ref, s.sha256, s.blob_raw, s.blob_docling, s.status,
+              coalesce(s.parser_revision, 1)
        FROM snap_document_versions s
        JOIN map_document_versions m ON m.snap_id = s.id
        JOIN map_documents md ON md.snap_id = s.document_id

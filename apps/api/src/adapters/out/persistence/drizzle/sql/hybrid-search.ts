@@ -13,6 +13,11 @@
  *   snapshot publicado mais recente que contém o chunk (ex.: RCTE consolidado de 2026 citando a
  *   redação de 2006). A vigência citada é sempre a do chunk.
  * - A variante `lexical_only` (embedding indisponível) omite os CTEs `sem` e `semantic`.
+ * - Um resultado por versão de dispositivo (`provision_version_id`, coluna `pv` dos braços): cada
+ *   braço ranqueia só o melhor chunk de cada versão, e o RRF soma os votos por versão, com o chunk
+ *   mais bem colocado como representante. Sem isso, um dispositivo partido em vários chunks (a
+ *   página de um registro da EFD com a tabela de campos) ocupava várias vagas do top-k e dividia o
+ *   voto entre chunks diferentes nos braços léxico e vetorial (corpus-eval de 2026-11-12).
  */
 
 /** RRF k = 60 e 50 candidatos por braço (10 no braço exato). */
@@ -42,18 +47,23 @@ const COMMON_HEAD = `WITH tsq AS MATERIALIZED (
   FROM unnest(to_tsvector('pg_catalog.portuguese', public.immutable_unaccent($1::text)))),
 base AS NOT MATERIALIZED (SELECT c.* FROM corpus.chunks c WHERE ${PUBLISHABLE_FILTER}),
 lexical_candidates AS MATERIALIZED (
-  SELECT b.id, b.tsv FROM base b, tsq t WHERE b.tsv @@ t.q
+  SELECT b.id, b.provision_version_id AS pv, b.tsv FROM base b, tsq t WHERE b.tsv @@ t.q
   ORDER BY ts_rank(b.tsv, t.q, 1 | 32) DESC, b.id LIMIT ${String(LEXICAL_CANDIDATES)}),
 lexical AS (
-  SELECT l.id, row_number() OVER (ORDER BY ts_rank_cd(l.tsv, t.q, 1 | 32) DESC, l.id) AS rnk
-  FROM lexical_candidates l, tsq t ORDER BY rnk LIMIT ${String(ARM_LIMIT)}),`
+  SELECT d.id, d.pv, row_number() OVER (ORDER BY d.score DESC, d.id) AS rnk
+  FROM (SELECT DISTINCT ON (l.pv) l.id, l.pv, ts_rank_cd(l.tsv, t.q, 1 | 32) AS score
+        FROM lexical_candidates l, tsq t ORDER BY l.pv, score DESC, l.id) d
+  ORDER BY rnk LIMIT ${String(ARM_LIMIT)}),`
 
 const SEMANTIC_ARMS = `
 sem AS MATERIALIZED (
-  SELECT c.id, c.embedding <=> $2::halfvec(1024) AS dist FROM corpus.chunks c
+  SELECT c.id, c.provision_version_id AS pv, c.embedding <=> $2::halfvec(1024) AS dist
+  FROM corpus.chunks c
   WHERE c.embedding IS NOT NULL AND ${PUBLISHABLE_FILTER}
   ORDER BY c.embedding <=> $2::halfvec(1024) LIMIT ${String(ARM_LIMIT)}),
-semantic AS (SELECT id, row_number() OVER (ORDER BY dist + 0, id) AS rnk FROM sem),`
+semantic AS (
+  SELECT d.id, d.pv, row_number() OVER (ORDER BY d.dist + 0, d.id) AS rnk
+  FROM (SELECT DISTINCT ON (pv) id, pv, dist FROM sem ORDER BY pv, dist, id) d),`
 
 /**
  * Braço da referência citada. A chave citada sempre entra (é a garantia do braço: "art. 76, § 6º"
@@ -64,10 +74,12 @@ semantic AS (SELECT id, row_number() OVER (ORDER BY dist + 0, id) AS rnk FROM se
  */
 function exactArm(withSemantic: boolean): string {
   const semanticPool = withSemantic ? 'UNION SELECT id FROM semantic' : ''
-  const semanticJoin = withSemantic ? 'LEFT JOIN semantic sr ON sr.id = e.id' : ''
+  const semanticJoin = withSemantic ? 'LEFT JOIN semantic sr ON sr.pv = c.provision_version_id' : ''
   const semanticRank = withSemantic ? 'sr.rnk' : 'NULL::bigint'
+  const semanticId = withSemantic ? 'OR e.id = sr.id' : ''
   // O conjunto parte só de linhas pequenas: os chunks da chave citada (pelo índice único de
-  // stable_key, como no plano) e os candidatos que os outros braços já trouxeram.
+  // stable_key, como no plano) e os candidatos que os outros braços já trouxeram. Um chunk por
+  // versão de dispositivo: o representante dela num dos outros braços ou, sem ele, o primeiro.
   return `
 exact_pool AS (
   SELECT b.id FROM base b
@@ -76,30 +88,35 @@ exact_pool AS (
   WHERE p.stable_key = ANY($5::text[])
   UNION SELECT id FROM lexical ${semanticPool}),
 exact AS (
-  SELECT e.id, row_number() OVER (
-      ORDER BY coalesce(least(lr.rnk, ${semanticRank}), ${String(ARM_LIMIT + 1)}), p.sort_path, c.ordinal) AS rnk
-  FROM exact_pool e
-  JOIN corpus.chunks c ON c.id = e.id
-  JOIN corpus.provision_versions pv ON pv.id = c.provision_version_id
-  JOIN corpus.provisions p ON p.id = pv.provision_id
-  LEFT JOIN lexical lr ON lr.id = e.id
-  ${semanticJoin}
-  WHERE p.stable_key = ANY($5::text[])
-     OR EXISTS (SELECT 1 FROM unnest($5::text[]) AS k WHERE p.stable_key LIKE k || ':%')
+  SELECT d.id, d.pv, row_number() OVER (ORDER BY d.arm_rank, d.sort_path, d.ordinal) AS rnk
+  FROM (
+    SELECT DISTINCT ON (c.provision_version_id) e.id, c.provision_version_id AS pv,
+      coalesce(least(lr.rnk, ${semanticRank}), ${String(ARM_LIMIT + 1)}) AS arm_rank,
+      p.sort_path, c.ordinal
+    FROM exact_pool e
+    JOIN corpus.chunks c ON c.id = e.id
+    JOIN corpus.provision_versions v ON v.id = c.provision_version_id
+    JOIN corpus.provisions p ON p.id = v.provision_id
+    LEFT JOIN lexical lr ON lr.pv = c.provision_version_id
+    ${semanticJoin}
+    WHERE p.stable_key = ANY($5::text[])
+       OR EXISTS (SELECT 1 FROM unnest($5::text[]) AS k WHERE p.stable_key LIKE k || ':%')
+    ORDER BY c.provision_version_id, (e.id = lr.id ${semanticId}) IS TRUE DESC, c.ordinal) d
   ORDER BY rnk LIMIT ${String(EXACT_LIMIT)}),`
 }
 
 function fused(withSemantic: boolean): string {
-  const semanticUnion = withSemantic ? `UNION ALL SELECT id, rnk, 'sem' FROM semantic` : ''
+  const semanticUnion = withSemantic ? `UNION ALL SELECT id, pv, rnk, 'sem' FROM semantic` : ''
+  // Votos somados por versão de dispositivo; o representante é o chunk mais bem colocado.
   return `
 fused AS (
-  SELECT id, sum(1.0 / (${String(RRF_K)} + rnk)) AS rrf,
+  SELECT (array_agg(id ORDER BY rnk, src))[1] AS id, sum(1.0 / (${String(RRF_K)} + rnk)) AS rrf,
     min(rnk) FILTER (WHERE src = 'lex') AS lex_rank,
     min(rnk) FILTER (WHERE src = 'sem') AS sem_rank,
     min(rnk) FILTER (WHERE src = 'ref') AS ref_rank
-  FROM (SELECT id, rnk, 'lex' AS src FROM lexical ${semanticUnion}
-        UNION ALL SELECT id, rnk, 'ref' FROM exact) u
-  GROUP BY id)`
+  FROM (SELECT id, pv, rnk, 'lex' AS src FROM lexical ${semanticUnion}
+        UNION ALL SELECT id, pv, rnk, 'ref' FROM exact) u
+  GROUP BY pv)`
 }
 
 const TAIL = `

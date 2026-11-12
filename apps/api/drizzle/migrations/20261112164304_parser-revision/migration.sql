@@ -1,0 +1,1 @@
+ALTER TABLE "corpus"."document_versions" ADD COLUMN "parser_revision" integer DEFAULT 1 NOT NULL;

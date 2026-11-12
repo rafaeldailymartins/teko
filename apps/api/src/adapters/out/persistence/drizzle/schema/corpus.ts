@@ -96,6 +96,11 @@ export const documentVersions = corpus.table(
     blobRaw: text(),
     blobDocling: text(),
     status: text().notNull().default('ingesting'),
+    /**
+     * Revisão do parser que produziu a versão (`PARSER_REVISIONS`). Um sha256 publicado com revisão
+     * menor que a atual é reprocessado no próximo run (ADR 0026); 1 para o que já estava gravado.
+     */
+    parserRevision: integer().notNull().default(1),
     ingestionRunId: uuid().references(() => ingestionRuns.id),
     createdAt: createdAt(),
   },
