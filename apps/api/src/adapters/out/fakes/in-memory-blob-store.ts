@@ -1,4 +1,5 @@
 import type { BlobStore, BlobStoreName } from '#app/ports/blob-store.ts'
+import { compareCodeUnits } from '#domain/shared/compare-code-units.ts'
 
 /**
  * `BlobStore` em memória: testes e execução local sem `NETLIFY_AUTH_TOKEN`. Copia os bytes na
@@ -7,13 +8,6 @@ import type { BlobStore, BlobStoreName } from '#app/ports/blob-store.ts'
 export interface InMemoryBlobStore extends BlobStore {
   /** Chaves gravadas no store (para asserções nos testes). */
   keys(store: BlobStoreName): string[]
-}
-
-function compareCodeUnits(a: string, b: string): number {
-  if (a < b) {
-    return -1
-  }
-  return a > b ? 1 : 0
 }
 
 export function createInMemoryBlobStore(): InMemoryBlobStore {

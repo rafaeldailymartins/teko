@@ -8,6 +8,7 @@ import {
   overlaps,
   type ValidityInterval,
 } from '@teko/shared/vigencia'
+import { compareCodeUnits } from '../shared/compare-code-units.ts'
 import { Modality } from './family.ts'
 import type { ReviewFlag } from './parsed-source.ts'
 
@@ -53,7 +54,7 @@ export interface LeiautePeriodEntry {
 export function leiautePeriodIntervals(
   entries: readonly LeiautePeriodEntry[],
 ): ReadonlyMap<string, ValidityInterval> {
-  const starts = [...new Set(entries.map((entry) => entry.from))].sort()
+  const starts = [...new Set(entries.map((entry) => entry.from))].sort(compareCodeUnits)
   const result = new Map<string, ValidityInterval>()
   for (const entry of entries) {
     if (!isIsoDate(entry.from)) {
@@ -274,7 +275,7 @@ export function publicationInterval(
 export function publicationIntervals(
   publishedOn: readonly IsoDate[],
 ): ReadonlyMap<IsoDate, ValidityInterval> {
-  const dates = [...new Set(publishedOn)].sort()
+  const dates = [...new Set(publishedOn)].sort(compareCodeUnits)
   return new Map(
     dates.map((date, index) => [date, publicationInterval(date, dates[index + 1] ?? null)]),
   )

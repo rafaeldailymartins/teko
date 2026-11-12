@@ -1,6 +1,7 @@
 import { type IsoDate, isoDateInTimeZone } from '@teko/shared/vigencia'
 import { z } from 'zod'
 import type { Family } from '#domain/corpus/family.ts'
+import { compareCodeUnits } from '#domain/shared/compare-code-units.ts'
 import { type BlobStore, BlobStoreName } from '../ports/blob-store.ts'
 import type { Clock } from '../ports/clock.ts'
 import type { SafeFetcher } from '../ports/safe-fetcher.ts'
@@ -353,7 +354,7 @@ export async function watchSources(
   }
   const pending = settlePending(command.pages, state, changes)
   const all = [...dropConsolidatedActs(command.pages, state, changes), ...pending]
-  const unverifiedFamilies = [...new Set(errors.map((item) => item.family))].sort()
+  const unverifiedFamilies = [...new Set(errors.map((item) => item.family))].sort(compareCodeUnits)
   const report: DiscoveredReport = {
     schemaVersion: 1,
     runDate,

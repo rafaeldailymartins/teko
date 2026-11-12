@@ -1,9 +1,9 @@
 import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { DuplicateOverrideError, overrideKey } from '#domain/corpus/overrides.ts'
+import { repoPath } from '../../../../../test/setup/repo-root.ts'
 import { loadOverrides, OverrideFileError } from './overrides-loader.ts'
 
 const ENTRY = `- stable_key: go:rcte:art:76:par:6
@@ -47,10 +47,10 @@ describe('loadOverrides', () => {
   })
 
   it('o exemplo versionado em corpus/overrides é válido', () => {
-    const dir = fileURLToPath(new URL('../../../../../../../corpus/overrides', import.meta.url))
+    const dir = repoPath('corpus', 'overrides')
     expect(loadOverrides(dir).size).toBe(0)
     const copy = mkdtempSync(join(tmpdir(), 'teko-overrides-'))
-    const example = new URL('../../../../../../../corpus/overrides/_exemplo.yaml', import.meta.url)
+    const example = repoPath('corpus', 'overrides', '_exemplo.yaml')
     writeFileSync(join(copy, 'exemplo.yaml'), readFileSync(example, 'utf8'))
     expect(loadOverrides(copy).size).toBe(3)
   })

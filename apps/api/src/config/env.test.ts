@@ -6,6 +6,7 @@ import {
   EnvValidationError,
   HOBBY_MAX_DURATION_S,
   loadCliEnv,
+  loadWatchEnv,
   parseEnv,
   VERCEL_FUNCTION_REGION,
 } from './env.ts'
@@ -507,5 +508,21 @@ describe('loadCliEnv', () => {
     expect(loadCliEnv({}).APP_ENV).toBe('development')
     expect(loadCliEnv({}).WEB_ORIGIN).toBe('http://localhost:3000')
     expect(loadCliEnv({ APP_ENV: 'ci' }).APP_ENV).toBe('ci')
+  })
+})
+
+describe('loadWatchEnv', () => {
+  it('lê só as duas URLs do teko_watch', () => {
+    expect(
+      loadWatchEnv({
+        NEON_PROD_WATCH_URL: 'postgresql://p',
+        NEON_STAGING_WATCH_URL: 'postgresql://s',
+        DATABASE_URL: 'postgresql://owner',
+      }),
+    ).toEqual({ NEON_PROD_WATCH_URL: 'postgresql://p', NEON_STAGING_WATCH_URL: 'postgresql://s' })
+    expect(loadWatchEnv({})).toEqual({
+      NEON_PROD_WATCH_URL: undefined,
+      NEON_STAGING_WATCH_URL: undefined,
+    })
   })
 })

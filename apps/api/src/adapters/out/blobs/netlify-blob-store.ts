@@ -1,5 +1,6 @@
 import { getStore } from '@netlify/blobs'
 import type { BlobStore, BlobStoreName } from '#app/ports/blob-store.ts'
+import { compareCodeUnits } from '#domain/shared/compare-code-units.ts'
 
 /**
  * `BlobStore` sobre o Netlify Blobs (`@netlify/blobs` 11.1.7; Context7 `/netlify/primitives`),
@@ -44,13 +45,6 @@ export interface NetlifyBlobStoreConfig {
 }
 
 const sdkStore: NetlifyStoreFactory = (options) => getStore(options)
-
-function compareCodeUnits(a: string, b: string): number {
-  if (a < b) {
-    return -1
-  }
-  return a > b ? 1 : 0
-}
 
 /** Cópia em `ArrayBuffer` próprio (o SDK aceita `ArrayBuffer`, não uma vista com deslocamento). */
 function toArrayBuffer(data: Uint8Array): ArrayBuffer {

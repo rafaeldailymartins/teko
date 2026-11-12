@@ -2,7 +2,8 @@ import { mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { parseArgs } from 'node:util'
 import type { Family } from '#domain/corpus/family.ts'
-import { CliUsageError, compareCodeUnits, EXIT_OK, errorMessage } from '../ingest/cli-common.ts'
+import { compareCodeUnits } from '#domain/shared/compare-code-units.ts'
+import { CliUsageError, EXIT_OK, errorMessage } from '../ingest/cli-common.ts'
 import {
   type FixtureDocument,
   fixtureCoverageSchema,

@@ -1,8 +1,8 @@
-import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
+import { repoPath } from '../../../../../test/setup/repo-root.ts'
 import { loadWatchConfig, parseWatchConfig, WatchConfigError } from './watch-config.ts'
 
-const REPO_WATCH = fileURLToPath(new URL('../../../../../../../corpus/watch.yaml', import.meta.url))
+const REPO_WATCH = repoPath('corpus', 'watch.yaml')
 
 describe('corpus/watch.yaml', () => {
   it('é válido e cobre as páginas do plano', async () => {

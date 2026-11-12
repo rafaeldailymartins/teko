@@ -27,7 +27,7 @@ function unescapeXml(text: string): string {
 
 function attributes(tag: string): Map<string, string> {
   const result = new Map<string, string>()
-  for (const match of tag.matchAll(/([A-Za-z]+)="([^"]*)"/g)) {
+  for (const match of tag.matchAll(/(?:^|\s)([A-Za-z]+)="([^"]*)"/g)) {
     result.set(match[1] ?? '', unescapeXml(match[2] ?? ''))
   }
   return result

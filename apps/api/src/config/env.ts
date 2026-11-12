@@ -1,6 +1,7 @@
 import { AppEnv, appEnvSchema, LlmProvider, llmProviderSchema } from '@teko/shared/contracts'
 import { z } from 'zod'
 import { gitShaSchema, releaseVersionSchema, UNKNOWN_GIT_SHA } from '#domain/shared/build-info.ts'
+import { compareCodeUnits } from '#domain/shared/compare-code-units.ts'
 
 /**
  * Variáveis de ambiente da API, validadas no boot (falha imediata, antes de abrir a porta).
@@ -337,17 +338,6 @@ export class EnvValidationError extends Error {
   }
 }
 
-/**
- * Ordem de unidade de código UTF-16 (a do `sort()` sem argumento), explícita: nomes de variável são
- * identificadores, e a lista de problemas do boot não pode mudar com o locale ou o ICU do host.
- */
-function compareCodeUnits(a: string, b: string): number {
-  if (a < b) {
-    return -1
-  }
-  return a > b ? 1 : 0
-}
-
 function forbiddenBaseUrlProblems(source: Readonly<Record<string, string | undefined>>): string[] {
   return Object.keys(source)
     .filter((key) => PROVIDER_BASE_URL_PATTERN.test(key) && source[key] !== undefined)
@@ -413,4 +403,15 @@ export function loadCliEnv(
   source: Readonly<Record<string, string | undefined>> = process.env,
 ): Env {
   return parseEnv({ ...CLI_ENV_DEFAULTS, ...source })
+}
+
+/**
+ * Ambiente do `coverage-mark` (job `mark-coverage`, environment `corpus-watch`): só as URLs do
+ * role `teko_watch`, sem passar pelo schema da CLI (o job não tem `DATABASE_URL`).
+ */
+export function loadWatchEnv(
+  source: Readonly<Record<string, string | undefined>> = process.env,
+): Readonly<Record<'NEON_PROD_WATCH_URL' | 'NEON_STAGING_WATCH_URL', string | undefined>> {
+  const { NEON_PROD_WATCH_URL, NEON_STAGING_WATCH_URL } = source
+  return { NEON_PROD_WATCH_URL, NEON_STAGING_WATCH_URL }
 }

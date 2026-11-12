@@ -394,6 +394,9 @@ export function extractInlineNote(
   return { text: text.slice(0, match.index).trimEnd(), note: parseInlineBody(inner, folded, pivot) }
 }
 
+/** O que pode separar as duas datas de uma nota ("de X a Y", "X até Y", "X - Y"), já sem acento. */
+const RANGE_JOINERS: ReadonlySet<string> = new Set(['', 'a', 'ate', 'a a', '-'])
+
 function parseInlineBody(inner: string, folded: string, pivot: number): InlineNote {
   const rawNote = `(${inner.replace(/\s+/g, ' ').trim()})`
   const base = {
@@ -422,7 +425,7 @@ function parseInlineBody(inner: string, folded: string, pivot: number): InlineNo
   const [first, second] = hits
   const between =
     first !== undefined && second !== undefined ? folded.slice(first.end, second.index) : ''
-  const twoDates = second !== undefined && /^\s*(?:a|ate|a a|-)?\s*$/.test(between)
+  const twoDates = second !== undefined && RANGE_JOINERS.has(between.trim())
   const unparsed =
     first?.date == null ||
     (twoDates && second?.date == null) ||

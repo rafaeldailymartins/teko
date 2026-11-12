@@ -21,6 +21,7 @@ import { runSourcesWatch } from '#adapters/in/cli/sources-watch/run-sources-watc
 import { loadWatchConfig } from '#adapters/in/cli/sources-watch/watch-config.ts'
 import type { IngestionContainer } from '#app/container.ts'
 import type { BlobStore } from '#app/ports/blob-store.ts'
+import { compareCodeUnits } from '#domain/shared/compare-code-units.ts'
 import {
   createContainer,
   createCoverageMarkTargets,
@@ -29,7 +30,7 @@ import {
   createIngestionIo,
   migrateDatabase,
 } from './composition-root.ts'
-import { type Env, EnvValidationError, loadCliEnv } from './config/env.ts'
+import { type Env, EnvValidationError, loadCliEnv, loadWatchEnv } from './config/env.ts'
 
 /**
  * Entrypoint da CLI (`pnpm --filter @teko/api cli <subcomando>`; empacotada como `dist/cli.mjs`).
@@ -131,15 +132,16 @@ async function runSeedFixtures(args: readonly string[]): Promise<number> {
 
 async function runIngest(args: readonly string[]): Promise<number> {
   const [subcommand, ...rest] = args
+  // O uso vem antes de qualquer leitura do corpus/ ou do ambiente.
+  if (subcommand !== 'discover' && subcommand !== 'load') {
+    console.error(USAGE)
+    return EXIT_USAGE
+  }
   const env = loadCliEnv()
   const config = loadCorpusConfig(CORPUS_DIR)
   const io = createIngestionIo(env, allowedHostsOf(config))
   if (subcommand === 'discover') {
     return runIngestDiscover({ config, fetcher: io.fetcher, blobs: io.blobs, print }, rest)
-  }
-  if (subcommand !== 'load') {
-    console.error(USAGE)
-    return EXIT_USAGE
   }
   const container = ingestionContainer(env, io.blobs, 'ingest load')
   try {
@@ -215,15 +217,15 @@ async function runWatch(args: readonly string[]): Promise<number> {
   const watchHosts = (await loadWatchConfig(watchFile)).map(
     (page) => new URL(page.url.replaceAll('{yyyy}', '2026')).hostname,
   )
-  const hosts = [
-    ...new Set([...allowedHostsOf(loadCorpusConfig(CORPUS_DIR)), ...watchHosts]),
-  ].sort()
+  const hosts = [...new Set([...allowedHostsOf(loadCorpusConfig(CORPUS_DIR)), ...watchHosts])].sort(
+    compareCodeUnits,
+  )
   const io = createIngestionIo(env, hosts)
   return runSourcesWatch({ fetcher: io.fetcher, blobs: io.blobs, clock: io.clock }, watchArgs)
 }
 
 async function runCoverage(args: readonly string[]): Promise<number> {
-  const { targets, close } = createCoverageMarkTargets(resolveWatchDatabaseUrls(process.env))
+  const { targets, close } = createCoverageMarkTargets(resolveWatchDatabaseUrls(loadWatchEnv()))
   try {
     return await runCoverageMark({ targets }, args)
   } finally {

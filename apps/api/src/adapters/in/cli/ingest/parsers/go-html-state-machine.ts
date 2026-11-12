@@ -33,6 +33,7 @@ import {
   type ValidityNote,
   type VersionCandidate,
 } from '#domain/corpus/validity.ts'
+import { compareCodeUnits } from '#domain/shared/compare-code-units.ts'
 import { ParseError, type Parser, type ParserInput } from './parser.ts'
 
 /**
@@ -1110,7 +1111,7 @@ function finishVersions(
   const parentStart = parentVersions
     ?.map((version) => version.validDuring.from)
     .filter((from): from is IsoDate => from !== null)
-    .sort()[0]
+    .sort(compareCodeUnits)[0]
   return versions.map((version) =>
     version.review === null &&
     parentStart !== undefined &&

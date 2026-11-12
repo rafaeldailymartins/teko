@@ -5,6 +5,7 @@ import { parse as parseYaml } from 'yaml'
 import { z } from 'zod'
 import { FAMILIES, type Family } from '#domain/corpus/family.ts'
 import { leiautePeriodIntervals, publicationIntervals } from '#domain/corpus/leiaute-validity.ts'
+import { compareCodeUnits } from '#domain/shared/compare-code-units.ts'
 import { ParserName, type SourceDescriptor } from './parsers/parser.ts'
 
 /**
@@ -460,5 +461,5 @@ export function allowedHostsOf(config: CorpusConfig): string[] {
       hosts.add(new URL(WS_TABELAS_VERSIONS_URL).hostname)
     }
   }
-  return [...hosts].sort()
+  return [...hosts].sort(compareCodeUnits)
 }

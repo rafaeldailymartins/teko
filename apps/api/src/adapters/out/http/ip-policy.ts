@@ -77,9 +77,15 @@ export function parseIpv4(text: string): bigint | null {
   return value
 }
 
+/** Endereço sem a zona IPv6 (`fe80::1%eth0` → `fe80::1`). */
+function withoutZone(address: string): string {
+  const zone = address.indexOf('%')
+  return zone === -1 ? address : address.slice(0, zone)
+}
+
 /** IPv6 (com `::`, IPv4 final e zona `%…`) como inteiro de 128 bits; `null` se inválido. */
 export function parseIpv6(input: string): bigint | null {
-  let text = input.replace(/%.*$/, '').toLowerCase()
+  let text = withoutZone(input).toLowerCase()
   const tailV4 = /:(\d{1,3}(?:\.\d{1,3}){3})$/.exec(text)
   let tail: bigint[] = []
   if (tailV4?.[1] !== undefined) {
@@ -123,7 +129,7 @@ function isBlockedV4(value: bigint): boolean {
  * não for um IP válido.
  */
 export function isBlockedAddress(address: string): boolean {
-  const family = isIP(address.replace(/%.*$/, ''))
+  const family = isIP(withoutZone(address))
   if (family === 4) {
     const value = parseIpv4(address)
     return value === null || isBlockedV4(value)

@@ -1,5 +1,5 @@
-import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
+import { repoPath } from '../../../../../test/setup/repo-root.ts'
 import {
   allowedHostsOf,
   buildCorpusConfig,
@@ -8,7 +8,7 @@ import {
   type ResolvedSource,
 } from './sources.ts'
 
-const CORPUS_DIR = fileURLToPath(new URL('../../../../../../../corpus', import.meta.url))
+const CORPUS_DIR = repoPath('corpus')
 
 function byId(sources: readonly ResolvedSource[], id: string): ResolvedSource {
   const source = sources.find((entry) => entry.id === id)

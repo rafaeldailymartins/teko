@@ -1,8 +1,8 @@
 import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
+import { repoPath } from '../../../../../test/setup/repo-root.ts'
 import { doclingBlobKey, doclingPartId, rawBlobKey, slugify } from './blob-keys.ts'
 import { CliUsageError, EXIT_USAGE, errorMessage, isIngestTarget } from './cli-common.ts'
 import {
@@ -156,7 +156,6 @@ describe('corpus-lock', () => {
   })
 
   it('o corpus/corpus.lock.json versionado é o lock inicial', () => {
-    const file = new URL('../../../../../../../corpus/corpus.lock.json', import.meta.url)
-    expect(readCorpusLock(fileURLToPath(file))).toEqual(EMPTY_LOCK)
+    expect(readCorpusLock(repoPath('corpus', 'corpus.lock.json'))).toEqual(EMPTY_LOCK)
   })
 })

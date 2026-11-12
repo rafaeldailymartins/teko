@@ -10,6 +10,7 @@ import {
 } from '#domain/corpus/leiaute-validity.ts'
 import type { ParsedProvision, ParsedSource, SkippedVersion } from '#domain/corpus/parsed-source.ts'
 import { buildStableKey, isStableKey } from '#domain/corpus/provision-id.ts'
+import { compareCodeUnits } from '#domain/shared/compare-code-units.ts'
 import { buildVersion, formatBrazilianDate } from './docling/source-version.ts'
 import { type ExternalTableVersion, ParseError, type Parser, type ParserInput } from './parser.ts'
 
@@ -97,7 +98,7 @@ function parseRows(lines: readonly string[], skipped: SkippedVersion[]): CodeRow
 
 function earliest(rows: readonly CodeRow[]): IsoDate | null {
   const starts = rows.map((row) => row.validDuring.from).filter((from) => from !== null)
-  return starts.length === 0 ? null : ([...starts].sort()[0] ?? null)
+  return starts.length === 0 ? null : ([...starts].sort(compareCodeUnits)[0] ?? null)
 }
 
 export const parseSpedTabela: Parser = (input) => {

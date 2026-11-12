@@ -14,10 +14,10 @@ import type { FinishIngestionRun, StartIngestionRun } from '#app/use-cases/inges
 import type { RefreshCoverage } from '#app/use-cases/refresh-coverage.ts'
 import { applyOverrides, type Override } from '#domain/corpus/overrides.ts'
 import type { ParsedSource } from '#domain/corpus/parsed-source.ts'
+import { compareCodeUnits } from '#domain/shared/compare-code-units.ts'
 import { doclingBlobKey, rawBlobKey, type SourceKeyParts, slugify } from './blob-keys.ts'
 import {
   CliUsageError,
-  compareCodeUnits,
   EXIT_BUDGET_EXHAUSTED,
   EXIT_FAILURE,
   EXIT_OK,

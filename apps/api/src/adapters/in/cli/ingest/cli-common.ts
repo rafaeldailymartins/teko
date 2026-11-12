@@ -38,14 +38,6 @@ export function sha256Hex(bytes: Uint8Array): string {
   return createHash('sha256').update(bytes).digest('hex')
 }
 
-/** Ordem de unidade de código (independe do locale). */
-export function compareCodeUnits(a: string, b: string): number {
-  if (a < b) {
-    return -1
-  }
-  return a > b ? 1 : 0
-}
-
 /** Mensagem de um erro desconhecido, sem pilha (vai para o relatório e para o log). */
 export function errorMessage(error: unknown): string {
   return error instanceof Error ? `${error.name}: ${error.message}` : String(error)

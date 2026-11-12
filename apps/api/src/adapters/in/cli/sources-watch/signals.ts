@@ -12,6 +12,7 @@ import {
   WatchSignalError,
   type WatchSignalReader,
 } from '#app/ports/watch-signals.ts'
+import { compareCodeUnits } from '#domain/shared/compare-code-units.ts'
 
 /**
  * Leitura dos sinais de versão das páginas monitoradas (`htmlparser2` 12 em modo HTML para as
@@ -252,7 +253,7 @@ function readDocumentIndex(page: DocumentIndexPage, fetched: FetchedPage): PageS
     version: compile(document.versionPattern),
   }))
   const items: WatchedItem[] = []
-  for (const url of [...candidates].sort()) {
+  for (const url of [...candidates].sort(compareCodeUnits)) {
     const matched = patterns.find((entry) => entry.pattern.test(url))
     if (matched === undefined) {
       continue

@@ -2,7 +2,7 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { parse as parseYaml } from 'yaml'
 import { indexOverrides, type Override, overrideFileSchema } from '#domain/corpus/overrides.ts'
-import { compareCodeUnits } from './cli-common.ts'
+import { compareCodeUnits } from '#domain/shared/compare-code-units.ts'
 
 /**
  * Lê `corpus/overrides/*.yaml` (cada arquivo, uma lista de resoluções; ver o exemplo e o schema em

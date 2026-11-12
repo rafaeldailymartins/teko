@@ -32,7 +32,7 @@ import { ParseError, type Parser, type ParserInput } from './parser.ts'
 const GO_ROOT = 'Guia Prático da EFD de Goiás'
 const HEADING_LABELS: ReadonlySet<string> = new Set(['section_header', 'title'])
 const NUMBERED = /^(\d{1,3}(?:\.\d{1,3}){0,4})(?:\.\s*|\s+|(?=\p{Lu}))(\S.*)$/u
-const TOC_ENTRY = /\.{4,}\s*\d+\s*$/
+const TOC_ENTRY = /\.{4}\s*\d+\s*$/
 /**
  * Ruído de página que o Docling às vezes classifica como corpo: linhas só de traços ou
  * sublinhados, rodapés ("ECONOMIA/GO - 27 -", "- 26 -") e o título corrente do Guia EFD-GO
