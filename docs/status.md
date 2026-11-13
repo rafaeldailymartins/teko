@@ -83,13 +83,16 @@ Concluída em 2026-11-12. Código entregue em 2026-11-11 (#25); o primeiro run r
   `add-embedding-pipeline`, `add-docling-pdf-extraction`, `add-sped-guides-ingestion`,
   `add-parser-revision`, `add-reranker`, `fix-hybrid-search-provision-dedup` e
   `add-http-pinned-guides`; em 2026-11-13, `add-source-change-monitoring`,
-  `fix-safe-fetcher-retries` (#46) e `fix-rcte-sem-efeitos-e-titulos-acrescidos` (revisão 2 do
+  `fix-safe-fetcher-retries` (#46), `fix-rcte-sem-efeitos-e-titulos-acrescidos` (revisão 2 do
   `go-html-state-machine`: notas "sem efeitos" da LC 194/2022 e títulos acrescidos como o
-  "CAPÍTULO IV-A" da EFD; o próximo run reprocessa o RCTE e o CTE).
+  "CAPÍTULO IV-A" da EFD) e `fix-rcte-nota-por-dispositivo` (revisão 3: a nota de alteração vai
+  para o dispositivo que cita, como no art. 12, IV, do RCTE, e a triagem das `NotaVigncia` em
+  revisão, com os primeiros overrides); o próximo run reprocessa o RCTE e o CTE.
 - ADRs 0011, 0025 (reconciliação por janela, aceita pelo mantenedor em 2026-11-12), 0026, 0027 e
   0028 (exceção http com pin), todas accepted.
-- Medido nos arquivos oficiais: 95,8% das `NotaVigncia` do RCTE e 96,6% das do CTE, o resto
-  `pending`.
+- Medido nos arquivos oficiais: 97,1% das `NotaVigncia` do RCTE e 96,6% das do CTE; com os
+  overrides de `corpus/overrides/`, ficam em revisão 9 notas do RCTE e 1 do CTE
+  ([triagem](evals/triagem-notas-pending-2026-11-13.md)).
 - Desvios: staging migrado pelo `ingest load --migrate`; Guias de 2021 a 2024 do portal antigo em
   http com pin (ADR 0028); REINF pelo pacote de XSD.
 

@@ -1,0 +1,226 @@
+# Resoluções das NotaVigncia do RCTE que o parser deixa em revisão (triagem de 2026-11-13,
+# docs/evals/triagem-notas-pending-2026-11-13.md). RCTE.htm "CONSOLIDADO ATÉ O DECRETO Nº 10.986,
+# DE 16.09.26". Cada `reason` cita o trecho literal das notas do próprio HTML.
+
+- stable_key: go:rcte:art:64:inc:V
+  note_hash: 1009ac106271ccf88deef255646ecf7d885bd10fa3c58ffca0cfb0dc493c362c
+  action: approve
+  reason: >-
+    Vale a abertura do ato, [2004-06-09, 2009-06-10): "CONFERIDA NOVA REDAÇÃO AO inciso v do art.
+    64 PELO ART. 1º DO DECRETO Nº 5.958, DE 04.06.04 - vigência: 09.06.04", e a redação anterior
+    termina na véspera ("NOTA: Redação com vigência de 01.08.99 a 08.06.04"). O início da nota "1.
+    Redação com vigência de 08.06.04 a 09.06.09" erra por um dia.
+  reviewed_by: claude
+  reviewed_at: 2026-11-13
+
+- stable_key: go:rcte:art:68:inc:II
+  note_hash: ee53d04177e71cbde7daab3f333042f79c933145484a47708bce368b378a271a
+  action: approve
+  reason: >-
+    A nova redação do inciso II começa onde a anterior termina, 2021-04-01: "Nota: Redação com
+    vigência de 01.01.98 a 31.03.21". A nota de alteração publicada antes dela é a do inciso
+    seguinte ("ACRESCIDO O INCISO III AO art. 68 pelo art. 1º do Decreto nº 9.918, de 06.08.21 -
+    vigência: 01.04.21"), que o parser agora liga ao inciso III; o II ficou sem nota própria.
+  reviewed_by: claude
+  reviewed_at: 2026-11-13
+
+- stable_key: go:rcte:art:140:par:2
+  note_hash: 09585d7959b69c864c53e48f4a69703a4e3c1ec3bf21a3e970f907ecf05b64e2
+  action: approve
+  reason: >-
+    Vale a abertura do ato, [2004-08-25, 2009-10-28): "REVOGADO O § 2º DO ART. 140, PELO INCISO I
+    DO ART. 4º DO DECRETO Nº 5.998, DE 20.08.04 - vigência: 25.08.04", com a redação anterior
+    terminando na véspera ("NOTA: Redação com vigência de 29.12.00 a 24.08.04"). O início da nota
+    "NOTA: Redação com vigência de 24.08.04 a 27.10.09" erra por um dia.
+  reviewed_by: claude
+  reviewed_at: 2026-11-13
+
+- stable_key: go:rcte:art:142:par:unico
+  note_hash: 4f614c936bfaeba4f8fa6fc1b6771c10f031d735dd869c4f45ee637816f9e9d6
+  action: approve
+  reason: >-
+    Vale a abertura do ato, [2007-04-04, 2008-06-02): "CONFERIDA NOVA REDAÇÃO AO PARÁGRAFO ÚNICO DO
+    ART. 142 PELO ART. 2º DO DECRETO Nº 6.659, DE 16.08.07 - vigência: 04.04.07", e a redação
+    anterior vai até a véspera ("NOTA: Redação com vigência de 01.01.98 a 03.04.07"). A nota "NOTA:
+    Redação com vigência de 01.01.98 a 01.06.08" repete o início da original; o fim confere com o
+    do caput ("04.04.07 a 01.06.08").
+  reviewed_by: claude
+  reviewed_at: 2026-11-13
+
+- stable_key: go:rcte:art:167-C:par:5
+  note_hash: e5db2df80f882f544a909c50681277bc35c638cc5d22317a45e79323feb20fe0
+  action: approve
+  reason: >-
+    O intervalo lido, [2007-03-20, 2021-09-01), é o da nota da própria redação ("(Redação acrescida
+    pelo Decreto nº 6.717- vigência: 20.03.07)" e "Nota: Redação com vigência de 20.03.07 a
+    31.08.21"). A nota órfã "Nota: Redação com vigência de 01.09.21 a 30.11.21" é da redação
+    seguinte, publicada sem o "§" ("5º As NF-e canceladas…"), que o parser não lê como dispositivo.
+  reviewed_by: claude
+  reviewed_at: 2026-11-13
+
+- stable_key: go:rcte:art:167-J:par:15-B
+  note_hash: 9dc6dac885d52f5d725b12200b20e6b227a7eb948af4a154a148635eb1b62b5a
+  action: approve
+  reason: >-
+    O § 15-B vale desde 2023-02-01, como o parser leu: "ACRESCIDO O § 15-B AO ART. 167-j PELO ART.
+    1º DO DECRETO Nº 10.370, DE 19.12.23 - VIGÊNCIA: 01.02.23". A nota "Nota: Redação com vigência
+    de 01.03.22 a 31.01.23" é do § 16 antigo, cujo texto ("§ 16. Nas operações de que trata o § 15
+    deste artigo:") vem na classe de nota de alteração.
+  reviewed_by: claude
+  reviewed_at: 2026-11-13
+
+- stable_key: go:rcte:art:180:inc:I
+  note_hash: f2484fe839c60500cfc989e1c3f82d83613354932d299651fa88b4722e318fb5
+  action: approve
+  reason: >-
+    Vale a abertura do ato, [2003-12-30, 2005-01-01): "CONFERIDA NOVA REDAÇÃO aO inciso i do ART.
+    180 PELO ART. 2º DO DECRETO Nº 5.884, DE 30.12.03 - vigência: 30.12.03", com a redação anterior
+    até a véspera ("NOTA: Redação com vigência de 01.01.98 a 29.12.03"). O início da nota "NOTA:
+    Redação com vigência de 31.12.03 a 31.12.04" erra por um dia; o fim confere com a redação
+    seguinte ("vigência: 01.01.05").
+  reviewed_by: claude
+  reviewed_at: 2026-11-13
+
+- stable_key: go:rcte:art:213-Z:par:5
+  note_hash: de89dca39400323bcf707553e70e21ee57cd23e5f9463990244fe2aff589fc18
+  action: approve
+  reason: >-
+    O intervalo lido, [2016-09-01, 2020-01-01), é o da própria redação ("(Redação conferida pelo
+    Decreto nº 8.995 - vigência: 01.09.16)" e "Nota: Redação com vigência de 01.09.16 a
+    31.12.19"). A nota órfã "Nota: Redação com vigência de 01.01.20 à 31.12.23" é da redação
+    seguinte, publicada com as classes trocadas (o texto em nota de alteração e a nota em texto).
+  reviewed_by: claude
+  reviewed_at: 2026-11-13
+
+- stable_key: go:rcte:art:248-B:par:4
+  note_hash: 0ba4f581dabc31886271c791250d3d1f56a2fd958c042ea8aaf7a0fc6b550f9a
+  action: set_interval
+  valid_during: { from: 2016-12-01, to: 2017-12-01 }
+  reason: >-
+    Vale a nota, [2016-12-01, 2017-12-01): "NOTA: Redação com vigência de 01.12.16 a 30.11.17",
+    confirmada pela redação seguinte ("CONFERIDA NOVA REDAÇÃO AO § 4º DO ART. 248-b PELO ART. 1º
+    DO DECRETO Nº 9.441 - VIGÊNCIA: 01.12.17"). A data do ato de acréscimo ("VIGÊNCIA: 01.12.18")
+    cai depois da redação que o substituiu.
+  reviewed_by: claude
+  reviewed_at: 2026-11-13
+
+- stable_key: go:rcte:art:248-B:par:4:inc:I
+  note_hash: 0ba4f581dabc31886271c791250d3d1f56a2fd958c042ea8aaf7a0fc6b550f9a
+  action: approve
+  reason: >-
+    O intervalo lido, [2016-12-01, 2017-12-01), é o da nota "NOTA: Redação com vigência de
+    01.12.16 a 30.11.17", o mesmo do § 4º (o pai, corrigido acima).
+  reviewed_by: claude
+  reviewed_at: 2026-11-13
+
+- stable_key: go:rcte:art:248-B:par:4:inc:II
+  note_hash: 0ba4f581dabc31886271c791250d3d1f56a2fd958c042ea8aaf7a0fc6b550f9a
+  action: approve
+  reason: >-
+    O intervalo lido, [2016-12-01, 2017-12-01), é o da nota "NOTA: Redação com vigência de
+    01.12.16 a 30.11.17", o mesmo do § 4º (o pai, corrigido acima).
+  reviewed_by: claude
+  reviewed_at: 2026-11-13
+
+- stable_key: go:rcte:art:248-B:par:4:inc:III
+  note_hash: 0ba4f581dabc31886271c791250d3d1f56a2fd958c042ea8aaf7a0fc6b550f9a
+  action: approve
+  reason: >-
+    O intervalo lido, [2016-12-01, 2017-12-01), é o da nota "NOTA: Redação com vigência de
+    01.12.16 a 30.11.17", o mesmo do § 4º (o pai, corrigido acima).
+  reviewed_by: claude
+  reviewed_at: 2026-11-13
+
+- stable_key: go:rcte:art:248-B:par:6
+  note_hash: 4f9b098f39312b2bd8e9f03af7292115567e05025c08a41d118558a591282cd3
+  action: approve
+  reason: >-
+    Vale a abertura do ato, [2018-12-01, 2021-04-13): "ACRESCIDO O § 6º E SEUS INCISO AO ART. 248-B
+    PELO ART. 1º DO DECRETO Nº 9.745, DE 23.11.20 - VIGÊNCIA 01.12.18, EXCETO EM RELAÇÃO AO INCISO
+    IV, CUJA VIGÊNCIA INICÍA-SE EM 01.02.20". O início da nota "Nota: Redação com vigência de
+    01.02.20 a 12.04.21" é o do inciso IV; o fim confere com a redação seguinte ("vigência:
+    13.04.21").
+  reviewed_by: claude
+  reviewed_at: 2026-11-13
+
+- stable_key: go:rcte:art:248-H:inc:IV
+  note_hash: 708e2db9aedfcb4472aec509ea7ab1f207f020ae3051a2bbbf9658f34d31cc22
+  action: approve
+  reason: >-
+    Vale a abertura do ato, [2019-12-01, 2024-08-09): "ACRESCIDO O INCISO IV AO ART. 248-H PELO ART.
+    1º DO dECRETO Nº 9.716, DE 22.09.20 - vIGÊNCIA: 01.12.19". O início da nota "NOTA: Redação com
+    vigência de 01.12.13 a 08.08.24" é anterior ao próprio decreto; o fim confere com a redação
+    seguinte ("VIGÊNCIA: 09.08.24").
+  reviewed_by: claude
+  reviewed_at: 2026-11-13
+
+- stable_key: go:rcte:art:371:inc:XV:ali:b
+  note_hash: b7fb0df540f9e0c6653cf34320486069bc9d2d722b8277369088a5b6ccf568f7
+  action: set_interval
+  valid_during: { from: 1998-01-01, to: 2003-12-29 }
+  reason: >-
+    Redação original do RCTE até 28.12.03: "NOTA: Redação com vigência de 01.01.96 a 28.12.03" e
+    "CONFERID A, TACITAMENTE, NOVA REDAÇÃO … PELO ART. 1º DA LEI Nº 14.634, DE 29.12.03 - vigência:
+    29.12.03". O 01.01.96 é a data do CTE (com o pivô 97 o parser leu 2096); no RCTE a redação
+    original começa em 01.01.98, como nas notas "Redação com vigência de 01.01.98 a …" do mesmo
+    artigo.
+  reviewed_by: claude
+  reviewed_at: 2026-11-13
+
+- stable_key: go:rcte:art:371:inc:XVII:ali:b
+  note_hash: 3d25d390fbc7d495bc6600e40e38c181f34b5d93958f3b57bc00b28f8628e91d
+  action: approve
+  reason: >-
+    Vale a abertura do ato, [2001-12-27, 2006-01-01): "CONFERIDA NOVA REDAÇÃO À ALÍNEA “b” DO
+    INCISO XVii DO ART. 371 pelo art. 1º do Decreto nº 5.885, de 30.12.03 - vigência: 27.12.01",
+    com a anterior até a véspera ("NOTA: Redação com vigência de 26.01.99 a 26.12.01"). A nota
+    "1Redação com vigência de 01.01.98 a 31.12.05" repete o início da original; o fim confere.
+  reviewed_by: claude
+  reviewed_at: 2026-11-13
+
+- stable_key: go:rcte:art:378
+  note_hash: 9dae2106fafd454a6bbaa7984f567f9c608a6758fa06e7fc70230130c5b072ec
+  action: set_interval
+  valid_during: { from: 2022-02-14, to: 2023-05-08 }
+  reason: >-
+    A nota "Nota: Redação com vigência de 14.02.22 a 13.02.22" é vazia, mas o caput não deixou de
+    existir: a redação vale do ato que a deu ("CONFERIDA NOVA REDAÇÃO AO CAPUT DO ART. 378 PELO ART.
+    1º DO DECRETO Nº 10.048, DE 09.02.22 - VIGÊNCIA: 14.02.22") até a seguinte ("conferida nova
+    redação ao caput do ART. 378 PELO ART. 1º DO DECRETO Nº 10.268, DE 02.06.23 - VIGÊNCIA:
+    08.05.23").
+  reviewed_by: claude
+  reviewed_at: 2026-11-13
+
+- stable_key: go:rcte:art:395:par:2
+  note_hash: 9cb4efedb7123d922154a3a20e9faf8e309ee30d3d2ad9ed254dafa765200f53
+  action: set_interval
+  valid_during: { from: 2013-12-30, to: 2022-02-14 }
+  reason: >-
+    Início da nota inline da redação ("(Redação conferida pelo Decreto nº 8.068 - vigência:
+    30.12.13)") e fim da nota "Nota: Redação com vigência de 01.01.01 a 13.02.22". O 01.01.01 não
+    é desta redação: a anterior, logo acima, vale "14.12.07 a 29.12.13".
+  reviewed_by: claude
+  reviewed_at: 2026-11-13
+
+- stable_key: go:rcte:art:412:par:2
+  note_hash: e7af58bbfe6deec7f9e286da43995b15754f1360370f1fd36505f46c63a43bf1
+  action: approve
+  reason: >-
+    O intervalo lido, [2001-01-01, 2006-08-23), é o da nota "NOTA: Redação sem com vigência de
+    01.01.01 a 22.08.06": o "sem" sobra (a nota traz o período), e o fim confere com a revogação
+    ("REVOGADO O § 2º DO ART. 412 PELO ART. 4º dO DECRETO Nº 6.537, DE 21.08.06 - vigência:
+    23.08.06").
+  reviewed_by: claude
+  reviewed_at: 2026-11-13
+
+- stable_key: go:rcte:art:481-A:par:unico
+  note_hash: f9d7d2388312f4017a97fee8f3f8fe2f4497a082ede68a332a549bfcfae2c353
+  action: set_interval
+  valid_during: { from: 2012-12-27, to: 2021-07-01 }
+  reason: >-
+    Início da nota inline ("(Redação acrescida pelo Decreto nº 7.783 - vigência: 27.12.12)"), fim
+    da nota "2. Redação com vigência de 27.12.01 a 30.06.21" e da redação seguinte ("conferida nova
+    redação ao art. 481-A pelo art. 1º do Decreto nº 10.047, de 09.02.22 - vigência: 01.07.21"). O
+    "27.12.01" é erro de digitação: a redação anterior vale "23.08.06 a 26.12.12".
+  reviewed_by: claude
+  reviewed_at: 2026-11-13

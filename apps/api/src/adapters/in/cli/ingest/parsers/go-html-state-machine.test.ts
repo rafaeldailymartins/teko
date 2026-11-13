@@ -528,6 +528,160 @@ describe('nota "Redação … sem efeitos a partir de …" (LC 194/2022)', () =>
   })
 })
 
+/**
+ * Recortes do RCTE.htm baixado em 2026-11-13 ("CONSOLIDADO ATÉ O DECRETO Nº 10.986"), com os bytes
+ * cp1252 de cada `<p>`: o art. 12 e o art. 68 inteiros (nota de alteração antes da redação de
+ * outro dispositivo) e trechos dos arts. 167-A, 167-J, 213-O e 401 (notas de vigência que o
+ * parser deixava em revisão).
+ */
+describe('nota de alteração ligada ao dispositivo que ela cita', () => {
+  const { source: result, diagnostics } = parseConsolidatedWithDiagnostics(
+    input('rcte', fixture('rcte/nota-por-dispositivo.htm')),
+  )
+
+  function timeline(key: string) {
+    return provision(result, key).versions.map((version) => [
+      version.validDuring.from,
+      version.validDuring.to,
+      version.reviewStatus,
+      version.text.slice(0, 20),
+    ])
+  }
+
+  it('art. 12, IV: a nova redação começa em 05.04.22, mesmo com a nota do V no meio', () => {
+    expect(timeline('go:rcte:art:12:inc:IV')).toEqual([
+      ['1998-01-01', '2016-01-01', 'auto', 'IV - na entrada, dec'],
+      ['2016-01-01', '2022-04-05', 'auto', 'IV - o valor da oper'],
+      ['2022-04-05', null, 'auto', 'IV – na entrada de m'],
+    ])
+    expect(provision(result, 'go:rcte:art:12:inc:IV').versions[2]?.amendment).toMatchObject({
+      actLabel: 'Decreto nº 10.611, de 18.12.24',
+      effectiveFrom: '2022-04-05',
+    })
+  })
+
+  it('art. 12, V: a original fica sem a nota do IV, e as alíneas acrescidas herdam a do V', () => {
+    expect(timeline('go:rcte:art:12:inc:V')).toEqual([
+      ['1998-01-01', '2001-01-01', 'auto', 'V - na entrada, no t'],
+      ['2001-01-01', '2023-05-01', 'auto', 'V - na entrada, no t'],
+      ['2023-05-01', null, 'auto', 'V - o valor da opera'],
+    ])
+    for (const key of ['go:rcte:art:12:inc:V:ali:a', 'go:rcte:art:12:inc:V:ali:b']) {
+      expect(intervals(result, key)).toEqual([['2023-05-01', null]])
+    }
+  })
+
+  it('art. 68: "ACRESCIDO O INCISO III" antes do novo inciso II vale para o III', () => {
+    expect(intervals(result, 'go:rcte:art:68:inc:III')).toEqual([['2021-04-01', null]])
+    // O novo II fica sem nota própria: começa no fim do anterior, em revisão.
+    expect(provision(result, 'go:rcte:art:68:inc:II').versions[1]).toMatchObject({
+      validDuring: { from: '2021-04-01', to: null },
+      review: { reason: ReviewReason.OpeningMissing },
+    })
+  })
+
+  it('art. 12, XX: a nota vazia ("01.05.23 a 30.04.23") deixa a redação acrescida sem vigência', () => {
+    expect(timeline('go:rcte:art:12:inc:XX')).toEqual([
+      ['2023-05-01', null, 'auto', 'XX - o volume ou o p'],
+    ])
+    expect(result.skipped).toContainEqual(
+      expect.objectContaining({ stableKey: 'go:rcte:art:12:inc:XX', reason: 'sem-vigencia' }),
+    )
+  })
+
+  it('lista as notas religadas', () => {
+    expect(
+      diagnostics.retargetedAmendments.map((entry) => [entry.passedOver, entry.boundTo]),
+    ).toEqual([
+      [['go:rcte:art:12:inc:V', 'go:rcte:art:12:inc:V'], 'go:rcte:art:12:inc:IV'],
+      [['go:rcte:art:12:inc:IV'], 'go:rcte:art:12:inc:V'],
+      [['go:rcte:art:68:inc:II'], 'go:rcte:art:68:inc:III'],
+    ])
+    expect(diagnostics.validityNotes.toReview).toBe(0)
+  })
+
+  function synthetic(...paragraphs: string[]): ParsedSource {
+    const html = [
+      '<p class=TitCentral>CONSOLIDADO ATÉ O DECRETO Nº 10.986, DE 16.09.26.</p>',
+      '<p class=ParNormal>Art. 9º Caput.</p>',
+      ...paragraphs,
+    ].join('\r\n')
+    return goHtmlStateMachineParser(input('rcte', new Uint8Array(Buffer.from(html, 'latin1'))))
+  }
+
+  it('lê intervalos ("incisos II a IV"), minúsculas e alíneas sem aspas (sintético)', () => {
+    const result = synthetic(
+      '<p class=NovaRedao>acrescidos os incisos ii a iv ao art. 9º pelo decreto nº 1, de 01.01.20 - vigência: 01.01.20.</p>',
+      '<p class=TextoRevo>I - antigo;</p>',
+      '<p class=NotaVigncia>NOTA: Redação com vigência de 01.01.98 a 31.12.19.</p>',
+      '<p class=ParNormal>III - novo;</p>',
+      '<p class=NovaRedao>ACRESCIDAS AS ALINEAS A E B AO INCISO V DO ART. 9º PELO DECRETO Nº 2, DE 01.01.21 - vigência: 01.01.21.</p>',
+      '<p class=ParNormal>IV - novo;</p>',
+      '<p class=ParNormal>V - antigo;</p>',
+      '<p class=ParNormal>a) nova;</p>',
+    )
+    expect(intervals(result, 'go:rcte:art:9:inc:I')).toEqual([['1998-01-01', '2020-01-01']])
+    expect(intervals(result, 'go:rcte:art:9:inc:III')).toEqual([['2020-01-01', null]])
+    // A nota das alíneas do V cita o V: o IV (do intervalo "ii a iv") não a recebe.
+    expect(intervals(result, 'go:rcte:art:9:inc:IV')).toEqual([['1998-01-01', null]])
+    expect(intervals(result, 'go:rcte:art:9:inc:V')).toEqual([['2021-01-01', null]])
+    expect(intervals(result, 'go:rcte:art:9:inc:V:ali:a')).toEqual([['2021-01-01', null]])
+  })
+
+  it('sem o dispositivo citado adiante no artigo, vale a ordem dos parágrafos (sintético)', () => {
+    const result = synthetic(
+      '<p class=NovaRedao>ACRESCIDO O INCISO VII AO ART. 9º PELO DECRETO Nº 1, DE 01.01.20 - vigência: 01.01.20.</p>',
+      '<p class=ParNormal>VI - erro de numeração na nota;</p>',
+      '<p class=NovaRedao>ACRESCIDO O ART. 11 PELO DECRETO Nº 2, DE 01.01.21 - vigência: 01.01.21.</p>',
+      '<p class=ParNormal>Art. 10. Nota com o número de outro artigo.</p>',
+      '<p class=ParNormal>Art. 11. Artigo seguinte.</p>',
+    )
+    expect(intervals(result, 'go:rcte:art:9:inc:VI')).toEqual([['2020-01-01', null]])
+    expect(intervals(result, 'go:rcte:art:10')).toEqual([['2021-01-01', null]])
+    expect(intervals(result, 'go:rcte:art:11')).toEqual([['1998-01-01', null]])
+  })
+})
+
+describe('notas de vigência que ficavam em revisão (recortes reais)', () => {
+  const { source: result, diagnostics } = parseConsolidatedWithDiagnostics(
+    input('rcte', fixture('rcte/notas-pending.htm')),
+  )
+
+  it('redações seguidas do mesmo dispositivo com início inline: a nota é da última', () => {
+    expect(intervals(result, 'go:rcte:art:167-A')).toEqual([
+      ['2007-03-20', '2017-02-01'],
+      ['2017-02-01', '2022-09-01'],
+      ['2022-09-01', null],
+    ])
+  })
+
+  it('mês com zero a mais ("31.010.07") é lido', () => {
+    for (const paragraph of ['7', '9', '10']) {
+      expect(intervals(result, `go:rcte:art:167-J:par:${paragraph}`)).toEqual([
+        ['2007-03-20', '2007-11-01'],
+        ['2007-11-01', null],
+      ])
+    }
+  })
+
+  it('nota que conta a história do dispositivo: vale o início inline (art. 213-O, II, "b"; art. 401, IV)', () => {
+    expect(intervals(result, 'go:rcte:art:213-O:inc:II:ali:b')).toEqual([
+      ['2007-11-01', '2012-12-01'],
+      ['2013-01-01', '2023-04-03'],
+    ])
+    expect(intervals(result, 'go:rcte:art:401:inc:IV')).toEqual([
+      ['2001-01-01', '2013-06-01'],
+      ['2013-06-01', '2016-11-22'],
+      ['2016-11-22', '2022-11-18'],
+      ['2022-11-18', null],
+    ])
+    expect(
+      result.provisions.flatMap((entry) => entry.versions).every((v) => v.reviewStatus === 'auto'),
+    ).toBe(true)
+    expect(diagnostics.validityNotes.toReview).toBe(0)
+  })
+})
+
 describe('títulos acrescidos (PargrafoAlterador-titulo, com sufixo de letra)', () => {
   it('RCTE: "CAPÍTULO IV-A" zera a seção herdada do Capítulo IV', () => {
     const result = parse('rcte', 'rcte/capitulo-iv-a.htm')

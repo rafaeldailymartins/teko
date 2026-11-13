@@ -22,6 +22,7 @@ import {
   mergeIdenticalConsecutive,
   parseActReference,
   parseAmendmentNote,
+  parseCitedLabels,
   parseNoteDate,
   parseValidityNote,
   parseWithoutEffectNote,
@@ -90,6 +91,8 @@ describe('parseValidityNote (NotaVigncia)', () => {
     ['NOTA: Redação com vigêcia de 01.01.98 a 31.12.00', '1998-01-01', '2000-12-31'],
     ['Nota: Redação com vigência de 08.06.04a 09.06.09.', '2004-06-08', '2009-06-09'],
     ['NOTA: Redação com vigência 01.03.92 a 31.12.95.', '1992-03-01', '1995-12-31'],
+    // Mês com um zero a mais (RCTE, art. 167-J, §§ 7º, 9º e 10).
+    ['NOTA: Redação com vigência de 20.03.07 a 31.010.07.', '2007-03-20', '2007-10-31'],
   ])('lê %j', (raw, first, last) => {
     const pivot = raw.includes('92') ? CTE : RCTE
     expect(parseValidityNote(raw, pivot)).toEqual({
@@ -143,8 +146,8 @@ describe('parseValidityNote (NotaVigncia)', () => {
       last: '2007-08-20',
     })
     expect(
-      parseValidityNote('NOTA: Redação com vigência de 20.03.07 a 31.010.07', RCTE),
-    ).toMatchObject({ kind: 'unparsed', reason: ReviewReason.NoteUnparsed })
+      parseValidityNote('NOTA: Redação com vigência de 20.03.07 a 31.13.07', RCTE),
+    ).toMatchObject({ kind: 'unparsed', reason: ReviewReason.NoteDateIllegible })
     expect(
       parseValidityNote(
         'NOTA: Redação com vigência de 01.01.98 a 31.08.01(energia elétrica) e 30.09.01(serviço de telecomunicação);',
@@ -413,6 +416,83 @@ describe('parseAmendmentNote (NovaRedao/NovaRedRev)', () => {
   })
 })
 
+describe('parseCitedLabels (dispositivos citados na nota de alteração)', () => {
+  const labels = (raw: string): string[] =>
+    parseCitedLabels(raw).map((label) => `${label.kind}:${label.value}`)
+
+  it.each([
+    [
+      'Conferida nova redação ao INCISO IV do art. 12 pelo art. 1º do Decreto nº 10.611, de 18.12.24 - vigência: 05.04.22.',
+      ['art:12', 'inc:IV'],
+    ],
+    [
+      'Conferida nova redação E ACRESCIDAS AS ALÍNEAS "A" E "B" AO INCISO V do art. 12 pelo art. 1º do Decreto nº 10.326, de 29.09.23 - vigência: 01.05.23.',
+      ['art:12', 'inc:V', 'ali:a', 'ali:b'],
+    ],
+    [
+      'CONFERIDA NOVA REDAÇÃO À ALÍNEA “E” DO INCISO I Do ART. 12 PELO ART. 2º DO DECRETO Nº 5.707, DE 27.12.02 - vigência: 01.01.02.',
+      ['art:12', 'inc:I', 'ali:e'],
+    ],
+    [
+      'conferida nova redação e revogados os incisos i a iv do § 1º do art. 213-j PELOs ART. 1º e 4º DO DECRETO Nº 9.745',
+      ['art:213-J', 'par:1', 'inc:I', 'inc:II', 'inc:III', 'inc:IV'],
+    ],
+    [
+      'CONFERIDA NOVA REDAÇÃO AO ITEM 1 DA ALÍNEA “B” DO INCISO XIII DO ART. 71 PELO ART. 1º, I, DA LEI Nº 13.194, DE 26.12.97 - vigência: 01.01.98.',
+      ['art:71', 'inc:XIII', 'ali:b', 'item:1'],
+    ],
+    [
+      'ACRESCIDO O § 3º-a AO ART. 76 PELO ART. 2º DO DECRETO Nº 6.551, DE 28.09.06 - vigência: 12.07.06',
+      ['art:76', 'par:3-A'],
+    ],
+    [
+      'REVOGADA A ALÍNEA “C” DO INCISO I DO ART. 57pelo art. 10 DO DECRETO Nº 10.485, DE 26.06.24 - vigência: 01.06.23.',
+      ['art:57', 'inc:I', 'ali:c'],
+    ],
+    [
+      'POR FORÇA DO ART. 2º DO DECRETO Nº 7.344, DE 18.05.11, Com vigência A PARTIR DE 19.05.11, FICA RENUMERADO O PARÁGRAFO ÚNICO PARA § 1º.',
+      ['par:unico', 'par:1'],
+    ],
+    ['ACRESCIDO O INCISO IV-A AO ART. 56-A PELO DECRETO Nº 1', ['art:56-A', 'inc:IV-A']],
+    ['acrescidos os incisos IV, V e VI ao art. 9º', ['art:9', 'inc:IV', 'inc:V', 'inc:VI']],
+    ['acrescidas as alíneas a a c e o inciso II', ['inc:II', 'ali:a', 'ali:b', 'ali:c']],
+    ['revogado pelo INCISO II DO art. 5º do decreto nº 7.195, de 27.12.10.', []],
+    // Sufixos de letra e de número, como na chave estável.
+    [
+      'acrescidos o item 2-a e o item 3-1 da alínea "b-2" do inciso xvi-a do art. 167-s-b',
+      ['art:167-S-B', 'inc:XVI-A', 'ali:b-2', 'item:2-1', 'item:3-1'],
+    ],
+    [
+      'acrescidos os §§ 2º-a a 4º e o parágrafo 5 ao art. 7',
+      ['art:7', 'par:2-A', 'par:4', 'par:5'],
+    ],
+    // Intervalos ao contrário, grandes demais ou com valor que não é numeral ficam só nos extremos.
+    ['incisos xxxviii ate xli', ['inc:XXXVIII', 'inc:XXXIX', 'inc:XL', 'inc:XLI']],
+    ['incisos v a iii e itens 1 a 40', ['inc:V', 'inc:III', 'item:1', 'item:40']],
+    ['itens 2 a 4 e alíneas "c" a "e"', ['ali:c', 'ali:d', 'ali:e', 'item:2', 'item:3', 'item:4']],
+    ['inciso iiii do art. 3', ['art:3']],
+    [
+      'O § 1º VIGOROU COMO PARÁGRAFO ÚNICO ATÉ 04.04.22, QUANDO FOI RENUMERADO PELO ART. 5º do Decreto nº 10.611',
+      ['par:1', 'par:unico'],
+    ],
+    ['CONFERIDA NOVA REDAÇÃO AO CAPÍTULO II PELO ART. 1º DO DECRETO Nº 6.669', []],
+  ])('%s', (raw, expected) => {
+    expect(labels(raw)).toEqual(expected)
+  })
+
+  it('vai junto na leitura da nota de alteração', () => {
+    expect(
+      parseAmendmentNote(
+        'ACRESCIDO O INCISO III AO art. 68 pelo art. 1º do Decreto nº 9.918, de 06.08.21 - vigência: 01.04.21.',
+        RCTE,
+      ).cited,
+    ).toEqual([
+      { kind: 'art', value: '68' },
+      { kind: 'inc', value: 'III' },
+    ])
+  })
+})
+
 describe('extractInlineNote', () => {
   it('separa a nota inline do texto', () => {
     const { text, note } = extractInlineNote(
@@ -545,6 +625,90 @@ describe('resolveTimeline', () => {
       [{ from: '2009-11-23', to: null }, null],
     ])
     expect(timeline.skipped).toEqual([])
+  })
+
+  it('nota vazia ("de 01.05.23 a 30.04.23") na primeira redação: sem vigência', () => {
+    const timeline = resolveTimeline(
+      [
+        candidate({
+          superseded: true,
+          amendmentFrom: '2023-05-01',
+          amendmentOwn: true,
+          noteFirst: '2023-05-01',
+          noteLast: '2023-04-30',
+        }),
+        candidate({ amendmentFrom: '2023-06-01', amendmentOwn: true }),
+      ],
+      CONTEXT,
+    )
+    expect(timeline.skipped).toEqual([{ index: 0, reason: SkipReason.WithoutValidity }])
+    expect(timeline.versions.map((version) => version.validDuring)).toEqual([
+      { from: '2023-06-01', to: null },
+    ])
+  })
+
+  it('nota vazia com a redação seguinte no mesmo dia: sem vigência; com lacuna: revisão', () => {
+    const before = candidate({ superseded: true, noteFirst: '2013-12-30', noteLast: '2022-02-13' })
+    const empty = candidate({
+      superseded: true,
+      amendmentFrom: '2022-02-14',
+      amendmentOwn: true,
+      noteFirst: '2022-02-14',
+      noteLast: '2022-02-13',
+    })
+    const sameDay = resolveTimeline(
+      [before, empty, candidate({ amendmentFrom: '2022-02-14', amendmentOwn: true })],
+      CONTEXT,
+    )
+    expect(sameDay.skipped).toEqual([{ index: 1, reason: SkipReason.WithoutValidity }])
+    // RCTE art. 378: a seguinte só começa em 08.05.23; tirar a redação abriria uma lacuna.
+    const withGap = resolveTimeline(
+      [before, empty, candidate({ amendmentFrom: '2023-05-08', amendmentOwn: true })],
+      CONTEXT,
+    )
+    expect(withGap.skipped).toEqual([])
+    expect(withGap.versions[1]?.review?.reason).toBe(ReviewReason.IntervalInverted)
+  })
+
+  it('nota que conta a história do dispositivo: vale o início da nota inline', () => {
+    // RCTE art. 401, IV: "(… vigência: 01.01.01 a 31.05.13)", "(… vigência: 01.06.13 à
+    // 21.11.16)", "(… vigência: 22.11.16)" e "NOTA: Redação com vigência de 01.01.01 a 17.11.22."
+    const timeline = resolveTimeline(
+      [
+        candidate({ superseded: true, inlineFirst: '2001-01-01', inlineLast: '2013-05-31' }),
+        candidate({ superseded: true, inlineFirst: '2013-06-01', inlineLast: '2016-11-21' }),
+        candidate({
+          superseded: true,
+          inlineFirst: '2016-11-22',
+          noteFirst: '2001-01-01',
+          noteLast: '2022-11-17',
+        }),
+        candidate({ amendmentFrom: '2022-11-18', amendmentOwn: true }),
+      ],
+      CONTEXT,
+    )
+    expect(timeline.versions.map((version) => [version.validDuring, version.review])).toEqual([
+      [{ from: '2001-01-01', to: '2013-06-01' }, null],
+      [{ from: '2013-06-01', to: '2016-11-22' }, null],
+      [{ from: '2016-11-22', to: '2022-11-18' }, null],
+      [{ from: '2022-11-18', to: null }, null],
+    ])
+  })
+
+  it('início da nota sem redação anterior que o explique continua em revisão', () => {
+    // RCTE art. 377-B, § 1º: "(… vigência: 30.12.13)" e "Nota: … de 14.02.22 A 07.05.23".
+    const [version] = resolveTimeline(
+      [
+        candidate({
+          superseded: true,
+          inlineFirst: '2013-12-30',
+          noteFirst: '2022-02-14',
+          noteLast: '2023-05-07',
+        }),
+      ],
+      CONTEXT,
+    ).versions
+    expect(version?.review?.reason).toBe(ReviewReason.OpeningMismatch)
   })
 
   it('usa a original quando não há nota nem histórico', () => {
@@ -737,8 +901,10 @@ describe('resolveTimeline', () => {
   })
 
   it('período invertido e duas vigentes vão para revisão', () => {
+    // Nota vazia depois de outra redação e sem a seguinte no mesmo dia: não vira "sem vigência".
     const inverted = resolveTimeline(
       [
+        candidate({ superseded: true, noteFirst: '2016-01-01', noteLast: '2023-04-30' }),
         candidate({
           superseded: true,
           amendmentFrom: '2023-05-01',
@@ -749,7 +915,7 @@ describe('resolveTimeline', () => {
       ],
       CONTEXT,
     ).versions
-    expect(inverted[0]).toMatchObject({
+    expect(inverted[1]).toMatchObject({
       validDuring: { from: '2023-05-01', to: '2023-05-02' },
       review: { reason: ReviewReason.IntervalInverted },
     })

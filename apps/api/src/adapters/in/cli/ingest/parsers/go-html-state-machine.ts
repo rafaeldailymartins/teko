@@ -17,6 +17,7 @@ import {
 import {
   type AmendmentNote,
   applyRestructuringCut,
+  type CitedLabel,
   extractInlineNote,
   flagOverlaps,
   type InlineNote,
@@ -52,7 +53,9 @@ import { ParseError, type Parser, type ParserInput } from './parser.ts'
  *
  * A ordem dos parágrafos vale mais que o texto das notas: uma nota de vigência fecha o grupo de
  * redações superadas que a antecede, e uma nota de alteração abre o primeiro dispositivo que vem
- * depois dela (e os filhos dele, salvo "nova redação ao caput"). As datas e a linha do tempo de
+ * depois dela (e os filhos dele, salvo "nova redação ao caput"). A exceção é a nota que cita outro
+ * dispositivo publicado mais adiante no mesmo artigo ("nova redação ao INCISO IV" antes do texto
+ * antigo do inciso V): ela espera a redação do dispositivo citado. As datas e a linha do tempo de
  * cada dispositivo ficam nas regras puras de `domain/corpus/validity.ts`.
  */
 
@@ -398,6 +401,59 @@ function isOpenEnded(draft: Draft): boolean {
   )
 }
 
+/** Estrutura depois do rótulo: um artigo recomeça; os demais ficam abaixo dos níveis maiores. */
+function locateIn(context: readonly Segment[], label: Segment): Segment[] | null {
+  if (label.kind === 'art') {
+    return [label]
+  }
+  if (context.length === 0) {
+    return null
+  }
+  const depth = ORDER.indexOf(label.kind)
+  return [...context.filter((segment) => ORDER.indexOf(segment.kind) < depth), label]
+}
+
+function sameLabel(cited: CitedLabel, segment: Segment | undefined): boolean {
+  return segment !== undefined && cited.kind === segment.kind && cited.value === segment.value
+}
+
+/**
+ * A redação é do dispositivo citado ou de um filho dele; o caput do artigo citado também vale ("ao
+ * CAPUT, AOS INCISOS I E II … DO ART. 128"). Nota sem citação abaixo do artigo vale para qualquer
+ * redação: a troca de artigo fica com a ordem dos parágrafos (o RCTE tem nota de "ART. 181-Q" antes
+ * do art. 181-P).
+ */
+function citesDraft(cited: readonly CitedLabel[], segments: readonly Segment[]): boolean {
+  const inner = cited.filter((label) => label.kind !== 'art')
+  if (inner.length === 0) {
+    return true
+  }
+  if (segments.length === 1 && cited.some((label) => sameLabel(label, segments[0]))) {
+    return true
+  }
+  // Basta um nível citado: a nota "AO ITEM 2 DA ALÍNEA "C" DO INCISO I" antes do item 1 (erro da
+  // fonte, o item 2 não mudou) continua com o item 1.
+  return inner.some((label) => segments.some((segment) => sameLabel(label, segment)))
+}
+
+/**
+ * A redação é exatamente a de um dispositivo citado abaixo do artigo: cada nível dela foi citado
+ * com o mesmo rótulo ("alíneas a e b ao inciso V do art. 12" aceita o inciso V e as alíneas dele,
+ * não a alínea "a" do inciso IV nem o inciso I do § 3º), exceto o artigo, quando a nota não o
+ * cita.
+ */
+function isCitedTarget(cited: readonly CitedLabel[], segments: readonly Segment[]): boolean {
+  return (
+    cited.some((label) => label.kind !== 'art' && sameLabel(label, segments.at(-1))) &&
+    segments.every((segment) => {
+      const sameKind = cited.filter((label) => label.kind === segment.kind)
+      return sameKind.length === 0
+        ? segment.kind === 'art'
+        : sameKind.some((label) => sameLabel(label, segment))
+    })
+  )
+}
+
 function isAncestorOrSelf(ancestor: readonly Segment[], segments: readonly Segment[]): boolean {
   return (
     ancestor.length <= segments.length &&
@@ -526,6 +582,16 @@ interface ScopeEntry {
 interface PendingAmendment {
   readonly note: AmendmentNote
   readonly superseded: boolean
+  /** Dispositivos por que a nota passou sem se ligar (citam outro rótulo, publicado adiante). */
+  readonly passedOver: string[]
+}
+
+/** Nota de alteração ligada ao dispositivo que ela cita, e não ao primeiro depois dela. */
+interface RetargetedAmendment {
+  readonly rawNote: string
+  /** Chaves das redações publicadas entre a nota e o dispositivo citado. */
+  readonly passedOver: readonly string[]
+  readonly boundTo: string
 }
 
 interface Renumbering {
@@ -567,6 +633,11 @@ class StateMachine {
   unattached = 0
   /** Notas de vigência da redação de títulos (fora das contagens). */
   headingNotes = 0
+  readonly retargeted: RetargetedAmendment[] = []
+
+  /** Parágrafos do corpo (para olhar adiante) e a posição do que está sendo lido. */
+  private paragraphs: readonly Paragraph[] = []
+  private cursor = 0
 
   private readonly headings: (string | null)[] = [null, null, null, null, null]
   private pendingHeadingLevel: number | null = null
@@ -588,7 +659,18 @@ class StateMachine {
     this.profile = profile
   }
 
-  feed(paragraph: Paragraph): void {
+  /** Lê o corpo inteiro (já recortado), parágrafo a parágrafo, até "PALÁCIO DO GOVERNO…". */
+  run(paragraphs: readonly Paragraph[]): void {
+    this.paragraphs = paragraphs
+    for (this.cursor = 0; this.cursor < paragraphs.length && !this.ended; this.cursor += 1) {
+      const paragraph = paragraphs[this.cursor]
+      if (paragraph !== undefined) {
+        this.feed(paragraph)
+      }
+    }
+  }
+
+  private feed(paragraph: Paragraph): void {
     switch (roleOf(paragraph)) {
       case 'heading':
         this.onHeading(paragraph)
@@ -676,6 +758,7 @@ class StateMachine {
     this.pending.push({
       note: parseAmendmentNote(paragraph.text, this.profile.yearPivot),
       superseded: paragraph.className === 'NovaRedRev',
+      passedOver: [],
     })
   }
 
@@ -715,7 +798,15 @@ class StateMachine {
    * fechadas, a nota vai para a última (e a divergência, se houver, para a revisão).
    */
   private noteTargets(): Draft[] {
-    const open = this.group.filter((draft) => !draft.closedByNote && draft.inline?.last == null)
+    const unclosed = this.group.filter((draft) => !draft.closedByNote && draft.inline?.last == null)
+    // Redações seguidas do mesmo dispositivo, cada uma com o início na nota inline ("Art. 167-A …
+    // (… vigência: 20.03.07)", "Art. 167-A … (… vigência: 01.02.17)", "Nota: … de 01.02.17 a
+    // 31.08.22"): a nota é da última; as anteriores terminam onde a seguinte começa.
+    const open = unclosed.filter(
+      (draft, index) =>
+        draft.inline?.first == null ||
+        !unclosed.slice(index + 1).some((later) => later.key === draft.key),
+    )
     const last = this.group.at(-1)
     return open.length > 0 || last === undefined ? open : [last]
   }
@@ -823,17 +914,11 @@ class StateMachine {
 
   /** Posição do rótulo na estrutura corrente (artigo > § > inciso > alínea > item). */
   private locate(label: Segment): Segment[] | null {
-    if (label.kind === 'art') {
-      this.context = [label]
-      return [...this.context]
+    const located = locateIn(this.context, label)
+    if (located !== null) {
+      this.context = located
     }
-    if (this.context.length === 0) {
-      return null
-    }
-    const depth = ORDER.indexOf(label.kind)
-    const kept = this.context.filter((segment) => ORDER.indexOf(segment.kind) < depth)
-    this.context = [...kept, label]
-    return [...this.context]
+    return located === null ? null : [...located]
   }
 
   private onContinuation(paragraph: Paragraph): void {
@@ -858,8 +943,9 @@ class StateMachine {
     const key = draftKeyOf(this.profile.family, segments)
     this.scope = this.scope.filter((entry) => isAncestorOrSelf(entry.target, segments))
     const superseded = isSupersededClass(paragraph.className)
-    const styleMismatch = this.pending.length > 0 && this.pending.at(-1)?.superseded !== superseded
-    const own = this.bindPending(segments, key)
+    const bound = this.takePending(segments, key)
+    const styleMismatch = bound.length > 0 && bound.at(-1)?.superseded !== superseded
+    const own = this.bindPending(bound, segments, key)
     const inherited = own === null ? this.inheritedEntry(segments, key) : null
     const { text, note: inline } = extractInlineNote(paragraph.text, this.profile.yearPivot)
     const parentDraft =
@@ -909,10 +995,70 @@ class StateMachine {
     this.lastByKey.set(key, draft)
   }
 
-  /** Liga as notas de alteração pendentes ao primeiro dispositivo depois delas. */
-  private bindPending(segments: readonly Segment[], key: string): AmendmentNote | null {
-    const notes = this.pending.map((entry) => entry.note)
-    this.pending = []
+  /**
+   * Notas pendentes que valem para esta redação: todas, menos as que citam outro dispositivo
+   * publicado mais adiante no mesmo artigo ("nova redação ao INCISO IV" antes do texto antigo do
+   * inciso V). Essas continuam pendentes até a redação do dispositivo citado.
+   */
+  private takePending(segments: readonly Segment[], key: string): PendingAmendment[] {
+    const bound: PendingAmendment[] = []
+    const kept: PendingAmendment[] = []
+    for (const entry of this.pending) {
+      if (citesDraft(entry.note.cited, segments) || !this.citedAhead(entry.note.cited)) {
+        bound.push(entry)
+        if (entry.passedOver.length > 0) {
+          this.retargeted.push({
+            rawNote: entry.note.rawNote,
+            passedOver: entry.passedOver,
+            boundTo: key,
+          })
+        }
+      } else {
+        entry.passedOver.push(key)
+        kept.push(entry)
+      }
+    }
+    this.pending = kept
+    return bound
+  }
+
+  /**
+   * O dispositivo citado aparece adiante, antes do próximo artigo ou título? Os rótulos são
+   * localizados como na leitura (`locateIn`), a partir da estrutura corrente.
+   */
+  private citedAhead(cited: readonly CitedLabel[]): boolean {
+    if (cited.length === 0) {
+      return false
+    }
+    let context: readonly Segment[] = this.context
+    for (let index = this.cursor + 1; index < this.paragraphs.length; index += 1) {
+      const paragraph = this.paragraphs[index]
+      const role = paragraph === undefined ? 'heading' : roleOf(paragraph)
+      if (role === 'heading' || (role === 'text' && END_OF_BODY.test(paragraph?.text ?? ''))) {
+        return false
+      }
+      const label = role === 'text' ? parseLabel(paragraph?.text ?? '') : null
+      const located = label === null ? null : locateIn(context, label)
+      if (located !== null) {
+        if (isCitedTarget(cited, located)) {
+          return true
+        }
+        if (label?.kind === 'art') {
+          return false
+        }
+        context = located
+      }
+    }
+    return false
+  }
+
+  /** Liga as notas de alteração (as que valem para esta redação) ao dispositivo. */
+  private bindPending(
+    pending: readonly PendingAmendment[],
+    segments: readonly Segment[],
+    key: string,
+  ): AmendmentNote | null {
+    const notes = pending.map((entry) => entry.note)
     const dated = notes.filter((note) => note.effectiveFrom !== null || note.exhausted)
     const main = dated.at(-1) ?? notes.at(-1)
     if (main === undefined) {
@@ -1386,6 +1532,8 @@ export interface ConsolidatedDiagnostics {
   readonly unattachedParagraphs: number
   /** Rótulos fora da gramática da `stable_key` (ex.: "Art. 167-S-B"). */
   readonly invalidLabels: number
+  /** Notas de alteração ligadas ao dispositivo citado, publicado depois de outra redação. */
+  readonly retargetedAmendments: readonly RetargetedAmendment[]
 }
 
 function countNotes(notes: readonly NoteRecord[], kind: NoteRecord['kind']): NoteCounts {
@@ -1402,12 +1550,14 @@ export function parseConsolidatedWithDiagnostics(input: ParserInput): {
   const profile = profileOf(input)
   const machine = new StateMachine(profile)
   const inSlice = inSliceFilter(profile)
+  const body: Paragraph[] = []
   for (const paragraph of readParagraphs(input.bytes)) {
     machine.readHeader(paragraph.text)
-    if (inSlice(paragraph) && !machine.ended) {
-      machine.feed(paragraph)
+    if (inSlice(paragraph)) {
+      body.push(paragraph)
     }
   }
+  machine.run(body)
   const header = machine.header
   const publishedOn = header?.publishedOn ?? input.source.publishedOn
   if (publishedOn === null) {
@@ -1452,6 +1602,7 @@ export function parseConsolidatedWithDiagnostics(input: ParserInput): {
       headingNotes: machine.headingNotes,
       unattachedParagraphs: machine.unattached,
       invalidLabels: skipped.filter((entry) => entry.reason === INVALID_KEY_REASON).length,
+      retargetedAmendments: machine.retargeted,
     },
   }
 }

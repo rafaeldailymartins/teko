@@ -72,8 +72,11 @@ export function isRetroactive(effectiveFrom: IsoDate, actDate: IsoDate | null): 
 // ---------------------------------------------------------------------------------------------
 // Texto das notas
 
-/** Data com dia de até 3 dígitos: "230.09.03" (erro da fonte) casa e é recusada depois. */
-const DATE_TOKEN = String.raw`(\d{1,3})\s?\.\s?(\d{1,2})\s?\.\s?(\d{2,4})`
+/**
+ * Data com dia de até 3 dígitos: "230.09.03" (erro da fonte) casa e é recusada depois. O mês
+ * aceita um zero a mais à esquerda ("31.010.07", erro da fonte sem ambiguidade: outubro).
+ */
+const DATE_TOKEN = String.raw`(\d{1,3})\s?\.\s?(0?\d{1,2})\s?\.\s?(\d{2,4})`
 const DATE_TOKEN_EXACT = new RegExp(`^${DATE_TOKEN}$`)
 const VIG = 'vig[a-z]{0,3}cia'
 
@@ -357,6 +360,218 @@ export interface AmendmentNote {
   readonly caputOnly: boolean
   /** Rótulo anterior numa renumeração ("paragrafo unico", "inciso xvi"), já dobrado. */
   readonly renumberedFrom: string | null
+  /** Dispositivos que a nota cita como alterados (sem os do ato alterador). */
+  readonly cited: readonly CitedLabel[]
+}
+
+// ---------------------------------------------------------------------------------------------
+// Dispositivos citados na nota de alteração
+
+/**
+ * Dispositivo citado por uma nota de alteração ("ao INCISO IV do art. 12"), com o valor no formato
+ * do segmento da chave estável (`12-A`, `3-A`, `unico`, `IV-A`, `a`, `2-1`).
+ */
+export interface CitedLabel {
+  readonly kind: 'art' | 'par' | 'inc' | 'ali' | 'item'
+  readonly value: string
+}
+
+/**
+ * O ato alterador e os dispositivos dele ("pelo art. 1º do Decreto nº 10.611, de 18.12.24", "POR
+ * FORÇA DO ART. 2º DO DECRETO Nº 7.344", "pelo inciso I do art. 1º da Lei nº …"): sai do texto antes
+ * da leitura dos citados.
+ */
+const ACT_CITATION = new RegExp(
+  String.raw`(?:\b(?:pel[oa]s?|por(?: forca)?(?: d[oa]s?)?|conforme|nos termos d[oa]s?|de acordo com)\s+` +
+    String.raw`(?:(?:o |a )?(?:art\.?|artigo|inciso|§|paragrafo|alinea|item)\s*\S+?,?\s+(?:d[oa]s?\s+)?)*)?` +
+    String.raw`\b(?:lei complementar|lei|decreto|convenio|ajuste|instrucao normativa|resolucao|protocolo|emenda constitucional|lc)\b[^,;()]*?\d[\d./]*(?:\s*,?\s*de\s+\d[\d.]*)?`,
+  'g',
+)
+
+/** Separadores de lista ("e", ",") e de intervalo ("a", "até") entre dois rótulos. */
+const LIST_JOINER = /^\s*(,|(?:ate|e|a)(?=\s))\s*/
+/** Depois de "e"/"a", "o"/"a" seguido de outro rótulo é artigo, não alínea ("e o inciso"). */
+const NEXT_LABEL =
+  /^["“”'‘’]?\s+(?:incisos?|alineas?|itens|item|§|paragrafos?|arts?\b|artigos?|caput)/
+
+interface LabelGrammar {
+  readonly kind: CitedLabel['kind']
+  /** Palavra-chave do rótulo, até o primeiro valor. */
+  readonly keyword: RegExp
+  /** Um valor, ancorado no início. */
+  readonly value: RegExp
+  readonly build: (match: RegExpExecArray) => string | null
+  /** Posição numérica para expandir intervalos ("incisos IV a VI"). */
+  readonly ordinal: (value: string) => number | null
+}
+
+const ROMAN_NUMERAL = /^M{0,4}(?:CM|CD|D?C{0,3})(?:XC|XL|L?X{0,3})(?:IX|IV|V?I{0,3})$/
+
+/** Valor de um numeral romano já validado (`ROMAN_NUMERAL`, só I, V, X, L e C nos incisos). */
+function romanValue(roman: string): number {
+  const digits: Readonly<Record<string, number>> = { I: 1, V: 5, X: 10, L: 50, C: 100 }
+  const values = [...roman].map((symbol) => digits[symbol] ?? 0)
+  return values.reduce(
+    (total, value, index) => total + (value < (values[index + 1] ?? 0) ? -value : value),
+    0,
+  )
+}
+
+function toRoman(value: number): string {
+  const table: readonly (readonly [number, string])[] = [
+    [100, 'C'],
+    [90, 'XC'],
+    [50, 'L'],
+    [40, 'XL'],
+    [10, 'X'],
+    [9, 'IX'],
+    [5, 'V'],
+    [4, 'IV'],
+    [1, 'I'],
+  ]
+  let rest = value
+  let roman = ''
+  for (const [amount, symbol] of table) {
+    while (rest >= amount) {
+      roman += symbol
+      rest -= amount
+    }
+  }
+  return roman
+}
+
+/** "167 - s - b" → "167-s-b". */
+const compactLabel = (label: string): string => label.replace(/\s/g, '')
+
+/** Só valores sem sufixo entram num intervalo; o resto vale como está. */
+const plainNumber = (value: string): number | null => (/^\d+$/.test(value) ? Number(value) : null)
+
+const LABEL_GRAMMARS: readonly LabelGrammar[] = [
+  {
+    kind: 'art',
+    keyword: /\b(?:arts?\.?|artigos?)\s*/g,
+    value: /^(\d{1,4})\s?(?:[º°]|o(?![a-z]))?((?:\s?-\s?[a-z](?![a-z]))*)/,
+    // Os grupos de sufixo casam sempre (vazios quando não há sufixo): "167" + "-s-b".
+    build: (m) => compactLabel(`${m[1]}${m[2]}`).toUpperCase(),
+    ordinal: plainNumber,
+  },
+  {
+    kind: 'par',
+    keyword: /§§?\s*|\bparagrafos?\s+/g,
+    value: /^(?:unico|0?(\d{1,2})\s?(?:[º°]|o(?![a-z]))?((?:\s?-\s?[a-z](?![a-z]))?))/,
+    build: (m) => (m[0] === 'unico' ? 'unico' : compactLabel(`${m[1]}${m[2]}`).toUpperCase()),
+    ordinal: plainNumber,
+  },
+  {
+    kind: 'inc',
+    keyword: /\bincisos?\s+/g,
+    value: /^([ivxlc]{1,8})(?![a-z])((?:\s?-\s?[a-z](?![a-z]))?)/,
+    build: (m) => {
+      const label = compactLabel(`${m[1]}${m[2]}`).toUpperCase()
+      return ROMAN_NUMERAL.test(label.replace(/-.*/, '')) ? label : null
+    },
+    ordinal: (value) => (/^[IVXLC]+$/.test(value) ? romanValue(value) : null),
+  },
+  {
+    kind: 'ali',
+    keyword: /\balineas?\s+/g,
+    value: /^["“”'‘’]?([a-z])((?:\s?-\s?0?\d{1,2})?)["“”'‘’]?(?![a-z\d])/,
+    build: (m) => compactLabel(`${m[1]}${m[2]}`).replace(/-0(?=\d)/, '-'),
+    ordinal: (value) => (/^[a-z]$/.test(value) ? value.charCodeAt(0) : null),
+  },
+  {
+    kind: 'item',
+    keyword: /\b(?:itens|item)\s+/g,
+    value: /^(\d{1,3})(?:\s?-\s?([a-z]|\d{1,3}))?(?![\d.]*\.\d)(?![a-z\d])/,
+    build: (m) => {
+      const head = String(Number(m[1]))
+      const suffix = m[2]
+      if (suffix === undefined) {
+        return head
+      }
+      return `${head}-${/\d/.test(suffix) ? String(Number(suffix)) : String(suffix.charCodeAt(0) - 96)}`
+    },
+    ordinal: plainNumber,
+  },
+]
+
+function valueFromOrdinal(kind: CitedLabel['kind'], ordinal: number): string {
+  if (kind === 'inc') {
+    return toRoman(ordinal)
+  }
+  return kind === 'ali' ? String.fromCharCode(ordinal) : String(ordinal)
+}
+
+/** Intervalo "IV a VI" → V (os extremos já entraram); limitado para não explodir com erro da fonte. */
+function rangeBetween(grammar: LabelGrammar, first: string, last: string): string[] {
+  const from = grammar.ordinal(first)
+  const to = grammar.ordinal(last)
+  if (from === null || to === null || to <= from || to - from > 30) {
+    return []
+  }
+  const values: string[] = []
+  for (let ordinal = from + 1; ordinal < to; ordinal += 1) {
+    values.push(valueFromOrdinal(grammar.kind, ordinal))
+  }
+  return values
+}
+
+/** Lista de valores depois da palavra-chave: "IV", "IV e V", "IV a VI", "“a” e “b”". */
+function readLabelList(grammar: LabelGrammar, text: string): string[] {
+  const values: string[] = []
+  let rest = text
+  /** Separador antes do valor corrente (`null` no primeiro). */
+  let joiner: string | null = null
+  for (;;) {
+    const match = grammar.value.exec(rest)
+    const value = match === null ? null : grammar.build(match)
+    if (match === null || value === null) {
+      return values
+    }
+    const after = rest.slice(match[0].length)
+    // "PARÁGRAFO ÚNICO ATÉ 04.04.22": depois de "até" vem data, não rótulo.
+    if (joiner !== null && (NEXT_LABEL.test(after) || after.startsWith('.'))) {
+      return values
+    }
+    const previous = values.at(-1)
+    if (previous !== undefined && (joiner === 'a' || joiner === 'ate')) {
+      values.push(...rangeBetween(grammar, previous, value))
+    }
+    values.push(value)
+    const next = LIST_JOINER.exec(after)
+    if (next === null) {
+      return values
+    }
+    joiner = String(next[1])
+    rest = after.slice(next[0].length)
+  }
+}
+
+/**
+ * Dispositivos citados pela nota de alteração, sem o ato alterador: "Conferida nova redação ao
+ * INCISO IV do art. 12 pelo art. 1º do Decreto nº 10.611" → inciso IV e art. 12; "ACRESCIDAS AS
+ * ALÍNEAS "A" E "B" AO INCISO V" → alíneas a e b e inciso V; "incisos IV a VI" → IV, V e VI. Sem
+ * citação legível, a lista sai vazia.
+ */
+export function parseCitedLabels(raw: string): CitedLabel[] {
+  // "ART. 57pelo art. 10", "ART. 167-JPELO": o "pelo" grudado no rótulo.
+  const folded = foldNote(raw).replace(/(\d|-[a-z])(pel[oa]s?\s)/g, '$1 $2')
+  // Depois do primeiro "pelo" vem o ato ("PELO ART. 1º, I, DA LEI", "PELOS ARTS. 3º E 1º DO
+  // DECRETO"); o que sobra de ato antes dele ("POR FORÇA DO ART. 2º DO DECRETO") sai pelo padrão.
+  const byAct = /\bpel[oa]s?\b/.exec(folded)
+  const text = (byAct === null ? folded : folded.slice(0, byAct.index)).replace(ACT_CITATION, ' ')
+  const cited: CitedLabel[] = []
+  for (const grammar of LABEL_GRAMMARS) {
+    const keyword = new RegExp(grammar.keyword.source, 'g')
+    for (let match = keyword.exec(text); match !== null; match = keyword.exec(text)) {
+      for (const value of readLabelList(grammar, text.slice(match.index + match[0].length))) {
+        if (!cited.some((label) => label.kind === grammar.kind && label.value === value)) {
+          cited.push({ kind: grammar.kind, value })
+        }
+      }
+    }
+  }
+  return cited
 }
 
 const LABEL_PHRASE = String.raw`(paragrafo unico|§ ?unico|§ ?\d{1,2} ?[º°o]?(?: ?- ?[a-z])?|inciso [ivxlc]{1,8}(?: ?- ?[a-z])?|alinea "?[a-z]"?)`
@@ -411,6 +626,7 @@ export function parseAmendmentNote(raw: string, pivot: number): AmendmentNote {
     exhausted,
     caputOnly: /(?:redacao|alterad[oa]) (?:ao|o|a) caput\b/.test(folded),
     renumberedFrom,
+    cited: parseCitedLabels(raw),
   }
   if (exhausted) {
     return { ...base, changeKind: ChangeKind.Revogacao, effectiveFrom: null, until: null }
@@ -688,9 +904,15 @@ function boundedInterval(
  *   do intervalo, que pode virar duas versões com o mesmo texto.
  */
 export function resolveTimeline(
-  candidates: readonly VersionCandidate[],
+  rawCandidates: readonly VersionCandidate[],
   context: TimelineContext,
 ): Timeline {
+  const rawStarts = rawCandidates.map((candidate) => explicitFrom(candidate, []))
+  const candidates = rawCandidates.map((candidate, index) =>
+    spansEarlierVersions(candidate, rawStarts.slice(0, index))
+      ? { ...candidate, noteFirst: null }
+      : candidate,
+  )
   const starts = candidates.map((candidate) => explicitFrom(candidate, []))
   const lastCurrent = candidates.findLastIndex((candidate) => !candidate.superseded)
   const versions: ResolvedVersion[] = []
@@ -699,7 +921,10 @@ export function resolveTimeline(
   candidates.forEach((candidate, index) => {
     const marks: ReviewMark[] = [...candidate.marks]
     explicitFrom(candidate, marks)
-    if (candidate.withoutValidity) {
+    if (
+      candidate.withoutValidity ||
+      (isEmptyNote(candidate) && (previous === null || starts[index + 1] === candidate.noteFirst))
+    ) {
       skipped.push({ index, reason: SkipReason.WithoutValidity })
       return
     }
@@ -715,6 +940,40 @@ export function resolveTimeline(
     }
   })
   return { versions, skipped }
+}
+
+/**
+ * Nota "de a a a − 1" ("Redação com vigência de 01.05.23 a 30.04.23"): a redação não chegou a
+ * vigorar. Só vale como "sem vigência" quando não abre lacuna (ver `resolveTimeline`).
+ */
+function isEmptyNote(candidate: VersionCandidate): boolean {
+  return (
+    candidate.noteFirst !== null &&
+    candidate.noteLast !== null &&
+    addDays(candidate.noteLast, 1) === candidate.noteFirst
+  )
+}
+
+/**
+ * A nota de vigência conta a história do dispositivo, e não só desta redação: o início dela é o
+ * de uma redação anterior do mesmo dispositivo, e a redação tem início próprio na nota inline
+ * ("IV - … (Redação conferida pelo Decreto nº 9.015 - vigência: 22.11.16)" seguido de "NOTA:
+ * Redação com vigência de 01.01.01 a 17.11.22", com a redação de 01.01.01 logo acima). Vale o
+ * início da nota inline; o fim continua o da nota.
+ */
+function spansEarlierVersions(
+  candidate: VersionCandidate,
+  earlierStarts: readonly (IsoDate | null)[],
+): boolean {
+  const { noteFirst, inlineFirst } = candidate
+  return (
+    noteFirst !== null &&
+    inlineFirst !== null &&
+    noteFirst !== inlineFirst &&
+    noteFirst < inlineFirst &&
+    !candidate.amendmentOwn &&
+    earlierStarts.includes(noteFirst)
+  )
 }
 
 /**

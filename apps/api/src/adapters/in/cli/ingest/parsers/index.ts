@@ -28,9 +28,13 @@ export const PARSERS: Readonly<Record<ParserName, Parser>> = {
  * - `go-html-state-machine` 2: a nota "Redação … sem efeitos a partir de …" termina a redação (ou
  *   tira dela o período "de a a b"), e os títulos acrescidos (`PargrafoAlterador-titulo`, como o
  *   "CAPÍTULO IV-A" da EFD no RCTE) entram no `headingPath`.
+ * - `go-html-state-machine` 3: a nota de alteração vai para a redação do dispositivo que ela cita,
+ *   mesmo com outra redação no meio (RCTE, art. 12, IV), e quatro formas de `NotaVigncia` que iam
+ *   para revisão passam a ser lidas (nota vazia, mês "010", nota da última de várias redações
+ *   seguidas e nota que conta a história do dispositivo).
  */
 export const PARSER_REVISIONS: Readonly<Record<ParserName, number>> = {
-  [ParserName.GoHtmlStateMachine]: 2,
+  [ParserName.GoHtmlStateMachine]: 3,
   [ParserName.DoclingGuia]: 2,
   [ParserName.DoclingGeneric]: 2,
   [ParserName.ReinfXsd]: 1,
