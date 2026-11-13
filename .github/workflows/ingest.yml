@@ -640,6 +640,7 @@ jobs:
             objects.githubusercontent.com:443
             raw.githubusercontent.com:443
             release-assets.githubusercontent.com:443
+            uploads.github.com:443
             results-receiver.actions.githubusercontent.com:443
             *.actions.githubusercontent.com:443
             *.blob.core.windows.net:443
@@ -737,6 +738,7 @@ jobs:
           APP_ENV: ci
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
           NETLIFY_SITE_ID: ${{ vars.NETLIFY_SITE_ID }}
+          GITHUB_TOKEN: ${{ github.token }}
           RUN_ID: ${{ github.run_id }}
         run: node evals/scripts/corpus-eval-record.ts history --record reports/corpus.eval.json --run-id "$RUN_ID"
 

@@ -189,7 +189,9 @@ ingest_blob_store_ok() {
       ;;
     github-releases)
       yq_true '.jobs.load.permissions.contents == "write" and .jobs.discover.permissions.contents == "read" and (.jobs.load.steps[0].with."allowed-endpoints" | test("(^|\\s)uploads\\.github\\.com:443"))' "$ingest" &&
-        yq_true '[.jobs.discover, .jobs.load | .steps[] | select(.run // "" | test("cli\\.mjs")) | .env.GITHUB_TOKEN == "${{ github.token }}"] | all' "$ingest"
+        yq_true '[.jobs.discover, .jobs.load | .steps[] | select(.run // "" | test("cli\\.mjs")) | .env.GITHUB_TOKEN == "${{ github.token }}"] | all' "$ingest" &&
+        # O histórico do corpus-eval (store eval-artifacts, ADR 0031) também grava nos releases.
+        yq_true '.jobs."corpus-eval".permissions.contents == "write" and (.jobs."corpus-eval".steps[0].with."allowed-endpoints" | test("(^|\\s)uploads\\.github\\.com:443")) and ([.jobs."corpus-eval".steps[] | select(.run // "" | test("corpus-eval-record\\.ts history")) | .env.GITHUB_TOKEN == "${{ github.token }}"] | all)' "$ingest"
       ;;
     *) return 1 ;;
   esac
