@@ -4,6 +4,7 @@ import {
   fromCalendarDate,
   type IsoDate,
   overlaps,
+  subtractIntervals,
   type ValidityInterval,
 } from '@teko/shared/vigencia'
 import { ChangeKind } from './family.ts'
@@ -195,6 +196,95 @@ function unparsedNote(
     first: hits.length >= 2 ? (hits[0]?.date ?? null) : null,
     last: hits.length >= 2 ? (hits[1]?.date ?? null) : null,
   }
+}
+
+// ---------------------------------------------------------------------------------------------
+// Notas "Redação … sem efeitos a partir de …"
+
+/**
+ * Nota que tira o efeito de uma redação sem revogá-la nem substituí-la ("NOTA: Redação do inciso
+ * VIII sem efeitos a partir de 23 de junho de 2022 em função da Lei Complementar Federal nº 194",
+ * "1. Redação do inciso IX sem efeitos de 23.06.22 a 29.04.23 …"). Vem em parágrafo editorial
+ * (`NotaDisc*`) ou, por erro da fonte, em `TextoRevo`, sempre depois da redação que ela atinge.
+ */
+export interface WithoutEffectNote {
+  /** Rótulo citado, dobrado e sem aspas ("inciso viii", "alinea a", "item 1"). */
+  readonly label: string
+  /** Primeiro dia sem efeitos; `null` quando a data não foi lida (vai para revisão). */
+  readonly from: IsoDate | null
+  /** Último dia sem efeitos (inclusivo) quando a nota fecha o período; `null` = em diante. */
+  readonly until: IsoDate | null
+}
+
+const MONTHS: Readonly<Record<string, number>> = {
+  janeiro: 1,
+  fevereiro: 2,
+  marco: 3,
+  abril: 4,
+  maio: 5,
+  junho: 6,
+  julho: 7,
+  agosto: 8,
+  setembro: 9,
+  outubro: 10,
+  novembro: 11,
+  dezembro: 12,
+}
+
+/** Data numérica ("23.06.22") ou por extenso ("23 de junho de 2022", "1º de janeiro de 2024"). */
+const ANY_DATE = new RegExp(
+  `^(?:${DATE_TOKEN}|(\\d{1,2})\\s?[º°o]?\\s+de\\s+([a-z]+)\\s+de\\s+(\\d{4}))`,
+)
+
+function leadingDate(text: string, pivot: number): { date: IsoDate | null; end: number } | null {
+  const match = ANY_DATE.exec(text)
+  if (match === null) {
+    return null
+  }
+  const [whole, day, month, year, longDay, monthName = '', longYear] = match
+  if (day !== undefined) {
+    return { date: dateFromParts(day, month ?? '', year ?? '', pivot), end: whole.length }
+  }
+  const monthNumber = MONTHS[monthName]
+  return {
+    date:
+      monthNumber === undefined
+        ? null
+        : dateFromParts(longDay ?? '', String(monthNumber), longYear ?? '', pivot),
+    end: whole.length,
+  }
+}
+
+const WITHOUT_EFFECT = /^redac\S*\s+(?:d[aoe]s?\s+)?(.+?)\s+sem\s+efeitos?\s+(.*)$/
+
+/**
+ * Lê uma nota "Redação d… <rótulo> sem efeitos a partir de <data>" (ou "desde <data>", ou "de
+ * <data> a <data>"); `null` se o parágrafo não é desse tipo. Datas ilegíveis voltam `from: null`.
+ */
+export function parseWithoutEffectNote(raw: string, pivot: number): WithoutEffectNote | null {
+  const body = foldNote(raw).replace(NOTE_PREFIX, '')
+  const match = WITHOUT_EFFECT.exec(body)
+  if (match === null) {
+    return null
+  }
+  const label = (match[1] ?? '').replace(/["“”'‘’]/g, '').trim()
+  const rest = match[2] ?? ''
+  const opening = /^(a partir de|desde|de)\s+/.exec(rest)
+  const first = opening === null ? null : leadingDate(rest.slice(opening[0].length), pivot)
+  if (opening === null || first === null || first.date === null) {
+    return { label, from: null, until: null }
+  }
+  if (opening[1] !== 'de') {
+    return { label, from: first.date, until: null }
+  }
+  // "de a a b": só com as duas datas legíveis.
+  const afterFirst = rest.slice(opening[0].length + first.end)
+  const joiner = /^\s*(?:a|ate|-)\s+/.exec(afterFirst)
+  const second = joiner === null ? null : leadingDate(afterFirst.slice(joiner[0].length), pivot)
+  if (second?.date == null || second.date < first.date) {
+    return { label, from: null, until: null }
+  }
+  return { label, from: first.date, until: second.date }
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -501,6 +591,15 @@ export interface VersionCandidate {
   readonly withoutValidity: boolean
   /** Intervalo da redação superada do pai, para filhos sem nota própria ("bloco do pai"). */
   readonly parentBlock: ValidityInterval | null
+  /**
+   * Nota "sem efeitos" que atinge esta redação: `[from, until + 1)` sai do intervalo (com `until:
+   * null`, a redação termina em `from`).
+   */
+  readonly withoutEffect: {
+    readonly from: IsoDate
+    readonly until: IsoDate | null
+    readonly rawNote: string
+  } | null
   /** Anomalias já percebidas pelo parser (estilo, nota ilegível etc.). */
   readonly marks: readonly ReviewMark[]
 }
@@ -516,6 +615,9 @@ interface SkippedCandidate {
   readonly index: number
   readonly reason: SkipReason
 }
+
+/** Intervalo com início (toda redação começa em algum dia). */
+type BoundedInterval = { readonly from: IsoDate; readonly to: IsoDate | null }
 
 export interface TimelineContext {
   /** Início da redação original (RCTE: 1998-01-01; CTE: 1992-03-01). */
@@ -581,7 +683,9 @@ function boundedInterval(
  * - fim: nota > inline > fim declarado no ato > bloco do pai; vigente sem fim = `null`; superada
  *   sem fim = início da redação seguinte (com revisão, exceto quando a nota inline trouxe só o
  *   início, caso previsto no plano);
- * - "sem vigência" vai para `skipped`; mais de uma redação vigente, revisão nas anteriores.
+ * - "sem vigência" vai para `skipped`; mais de uma redação vigente, revisão nas anteriores;
+ * - "sem efeitos a partir de a" termina a redação em `a`; "sem efeitos de a a b" tira `[a, b + 1)`
+ *   do intervalo, que pode virar duas versões com o mesmo texto.
  */
 export function resolveTimeline(
   candidates: readonly VersionCandidate[],
@@ -591,7 +695,7 @@ export function resolveTimeline(
   const lastCurrent = candidates.findLastIndex((candidate) => !candidate.superseded)
   const versions: ResolvedVersion[] = []
   const skipped: SkippedCandidate[] = []
-  let previous: { readonly from: IsoDate; readonly to: IsoDate | null } | null = null
+  let previous: BoundedInterval | null = null
   candidates.forEach((candidate, index) => {
     const marks: ReviewMark[] = [...candidate.marks]
     explicitFrom(candidate, marks)
@@ -604,11 +708,39 @@ export function resolveTimeline(
     if (!candidate.superseded && index !== lastCurrent) {
       marks.push({ reason: ReviewReason.DuplicateCurrent, rawNote: null })
     }
-    const validDuring = boundedInterval(from, to, marks)
-    previous = validDuring
-    versions.push({ index, validDuring, review: marks[0] ?? null })
+    const pieces = withoutEffectPieces(boundedInterval(from, to, marks), candidate, marks)
+    previous = pieces.at(-1) ?? null
+    for (const validDuring of pieces) {
+      versions.push({ index, validDuring, review: marks[0] ?? null })
+    }
   })
   return { versions, skipped }
+}
+
+/**
+ * Tira do intervalo o período "sem efeitos": `[from, until + 1)`, ou `[from, ∞)` sem `until`. Um
+ * período no meio parte a redação em duas (mesmo texto, sem a lacuna). Se nada sobra (a redação
+ * começou depois de perder o efeito), o intervalo fica e vai para revisão.
+ */
+function withoutEffectPieces(
+  interval: BoundedInterval,
+  candidate: VersionCandidate,
+  marks: ReviewMark[],
+): BoundedInterval[] {
+  const cut = candidate.withoutEffect
+  if (cut === null) {
+    return [interval]
+  }
+  const gap = { from: cut.from, to: cut.until === null ? null : addDays(cut.until, 1) }
+  // Partes de um intervalo com início: todas têm início.
+  const pieces = subtractIntervals([interval], [gap]).filter(
+    (piece): piece is BoundedInterval => piece.from !== null,
+  )
+  if (pieces.length === 0) {
+    marks.push({ reason: ReviewReason.NoteAmbiguous, rawNote: cut.rawNote })
+    return [interval]
+  }
+  return pieces
 }
 
 function startOf(
@@ -646,7 +778,12 @@ function endOf(
   if (declared !== undefined) {
     return declared
   }
-  if (!candidate.superseded) {
+  // Sem fim declarado, a nota "sem efeitos a partir de" é o fim (o corte vem depois, em
+  // `withoutEffectPieces`): nada a inferir da redação seguinte.
+  if (
+    !candidate.superseded ||
+    (candidate.withoutEffect !== null && candidate.withoutEffect.until === null)
+  ) {
     return null
   }
   if (nextStart != null) {

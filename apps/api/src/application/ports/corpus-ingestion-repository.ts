@@ -39,6 +39,11 @@ export interface OpenProvisionVersion {
   readonly reviewStatus: ReviewStatus
   readonly contentHash: string
   readonly validDuring: ValidityInterval
+  /**
+   * Título gravado nos chunks (o do chunk de ordinal 0), que entra no texto do embedding e no
+   * `tsv`; `null` sem chunks.
+   */
+  readonly headingPath: string | null
 }
 
 interface ProvisionRow {

@@ -413,6 +413,176 @@ describe('outros casos com recortes reais', () => {
   })
 })
 
+/**
+ * Recortes dos arquivos baixados em 2026-11-13 (RCTE.htm sha256 ea160a80…, "CONSOLIDADO ATÉ O
+ * DECRETO Nº 10.986"; CTE.htm sha256 3d6ef210…, "ATUALIZADO ATÉ A LEI Nº 24.608"), com os bytes
+ * cp1252 de cada `<p>`; trechos não contíguos do mesmo documento vêm na ordem original.
+ */
+describe('nota "Redação … sem efeitos a partir de …" (LC 194/2022)', () => {
+  const rcte = parseConsolidatedWithDiagnostics(input('rcte', fixture('rcte/sem-efeitos.htm')))
+  const cte = parseConsolidatedWithDiagnostics(input('cte', fixture('cte/sem-efeitos.htm')))
+
+  function timeline(result: ParsedSource, key: string) {
+    return provision(result, key).versions.map((version) => [
+      version.validDuring.from,
+      version.validDuring.to,
+      version.reviewStatus,
+      version.text.slice(0, 24),
+    ])
+  }
+
+  it('termina a redação vigente na data (RCTE art. 20, § 1º, VIII: 23% do álcool carburante)', () => {
+    expect(timeline(rcte.source, 'go:rcte:art:20:par:1:inc:VIII')).toEqual([
+      ['2006-04-01', '2007-01-01', 'auto', 'VIII - 29% (vinte e nove'],
+      ['2007-01-01', '2018-01-01', 'auto', 'VIII - 29% (vinte e nove'],
+      ['2018-01-01', '2022-06-23', 'auto', 'VIII - 23% (vinte e três'],
+    ])
+    expect(timeline(rcte.source, 'go:rcte:art:20:par:1:inc:I:ali:b')).toEqual([
+      ['1998-01-01', '2001-01-01', 'auto', 'b) na prestação interna '],
+      ['2001-01-01', '2022-06-23', 'auto', 'b) querosene de aviação;'],
+    ])
+  })
+
+  it('"sem efeitos de a a b" em TextoRevo parte a redação e não vira item (RCTE § 1º, IX)', () => {
+    const inciso = provision(rcte.source, 'go:rcte:art:20:par:1:inc:IX')
+    expect(inciso.versions.map((version) => version.validDuring)).toEqual([
+      { from: '2016-01-01', to: '2022-06-23' },
+      { from: '2023-04-30', to: '2023-06-01' },
+      { from: '2023-06-01', to: null },
+    ])
+    expect(inciso.versions[0]?.text).toBe(inciso.versions[1]?.text)
+    // O cabeçalho "NOTAS:" (também em TextoRevo) não entra no texto.
+    expect(inciso.versions[0]?.text).not.toMatch(/NOTAS/)
+    expect(inciso.versions.every((version) => version.reviewStatus === 'auto')).toBe(true)
+    expect(
+      rcte.source.provisions.some((entry) => entry.stableKey.startsWith(`${inciso.stableKey}:`)),
+    ).toBe(false)
+  })
+
+  it('depois de um "dispositivo declarado inconstitucional", vale para a redação aberta antes dele', () => {
+    expect(timeline(rcte.source, 'go:rcte:art:20:par:1:inc:I:ali:a').slice(2)).toEqual([
+      ['2005-04-01', '2022-06-23', 'auto', 'a) energia elétrica para'],
+      ['2022-06-23', null, 'pending', 'a) Dispositivo declarado'],
+    ])
+    expect(timeline(rcte.source, 'go:rcte:art:20:par:1:inc:V:ali:c').slice(1)).toEqual([
+      ['2007-01-01', '2022-06-23', 'auto', 'c) operação interna com '],
+      ['2022-06-23', null, 'pending', 'c) dispositivo declarado'],
+    ])
+    expect(
+      provision(rcte.source, 'go:rcte:art:20:par:1:inc:V:ali:b').versions.map(
+        (version) => version.review?.reason ?? null,
+      ),
+    ).toEqual([null, ReviewReason.OpeningMissing])
+  })
+
+  it('CTE: alínea, item e inciso com nota de vigência mais tarde (art. 27, III, IX, XI e XII)', () => {
+    expect(timeline(cte.source, 'go:cte:art:27:inc:IX:ali:a')).toEqual([
+      ['2001-01-01', '2007-01-01', 'auto', 'a) nas operações interna'],
+      ['2007-01-01', '2022-06-23', 'auto', 'a) nas operações interna'],
+    ])
+    expect(timeline(cte.source, 'go:cte:art:27:inc:III:ali:c')).toEqual([
+      ['2001-01-01', '2022-06-23', 'auto', 'c) querosene de aviação;'],
+    ])
+    expect(timeline(cte.source, 'go:cte:art:27:inc:XI:ali:b:item:1')).toEqual([
+      ['2007-01-01', '2022-06-23', 'auto', '1. energia elétrica, res'],
+      ['2022-06-23', null, 'pending', '1. dispositivo declarado'],
+    ])
+    // "sem efeitos a partir de 23.06.22" antes de "vigência de 01.01.16 a 31.05.23": vale a primeira.
+    expect(timeline(cte.source, 'go:cte:art:27:inc:XII')).toEqual([
+      ['2016-01-01', '2022-06-23', 'auto', 'XII - 28% (vinte e oito '],
+      ['2023-06-01', null, 'auto', 'XII - revogado;'],
+    ])
+  })
+
+  it('conta as notas à parte e não muda a contagem das NotaVigncia', () => {
+    expect(rcte.diagnostics.withoutEffectNotes).toEqual({ total: 6, parsed: 6, toReview: 0 })
+    expect(cte.diagnostics.withoutEffectNotes).toEqual({ total: 6, parsed: 6, toReview: 0 })
+    expect(rcte.diagnostics.validityNotes.toReview).toBe(0)
+    expect(rcte.source.stats.notesTotal).toBe(
+      rcte.diagnostics.validityNotes.total + rcte.diagnostics.inlineNotes.total,
+    )
+  })
+
+  it('rótulo que não casa com a estrutura vai para revisão (sintético)', () => {
+    const html = [
+      '<p class=TitCentral>CONSOLIDADO ATÉ O DECRETO Nº 10.986, DE 16.09.26.</p>',
+      '<p class=ParNormal>Art. 20. Caput.</p>',
+      '<p class=ParNormal>I - 17%;</p>',
+      '<p class=NotaDisc1>NOTA: Redação da alínea "c" sem efeitos a partir de 23 de junho de 2022.</p>',
+      '<p class=ParNormal>II - 12%;</p>',
+      '<p class=NotaDisc1>NOTA: Redação do inciso II sem efeitos a partir de 31 de junhoo de 2022.</p>',
+    ].join('\r\n')
+    const { source: result, diagnostics } = parseConsolidatedWithDiagnostics(
+      input('rcte', new Uint8Array(Buffer.from(html, 'latin1'))),
+    )
+    expect(provision(result, 'go:rcte:art:20:inc:I').versions[0]).toMatchObject({
+      validDuring: { from: '1998-01-01', to: null },
+      reviewStatus: ReviewStatus.Pending,
+      review: { reason: ReviewReason.NoteOrphan },
+    })
+    expect(provision(result, 'go:rcte:art:20:inc:II').versions[0]).toMatchObject({
+      validDuring: { from: '1998-01-01', to: null },
+      review: { reason: ReviewReason.NoteUnparsed },
+    })
+    expect(diagnostics.withoutEffectNotes).toEqual({ total: 2, parsed: 0, toReview: 2 })
+  })
+})
+
+describe('títulos acrescidos (PargrafoAlterador-titulo, com sufixo de letra)', () => {
+  it('RCTE: "CAPÍTULO IV-A" zera a seção herdada do Capítulo IV', () => {
+    const result = parse('rcte', 'rcte/capitulo-iv-a.htm')
+    expect(provision(result, 'go:rcte:art:356-B').headingPath).toBe(
+      'RCTE > TÍTULO V - DAS OBRIGAÇÕES ACESSÓRIAS > CAPÍTULO IV - DOS LIVROS FISCAIS > ' +
+        'Seção XII - Do Livro de Movimentação de Produto - LMP > Art. 356-B',
+    )
+    for (const key of ['go:rcte:art:356-C', 'go:rcte:art:356-C:par:1:inc:VI']) {
+      expect(provision(result, key).headingPath).toMatch(
+        /^RCTE > TÍTULO V - DAS OBRIGAÇÕES ACESSÓRIAS > CAPÍTULO IV-A - DA ESCRITURAÇÃO FISCAL DIGITAL - EFD - > Art\. 356-C/,
+      )
+    }
+    expect(intervals(result, 'go:rcte:art:356-C')).toEqual([['2009-01-01', null]])
+  })
+
+  it('CTE: "Subseção III-A" substitui a Subseção III', () => {
+    const result = parse('cte', 'cte/subsecao-iii-a.htm')
+    expect(provision(result, 'go:cte:art:51').headingPath).toMatch(
+      / > Seção III > Subseção III - Da Substituição Tributária pelas Operações Posteriores > Art\. 51$/,
+    )
+    expect(provision(result, 'go:cte:art:51-B').headingPath).toMatch(
+      / > Seção III > Subseção III-A - Da Antecipação do ICMS sem Encerramento da Tributação > Art\. 51-B$/,
+    )
+  })
+
+  it('reconhece sufixo de letra em todos os níveis e um título novo zera os de baixo (sintético)', () => {
+    const html = [
+      '<p class=TitCentral>CONSOLIDADO ATÉ O DECRETO Nº 10.986, DE 16.09.26.</p>',
+      '<p class=TitCentral>TÍTULO II-A</p>',
+      '<p class=TitCentral>DO TÍTULO NOVO</p>',
+      '<p class=TitCentral>CAPÍTULO I</p>',
+      '<p class=TitCentral>DO CAPÍTULO</p>',
+      '<p class=TitCentral>Seção I-A</p>',
+      '<p class=TitCentral>Da Seção</p>',
+      '<p class=TitCentral>Subseção II-B</p>',
+      '<p class=TitCentral>Da Subseção</p>',
+      '<p class=ParNormal>Art. 1º Texto.</p>',
+      '<p class=NovaRedao>ACRESCIDO O CAPÍTULO I-A PELO DECRETO Nº 1, DE 01.01.20 - vigência: 01.01.20.</p>',
+      '<p class=PargrafoAlterador-titulo>CAPÍTULO I-A</p>',
+      '<p class=PargrafoAlterador-titulo>DO CAPÍTULO NOVO</p>',
+      '<p class=ParNormal>Art. 2º Texto.</p>',
+    ].join('\r\n')
+    const result = goHtmlStateMachineParser(
+      input('rcte', new Uint8Array(Buffer.from(html, 'latin1'))),
+    )
+    expect(provision(result, 'go:rcte:art:1').headingPath).toBe(
+      'RCTE > TÍTULO II-A - DO TÍTULO NOVO > CAPÍTULO I - DO CAPÍTULO > Seção I-A - Da Seção > ' +
+        'Subseção II-B - Da Subseção > Art. 1º',
+    )
+    expect(provision(result, 'go:rcte:art:2').headingPath).toBe(
+      'RCTE > TÍTULO II-A - DO TÍTULO NOVO > CAPÍTULO I-A - DO CAPÍTULO NOVO > Art. 2º',
+    )
+  })
+})
+
 describe('erros e descritor', () => {
   it('recusa família que não é consolidado de Goiás', () => {
     const base = input('rcte', fixture('rcte/exauriu-se.htm'))

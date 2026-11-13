@@ -197,6 +197,7 @@ describe('PgCorpusIngestionRepository', () => {
     review_status: 'auto',
     content_hash: 'h',
     valid_during: '[2000-01-01,)',
+    heading_path: 'RCTE > Art. 1',
   }
 
   function repository(extra: Respond = () => undefined) {
@@ -285,6 +286,7 @@ describe('PgCorpusIngestionRepository', () => {
           reviewStatus: 'auto',
           contentHash: 'h',
           validDuring: { from: '2000-01-01', to: null },
+          headingPath: 'RCTE > Art. 1',
         },
       ])
       await uow.closeKnowledge([], '2026-06-01')

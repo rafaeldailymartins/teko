@@ -194,6 +194,56 @@ describe('reingestão da mesma versão', () => {
     expect(stale.status).toBe('unchanged')
   })
 
+  it('revisão maior com só o título corrigido troca a redação e os chunks daquele dispositivo', async () => {
+    const { container, spy } = context()
+    const { useCases } = container
+    const first = await useCases.startIngestionRun({ target: 'staging', gitSha: 'a'.repeat(40) })
+    await useCases.ingestDocumentVersion({
+      runId: first.runId,
+      source: V1,
+      blobRaw: null,
+      blobDocling: null,
+      parserRevision: 1,
+    })
+    await useCases.finishIngestionRun({ runId: first.runId, status: 'succeeded', report: {} })
+    spy.reset()
+    // Mesmo texto e vigência no art. 901; só o título mudou (capítulo acrescido reconhecido).
+    const retitled = rcteSource(
+      'dec-1',
+      '2026-01-10',
+      V1.provisions.map((provision) =>
+        provision.stableKey.endsWith(':art:901')
+          ? { ...provision, headingPath: 'RCTE > CAPÍTULO IV-A - DA EFD > Art. 901' }
+          : provision,
+      ),
+    )
+    const second = await useCases.startIngestionRun({ target: 'staging', gitSha: 'b'.repeat(40) })
+    const again = await useCases.ingestDocumentVersion({
+      runId: second.runId,
+      source: retitled,
+      blobRaw: null,
+      blobDocling: null,
+      parserRevision: 2,
+    })
+    await useCases.finishIngestionRun({ runId: second.runId, status: 'succeeded', report: {} })
+    expect(again).toMatchObject({
+      status: 'published',
+      reprocessed: true,
+      provisionVersionsNew: 1,
+      knowledgeClosed: 1,
+    })
+    // O texto do embedding leva o título: só o chunk do art. 901 é embutido de novo.
+    expect(spy.texts()).toBe(1)
+    const { rows } = await owner.query<{ heading_path: string }>(
+      `SELECT c.heading_path FROM corpus.chunks c
+       JOIN corpus.provision_versions pv ON pv.id = c.provision_version_id
+       JOIN corpus.provisions p ON p.id = pv.provision_id
+       WHERE p.stable_key = 'go:rcte:art:901' AND upper_inf(pv.knowledge)`,
+    )
+    expect(rows).toEqual([{ heading_path: 'RCTE > CAPÍTULO IV-A - DA EFD > Art. 901' }])
+    expect(await count('provision_versions', 'upper_inf(knowledge)')).toBe(6)
+  })
+
   it('outro sha256 com o mesmo conteúdo reaproveita as linhas e só acrescenta fontes', async () => {
     const { container, spy } = context()
     const { runId } = await container.useCases.startIngestionRun({ target: 'staging', gitSha: 'c' })

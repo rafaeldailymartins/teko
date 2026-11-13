@@ -25,6 +25,7 @@ import {
   parseAmendmentNote,
   parseNoteDate,
   parseValidityNote,
+  parseWithoutEffectNote,
   type ReviewMark,
   ReviewReason,
   resolveTimeline,
@@ -44,8 +45,10 @@ import { ParseError, type Parser, type ParserInput } from './parser.ts'
  * - `TextoRevo`: redação superada;
  * - `NovaRedao`/`NovaRedRev`: nota de alteração (ato e data de efeito) que abre a redação seguinte;
  * - `NotaVigncia`/`NotaVigor`: nota de vigência que fecha as redações superadas logo antes dela;
- * - `TitCentral`: títulos (Livro, Título, Capítulo, Seção, Subseção);
- * - `NotaDisc*`, `NotaRev*` e demais: notas editoriais, transparentes.
+ * - `TitCentral` e `PargrafoAlterador-titulo`: títulos (Livro, Título, Capítulo, Seção, Subseção,
+ *   inclusive os acrescidos depois, como "CAPÍTULO IV-A");
+ * - `NotaDisc*`, `NotaRev*` e demais: notas editoriais, transparentes, exceto a nota "Redação …
+ *   sem efeitos a partir de …", que termina a redação citada (em qualquer classe de nota ou texto).
  *
  * A ordem dos parágrafos vale mais que o texto das notas: uma nota de vigência fecha o grupo de
  * redações superadas que a antecede, e uma nota de alteração abre o primeiro dispositivo que vem
@@ -385,6 +388,16 @@ function draftKeyOf(family: ConsolidatedProfile['family'], segments: readonly Se
   }
 }
 
+/** Redação ainda sem fim declarado (nota de vigência, nota inline, ato ou nota "sem efeitos"). */
+function isOpenEnded(draft: Draft): boolean {
+  return (
+    !draft.closedByNote &&
+    draft.inline?.last == null &&
+    !(draft.amendmentOwn && draft.amendment?.until != null) &&
+    draft.withoutEffect === null
+  )
+}
+
 function isAncestorOrSelf(ancestor: readonly Segment[], segments: readonly Segment[]): boolean {
   return (
     ancestor.length <= segments.length &&
@@ -413,7 +426,7 @@ function headingLevel(text: string): number | null {
 // ---------------------------------------------------------------------------------------------
 // Máquina de estados
 
-type Role = 'heading' | 'amendment' | 'validity-note' | 'text' | 'editorial'
+type Role = 'heading' | 'amendment' | 'validity-note' | 'without-effect' | 'text' | 'editorial'
 
 const TEXT_CLASSES: ReadonlySet<string> = new Set([
   'ParNormal',
@@ -424,13 +437,26 @@ const TEXT_CLASSES: ReadonlySet<string> = new Set([
   '',
 ])
 
+/** Título acrescido por ato posterior ("CAPÍTULO IV-A", "Subseção V-A") e o nome dele. */
+const ADDED_HEADING_CLASS = 'PargrafoAlterador-titulo'
+
+/** "Redação do inciso VIII sem efeitos a partir de …" (o pivô não importa para reconhecer). */
+function isWithoutEffectNote(text: string): boolean {
+  return /sem\s+efeito/i.test(text) && parseWithoutEffectNote(text, 0) !== null
+}
+
 function roleOf(paragraph: Paragraph): Role {
   const { className, text } = paragraph
-  if (className === 'TitCentral') {
+  if (className === 'TitCentral' || className === ADDED_HEADING_CLASS) {
     return 'heading'
   }
   if (className === 'NovaRedao' || className === 'NovaRedRev') {
     return 'amendment'
+  }
+  // Vem em `NotaDisc*` e, por erro da fonte, em `TextoRevo` ("1. Redação do inciso IX sem efeitos
+  // de 23.06.22 a 29.04.23"), onde o "1." viraria um item.
+  if (isWithoutEffectNote(text)) {
+    return 'without-effect'
   }
   if (className === 'NotaVigncia' || className === 'NotaVigor') {
     // Texto de artigo publicado com a classe da nota (erro da fonte) vale como redação superada;
@@ -438,6 +464,10 @@ function roleOf(paragraph: Paragraph): Role {
     return parseLabel(text)?.kind === 'art' ? 'text' : 'validity-note'
   }
   if (TEXT_CLASSES.has(className)) {
+    if (/^notas?\s*:?$/i.test(text)) {
+      // Cabeçalho "NOTAS:" de uma lista de notas publicado em `TextoRevo`: não é texto da redação.
+      return 'editorial'
+    }
     return headingLevel(text) !== null && parseLabel(text) === null ? 'heading' : 'text'
   }
   return 'editorial'
@@ -476,6 +506,8 @@ interface Draft {
   noteWithoutValidity: boolean
   closedByNote: boolean
   noteRaw: string | null
+  /** Nota "sem efeitos" que atinge a redação. */
+  withoutEffect: VersionCandidate['withoutEffect']
   readonly parent: Draft | null
   readonly marks: ReviewMark[]
   readonly noteRefs: NoteRecord[]
@@ -524,6 +556,8 @@ const NOTE_RELATED: ReadonlySet<string> = new Set([
 class StateMachine {
   readonly drafts: Draft[] = []
   readonly notes: NoteRecord[] = []
+  /** Notas "sem efeitos" (fora de `notes`: o `ParseStats` conta as notas de vigência). */
+  readonly withoutEffectNotes: NoteRecord[] = []
   readonly renumberings: Renumbering[] = []
   readonly orphanNotes: string[] = []
   header: Header | null = null
@@ -565,6 +599,9 @@ class StateMachine {
       case 'validity-note':
         this.onValidityNote(paragraph.text)
         break
+      case 'without-effect':
+        this.onWithoutEffect(paragraph.text)
+        break
       case 'text':
         this.onText(paragraph)
         break
@@ -599,6 +636,7 @@ class StateMachine {
     const wasAfterHeading = this.afterHeading
     this.afterHeading = true
     if (level !== null) {
+      // `setHeading` zera os níveis abaixo: um capítulo novo não herda seção nem subseção.
       this.setHeading(level, text)
       this.pendingHeadingLevel = level
       this.pendingHeadingClass = paragraph.className
@@ -680,6 +718,62 @@ class StateMachine {
     const open = this.group.filter((draft) => !draft.closedByNote && draft.inline?.last == null)
     const last = this.group.at(-1)
     return open.length > 0 || last === undefined ? open : [last]
+  }
+
+  /**
+   * Nota "Redação d… <rótulo> sem efeitos a partir de …": o rótulo, lido na estrutura corrente, dá
+   * o dispositivo; a redação atingida é a primeira ainda sem fim publicada depois da última redação
+   * do pai (a nota vem depois da redação vigente, às vezes de um "dispositivo declarado
+   * inconstitucional" que não tem abertura). Não fecha o grupo: a `NotaVigncia` seguinte, se houver,
+   * continua valendo para as redações superadas.
+   */
+  private onWithoutEffect(raw: string): void {
+    this.pendingHeadingLevel = null
+    this.lastDraftOpen = false
+    const note = parseWithoutEffectNote(raw, this.profile.yearPivot)
+    const rawNote = raw.replace(/\s+/g, ' ').trim()
+    const record: NoteRecord = { kind: 'nota', rawNote: raw, status: 'parsed' }
+    this.withoutEffectNotes.push(record)
+    const label = note === null ? null : labelFromPhrase(note.label)
+    const target = label === null ? null : this.withoutEffectTarget(label)
+    const draft = target ?? this.lastDraft
+    if (draft === null) {
+      record.status = 'review'
+      this.orphanNotes.push(rawNote)
+      return
+    }
+    draft.noteRefs.push(record)
+    if (target === null || note?.from == null || draft.withoutEffect !== null) {
+      // Rótulo que não casa com a estrutura, data ilegível ou segunda nota para a mesma redação.
+      const reason =
+        target === null
+          ? ReviewReason.NoteOrphan
+          : note?.from == null
+            ? ReviewReason.NoteUnparsed
+            : ReviewReason.NoteAmbiguous
+      record.status = 'review'
+      draft.marks.push({ reason, rawNote })
+      return
+    }
+    draft.withoutEffect = { from: note.from, until: note.until, rawNote }
+  }
+
+  private withoutEffectTarget(label: Segment): Draft | null {
+    const depth = ORDER.indexOf(label.kind)
+    const segments = [
+      ...this.context.filter((segment) => ORDER.indexOf(segment.kind) < depth),
+      label,
+    ]
+    if (segments[0]?.kind !== 'art') {
+      return null
+    }
+    const key = draftKeyOf(this.profile.family, segments)
+    const parentOrder =
+      segments.length > 1
+        ? (this.lastByKey.get(draftKeyOf(this.profile.family, segments.slice(0, -1)))?.order ?? -1)
+        : -1
+    const drafts = this.drafts.filter((draft) => draft.key === key && draft.order > parentOrder)
+    return drafts.find(isOpenEnded) ?? drafts.at(-1) ?? null
   }
 
   private onOrphanNote(raw: string): void {
@@ -789,6 +883,7 @@ class StateMachine {
       noteWithoutValidity: false,
       closedByNote: false,
       noteRaw: null,
+      withoutEffect: null,
       parent: parentDraft?.superseded === true ? parentDraft : null,
       // `NovaRedRev` abre redação superada (`TextoRevo`); `NovaRedao`, a vigente.
       marks:
@@ -934,7 +1029,11 @@ function labelFromPhrase(phrase: string): Segment | null {
     return { kind: 'inc', value: suffixed(inciso[1]?.toUpperCase(), inciso[2]) }
   }
   const alinea = /^alinea "?([a-z])"?$/.exec(phrase)
-  return alinea === null ? null : { kind: 'ali', value: alinea[1] ?? '' }
+  if (alinea !== null) {
+    return { kind: 'ali', value: alinea[1] ?? '' }
+  }
+  const item = /^item (\d{1,3})$/.exec(phrase)
+  return item === null ? null : { kind: 'item', value: itemValue(item[1] ?? '', undefined) }
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -961,6 +1060,7 @@ function toCandidate(draft: Draft, parentBlock: ValidityInterval | null): Versio
     noteLast: draft.noteLast,
     withoutValidity: draft.noteWithoutValidity || draft.inline?.withoutValidity === true,
     parentBlock,
+    withoutEffect: draft.withoutEffect,
     marks: draft.marks,
   }
 }
@@ -1059,7 +1159,15 @@ function resolveKey(
       return []
     }
     if (resolved.review === null || resolved.review.reason !== ReviewReason.EndMissing) {
-      resolvedByDraft.set(draft, resolved.validDuring)
+      // Redação partida por uma nota "sem efeitos de a a b": o bloco do pai vai do início da
+      // primeira parte ao fim da última.
+      const earlier = resolvedByDraft.get(draft)
+      resolvedByDraft.set(
+        draft,
+        earlier === undefined
+          ? resolved.validDuring
+          : { from: earlier.from, to: resolved.validDuring.to },
+      )
     }
     const from = resolved.validDuring.from ?? profile.originalFrom
     const amendment = amendmentOf(draft, from)
@@ -1270,6 +1378,8 @@ interface NoteCounts {
 export interface ConsolidatedDiagnostics {
   readonly validityNotes: NoteCounts
   readonly inlineNotes: NoteCounts
+  /** Notas "Redação … sem efeitos a partir de …" (fora de `stats`). */
+  readonly withoutEffectNotes: NoteCounts
   /** Notas de vigência de títulos (não são dispositivos): fora de `stats`. */
   readonly headingNotes: number
   /** Parágrafos de texto sem rótulo e sem redação aberta a que se juntar. */
@@ -1338,6 +1448,7 @@ export function parseConsolidatedWithDiagnostics(input: ParserInput): {
     diagnostics: {
       validityNotes: countNotes(machine.notes, 'nota'),
       inlineNotes: countNotes(machine.notes, 'inline'),
+      withoutEffectNotes: countNotes(machine.withoutEffectNotes, 'nota'),
       headingNotes: machine.headingNotes,
       unattachedParagraphs: machine.unattached,
       invalidLabels: skipped.filter((entry) => entry.reason === INVALID_KEY_REASON).length,

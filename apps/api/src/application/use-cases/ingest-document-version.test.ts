@@ -39,6 +39,7 @@ function open(
     validDuring,
     modality: 'mandatory',
     reviewStatus: 'auto',
+    headingPath: null,
     ...extra,
   }
 }
@@ -49,12 +50,14 @@ const parsed = (
   extra: Partial<{
     modality: 'mandatory' | 'optional'
     reviewStatus: 'auto' | 'approved' | 'pending' | 'rejected'
+    headingPath: string
   }> = {},
 ) => ({
   contentHash,
   validDuring,
   modality: 'mandatory' as const,
   reviewStatus: 'auto' as const,
+  headingPath: 'RCTE > Art. 1',
   ...extra,
 })
 
@@ -143,6 +146,43 @@ describe('planReconciliation', () => {
     expect(plan.reuse.map((entry) => entry.existingId)).toEqual(['auto', 'pend'])
     expect(plan.insert).toEqual([{ stableKey: 'k', index: 2 }])
     expect(plan.close).toEqual(['opt'])
+  })
+
+  it('título diferente nos chunks não reaproveita a redação (correção do parser)', () => {
+    const plan = planReconciliation({
+      window: ALL,
+      existing: [
+        open('velho', 'k1', 'h', iv('2009-01-01'), {
+          headingPath: 'RCTE > CAPÍTULO IV - DOS LIVROS FISCAIS > Seção XII - LMP > Art. 356-C',
+        }),
+        open('igual', 'k2', 'h', iv('2009-01-01'), {
+          headingPath: 'RCTE > CAPÍTULO IV-A - DA EFD > Art. 356-D',
+        }),
+        open('sem-chunk', 'k3', 'h', iv('2009-01-01')),
+      ],
+      provisions: [
+        {
+          stableKey: 'k1',
+          versions: [
+            parsed('h', iv('2009-01-01'), {
+              headingPath: 'RCTE > CAPÍTULO IV-A - DA EFD > Art. 356-C',
+            }),
+          ],
+        },
+        {
+          stableKey: 'k2',
+          versions: [
+            parsed('h', iv('2009-01-01'), {
+              headingPath: 'RCTE > CAPÍTULO IV-A - DA EFD > Art. 356-D',
+            }),
+          ],
+        },
+        { stableKey: 'k3', versions: [parsed('h', iv('2009-01-01'))] },
+      ],
+    })
+    expect(plan.close).toEqual(['velho'])
+    expect(plan.insert).toEqual([{ stableKey: 'k1', index: 0 }])
+    expect(plan.reuse.map((entry) => entry.existingId)).toEqual(['igual', 'sem-chunk'])
   })
 
   it('alargamento que não muda nada vira reaproveitamento', () => {
