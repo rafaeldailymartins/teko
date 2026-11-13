@@ -75,6 +75,8 @@ async function ingestAll(
       blobRaw: null,
       blobDocling: null,
       parserRevision: FIXTURE_PARSER_REVISION,
+      // A fixture é sintética: o disjuntor de mudança em massa não se aplica a ela.
+      acceptChurn: true,
     })
     if (result.status === 'budget_exhausted') {
       throw new FixtureSeedError(

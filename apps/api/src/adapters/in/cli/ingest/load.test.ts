@@ -8,7 +8,9 @@ import {
   type InMemoryBlobStore,
 } from '#adapters/out/fakes/in-memory-blob-store.ts'
 import { BlobStoreName } from '#app/ports/blob-store.ts'
+import type { DocumentHealth } from '#app/ports/corpus-ingestion-repository.ts'
 import { DatabaseSizeLimitError } from '#app/ports/database-usage.ts'
+import { ChurnLimitError } from '#app/services/churn.ts'
 import { Modality, ReviewStatus, ValidityBasis } from '#domain/corpus/family.ts'
 import { indexOverrides, type Override, overrideSchema } from '#domain/corpus/overrides.ts'
 import type { ParsedSource } from '#domain/corpus/parsed-source.ts'
@@ -126,9 +128,36 @@ interface Recorder {
   readonly ingested: IngestDocumentVersionCommand[]
   readonly finished: { status: string; report: Readonly<Record<string, unknown>> }[]
   readonly exports: number[]
+  readonly exportCommands: Parameters<LoadUseCases['exportSnapshot']>[0][]
   started: { bulk?: boolean | undefined; target: string } | null
   coverageCalls: number
+  pruned: number
 }
+
+const NO_CHURN = {
+  churn: {
+    openBefore: 0,
+    closed: 0,
+    inserted: 1,
+    provisionsBefore: 0,
+    provisionsLost: 0,
+    pendingShareBefore: 0,
+    pendingShareAfter: 0,
+  },
+  churnViolations: [],
+} as const
+
+const LINEAGE = {
+  embeddingModel: '@cf/baai/bge-m3',
+  parserRevisions: { 'docling-guia': 2 },
+  extractorRevision: 1,
+  doclingVersion: '2.146.0',
+  reranker: null,
+} as const
+
+const HEALTH: DocumentHealth[] = [
+  { slug: 'rcte', family: 'rcte', provisions: 100, chunks: 200, pending: 2, versions: 110 },
+]
 
 function useCases(
   options: {
@@ -137,14 +166,17 @@ function useCases(
       command: IngestDocumentVersionCommand,
       index: number,
     ) => Awaited<ReturnType<LoadUseCases['ingestDocumentVersion']>>
+    health?: DocumentHealth[]
   } = {},
 ): { useCases: LoadUseCases; recorder: Recorder } {
   const recorder: Recorder = {
     ingested: [],
     finished: [],
     exports: [],
+    exportCommands: [],
     started: null,
     coverageCalls: 0,
+    pruned: 0,
   }
   const corpusVersion = options.corpusVersion ?? 7
   return {
@@ -175,8 +207,20 @@ function useCases(
             ? 1
             : 0,
           neurons: 10,
+          ...NO_CHURN,
         }
-        return Promise.resolve(result)
+        // Como o caso de uso: o raw vai para o store só quando a versão vai para o banco.
+        const write = result.status === 'published' ? command.beforeWrite : undefined
+        return (write?.() ?? Promise.resolve()).then(() => result)
+      },
+      pruneEmbeddingCache: () => {
+        recorder.pruned += 1
+        return Promise.resolve({ removed: 3, kept: 10 })
+      },
+      inspectCorpus: {
+        documentHealth: () => Promise.resolve(options.health ?? HEALTH),
+        openReviewQueue: () =>
+          Promise.resolve([{ family: 'rcte', reason: 'vigencia_incerta', open: 2 }]),
       },
       refreshCoverage: () => {
         recorder.coverageCalls += 1
@@ -184,6 +228,7 @@ function useCases(
       },
       exportSnapshot: async (command) => {
         recorder.exports.push(command.corpusVersion ?? 0)
+        recorder.exportCommands.push(command)
         const manifestKey = `snapshots/${String(corpusVersion)}/manifest.json`
         await blobs.set(BlobStoreName.CorpusSnapshots, manifestKey, '{"manifest":1}')
         return {
@@ -217,6 +262,7 @@ function deps(cases: LoadUseCases, extra: Partial<IngestLoadDeps> = {}) {
       return Promise.resolve()
     },
     gitSha: 'a'.repeat(40),
+    lineage: LINEAGE,
     today: () => '2026-11-11',
     defaultLockFile: lockFile,
     print: (line) => lines.push(line),
@@ -306,7 +352,10 @@ describe('ingest load', () => {
       reviewItems: 0,
       corpusVersion: 7,
       lockChanged: true,
+      // Plano com todas as famílias: poda o embedding_cache.
+      cachePruned: { removed: 3, kept: 10 },
     })
+    expect(recorder.pruned).toBe(1)
     const lock = readCorpusLock(lockFile)
     expect(lock.corpusVersion).toBe(7)
     expect(lock.snapshot).toMatchObject({
@@ -315,6 +364,11 @@ describe('ingest load', () => {
       manifestSha256: sha256(new TextEncoder().encode('{"manifest":1}')),
     })
     expect(Object.keys(lock.sources)).toHaveLength(6)
+    // Linhagem no manifesto e no lock; sem lock anterior, nada a proteger da retenção.
+    expect(recorder.exportCommands).toEqual([
+      { corpusVersion: 7, lineage: { gitSha: 'a'.repeat(40), ...LINEAGE } },
+    ])
+    expect(lock.lineage).toEqual({ gitSha: 'a'.repeat(40), ...LINEAGE })
     expect(lock.sources['efd-icms-ipi/guia-pratico/3.2.4']).toEqual({
       sha256: guiaSha,
       versionLabel: 'Guia 3.2.4',
@@ -367,6 +421,7 @@ describe('ingest load', () => {
               chunksNew: 2,
               reviewItems: 0,
               neurons: 10,
+              ...NO_CHURN,
             },
     })
     expect(await load(deps(cases).value)).toBe(75)
@@ -402,6 +457,105 @@ describe('ingest load', () => {
       ['efd-reinf/leiautes/2.1.2', 'Error: XSD inválido'],
     ])
     expect(recorder.finished[0]?.status).toBe('failed')
+    // Run que falhou não vira versão do corpus nem poda o cache.
+    expect(recorder.coverageCalls).toBe(0)
+    expect(recorder.pruned).toBe(0)
+  })
+
+  it('o disjuntor de mudança em massa reprova o item com as métricas no relatório', async () => {
+    const metrics = { ...NO_CHURN.churn, openBefore: 100, closed: 60 }
+    const { useCases: cases, recorder } = useCases({
+      ingest: (command) => {
+        if (command.source.document.slug === 'rcte') {
+          throw new ChurnLimitError('rcte', metrics, ['fecha 60 de 100'])
+        }
+        return { status: 'unchanged', documentVersionId: 'dv' }
+      },
+    })
+    const { value, lines } = deps(cases)
+    expect(await load(value)).toBe(1)
+    expect(recorder.ingested.every((command) => command.acceptChurn === false)).toBe(true)
+    const items = recorder.finished[0]?.report['items'] as { sourceId: string; churn?: unknown }[]
+    expect(items.find((item) => item.sourceId === 'rcte/consolidado')?.churn).toEqual(metrics)
+    expect(lines.some((line) => /rcte\/consolidado: erro .*--accept-churn/.test(line))).toBe(true)
+    expect(recorder.coverageCalls).toBe(0)
+  })
+
+  it('o gate de saúde compara com o health do lock e o --accept-churn libera', async () => {
+    const first = useCases()
+    expect(await load(deps(first.useCases).value)).toBe(0)
+    expect(readCorpusLock(lockFile).health).toEqual({
+      rcte: { family: 'rcte', provisions: 100, chunks: 200, pending: 2, versions: 110 },
+    })
+    const before = readFileSync(lockFile, 'utf8')
+
+    const dropped = [{ ...HEALTH[0], chunks: 150 } as DocumentHealth]
+    const second = useCases({ corpusVersion: 8, health: dropped })
+    const { value, lines } = deps(second.useCases)
+    expect(await load(value)).toBe(1)
+    expect(second.recorder.coverageCalls).toBe(0)
+    expect(second.recorder.exports).toEqual([])
+    expect(readFileSync(lockFile, 'utf8')).toBe(before)
+    expect(lines).toContain('gate de saúde: rcte: chunks cai de 200 para 150 (25.0% > 5.0%)')
+    expect(second.recorder.finished[0]?.report).toMatchObject({
+      status: 'failed',
+      health: { violations: ['rcte: chunks cai de 200 para 150 (25.0% > 5.0%)'] },
+      reviewQueue: [{ family: 'rcte', reason: 'vigencia_incerta', open: 2 }],
+    })
+
+    const third = useCases({ corpusVersion: 8, health: dropped })
+    expect(await load(deps(third.useCases).value, ['--accept-churn'])).toBe(0)
+    expect(third.recorder.ingested.every((command) => command.acceptChurn === true)).toBe(true)
+    expect(readCorpusLock(lockFile).health?.['rcte']?.chunks).toBe(150)
+    // O snapshot do lock vigente (7) fica protegido da retenção (rollback).
+    expect(third.recorder.exportCommands[0]?.protect).toEqual([7])
+    expect(third.recorder.finished[0]?.report).toMatchObject({ acceptChurn: true })
+  })
+
+  it('A5: sha256 novo com o mesmo conteúdo não grava raw nem entra no lock', async () => {
+    const { useCases: cases } = useCases({
+      ingest: () => ({ status: 'unchanged', documentVersionId: 'dv', reason: 'fingerprint' }),
+    })
+    const { value, lines } = deps(cases)
+    expect(await load(value)).toBe(0)
+    expect(blobs.keys(BlobStoreName.CorpusRaw)).toEqual([])
+    expect(readCorpusLock(lockFile).sources).toEqual({})
+    expect(lines[0]).toMatch(/unchanged \(sha256 novo, mesmo conteúdo\)/)
+  })
+
+  it('plano de uma família só não poda o embedding_cache', async () => {
+    writeFileSync(planFile, JSON.stringify({ ...plan(), families: ['rcte'] }))
+    const { useCases: cases, recorder } = useCases()
+    expect(await load(deps(cases).value)).toBe(0)
+    expect(recorder.pruned).toBe(0)
+  })
+
+  it('imprime uma linha por item', async () => {
+    const { useCases: cases } = useCases({
+      ingest: (_command, index) =>
+        index === 0
+          ? { status: 'unchanged', documentVersionId: 'dv' }
+          : {
+              status: 'published',
+              documentVersionId: 'dv',
+              reprocessed: true,
+              provisionVersionsNew: 3,
+              provisionVersionsWidened: 0,
+              provisionVersionsSplit: 0,
+              knowledgeClosed: 1,
+              chunksNew: 4,
+              reviewItems: 1,
+              neurons: 7,
+              churn: NO_CHURN.churn,
+              churnViolations: index === 1 ? ['fecha 30 de 100'] : [],
+            },
+    })
+    const { value, lines } = deps(cases)
+    await load(value)
+    expect(lines[0]).toMatch(/^efd-icms-ipi\/guia-pratico\/3\.2\.4: unchanged em \d+\.\d s$/)
+    expect(lines[1]).toMatch(
+      /^efd-go\/guia-pratico\/5\.8: published \(reprocessada\) em .*: 3 redações novas, 1 fechadas, 4 chunks, 1 na fila, 7 neurons \(aceito com --accept-churn: fecha 30 de 100\)$/,
+    )
   })
 
   it('lê do Blobs a parte do Docling que não veio do extract e falha se não houver', async () => {
@@ -510,6 +664,8 @@ describe('parseLoadArgs', () => {
     [['--target', 'staging', '--plan', 'p.json'], /são obrigatórios/],
     [['--target', 'x', ...base], /--target/],
     [['--target', 'staging', ...base, '--nada'], /Unknown option/],
+    [['--target', 'staging', ...base, '--max-pending-share', '2'], /de 0 a 1/],
+    [['--target', 'staging', ...base, '--max-pending-share', 'x'], /de 0 a 1/],
   ])('recusa %j', (args, message) => {
     expect(() => parseLoadArgs(args)).toThrow(CliUsageError)
     expect(() => parseLoadArgs(args)).toThrow(message)
@@ -524,6 +680,18 @@ describe('parseLoadArgs', () => {
       migrate: false,
       report: null,
       lock: 'l.json',
+      acceptChurn: false,
+      maxPendingShare: 0.15,
     })
+    expect(
+      parseLoadArgs([
+        '--target',
+        'staging',
+        ...base,
+        '--accept-churn',
+        '--max-pending-share',
+        '0.3',
+      ]),
+    ).toMatchObject({ acceptChurn: true, maxPendingShare: 0.3 })
   })
 })

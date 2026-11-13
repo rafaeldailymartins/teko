@@ -14,13 +14,22 @@ import { type SnapshotDeps, SnapshotError } from './export-snapshot.ts'
  * Antes de escrever: o manifesto é validado, o hash da última migração aplicada no destino precisa
  * ser igual ao do manifesto (por isso roda depois da fase `migrate` do deploy), a versão do corpus
  * no destino não pode ser mais nova que a do snapshot, e o sha256 de cada arquivo é conferido.
+ * Com `rollback`, o snapshot precisa ser mais antigo que o destino, a migração dele só precisa já ter
+ * sido aplicada no destino, e ele entra como uma `corpus_version` nova.
  * A escrita é uma transação (`SnapshotRepository.promote`): upsert por chave natural, fechamento do
- * `knowledge` das linhas ausentes, `coverage` preservando `verified_at`/`gap_reason` mais recentes
- * do destino e `corpus_versions` por último.
+ * `knowledge` das linhas ausentes, `coverage` com o `verified_at` mais recente dos dois e as
+ * lacunas do snapshot mais as do destino detectadas depois da exportação (A1), e `corpus_versions`
+ * por último.
  */
 
 interface PromoteSnapshotCommand {
   readonly manifestKey: string
+  /**
+   * Rollback de corpus: repromove explicitamente um snapshot mais antigo que o destino, como uma
+   * `corpus_version` nova. A migração do snapshot precisa já ter sido aplicada no destino (o formato
+   * lê snapshots anteriores às colunas novas). Runbook: `docs/runbooks/rollback-corpus.md`.
+   */
+  readonly rollback?: boolean
 }
 
 export type PromoteSnapshot = (command: PromoteSnapshotCommand) => Promise<{
@@ -43,24 +52,35 @@ function parseManifest(raw: Uint8Array, key: string): SnapshotManifest {
 }
 
 export function createPromoteSnapshot(deps: SnapshotDeps): PromoteSnapshot {
-  return async ({ manifestKey }) => {
+  return async ({ manifestKey, rollback = false }) => {
     const raw = await deps.blobs.get(BlobStoreName.CorpusSnapshots, manifestKey)
     if (raw === null) {
       throw new SnapshotError(`manifesto ${manifestKey} não existe no store corpus-snapshots`)
     }
     const manifest = parseManifest(raw, manifestKey)
 
-    const migration = await deps.snapshots.latestMigration()
-    if (migration?.hash !== manifest.migration.hash) {
+    const current = await deps.snapshots.currentCorpusVersion()
+    const older = current !== null && current > manifest.corpusVersion
+    if (rollback && !older) {
       throw new SnapshotError(
-        `migração do destino (${migration?.name ?? 'nenhuma'}) diferente da do snapshot ` +
-          `(${manifest.migration.name ?? manifest.migration.hash}): rode as migrações antes`,
+        `rollback só repromove snapshot mais antigo que o destino (destino ${String(current)}, ` +
+          `snapshot ${String(manifest.corpusVersion)})`,
       )
     }
-    const current = await deps.snapshots.currentCorpusVersion()
-    if (current !== null && current > manifest.corpusVersion) {
+    if (!rollback && older) {
       throw new SnapshotError(
-        `o destino já está na versão ${String(current)}, mais nova que o snapshot ${String(manifest.corpusVersion)}`,
+        `o destino já está na versão ${String(current)}, mais nova que o snapshot ` +
+          `${String(manifest.corpusVersion)} (para voltar a ele, use --rollback)`,
+      )
+    }
+    const migration = await deps.snapshots.latestMigration()
+    const compatible = rollback
+      ? await deps.snapshots.migrationApplied(manifest.migration.hash)
+      : migration?.hash === manifest.migration.hash
+    if (!compatible) {
+      throw new SnapshotError(
+        `migração do destino (${migration?.name ?? 'nenhuma'}) incompatível com a do snapshot ` +
+          `(${manifest.migration.name ?? manifest.migration.hash}): rode as migrações antes`,
       )
     }
 
@@ -80,7 +100,16 @@ export function createPromoteSnapshot(deps: SnapshotDeps): PromoteSnapshot {
       manifest,
       today: isoDateInTimeZone(deps.clock.now()),
       rows: (table) => deps.codec.decode(files.get(table) ?? new Uint8Array()),
+      ...(rollback
+        ? {
+            rollbackNotes: `rollback para o snapshot ${String(manifest.corpusVersion)} (${manifestKey})`,
+          }
+        : {}),
     })
-    return { corpusVersion: manifest.corpusVersion, rows }
+    if (!rollback) {
+      return { corpusVersion: manifest.corpusVersion, rows }
+    }
+    const corpusVersion = await deps.snapshots.currentCorpusVersion()
+    return { corpusVersion: corpusVersion ?? manifest.corpusVersion, rows }
   }
 }

@@ -1,4 +1,5 @@
 import { compareIsoDates, type IsoDate } from '@teko/shared/vigencia'
+import { GAP_REASON_MAX } from '#domain/corpus/coverage-gaps.ts'
 import type {
   CoverageWatchRepository,
   FamilyGap,
@@ -9,16 +10,18 @@ import type { DiscoveredChange, DiscoveredReport } from '../ports/watch-report.t
 /**
  * `MarkCoverage` (job `mark-coverage` do `source-watch.yml`, environment `corpus-watch`, role
  * `teko_watch`): avança o `verified_at` de toda família verificada no run e, para as famílias com
- * mudança detectada, acrescenta a lacuna `[effectiveFrom, ∞)` e grava o `gap_reason`.
+ * mudança detectada, acrescenta a lacuna `[effectiveFrom, ∞)` como entrada de `gap_entries`, com
+ * os documentos que a resolvem (`covers` da página do `corpus/watch.yaml`) e o instante da
+ * detecção (`generatedAt` do relatório).
  *
  * Sem mudança e sem erro de verificação, o repositório executa exatamente um
  * `UPDATE corpus.coverage SET verified_at = <data do run> WHERE verified_at < <data do run>`.
  * Sem esse avanço diário, o `CheckCoverage` recusaria como `out_of_coverage` toda data posterior à
- * última mudança detectada. A lacuna começa na menor data de efeito detectada da família, e o
- * `gap_reason` lista o que mudou (até {@link GAP_REASON_MAX} caracteres).
+ * última mudança detectada. A lacuna começa na menor data de efeito detectada da família (por
+ * conjunto de documentos), e o motivo lista o que mudou (até {@link GAP_REASON_MAX} caracteres).
  */
 
-export const GAP_REASON_MAX = 500
+export { GAP_REASON_MAX }
 
 export interface MarkCoverageCommand {
   readonly report: DiscoveredReport
@@ -40,31 +43,39 @@ function truncate(text: string): string {
   return text.length <= GAP_REASON_MAX ? text : `${text.slice(0, GAP_REASON_MAX - 1)}…`
 }
 
-/** Uma lacuna por família com mudança, a partir da menor data de efeito detectada. */
+const coversOf = (change: DiscoveredChange): string[] => [...(change.covers ?? [])].sort()
+
+/**
+ * Uma lacuna por família e conjunto de documentos com mudança, a partir da menor data de efeito
+ * detectada.
+ */
 export function gapsFromReport(report: DiscoveredReport): FamilyGap[] {
-  const byFamily = new Map<string, { from: IsoDate; changes: DiscoveredChange[] }>()
-  for (const item of report.changes) {
-    const group = byFamily.get(item.family)
-    if (group === undefined) {
-      byFamily.set(item.family, { from: item.effectiveFrom, changes: [item] })
-    } else {
-      group.changes.push(item)
-      if (compareIsoDates(item.effectiveFrom, group.from) < 0) {
-        group.from = item.effectiveFrom
-      }
-    }
-  }
-  return [...byFamily.entries()]
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([family, { from, changes }]) => {
+  const groups = Map.groupBy(
+    report.changes,
+    (item) => `${item.family}\u0000${coversOf(item).join('\u0000')}`,
+  )
+  return [...groups.values()]
+    .flatMap((changes) => {
       const ordered = [...changes].sort((a, b) => compareIsoDates(a.effectiveFrom, b.effectiveFrom))
-      const details = [...new Set(ordered.map(describe))].join('; ')
-      return {
-        family,
-        from,
-        reason: truncate(`Mudança detectada pelo source-watch em ${report.runDate}: ${details}`),
+      const [first] = ordered
+      if (first === undefined) {
+        return []
       }
+      const details = [...new Set(ordered.map(describe))].join('; ')
+      return [
+        {
+          family: first.family,
+          from: first.effectiveFrom,
+          reason: truncate(`Mudança detectada pelo source-watch em ${report.runDate}: ${details}`),
+          sources: coversOf(first),
+          detectedAt: report.generatedAt,
+        },
+      ]
     })
+    .sort(
+      (a, b) =>
+        a.family.localeCompare(b.family) || a.sources.join(',').localeCompare(b.sources.join(',')),
+    )
 }
 
 export async function markCoverage(

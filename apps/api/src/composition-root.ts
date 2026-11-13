@@ -38,7 +38,10 @@ import { createPgIngestionRunRepository } from '#adapters/out/persistence/drizzl
 import { createPgSearchRepository } from '#adapters/out/persistence/drizzle/repositories/pg-search-repository.ts'
 import { snapshotCodec } from '#adapters/out/persistence/drizzle/repositories/pg-snapshot-codec.ts'
 import { createPgSnapshotRepository } from '#adapters/out/persistence/drizzle/repositories/pg-snapshot-repository.ts'
-import { createWorkersAiRerankerAdapter } from '#adapters/out/reranker/workers-ai/workers-ai-reranker-adapter.ts'
+import {
+  BGE_RERANKER_MODEL,
+  createWorkersAiRerankerAdapter,
+} from '#adapters/out/reranker/workers-ai/workers-ai-reranker-adapter.ts'
 import { createLogger } from '#adapters/out/telemetry/logger.ts'
 import type { Container, IngestionContainer, RetrievalUseCases } from '#app/container.ts'
 import type { BackgroundTaskFailure } from '#app/ports/background-tasks.ts'
@@ -66,10 +69,13 @@ import { createGetHealth } from '#app/use-cases/get-health.ts'
 import { createHybridSearch } from '#app/use-cases/hybrid-search.ts'
 import {
   createIngestDocumentVersion,
+  DEFAULT_BYTES_PER_CHUNK,
   DEFAULT_MAX_DATABASE_BYTES,
 } from '#app/use-cases/ingest-document-version.ts'
 import { createFinishIngestionRun, createStartIngestionRun } from '#app/use-cases/ingestion-run.ts'
+import { createInspectCorpus } from '#app/use-cases/inspect-corpus.ts'
 import { createPromoteSnapshot } from '#app/use-cases/promote-snapshot.ts'
+import { createPruneEmbeddingCache } from '#app/use-cases/prune-embedding-cache.ts'
 import { createRefreshCoverage } from '#app/use-cases/refresh-coverage.ts'
 import {
   createResolveReferenceDate,
@@ -190,6 +196,8 @@ export interface IngestionConfig {
   readonly embedNeuronBudget?: number
   /** Guarda de tamanho (padrão 800 MB). */
   readonly maxDatabaseBytes?: number
+  /** Bytes por chunk novo na guarda prospectiva (`INGEST_BYTES_PER_CHUNK`). */
+  readonly bytesPerChunk?: number
   /** `NEON_API_KEY_STAGING` e `NEON_STAGING_PROJECT_ID` (opcionais: sem eles, `cu_seconds` nulo). */
   readonly neonApiKey?: string
   readonly neonProjectId?: string
@@ -271,16 +279,26 @@ export function createIngestionContainer(
     hasher: sha256ContentHasher,
     databaseUsage,
     maxDatabaseBytes: config.maxDatabaseBytes ?? DEFAULT_MAX_DATABASE_BYTES,
+    bytesPerChunk: config.bytesPerChunk ?? DEFAULT_BYTES_PER_CHUNK,
   })
   const refreshCoverage = createRefreshCoverage({ repository })
   return {
     neuronBudget,
+    embeddingModel: embeddings.model,
+    rerankerModel: env.RERANKER_PROVIDER === RerankerProvider.WorkersAi ? BGE_RERANKER_MODEL : null,
     useCases: {
       startIngestionRun,
       finishIngestionRun,
       embedPending,
       ingestDocumentVersion,
       refreshCoverage,
+      inspectCorpus: createInspectCorpus({ repository }),
+      pruneEmbeddingCache: createPruneEmbeddingCache({
+        repository,
+        cache,
+        hasher: sha256ContentHasher,
+        embeddingModel: embeddings.model,
+      }),
       exportSnapshot: createExportSnapshot(snapshotDeps),
       promoteSnapshot: createPromoteSnapshot(snapshotDeps),
       seedFixtureCorpus: createSeedFixtureCorpus({

@@ -1,5 +1,8 @@
 import { describe, expect, it, vi } from 'vitest'
-import { EmbeddingUnavailableError } from '#app/ports/embedding-port.ts'
+import {
+  EmbeddingQuotaExceededError,
+  EmbeddingUnavailableError,
+} from '#app/ports/embedding-port.ts'
 import {
   BGE_M3_DIMENSIONS,
   BGE_M3_MODEL,
@@ -137,6 +140,41 @@ describe('createWorkersAiEmbeddingAdapter', () => {
     await expect(adapter(fetchImpl as typeof fetch).port.embed(['a'])).rejects.toBeInstanceOf(
       EmbeddingUnavailableError,
     )
+  })
+
+  it('429 com o código 3036 (cota diária) vira EmbeddingQuotaExceededError', async () => {
+    const quota = () =>
+      Promise.resolve(
+        json(
+          {
+            success: false,
+            errors: [{ code: 3036, message: 'You have used up your daily free allocation' }],
+          },
+          { status: 429 },
+        ),
+      )
+    await expect(adapter(quota).port.embed(['a'])).rejects.toBeInstanceOf(
+      EmbeddingQuotaExceededError,
+    )
+    const byMessage = () =>
+      Promise.resolve(
+        json({ errors: [{ message: 'used up your daily free allocation' }] }, { status: 429 }),
+      )
+    await expect(adapter(byMessage).port.embed(['a'])).rejects.toBeInstanceOf(
+      EmbeddingQuotaExceededError,
+    )
+  })
+
+  it.each([
+    ['capacidade (3040)', json({ errors: [{ code: 3040, message: 'Capacity' }] }, { status: 429 })],
+    ['corpo não JSON', new Response('x', { status: 429 })],
+    ['outro status', json({ errors: [{ code: 3036 }] }, { status: 503 })],
+  ])('429 transitório ou sem o código da cota (%s) continua retentável', async (_name, body) => {
+    const error = await adapter(() => Promise.resolve(body))
+      .port.embed(['a'])
+      .catch((caught: unknown) => caught)
+    expect(error).toBeInstanceOf(EmbeddingUnavailableError)
+    expect(error).not.toBeInstanceOf(EmbeddingQuotaExceededError)
   })
 
   it('usa o fetch global por padrão', async () => {

@@ -1,4 +1,6 @@
+import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
+import { parse } from 'yaml'
 import { repoPath } from '../../../../../test/setup/repo-root.ts'
 import { loadWatchConfig, parseWatchConfig, WatchConfigError } from './watch-config.ts'
 
@@ -33,6 +35,26 @@ describe('corpus/watch.yaml', () => {
       ]),
     )
   })
+
+  it('todo `covers` é um documento da mesma família no corpus/sources.yaml', async () => {
+    const sources = parse(readFileSync(repoPath('corpus', 'sources.yaml'), 'utf8')) as {
+      documents: { slug: string; family: string }[]
+    }
+    const familyOf = new Map(sources.documents.map((document) => [document.slug, document.family]))
+    const pages = await loadWatchConfig(REPO_WATCH)
+    const covers = pages.flatMap((page) => [
+      ...(page.covers ?? []).map((slug) => [page.family, slug] as const),
+      ...(page.kind === 'document-index'
+        ? page.documents.flatMap((document) =>
+            (document.covers ?? []).map((slug) => [page.family, slug] as const),
+          )
+        : []),
+    ])
+    expect(covers.length).toBeGreaterThan(0)
+    for (const [family, slug] of covers) {
+      expect(familyOf.get(slug), slug).toBe(family)
+    }
+  })
 })
 
 describe('parseWatchConfig', () => {
@@ -51,6 +73,7 @@ describe('parseWatchConfig', () => {
         url: 'https://x.gov.br/a.htm',
         mode: 'live',
         encoding: 'utf-8',
+        covers: [],
       },
     ])
   })

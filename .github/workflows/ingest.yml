@@ -56,6 +56,14 @@ on:
         description: Carga em massa (HNSW criado depois da carga; só staging)
         type: boolean
         default: false
+      accept_churn:
+        description: Libera o disjuntor de mudança em massa e o gate de saúde (os números ficam no relatório)
+        type: boolean
+        default: false
+      max_pending_share:
+        description: Fração pending máxima por família no gate de saúde (0 a 1; vazio = 0.15)
+        type: string
+        default: ""
       mode:
         description: full (ingestão completa) ou eval-only (só o corpus-eval contra o staging, ADR 0031)
         type: choice
@@ -76,6 +84,12 @@ on:
       bulk:
         type: boolean
         default: false
+      accept_churn:
+        type: boolean
+        default: false
+      max_pending_share:
+        type: string
+        default: ""
       mode:
         type: string
         default: full
@@ -534,6 +548,10 @@ jobs:
           DOCLING_DIR: ${{ runner.temp }}/docling
           REPORT: ${{ runner.temp }}/ingest-report.json
           BULK: ${{ inputs.bulk }}
+          ACCEPT_CHURN: ${{ inputs.accept_churn }}
+          MAX_PENDING_SHARE: ${{ inputs.max_pending_share }}
+          # Opcional (variável do environment staging): bytes por chunk da guarda prospectiva.
+          BYTES_PER_CHUNK: ${{ vars.INGEST_BYTES_PER_CHUNK }}
           DATABASE_URL: ${{ secrets.NEON_STAGING_MIGRATE_URL }}
           EMBEDDINGS_PROVIDER: workers-ai
           CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
@@ -548,6 +566,18 @@ jobs:
           # --report: JSON do run (neurons, linhas, versões, CU-h) para o artifact e a prova do orçamento.
           args=(ingest load --target staging --plan "$PLAN" --docling-dir "$DOCLING_DIR" --migrate --report "$REPORT")
           [[ "$BULK" == true ]] && args+=(--bulk)
+          # --accept-churn: libera o disjuntor de mudança em massa e o gate de saúde.
+          [[ "$ACCEPT_CHURN" == true ]] && args+=(--accept-churn)
+          if [[ -n "$MAX_PENDING_SHARE" ]]; then
+            if [[ ! "$MAX_PENDING_SHARE" =~ ^(0(\.[0-9]+)?|1(\.0+)?)$ ]]; then
+              echo "::error title=ingest::max_pending_share precisa ser um número de 0 a 1 (recebido: '${MAX_PENDING_SHARE}')."
+              exit 64
+            fi
+            args+=(--max-pending-share "$MAX_PENDING_SHARE")
+          fi
+          if [[ -n "$BYTES_PER_CHUNK" ]]; then
+            export INGEST_BYTES_PER_CHUNK="$BYTES_PER_CHUNK"
+          fi
           set +e
           node apps/api/dist/cli.mjs "${args[@]}"
           code=$?
@@ -970,6 +1000,7 @@ jobs:
           REF: ${{ inputs.ref }}
           FAMILY: ${{ inputs.family }}
           BULK: ${{ inputs.bulk }}
+          ACCEPT_CHURN: ${{ inputs.accept_churn }}
           DISCOVER: ${{ needs.discover.result }}
           COUNT: ${{ needs.discover.outputs.count }}
           MODELS: ${{ needs.docling-models.result }}
@@ -986,7 +1017,7 @@ jobs:
           {
             echo "### Ingestão no staging"
             echo
-            echo "Modo: \`${MODE:-full}\`${REF:+ (código de \`${REF}\`)} · família: \`${FAMILY:-todas}\` · bulk: \`${BULK}\`"
+            echo "Modo: \`${MODE:-full}\`${REF:+ (código de \`${REF}\`)} · família: \`${FAMILY:-todas}\` · bulk: \`${BULK}\` · accept-churn: \`${ACCEPT_CHURN}\`"
             echo
             echo "| Etapa | Resultado |"
             echo "|---|---|"

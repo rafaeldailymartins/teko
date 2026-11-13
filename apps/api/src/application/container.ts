@@ -12,7 +12,9 @@ import type { GetHealth } from './use-cases/get-health.ts'
 import type { HybridSearch } from './use-cases/hybrid-search.ts'
 import type { IngestDocumentVersion } from './use-cases/ingest-document-version.ts'
 import type { FinishIngestionRun, StartIngestionRun } from './use-cases/ingestion-run.ts'
+import type { InspectCorpus } from './use-cases/inspect-corpus.ts'
 import type { PromoteSnapshot } from './use-cases/promote-snapshot.ts'
+import type { PruneEmbeddingCache } from './use-cases/prune-embedding-cache.ts'
 import type { RefreshCoverage } from './use-cases/refresh-coverage.ts'
 import type { ResolveReferenceDate } from './use-cases/resolve-reference-date.ts'
 import type { RetrieveEvidence } from './use-cases/retrieve-evidence.ts'
@@ -45,6 +47,8 @@ interface IngestionUseCases {
   readonly refreshCoverage: RefreshCoverage
   readonly exportSnapshot: ExportSnapshot
   readonly promoteSnapshot: PromoteSnapshot
+  readonly inspectCorpus: InspectCorpus
+  readonly pruneEmbeddingCache: PruneEmbeddingCache
   /** Seed da fixture única pelo mesmo caminho da ingestão (só desenvolvimento, CI e testes). */
   readonly seedFixtureCorpus: SeedFixtureCorpus
 }
@@ -53,6 +57,10 @@ export interface IngestionContainer {
   readonly useCases: IngestionUseCases
   /** Orçamento diário de neurons (para o relatório do run). */
   readonly neuronBudget: NeuronBudget
+  /** Modelo de embedding da ingestão (`chunks.embedding_model`; linhagem do snapshot). */
+  readonly embeddingModel: string
+  /** Reranker configurado (`RERANKER_PROVIDER`), ou `null`: linhagem do snapshot. */
+  readonly rerankerModel: string | null
   /** Fecha o pool do Postgres. */
   close(): Promise<void>
 }

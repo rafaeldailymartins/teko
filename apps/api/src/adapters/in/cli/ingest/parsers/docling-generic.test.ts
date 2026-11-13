@@ -59,7 +59,7 @@ describe('parseDoclingGeneric com o Guia EFD-GO 5.9 (saída real do Docling)', (
     expect(byKey.get('go:efd-go:item:1-3')?.parent).toBeUndefined()
     const text = byKey.get('go:efd-go:item:1-3-1')?.versions[0]?.text ?? ''
     expect(text).not.toMatch(/____|ECONOMIA\/GO|GUIA PRÁTICO DA ESCRITURAÇÃO/)
-    expect(text).toContain('GO000158 Restituição do PROTEGE')
+    expect(text).toContain('GO000158; Restituição do PROTEGE')
   })
 
   it('chaves, títulos, ordem e rótulos batem com a fixture da F2 (1.3, 1.4 e 1.5)', () => {
@@ -158,7 +158,7 @@ describe('parseDoclingGeneric com Notas Técnicas (DoclingDocument sintético)',
       ],
     ])
     expect(item2?.versions[0]?.text).toBe(
-      '2 Alterações no leiaute\nRegistro Campo\nC197 IND_BENEFICIO',
+      '2 Alterações no leiaute\nRegistro: C197; Campo: IND_BENEFICIO.',
     )
     expect(item2?.versions[0]?.displayLabel).toBe('Nota Técnica EFD ICMS IPI nº 2025.001, item 2')
     expect(parsed.skipped).toEqual([

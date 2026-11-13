@@ -6,6 +6,7 @@ import {
   type EvalFixtureDeps,
   runEvalFixtureExport,
 } from '#adapters/in/cli/eval-fixture/eval-fixture.ts'
+import { EXTRACTOR_DOCLING_VERSION, EXTRACTOR_REVISION } from '#adapters/in/cli/ingest/blob-keys.ts'
 import { EXIT_FAILURE, EXIT_USAGE } from '#adapters/in/cli/ingest/cli-common.ts'
 import { runIngestDiscover } from '#adapters/in/cli/ingest/discover.ts'
 import { runIngestLoad } from '#adapters/in/cli/ingest/load.ts'
@@ -94,6 +95,7 @@ function ingestionContainer(env: Env, blobs: BlobStore, command: string): Ingest
       databaseUrl: requireDatabaseUrl(env, command),
       embedNeuronBudget: env.EMBED_NEURON_BUDGET,
       maxDatabaseBytes: env.INGEST_MAX_DB_BYTES,
+      bytesPerChunk: env.INGEST_BYTES_PER_CHUNK,
       ...(env.NEON_API_KEY_STAGING === undefined ? {} : { neonApiKey: env.NEON_API_KEY_STAGING }),
       ...(env.NEON_STAGING_PROJECT_ID === undefined
         ? {}
@@ -172,6 +174,13 @@ async function runIngest(args: readonly string[]): Promise<number> {
         useCases: container.useCases,
         migrate: () => migrateDatabase(requireDatabaseUrl(env, 'ingest load'), MIGRATIONS_FOLDER),
         gitSha: env.GIT_SHA,
+        lineage: {
+          embeddingModel: container.embeddingModel,
+          parserRevisions: PARSER_REVISIONS,
+          extractorRevision: EXTRACTOR_REVISION,
+          doclingVersion: EXTRACTOR_DOCLING_VERSION,
+          reranker: container.rerankerModel,
+        },
         today: () => isoDateInTimeZone(new Date()),
         defaultLockFile: CORPUS_LOCK_FILE,
         print,

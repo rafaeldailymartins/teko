@@ -55,8 +55,8 @@ depois pelo owner, e SHALL receber `permission denied` em qualquer DDL.
 
 ### Requirement: Privilégio mínimo do source-watch
 
-O role `teko_watch` MUST poder só ler `corpus.coverage` e atualizar `verified_at`, `gaps` e
-`gap_reason`.
+O role `teko_watch` MUST poder só ler `corpus.coverage` e atualizar `verified_at`, `gaps`,
+`gap_reason` e `gap_entries`.
 
 #### Scenario: Avanço diário do verified_at
 

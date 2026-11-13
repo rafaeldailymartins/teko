@@ -101,6 +101,12 @@ export const documentVersions = corpus.table(
      * menor que a atual é reprocessado no próximo run (ADR 0026); 1 para o que já estava gravado.
      */
     parserRevision: integer().notNull().default(1),
+    /**
+     * Impressão digital do resultado parseado (dispositivos, hashes, vigências e metadados da
+     * versão). Uma fonte `live` regravada com outro sha256 e o mesmo conteúdo dá a mesma impressão:
+     * volta `unchanged`, sem versão nova (A5). Nula nas versões anteriores a ela.
+     */
+    contentFingerprint: text(),
     ingestionRunId: uuid().references(() => ingestionRuns.id),
     createdAt: createdAt(),
   },
@@ -226,10 +232,13 @@ export const chunks = corpus.table(
   },
   (t) => [
     unique('chunks_provision_version_ordinal').on(t.provisionVersionId, t.ordinal),
-    index('chunks_tsv_gin').using('gin', t.tsv),
+    // Parciais: a busca só lê conhecimento aberto (`upper_inf(c.knowledge)` no mesmo WHERE), e o
+    // vetor de um chunk fechado é apagado (embedding NULL). Os vetores são ~70% do banco.
+    index('chunks_tsv_gin').using('gin', t.tsv).where(sql`upper_inf(${t.knowledge})`),
     index('chunks_embedding_hnsw')
       .using('hnsw', t.embedding.op('halfvec_cosine_ops'))
-      .with({ m: 16, ef_construction: 128 }),
+      .with({ m: 16, ef_construction: 128 })
+      .where(sql`upper_inf(${t.knowledge})`),
     index('chunks_family_valid_during_gist').using('gist', t.family, t.validDuring),
     check(
       'chunks_valid_during',
@@ -290,6 +299,12 @@ export const coverage = corpus.table(
     corpusVersion: integer().notNull(),
     gaps: datemultirange().notNull().default(sql`'{}'::datemultirange`),
     gapReason: text(),
+    /**
+     * Lacunas por entrada (`CoverageGapEntry`: documentos que a resolvem, vigência, detecção e
+     * motivo). `gaps` e `gap_reason` são sempre a soma delas; a ingestão e a promoção decidem por
+     * entrada (lacuna detectada depois do snapshot fica na produção).
+     */
+    gapEntries: jsonb().notNull().default(sql`'[]'::jsonb`),
   },
   (t) => [check('coverage_jurisdiction', sql`${t.jurisdiction} IN ('BR', 'GO')`)],
 )

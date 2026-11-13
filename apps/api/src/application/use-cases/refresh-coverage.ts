@@ -5,8 +5,9 @@ import type { CorpusIngestionRepository } from '../ports/corpus-ingestion-reposi
 /**
  * `RefreshCoverage` (fim do run de ingestão): para cada família atualizada, `covered` passa a ser a
  * união dos `valid_during` das redações publicáveis atuais (`auto`/`approved`, conhecimento aberto),
- * `verified_at` vira a data do run e `gaps`/`gap_reason` são limpos (a mudança detectada pelo watch
- * acabou de ser ingerida). Um `corpus_versions` novo é gravado por último e carimba os chunks do
+ * `verified_at` vira a data do run e saem as lacunas que o run resolveu: só a entrada cujo
+ * documento ganhou, no run, uma versão criada depois da detecção (`clearResolvedGaps`); `gaps` e
+ * `gap_reason` são regravados com o que sobrou. Um `corpus_versions` novo é gravado por último e carimba os chunks do
  * run. Sem `families`, recalcula as famílias que tiveram versão publicada no run; se não houver
  * nenhuma, não grava nada e devolve a versão atual.
  */

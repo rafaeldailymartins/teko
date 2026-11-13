@@ -45,17 +45,17 @@ describe('NeuronMeter', () => {
 })
 
 describe('NeuronBudget', () => {
-  it('desconta o gasto do dia em America/Sao_Paulo', async () => {
+  it('desconta o gasto do dia UTC, o da cota da Cloudflare', async () => {
     const calls: [string, string][] = []
     const budget = createNeuronBudget({
       runs: runsSpending(2500, calls),
-      // 02:00 UTC de 11/11 ainda é 10/11 em São Paulo.
+      // 02:00 UTC de 11/11 ainda é 10/11 em São Paulo, mas a cota já zerou.
       clock: { now: () => new Date('2026-11-11T02:00:00Z') },
       daily: DEFAULT_EMBED_NEURON_BUDGET,
     })
     expect(budget.daily).toBe(8000)
     expect(await budget.remaining()).toBe(5500)
-    expect(calls).toEqual([['2026-11-10', 'America/Sao_Paulo']])
+    expect(calls).toEqual([['2026-11-11', 'UTC']])
   })
 
   it('nunca fica negativo e aceita outro fuso', async () => {
@@ -64,10 +64,10 @@ describe('NeuronBudget', () => {
       runs: runsSpending(9000, calls),
       clock: { now: () => new Date('2026-11-11T02:00:00Z') },
       daily: 8000,
-      timeZone: 'UTC',
+      timeZone: 'America/Sao_Paulo',
     })
     expect(await budget.remaining()).toBe(0)
-    expect(calls).toEqual([['2026-11-11', 'UTC']])
+    expect(calls).toEqual([['2026-11-10', 'America/Sao_Paulo']])
   })
 
   it('recusa teto inválido', () => {

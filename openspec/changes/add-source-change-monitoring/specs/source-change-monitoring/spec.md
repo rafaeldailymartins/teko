@@ -71,14 +71,59 @@ data do run em `America/Sao_Paulo`.
 
 ### Requirement: Lacuna a partir da data de efeito
 
-Com mudança detectada numa família, o `mark-coverage` MUST acrescentar `[effectiveFrom, ∞)` a
-`gaps` e gravar `gap_reason` dessa família, na mesma transação do avanço de `verified_at`, usando a
-menor data de efeito detectada.
+Com mudança detectada numa família, o `mark-coverage` MUST acrescentar a `gap_entries` uma entrada
+com `[effectiveFrom, ∞)` (a menor data de efeito detectada) e SHALL regravar `gaps` e `gap_reason`
+como a soma das entradas, na mesma transação do avanço de `verified_at`.
 
 #### Scenario: Decreto novo no RCTE
 
 - **WHEN** o `discovered.json` traz o Decreto nº 10.995 com `effectiveFrom` 2026-11-10
 - **THEN** a cobertura do `rcte` ganha a lacuna `[2026-11-10,)` e o `gap_reason` cita o decreto
+
+### Requirement: Entrada de lacuna com fonte e detecção
+
+Cada entrada de lacuna MUST trazer os documentos que a resolvem (`covers` da página ou do padrão
+no `corpus/watch.yaml`; vazio = qualquer documento da família) e o instante da detecção
+(`generatedAt` do `discovered.json`); a mesma lacuna detectada de novo SHALL manter a primeira
+detecção.
+
+#### Scenario: Guia e Nota Técnica na mesma família
+
+- **WHEN** o índice do SPED traz o Guia 3.2.5 e a NT 2026.004 da EFD ICMS/IPI
+- **THEN** `gap_entries` tem uma entrada resolvida por `guia-pratico-efd-icms-ipi` e outra por `notas-tecnicas-efd-icms-ipi`
+
+### Requirement: Lacuna limpa pela fonte que a causou
+
+A ingestão MUST limpar, no `RefreshCoverage`, só as entradas de lacuna cujo documento ganhou no run
+uma versão publicada criada depois da detecção; publicar outro documento da família, ou reprocessar
+uma versão já existente pela revisão do parser, SHALL manter a lacuna.
+
+#### Scenario: Reprocessamento pela revisão do parser
+
+- **WHEN** a lacuna do Guia 3.2.5 está aberta e o run só reprocessa o Guia 3.2.4 com a revisão nova do parser
+- **THEN** a lacuna continua em `gap_entries`, `gaps` e `gap_reason`
+
+#### Scenario: Versão nova do documento
+
+- **WHEN** o run publica o RCTE consolidado até o Decreto nº 10.995, baixado depois da detecção
+- **THEN** a entrada do decreto sai de `gap_entries` e as entradas de outros documentos ficam
+
+### Requirement: Lacuna na promoção decidida pela detecção
+
+A promoção MUST gravar na produção as entradas de lacuna do snapshot mais as do destino detectadas
+depois da exportação do snapshot (`createdAt` do manifesto), e SHALL manter o `verified_at` mais
+recente dos dois; uma lacuna do destino detectada antes da exportação e ausente do snapshot já foi
+resolvida pelo staging e sai.
+
+#### Scenario: Staging já ingeriu a mudança
+
+- **WHEN** o `mark-coverage` avançou o `verified_at` da produção depois da ingestão e o snapshot vem sem a lacuna que o staging resolveu
+- **THEN** a produção fica sem a lacuna e mantém o `verified_at` dela
+
+#### Scenario: Mudança detectada depois da exportação
+
+- **WHEN** a lacuna da produção foi detectada depois do `createdAt` do snapshot
+- **THEN** a lacuna continua na produção depois da promoção
 
 ### Requirement: Família não verificada
 
@@ -93,11 +138,10 @@ terminar vermelho depois de marcar as demais famílias.
 
 ### Requirement: Privilégio mínimo do mark-coverage
 
-O role `teko_watch` MUST poder só ler `corpus.coverage` e atualizar `verified_at`, `gaps` e
-`gap_reason`; o job `mark-coverage` SHALL rodar no environment `corpus-watch` só com
+O role `teko_watch` MUST poder só ler `corpus.coverage` e atualizar `verified_at`, `gaps`,
+`gap_reason` e `gap_entries`; o job `mark-coverage` SHALL rodar no environment `corpus-watch` só com
 `NEON_PROD_WATCH_URL` e `NEON_STAGING_WATCH_URL`, e o job `detect` (com a credencial do BlobStore: o
-PAT da Netlify ou o `GITHUB_TOKEN` com `contents: write`) SHALL
-não tocar o banco.
+PAT da Netlify ou o `GITHUB_TOKEN` com `contents: write`) SHALL não tocar o banco.
 
 #### Scenario: Escrita fora do permitido
 

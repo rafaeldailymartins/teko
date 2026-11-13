@@ -37,6 +37,8 @@ const tableCellSchema = z.object({
   end_row_offset_idx: z.number().int().nonnegative(),
   start_col_offset_idx: z.number().int().nonnegative(),
   end_col_offset_idx: z.number().int().nonnegative(),
+  /** O TableFormer marca as células de cabeçalho de coluna. */
+  column_header: z.boolean().optional(),
 })
 
 const tableItemSchema = z.object({
@@ -80,6 +82,11 @@ interface TableBlock {
   /** Grade `num_rows × num_cols`; célula mesclada fica na primeira posição, as demais vazias. */
   readonly rows: readonly (readonly string[])[]
   readonly numCols: number
+  /**
+   * Linhas do topo marcadas como cabeçalho de coluna pelo TableFormer (`column_header` em todas as
+   * células preenchidas), 0 sem marcação.
+   */
+  readonly headerRows: number
   readonly page: number | null
 }
 
@@ -114,6 +121,18 @@ function tableRows(table: TableItem): string[][] {
     }
   }
   return rows
+}
+
+function headerRows(table: TableItem): number {
+  const byRow = Map.groupBy(
+    table.data.table_cells.filter((cell) => collapseSpaces(cell.text) !== ''),
+    (cell) => cell.start_row_offset_idx,
+  )
+  let count = 0
+  while (byRow.get(count)?.every((cell) => cell.column_header === true) === true) {
+    count += 1
+  }
+  return count
 }
 
 const POINTER = /^#\/(texts|groups|tables|pictures)\/(\d+)$/
@@ -166,6 +185,7 @@ function blocksOf(doc: DoclingDocument, part: number): DoclingBlock[] {
         label: table.label ?? 'table',
         rows: tableRows(table),
         numCols: table.data.num_cols,
+        headerRows: headerRows(table),
         page: firstPage(table.prov),
       })
     }

@@ -39,6 +39,16 @@ const published = {
   chunksNew: 4,
   reviewItems: 0,
   neurons: 1,
+  churn: {
+    openBefore: 0,
+    closed: 0,
+    inserted: 3,
+    provisionsBefore: 0,
+    provisionsLost: 0,
+    pendingShareBefore: 0,
+    pendingShareAfter: 0,
+  },
+  churnViolations: [],
 } as const
 
 const coverage = [
@@ -122,6 +132,7 @@ describe('createSeedFixtureCorpus', () => {
       blobRaw: null,
       blobDocling: null,
       parserRevision: FIXTURE_PARSER_REVISION,
+      acceptChurn: true,
     })
     expect(refreshCoverage).toHaveBeenCalledWith({ runId: 'run-1', verifiedAt: '2026-11-10' })
     expect(store.declareCoverage).toHaveBeenCalledWith(coverage)

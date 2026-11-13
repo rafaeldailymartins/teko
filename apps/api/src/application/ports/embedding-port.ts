@@ -17,3 +17,15 @@ export class EmbeddingUnavailableError extends Error {
     this.name = 'EmbeddingUnavailableError'
   }
 }
+
+/**
+ * Cota diária do provedor esgotada (Workers AI: HTTP 429, código 3036, "used up your daily free
+ * allocation"). Continua sendo `EmbeddingUnavailableError` (a busca degrada para `lexical_only`),
+ * mas a ingestão não tenta de novo: para o run como `budget_exhausted` (código 75).
+ */
+export class EmbeddingQuotaExceededError extends EmbeddingUnavailableError {
+  constructor(message: string, options?: { readonly cause?: unknown }) {
+    super(message, options)
+    this.name = 'EmbeddingQuotaExceededError'
+  }
+}

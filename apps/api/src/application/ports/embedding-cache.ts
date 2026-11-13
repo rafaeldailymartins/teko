@@ -12,4 +12,6 @@ export interface EmbeddingCache {
     entries: readonly { readonly hash: string; readonly vector: readonly number[] }[],
     model: string,
   ): Promise<void>
+  /** Apaga as entradas do modelo cujo hash não está em `keep`; devolve quantas apagou. */
+  retainOnly(model: string, keep: ReadonlySet<string>): Promise<number>
 }

@@ -183,7 +183,7 @@ describe('PgDatabaseUsage e VectorIndexMaintenance', () => {
     expect(texts(statements).join('\n')).toMatch(
       /DROP INDEX IF EXISTS corpus.chunks_embedding_hnsw/,
     )
-    expect(texts(statements).join('\n')).toMatch(/SET LOCAL maintenance_work_mem = '512MB'/)
+    expect(texts(statements).join('\n')).toMatch(/SET LOCAL maintenance_work_mem = '256MB'/)
     expect(texts(statements).join('\n')).toMatch(/CREATE INDEX IF NOT EXISTS chunks_embedding_hnsw/)
     expect(await createPgDatabaseUsage(fakeDb().db).sizeBytes()).toBe(0)
   })
@@ -261,6 +261,7 @@ describe('PgCorpusIngestionRepository', () => {
         blobRaw: null,
         blobDocling: null,
         parserRevision: 1,
+        contentFingerprint: 'fp',
       })
       expect(await uow.closePreviousDocumentVersions(documentId, dv, '2026-06-01')).toBe(1)
       const ids = await uow.upsertProvisions(documentId, [
@@ -432,6 +433,7 @@ describe('PgCorpusIngestionRepository', () => {
           blobRaw: null,
           blobDocling: null,
           parserRevision: 1,
+          contentFingerprint: 'fp',
         }),
       ),
     ).rejects.toThrow(/não gravada/)
@@ -499,6 +501,49 @@ describe('PgCorpusIngestionRepository', () => {
         notes: 'n',
       }),
     ).rejects.toThrow(/família/)
+  })
+
+  it('RefreshCoverage limpa só as lacunas resolvidas por versão criada depois da detecção', async () => {
+    const entry = (sources: string[], reason: string) => ({
+      sources,
+      from: '2026-11-01',
+      to: null,
+      detectedAt: '2026-11-09T09:00:00.000Z',
+      reason,
+    })
+    const { db, statements } = repository((text) => {
+      if (text.includes('SELECT gaps::text AS gaps')) {
+        return [
+          {
+            gaps: '{[2026-11-01,)}',
+            gap_reason: 'x',
+            gap_entries: [entry(['guia-pratico-efd-icms-ipi'], 'Guia'), entry(['nt'], 'NT')],
+          },
+        ]
+      }
+      if (text.includes('to_char(max(dv.created_at)')) {
+        return [{ slug: 'guia-pratico-efd-icms-ipi', created_at: '2026-11-10T00:00:00.000000Z' }]
+      }
+      if (text.startsWith('insert into "corpus"."corpus_versions"')) {
+        return [{ id: 7 }]
+      }
+      return undefined
+    })
+    await createPgCorpusIngestionRepository(db).refreshCoverage({
+      runId: 'r',
+      verifiedAt: '2026-11-10',
+      families: ['efd-icms-ipi'],
+      notes: 'n',
+    })
+    const insert = statements.find((statement) =>
+      statement.text.includes('INSERT INTO corpus.coverage'),
+    )
+    expect(insert?.values).toContain('{[2026-11-01,)}')
+    expect(insert?.values).toContain('NT')
+    const written = insert?.values.find(
+      (value) => typeof value === 'string' && value.startsWith('['),
+    )
+    expect(JSON.parse(String(written))).toEqual([entry(['nt'], 'NT')])
   })
 
   it('status e ranges inesperados vindos do banco', async () => {

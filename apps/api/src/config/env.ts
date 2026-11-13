@@ -239,6 +239,11 @@ const envSchema = z
       .int()
       .positive()
       .default(800 * 1024 * 1024),
+    /**
+     * Bytes por chunk novo na guarda prospectiva (`tamanho + chunksNovos × isto > limite` aborta
+     * antes dos embeddings); padrão: os ≈ 10,6 KB medidos no staging.
+     */
+    INGEST_BYTES_PER_CHUNK: z.coerce.number().int().positive().default(10_854),
     /** API do Neon para medir os CU-s do run de ingestão no staging (sem elas, `cu_seconds` nulo). */
     NEON_API_KEY_STAGING: z.string().trim().min(20).optional(),
     NEON_STAGING_PROJECT_ID: z

@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import type { EmbeddingCache } from '../ports/embedding-cache.ts'
-import { type EmbeddingPort, EmbeddingUnavailableError } from '../ports/embedding-port.ts'
+import {
+  type EmbeddingPort,
+  EmbeddingQuotaExceededError,
+  EmbeddingUnavailableError,
+} from '../ports/embedding-port.ts'
 import type { IngestionRunRepository } from '../ports/ingestion-run-repository.ts'
 import {
   createNeuronMeter,
@@ -37,6 +41,7 @@ function memoryCache(initial: Record<string, number[]> = {}) {
       }
       return Promise.resolve()
     },
+    retainOnly: () => Promise.reject(new Error('não usado')),
   }
   return { cache, store, puts }
 }
@@ -235,6 +240,30 @@ describe('EmbedPending', () => {
       EmbeddingUnavailableError,
     )
     expect(embeddings.calls).toHaveLength(3)
+  })
+
+  it('cota diária do provedor esgotada encerra como budget_exhausted, sem retry', async () => {
+    const quota = new EmbeddingQuotaExceededError('3036')
+    const { embed, embeddings, sleeps, memory } = setup({ failures: [undefined, quota] })
+    // O primeiro lote passa; o segundo recebe o 429/3036 e nenhum lote novo começa.
+    const result = await embed({ runId: 'r', texts: texts(6) })
+    if (result.status !== 'budget_exhausted') {
+      throw new Error('esperado budget_exhausted')
+    }
+    // Com concorrência 2, o lote vizinho ao que recebeu o 3036 ainda pode terminar.
+    expect(result.embedded + result.pending).toBe(6)
+    expect(result.embedded).toBeGreaterThanOrEqual(1)
+    expect(result.embedded).toBeLessThanOrEqual(2)
+    expect(sleeps).toEqual([])
+    expect(embeddings.calls.length).toBeLessThanOrEqual(3)
+    expect(memory.store.size).toBe(result.embedded)
+  })
+
+  it('cota esgotada já no primeiro lote não chama mais o provedor', async () => {
+    const { embed, embeddings } = setup({ failures: [new EmbeddingQuotaExceededError('3036')] })
+    const result = await embed({ runId: 'r', texts: texts(3) })
+    expect(result).toMatchObject({ status: 'budget_exhausted', embedded: 0, pending: 3 })
+    expect(embeddings.calls).toHaveLength(1)
   })
 
   it('não repete outros erros e não começa lotes novos depois de uma falha', async () => {

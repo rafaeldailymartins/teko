@@ -1,5 +1,6 @@
 import hashlib
 import json
+import re
 from datetime import UTC, datetime, timedelta, timezone
 from pathlib import Path
 
@@ -8,6 +9,8 @@ from hypothesis import given
 from hypothesis import strategies as st
 
 from teko_ingest.manifest import (
+    EXTRACTOR_DOCLING_VERSION,
+    EXTRACTOR_REVISION,
     MANIFEST_SCHEMA_VERSION,
     ExtractionManifest,
     ManifestError,
@@ -264,6 +267,30 @@ def test_page_range_parse_rejects(text: str, message: str) -> None:
 def test_page_range_requires_ints() -> None:
     with pytest.raises(ManifestError, match="inteiros"):
         PageRange(1.0, 2)  # pyright: ignore[reportArgumentType]
+
+
+def test_extractor_revision_is_written_and_defaults_to_one() -> None:
+    manifest = make_manifest()
+    assert manifest.extractor_revision == EXTRACTOR_REVISION
+    assert json.loads(manifest.to_json())["extractor_revision"] == EXTRACTOR_REVISION
+    data = manifest.to_dict()
+    del data["extractor_revision"]
+    assert ExtractionManifest.from_dict(data).extractor_revision == 1
+    assert make_manifest(extractor_revision=3).extractor_revision == 3
+
+
+@pytest.mark.parametrize("value", [0, -1, "2", True, 1.0])
+def test_invalid_extractor_revision_is_rejected(value: object) -> None:
+    with pytest.raises(ManifestError, match="extractor_revision"):
+        make_manifest(extractor_revision=value)
+
+
+def test_extractor_docling_version_matches_uv_lock() -> None:
+    """Docling novo no uv.lock muda a saída: suba EXTRACTOR_REVISION (e o do blob-keys.ts)."""
+    lock = (Path(__file__).resolve().parents[1] / "uv.lock").read_text(encoding="utf-8")
+    match = re.search(r'\[\[package\]\]\r?\nname = "docling"\r?\nversion = "([^"]+)"', lock)
+    assert match is not None
+    assert match.group(1) == EXTRACTOR_DOCLING_VERSION
 
 
 def test_output_dir_name() -> None:

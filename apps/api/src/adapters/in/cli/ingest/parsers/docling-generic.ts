@@ -56,14 +56,32 @@ interface Topic {
   readonly body: string[]
 }
 
-function blockText(block: DoclingBlock): string {
-  if (block.kind === 'text') {
-    return block.text
-  }
+/**
+ * Tabela em texto (A8): uma linha por parágrafo (o fim da linha vira ponto de corte do chunker,
+ * que não corta mais no meio dela), cada célula com o cabeçalho da coluna (`Cabeçalho: valor; …`)
+ * quando o TableFormer marcou a linha de cabeçalho; sem cabeçalho, as células separadas por `; `.
+ * Antes, as linhas eram unidas por espaço e o `normalizeForHash` achatava a tabela num parágrafo só.
+ */
+function tableText(block: Extract<DoclingBlock, { kind: 'table' }>): string {
+  const header = block.headerRows > 0 ? (block.rows[block.headerRows - 1] ?? []) : []
   return block.rows
-    .map((row) => row.filter((cell) => cell !== '').join(' '))
+    .slice(block.headerRows)
+    .map((row) =>
+      row
+        .map((cell, column) => {
+          const name = header[column] ?? ''
+          return cell === '' ? '' : name === '' ? cell : `${name}: ${cell}`
+        })
+        .filter((cell) => cell !== '')
+        .join('; '),
+    )
     .filter((line) => line !== '')
-    .join('\n')
+    .map((line) => (/[.;:!?]$/.test(line) ? line : `${line}.`))
+    .join('\n\n')
+}
+
+function blockText(block: DoclingBlock): string {
+  return block.kind === 'text' ? block.text : tableText(block)
 }
 
 function splitTopics(

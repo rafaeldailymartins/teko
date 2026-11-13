@@ -7,6 +7,7 @@ import {
   type OpenProvisionVersion,
   UNVERSIONED_CORPUS,
 } from '#app/ports/corpus-ingestion-repository.ts'
+import { clearResolvedGaps } from '#domain/corpus/coverage-gaps.ts'
 import {
   type Family,
   isFamily,
@@ -26,6 +27,7 @@ import {
   reviewQueue,
 } from '../schema/corpus.ts'
 import { CorpusInvariantError } from './corpus-invariant-error.ts'
+import { gapColumns, storedGapEntries } from './coverage-gap-entries.ts'
 import { groupByLevel } from './pg-ingestion-provision-levels.ts'
 
 /**
@@ -142,9 +144,11 @@ function unitOfWork(tx: Tx): IngestionUnitOfWork {
       blobRaw,
       blobDocling,
       parserRevision,
+      contentFingerprint,
     }) {
       const values = {
         parserRevision,
+        contentFingerprint,
         documentId,
         versionLabel: version.versionLabel,
         publishedOn: version.publishedOn,
@@ -252,16 +256,31 @@ function unitOfWork(tx: Tx): IngestionUnitOfWork {
 
     async closeKnowledge(ids, at) {
       if (ids.length === 0) {
-        return
+        return null
       }
-      await tx.execute(sql`
+      const closed = await tx.execute<{ closed_on: string }>(sql`
         UPDATE corpus.provision_versions
         SET knowledge = daterange(lower(knowledge), greatest(${at}::date, lower(knowledge) + 1))
-        WHERE id = ANY(${uuidArray(ids)}) AND upper_inf(knowledge)`)
+        WHERE id = ANY(${uuidArray(ids)}) AND upper_inf(knowledge)
+        RETURNING upper(knowledge)::text AS closed_on`)
       await tx.execute(sql`
         UPDATE corpus.chunks c SET knowledge = pv.knowledge
         FROM corpus.provision_versions pv
         WHERE c.provision_version_id = pv.id AND pv.id = ANY(${uuidArray(ids)})`)
+      return closed.rows.reduce<string | null>(
+        (latest, row) => (latest === null || row.closed_on > latest ? row.closed_on : latest),
+        null,
+      )
+    },
+
+    async releaseClosedEmbeddings(ids) {
+      if (ids.length === 0) {
+        return
+      }
+      await tx.execute(sql`
+        UPDATE corpus.chunks SET embedding = NULL
+        WHERE provision_version_id = ANY(${uuidArray(ids)}) AND NOT upper_inf(knowledge)
+          AND embedding IS NOT NULL`)
     },
 
     async insertRemainders(rows) {
@@ -447,6 +466,46 @@ function unitOfWork(tx: Tx): IngestionUnitOfWork {
   }
 }
 
+/**
+ * Lacunas da família que continuam abertas: sai só a entrada cujo documento tem uma versão
+ * publicada criada depois da detecção (M1: publicar outro documento da família, ou reprocessar uma
+ * versão antiga pela revisão do parser, não resolve a lacuna). Vale também para a versão publicada
+ * num run anterior que falhou antes do `RefreshCoverage`.
+ */
+async function remainingGaps(tx: Tx, family: Family) {
+  const current = await tx.execute<{
+    gaps: string
+    gap_reason: string | null
+    gap_entries: unknown
+  }>(
+    sql`SELECT gaps::text AS gaps, gap_reason, gap_entries FROM corpus.coverage
+        WHERE family = ${family} FOR UPDATE`,
+  )
+  const row = current.rows[0]
+  const entries =
+    row === undefined
+      ? []
+      : storedGapEntries({
+          family,
+          gaps: row.gaps,
+          gapReason: row.gap_reason,
+          gapEntries: row.gap_entries,
+        })
+  if (entries.length === 0) {
+    return []
+  }
+  const published = await tx.execute<{ slug: string; created_at: string }>(sql`
+    SELECT d.slug,
+      to_char(max(dv.created_at) AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS created_at
+    FROM corpus.document_versions dv JOIN corpus.documents d ON d.id = dv.document_id
+    WHERE dv.status = 'published' AND d.family = ${family}
+    GROUP BY d.slug`)
+  return clearResolvedGaps(
+    entries,
+    published.rows.map((row) => ({ slug: row.slug, createdAt: row.created_at })),
+  )
+}
+
 function asFamily(value: string): Family {
   if (!isFamily(value)) {
     throw new CorpusInvariantError(`família desconhecida no banco: ${value}`)
@@ -475,6 +534,17 @@ export function createPgCorpusIngestionRepository(db: DrizzleDb): CorpusIngestio
       return { id: row.id, status, parserRevision: row.parserRevision }
     },
 
+    async findPublishedByFingerprint(slug, fingerprint) {
+      const result = await db.execute<{ id: string; parser_revision: number }>(sql`
+        SELECT dv.id::text AS id, dv.parser_revision FROM corpus.document_versions dv
+        JOIN corpus.documents d ON d.id = dv.document_id
+        WHERE d.slug = ${slug} AND dv.status = 'published'
+          AND dv.content_fingerprint = ${fingerprint}
+        ORDER BY dv.created_at DESC LIMIT 1`)
+      const row = result.rows[0]
+      return row === undefined ? null : { id: row.id, parserRevision: row.parser_revision }
+    },
+
     openVersionsOf: (slug) => openVersions(db, sql`d.slug = ${slug}`, false),
 
     transaction: (work) => db.transaction((tx) => work(unitOfWork(tx))),
@@ -483,12 +553,17 @@ export function createPgCorpusIngestionRepository(db: DrizzleDb): CorpusIngestio
       db.transaction(async (tx) => {
         const targets =
           families ??
+          // As famílias do run e as que têm chunks ainda sem versão do corpus (um run anterior
+          // que falhou depois de publicar não recalcula a cobertura).
           (
             await tx.execute<{ family: string }>(sql`
               SELECT DISTINCT d.family FROM corpus.document_versions dv
               JOIN corpus.documents d ON d.id = dv.document_id
               WHERE dv.ingestion_run_id = ${runId}::uuid AND dv.status = 'published'
-              ORDER BY d.family`)
+              UNION
+              SELECT DISTINCT c.family FROM corpus.chunks c
+              WHERE c.corpus_version = ${UNVERSIONED_CORPUS}
+              ORDER BY family`)
           ).rows.map((row) => asFamily(row.family))
         if (targets.length === 0) {
           const current = await tx.execute<{ id: number | null }>(
@@ -504,19 +579,22 @@ export function createPgCorpusIngestionRepository(db: DrizzleDb): CorpusIngestio
           throw new CorpusInvariantError('não foi possível abrir a versão do corpus')
         }
         for (const family of targets) {
+          const gaps = gapColumns(await remainingGaps(tx, family))
           await tx.execute(sql`
             INSERT INTO corpus.coverage AS cov (family, jurisdiction, covered, verified_at,
-              corpus_version, gaps, gap_reason)
+              corpus_version, gaps, gap_reason, gap_entries)
             SELECT ${family}, ${jurisdictionOf(family)},
               coalesce((SELECT range_agg(pv.valid_during) FROM corpus.provision_versions pv
                 JOIN corpus.provisions p ON p.id = pv.provision_id
                 JOIN corpus.documents d ON d.id = p.document_id
                 WHERE d.family = ${family} AND upper_inf(pv.knowledge)
                   AND pv.review_status IN ('auto', 'approved')), '{}'::datemultirange),
-              ${verifiedAt}::date, ${version.id}, '{}'::datemultirange, NULL
+              ${verifiedAt}::date, ${version.id}, ${gaps.gaps}::datemultirange,
+              ${gaps.gapReason}, ${gaps.gapEntries}::jsonb
             ON CONFLICT (family) DO UPDATE SET covered = excluded.covered,
               verified_at = excluded.verified_at, corpus_version = excluded.corpus_version,
-              gaps = '{}'::datemultirange, gap_reason = NULL`)
+              gaps = excluded.gaps, gap_reason = excluded.gap_reason,
+              gap_entries = excluded.gap_entries`)
         }
         await tx
           .update(chunks)
@@ -524,5 +602,79 @@ export function createPgCorpusIngestionRepository(db: DrizzleDb): CorpusIngestio
           .where(eq(chunks.corpusVersion, UNVERSIONED_CORPUS))
         return { corpusVersion: version.id }
       }),
+
+    async documentHealth() {
+      const result = await db.execute<{
+        slug: string
+        family: string
+        provisions: number
+        chunks: number
+        pending: number
+        versions: number
+      }>(sql`
+        WITH versions AS (
+          SELECT d.slug, d.family,
+            count(DISTINCT pv.provision_id)
+              FILTER (WHERE pv.review_status IN ('auto', 'approved'))::int AS provisions,
+            count(*) FILTER (WHERE pv.review_status = 'pending')::int AS pending,
+            count(*)::int AS versions
+          FROM corpus.provision_versions pv
+          JOIN corpus.provisions p ON p.id = pv.provision_id
+          JOIN corpus.documents d ON d.id = p.document_id
+          WHERE upper_inf(pv.knowledge)
+          GROUP BY d.slug, d.family
+        ), open_chunks AS (
+          SELECT d.slug, count(*)::int AS chunks
+          FROM corpus.chunks c
+          JOIN corpus.provision_versions pv ON pv.id = c.provision_version_id
+          JOIN corpus.provisions p ON p.id = pv.provision_id
+          JOIN corpus.documents d ON d.id = p.document_id
+          WHERE upper_inf(c.knowledge) AND c.review_status IN ('auto', 'approved')
+          GROUP BY d.slug
+        )
+        SELECT v.slug, v.family, v.provisions, coalesce(oc.chunks, 0)::int AS chunks,
+          v.pending, v.versions
+        FROM versions v LEFT JOIN open_chunks oc ON oc.slug = v.slug
+        ORDER BY v.slug`)
+      return result.rows.map((row) => ({
+        slug: row.slug,
+        family: row.family,
+        provisions: row.provisions,
+        chunks: row.chunks,
+        pending: row.pending,
+        versions: row.versions,
+      }))
+    },
+
+    async openReviewQueue() {
+      const result = await db.execute<{ family: string; reason: string; open: number }>(sql`
+        SELECT d.family, q.reason, count(*)::int AS open
+        FROM corpus.review_queue q
+        JOIN corpus.provisions p ON p.id = q.provision_id
+        JOIN corpus.documents d ON d.id = p.document_id
+        WHERE q.status = 'open'
+        GROUP BY d.family, q.reason
+        ORDER BY d.family, q.reason`)
+      return result.rows.map((row) => ({ family: row.family, reason: row.reason, open: row.open }))
+    },
+
+    async *openChunkTexts() {
+      let after = '00000000-0000-0000-0000-000000000000'
+      for (;;) {
+        const result = await db.execute<{ id: string; heading_path: string; content: string }>(sql`
+          SELECT id::text AS id, heading_path, content FROM corpus.chunks
+          WHERE upper_inf(knowledge) AND id > ${after}::uuid
+          ORDER BY id LIMIT ${CHUNK_TEXT_PAGE}`)
+        const last = result.rows.at(-1)
+        if (last === undefined) {
+          return
+        }
+        yield result.rows.map((row) => ({ headingPath: row.heading_path, content: row.content }))
+        after = last.id
+      }
+    },
   }
 }
+
+/** Página da leitura dos textos dos chunks abertos (keyset por ID). */
+const CHUNK_TEXT_PAGE = 2000

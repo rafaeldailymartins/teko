@@ -251,6 +251,7 @@ function readDocumentIndex(page: DocumentIndexPage, fetched: FetchedPage): PageS
   const patterns = page.documents.map((document) => ({
     pattern: new RegExp(document.pattern, 'iu'),
     version: compile(document.versionPattern),
+    covers: document.covers ?? null,
   }))
   const items: WatchedItem[] = []
   for (const url of [...candidates].sort(compareCodeUnits)) {
@@ -265,6 +266,7 @@ function readDocumentIndex(page: DocumentIndexPage, fetched: FetchedPage): PageS
       date: null,
       fingerprint: '1',
       actNumber: null,
+      ...(matched.covers === null ? {} : { covers: matched.covers }),
     })
   }
   return { label: null, labelDate: null, labelNumber: null, items }

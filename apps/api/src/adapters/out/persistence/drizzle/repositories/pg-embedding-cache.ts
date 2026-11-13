@@ -48,5 +48,23 @@ export function createPgEmbeddingCache(db: DrizzleDb): EmbeddingCache {
         )
         .onConflictDoNothing()
     },
+    async retainOnly(model, keep) {
+      const rows = await db
+        .select({ hash: embeddingCache.contentHash })
+        .from(embeddingCache)
+        .where(eq(embeddingCache.model, model))
+      const stale = rows.map((row) => row.hash).filter((hash) => !keep.has(hash))
+      for (let start = 0; start < stale.length; start += LOOKUP_BATCH) {
+        await db
+          .delete(embeddingCache)
+          .where(
+            and(
+              eq(embeddingCache.model, model),
+              inArray(embeddingCache.contentHash, stale.slice(start, start + LOOKUP_BATCH)),
+            ),
+          )
+      }
+      return stale.length
+    },
   }
 }

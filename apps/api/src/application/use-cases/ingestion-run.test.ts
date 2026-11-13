@@ -12,6 +12,7 @@ import {
   createStartIngestionRun,
   IngestionRunNotFoundError,
 } from './ingestion-run.ts'
+import { createInspectCorpus } from './inspect-corpus.ts'
 import { createRefreshCoverage } from './refresh-coverage.ts'
 
 const NOW = new Date('2026-11-10T12:00:00-03:00')
@@ -101,7 +102,8 @@ describe('StartIngestionRun / FinishIngestionRun', () => {
         dbBytes: 4096,
       },
     ])
-    expect(run.index).toEqual(['ensure'])
+    // B6: sem --bulk, a abertura garante o HNSW (um --bulk anterior pode ter caído no meio).
+    expect(run.index).toEqual(['ensure', 'ensure'])
   })
 
   it('--bulk só no staging: derruba o HNSW no início', async () => {
@@ -137,11 +139,20 @@ describe('RefreshCoverage', () => {
     const records: unknown[] = []
     const repository: CorpusIngestionRepository = {
       findDocumentVersion: () => Promise.resolve(null),
+      findPublishedByFingerprint: () => Promise.resolve(null),
       openVersionsOf: () => Promise.resolve([]),
       transaction: () => Promise.reject(new Error('não usado')),
       refreshCoverage: (record) => {
         records.push(record)
         return Promise.resolve({ corpusVersion: 7 })
+      },
+      documentHealth: () =>
+        Promise.resolve([
+          { slug: 'rcte', family: 'rcte', provisions: 1, chunks: 2, pending: 0, versions: 1 },
+        ]),
+      openReviewQueue: () => Promise.resolve([{ family: 'rcte', reason: 'x', open: 1 }]),
+      openChunkTexts: () => {
+        throw new Error('não usado')
       },
     }
     const refresh = createRefreshCoverage({ repository })
@@ -151,6 +162,9 @@ describe('RefreshCoverage', () => {
     expect(records).toEqual([
       { runId: 'r', verifiedAt: '2026-11-10', families: ['rcte'], notes: 'ingestão r' },
     ])
+    const inspect = createInspectCorpus({ repository })
+    expect(await inspect.documentHealth()).toHaveLength(1)
+    expect(await inspect.openReviewQueue()).toEqual([{ family: 'rcte', reason: 'x', open: 1 }])
   })
 })
 

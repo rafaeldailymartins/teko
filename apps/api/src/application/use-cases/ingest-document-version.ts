@@ -1,4 +1,5 @@
 import {
+  compareIsoDates,
   containsInterval,
   intervalsEqual,
   mergeIntervals,
@@ -29,6 +30,12 @@ import {
 } from '../ports/corpus-ingestion-repository.ts'
 import { DatabaseSizeLimitError, type DatabaseUsage } from '../ports/database-usage.ts'
 import type { EmbeddingCache } from '../ports/embedding-cache.ts'
+import {
+  ChurnLimitError,
+  type ChurnMetrics,
+  churnViolations,
+  measureChurn,
+} from '../services/churn.ts'
 import type { EmbedPending } from './embed-pending.ts'
 
 /**
@@ -38,9 +45,16 @@ import type { EmbedPending } from './embed-pending.ts'
  *
  * 1. sha256 já publicado com revisão do parser igual ou maior → `unchanged`, sem tocar o banco nem
  *    a porta de embeddings; com revisão menor, a mesma versão de documento é reprocessada pelos
- *    passos seguintes (ADR 0026);
- * 2. guarda de tamanho (`pg_database_size` acima do limite aborta o run);
- * 3. planejamento sem trava (`planReconciliation`) e embeddings só das redações novas, pelo
+ *    passos seguintes (ADR 0026). Outro sha256 com a mesma impressão digital do resultado parseado
+ *    (`contentFingerprint`) de uma versão publicada do documento também volta `unchanged` (fonte
+ *    `live` regravada sem mudar: sem versão nova, sem `chunk_sources` nem raw novos);
+ * 2. guarda de tamanho: `pg_database_size` acima do limite aborta o run, e, depois do
+ *    planejamento e antes dos embeddings, a projeção `tamanho + chunksNovos × bytesPorChunk`
+ *    também (guarda prospectiva);
+ * 3. planejamento sem trava (`planReconciliation`), disjuntor de mudança em massa
+ *    (`measureChurn`: fechar mais de 20% das redações abertas da janela, perder mais de 10% dos
+ *    dispositivos ou dobrar a fração `pending` falha o item, salvo `acceptChurn`), guarda
+ *    prospectiva e embeddings só das redações novas, pelo
  *    `EmbedPending` (o `embedding_cache` é o checkpoint, com commit por lote). Orçamento esgotado →
  *    `budget_exhausted`, sem publicar nada da versão;
  * 4. uma transação: documento, versão `ingesting`, dispositivos, rótulos, reconciliação (refeita
@@ -64,6 +78,12 @@ import type { EmbedPending } from './embed-pending.ts'
 /** Guarda de tamanho do plano: 800 MB (o limite do Neon Free é 1 GB). */
 export const DEFAULT_MAX_DATABASE_BYTES = 800 * 1024 * 1024
 
+/**
+ * Bytes por chunk novo na guarda prospectiva: `pg_database_size` dividido pelos chunks do staging
+ * medido em 2026-11-12 (≈ 10,6 KB, com vetor, texto, tsvector, fontes e índices).
+ */
+export const DEFAULT_BYTES_PER_CHUNK = 10_854
+
 interface IngestDocumentVersionCommand {
   readonly runId: string
   readonly source: ParsedSource
@@ -73,10 +93,25 @@ interface IngestDocumentVersionCommand {
   readonly blobDocling: string | null
   /** Revisão atual do parser da fonte (`PARSER_REVISIONS`, ADR 0026). */
   readonly parserRevision: number
+  /** `--accept-churn`: publica mesmo acima dos limites do disjuntor (as métricas saem no resultado). */
+  readonly acceptChurn?: boolean
+  /**
+   * Chamado logo antes de gravar (depois das checagens de `unchanged`): o `load` grava o arquivo no
+   * store `corpus-raw` aqui, para não guardar o raw de uma versão que não entra no banco.
+   */
+  readonly beforeWrite?: () => Promise<void>
 }
 
 type IngestDocumentVersionResult =
-  | { readonly status: 'unchanged'; readonly documentVersionId: string }
+  | {
+      readonly status: 'unchanged'
+      readonly documentVersionId: string
+      /**
+       * `fingerprint`: outro sha256 (fonte `live` regravada) com o resultado parseado igual ao de
+       * uma versão já publicada (A5); ausente = mesmo sha256.
+       */
+      readonly reason?: 'fingerprint'
+    }
   | {
       readonly status: 'published'
       readonly documentVersionId: string
@@ -90,6 +125,9 @@ type IngestDocumentVersionResult =
       readonly chunksNew: number
       readonly reviewItems: number
       readonly neurons: number
+      /** Métricas do disjuntor de mudança em massa e os limites que ultrapassou (com `acceptChurn`). */
+      readonly churn: ChurnMetrics
+      readonly churnViolations: readonly string[]
     }
   | {
       readonly status: 'budget_exhausted'
@@ -111,6 +149,8 @@ export interface IngestDocumentVersionDeps {
   readonly hasher: ContentHasher
   readonly databaseUsage: DatabaseUsage
   readonly maxDatabaseBytes: number
+  /** Bytes por chunk novo na guarda prospectiva ({@link DEFAULT_BYTES_PER_CHUNK}). */
+  readonly bytesPerChunk: number
 }
 
 export class ReconciliationError extends Error {
@@ -277,6 +317,23 @@ interface PreparedProvision {
   readonly versions: readonly PreparedVersion[]
 }
 
+/**
+ * Impressão digital do resultado parseado: tudo o que vai para o banco (documento, metadados e
+ * janela da versão, dispositivos, rótulos, redações e anotações), sem o sha256 do arquivo e sem as
+ * estatísticas do parser. O parser é determinístico, então a mesma saída dá o mesmo JSON.
+ */
+export function contentFingerprint(source: ParsedSource, hasher: ContentHasher): string {
+  const { sha256: _sha256, ...version } = source.version
+  return hasher.hash(
+    JSON.stringify({
+      document: source.document,
+      version,
+      replacementWindow: source.replacementWindow,
+      provisions: source.provisions,
+    }),
+  )
+}
+
 function prepare(source: ParsedSource, hasher: ContentHasher): PreparedProvision[] {
   return source.provisions.map((provision) => ({
     parsed: provision,
@@ -326,11 +383,29 @@ function parentsFirst(provisions: readonly ParsedProvision[]): ParsedProvision[]
 export function createIngestDocumentVersion(
   deps: IngestDocumentVersionDeps,
 ): IngestDocumentVersion {
-  return async ({ runId, source, blobRaw, blobDocling, parserRevision }) => {
+  return async ({
+    runId,
+    source,
+    blobRaw,
+    blobDocling,
+    parserRevision,
+    acceptChurn = false,
+    beforeWrite,
+  }) => {
     const existing = await deps.repository.findDocumentVersion(source.version.sha256)
     const published = existing?.status === DocumentVersionStatus.Published
     if (published && existing.parserRevision >= parserRevision) {
       return { status: 'unchanged', documentVersionId: existing.id }
+    }
+    const fingerprint = contentFingerprint(source, deps.hasher)
+    if (!published) {
+      const same = await deps.repository.findPublishedByFingerprint(
+        source.document.slug,
+        fingerprint,
+      )
+      if (same !== null && same.parserRevision >= parserRevision) {
+        return { status: 'unchanged', documentVersionId: same.id, reason: 'fingerprint' }
+      }
     }
     const size = await deps.databaseUsage.sizeBytes()
     if (size > deps.maxDatabaseBytes) {
@@ -346,9 +421,34 @@ export function createIngestDocumentVersion(
         window: source.replacementWindow,
       })
 
-    const draft = reconcile(await deps.repository.openVersionsOf(source.document.slug))
+    const existingOpen = await deps.repository.openVersionsOf(source.document.slug)
+    const draft = reconcile(existingOpen)
     const newChunks = (plan: ReconciliationPlan) =>
       plan.insert.flatMap((ref) => resolve(byKey, ref).version.chunks)
+    // Disjuntor de mudança em massa (antes de embutir e de gravar).
+    const churn = measureChurn({
+      existing: existingOpen,
+      window: source.replacementWindow,
+      close: draft.close,
+      remainders: draft.remainders,
+      insert: draft.insert.length,
+      provisions: prepared,
+    })
+    const violations = churnViolations(churn)
+    if (violations.length > 0 && !acceptChurn) {
+      throw new ChurnLimitError(source.document.slug, churn, violations)
+    }
+    // Guarda prospectiva: antes de embutir (o cache é commitado fora da transação), o tamanho
+    // depois da versão, pelos chunks novos ao tamanho médio medido, não pode passar do limite.
+    const chunkCount = newChunks(draft).length
+    const projected = size + chunkCount * deps.bytesPerChunk
+    if (projected > deps.maxDatabaseBytes) {
+      throw new DatabaseSizeLimitError(projected, deps.maxDatabaseBytes, {
+        currentBytes: size,
+        newChunks: chunkCount,
+        bytesPerChunk: deps.bytesPerChunk,
+      })
+    }
     const embedded = await deps.embedPending({
       runId,
       texts: newChunks(draft).map((chunk) => ({
@@ -365,6 +465,7 @@ export function createIngestDocumentVersion(
       }
     }
 
+    await beforeWrite?.()
     const counts = await deps.repository.transaction(async (uow) => {
       const documentId = await uow.upsertDocument({
         ...source.document,
@@ -377,6 +478,7 @@ export function createIngestDocumentVersion(
         blobRaw,
         blobDocling,
         parserRevision,
+        contentFingerprint: fingerprint,
       })
       await uow.closePreviousDocumentVersions(
         documentId,
@@ -414,6 +516,14 @@ export function createIngestDocumentVersion(
         newChunks(plan).map((chunk) => chunk.embeddingHash),
         deps.embeddingModel,
       )
+      // B4: as redações novas começam no fechamento mais tardio. No reprocessamento da mesma
+      // versão, o conhecimento da antiga começou em `publishedOn` e fecha no dia seguinte; começar
+      // a nova em `publishedOn` deixaria duas redações conhecidas no mesmo dia.
+      const closedOn = await uow.closeKnowledge(plan.close, source.version.publishedOn)
+      const knowledgeFrom =
+        closedOn !== null && compareIsoDates(closedOn, source.version.publishedOn) > 0
+          ? closedOn
+          : source.version.publishedOn
       const rows: NewProvisionVersionRow[] = plan.insert.map((ref) => {
         const { provision, version } = resolve(byKey, ref)
         return {
@@ -421,7 +531,7 @@ export function createIngestDocumentVersion(
           headingPath: provision.parsed.headingPath,
           displayLabel: version.parsed.displayLabel,
           validDuring: version.validDuring,
-          knowledge: { from: source.version.publishedOn, to: null },
+          knowledge: { from: knowledgeFrom, to: null },
           modality: version.modality,
           validityBasis: version.parsed.validityBasis,
           retroactive: version.parsed.retroactive,
@@ -447,8 +557,8 @@ export function createIngestDocumentVersion(
         }
       })
 
-      await uow.closeKnowledge(plan.close, source.version.publishedOn)
       await uow.insertRemainders(plan.remainders)
+      await uow.releaseClosedEmbeddings(plan.close)
       await uow.widen(
         plan.widen.map((entry) => ({ id: entry.existingId, validDuring: entry.validDuring })),
       )
@@ -499,6 +609,13 @@ export function createIngestDocumentVersion(
         reviewItems: queued,
       }
     })
-    return { status: 'published', reprocessed: published, ...counts, neurons: embedded.neurons }
+    return {
+      status: 'published',
+      reprocessed: published,
+      ...counts,
+      neurons: embedded.neurons,
+      churn,
+      churnViolations: violations,
+    }
   }
 }

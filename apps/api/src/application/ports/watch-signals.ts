@@ -44,6 +44,11 @@ interface WatchPageBase {
   readonly url: string
   readonly mode: WatchMode
   readonly encoding: WatchEncoding
+  /**
+   * Documentos (slug do `corpus/sources.yaml`) cuja publicação resolve a lacuna aberta por uma
+   * mudança nesta página; vazio = qualquer documento da família.
+   */
+  readonly covers?: readonly string[]
 }
 
 interface ConsolidatedPage extends WatchPageBase {
@@ -65,6 +70,8 @@ interface DocumentPattern {
   readonly pattern: string
   /** Regex aplicado ao nome do arquivo; os grupos capturados, unidos por `.`, viram o rótulo. */
   readonly versionPattern: string | null
+  /** Documentos que resolvem a lacuna de um link deste padrão; `null` = os `covers` da página. */
+  readonly covers?: readonly string[] | null
 }
 
 export interface DocumentIndexPage extends WatchPageBase {
@@ -92,6 +99,8 @@ export interface WatchedItem {
   readonly fingerprint: string
   /** Número do ato (`10.986` → 10986), para comparar com o consolidado. */
   readonly actNumber: number | null
+  /** Documentos que resolvem a lacuna do item (padrão do índice); ausente = os da página. */
+  readonly covers?: readonly string[] | null
 }
 
 export interface PageSignals {

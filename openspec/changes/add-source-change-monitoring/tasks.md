@@ -18,6 +18,12 @@
 - [x] 3.3 Fiação no `cli.ts`/`composition-root.ts` (orquestrador: `sources-watch` e `coverage-mark`)
 - [x] 3.4 `coverage-mark` tolera banco sem o schema `corpus` (produção antes da primeira promoção) e mostra a causa do erro do `pg` — run manual 43339854431 falhou em `teko-prod` com "Failed query" sem causa — `run-coverage-mark.test.ts`
 
+## 3b. Lacunas por entrada (revisão de 2026-11-12, branch `fix/ingestao-revisao`)
+
+- [x] 3b.1 `gap_entries` (migração `coverage-gap-entries`, com backfill de `gaps` e grant ao `teko_watch`), `covers` no `corpus/watch.yaml` e no `discovered.json`, `addGapEntry`/`summarizeGaps` — `coverage-gaps.test.ts`, `mark-coverage.test.ts`, `test/integration/watch/coverage-watch.test.ts`
+- [x] 3b.2 A ingestão limpa só a entrada resolvida por versão nova do documento, criada depois da detecção (M1) — `pg-ingestion-repositories.test.ts`, `test/integration/ingest/ingest-document-version.test.ts`
+- [x] 3b.3 A promoção decide a lacuna pela detecção contra o `createdAt` do snapshot (A1) — `test/integration/ingest/snapshot.test.ts`
+
 ## 4. Workflow
 
 - [x] 4.1 `source-watch.yml` (cron `0 9 * * *`, `detect` no staging, `mark-coverage` no `corpus-watch`, `ingest` por `workflow_call`, `watch-errors`) — actionlint 1.7.12 e `ci-config.test.sh`

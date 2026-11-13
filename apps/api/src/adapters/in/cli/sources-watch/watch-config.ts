@@ -35,12 +35,16 @@ const httpsUrl = z.string().refine((value) => {
   }
 }, 'URL https absoluta (aceita {yyyy})')
 
+/** Slugs de documento do `corpus/sources.yaml` (conferidos contra ele no teste do arquivo real). */
+const slugs = z.array(z.string().regex(/^[a-z0-9][a-z0-9-]*$/u, 'slug em kebab-case')).max(50)
+
 const base = {
   id: z.string().regex(/^[a-z0-9][a-z0-9-]*$/u, 'id em kebab-case'),
   family,
   url: httpsUrl,
   mode: z.enum([WatchMode.Live, WatchMode.Pinned]).default(WatchMode.Live),
   encoding: z.enum(['utf-8', 'windows-1252']).default('utf-8'),
+  covers: slugs.default([]),
 }
 
 const pageSchema = z.discriminatedUnion('kind', [
@@ -60,6 +64,7 @@ const pageSchema = z.discriminatedUnion('kind', [
         z.strictObject({
           pattern: regex,
           versionPattern: regex.nullable().default(null),
+          covers: slugs.nullable().default(null),
         }),
       )
       .min(1),

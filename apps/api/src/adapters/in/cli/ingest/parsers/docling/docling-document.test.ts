@@ -33,6 +33,7 @@ describe('readDoclingBlocks', () => {
           ['c', ''],
         ],
         numCols: 2,
+        headerRows: 1,
         page: 1,
       },
       { kind: 'text', label: 'text', text: 'Página 2', page: 2 },
@@ -103,6 +104,7 @@ describe('readDoclingBlocks', () => {
           ['', ''],
         ],
         numCols: 2,
+        headerRows: 0,
         page: 1,
       },
     ])

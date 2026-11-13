@@ -9,8 +9,10 @@ import type { PromoteSnapshot } from '#app/use-cases/promote-snapshot.ts'
  * o workflow lê.
  *
  * - `snapshot export [--corpus-version <n>]`: staging, depois do `RefreshCoverage`.
- * - `snapshot promote (--manifest <chave> | --corpus-version <n>)`: produção (job `promote-corpus`),
- *   depois da fase `migrate` do deploy.
+ * - `snapshot promote (--manifest <chave> | --corpus-version <n>) [--rollback]`: produção (job
+ *   `promote-corpus`), depois da fase `migrate` do deploy. `--rollback` repromove explicitamente um
+ *   snapshot mais antigo que o destino, como uma versão nova do corpus
+ *   (`docs/runbooks/rollback-corpus.md`).
  */
 
 export interface SnapshotCliDeps {
@@ -25,7 +27,7 @@ export const EXIT_USAGE = 64
 
 const SNAPSHOT_USAGE = [
   'uso: cli snapshot export [--corpus-version <n>]',
-  '     cli snapshot promote (--manifest <chave> | --corpus-version <n>)',
+  '     cli snapshot promote (--manifest <chave> | --corpus-version <n>) [--rollback]',
 ].join('\n')
 
 export class SnapshotUsageError extends Error {
@@ -53,7 +55,12 @@ function parse(args: readonly string[], options: { readonly manifest: boolean })
       args: [...args],
       options: {
         'corpus-version': { type: 'string' },
-        ...(options.manifest ? { manifest: { type: 'string' as const } } : {}),
+        ...(options.manifest
+          ? {
+              manifest: { type: 'string' as const },
+              rollback: { type: 'boolean' as const, default: false },
+            }
+          : {}),
       },
       strict: true,
       allowPositionals: false,
@@ -91,8 +98,14 @@ export async function runSnapshotPromote(
     throw new SnapshotUsageError('informe --manifest ou --corpus-version (um dos dois)')
   }
   const manifestKey = manifest ?? snapshotManifestKey(corpusVersion ?? 0)
-  const result = await deps.promoteSnapshot({ manifestKey })
+  const rollback = values.rollback === true
+  const result = await deps.promoteSnapshot(rollback ? { manifestKey, rollback } : { manifestKey })
   deps.print(
-    JSON.stringify({ manifestKey, corpusVersion: result.corpusVersion, rows: result.rows }),
+    JSON.stringify({
+      manifestKey,
+      corpusVersion: result.corpusVersion,
+      rows: result.rows,
+      ...(rollback ? { rollback } : {}),
+    }),
   )
 }

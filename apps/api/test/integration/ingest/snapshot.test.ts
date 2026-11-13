@@ -89,7 +89,7 @@ describe('exportação', () => {
   it('grava um .jsonl.zst por tabela, na ordem de FK, e o manifesto por último', () => {
     expect(manifestKey).toBe('snapshots/1/manifest.json')
     expect(manifest.corpusVersion).toBe(1)
-    expect(manifest.migration.name).toMatch(/parser-revision/)
+    expect(manifest.migration.name).toMatch(/content-fingerprint/)
     expect(blobs.keys(BlobStoreName.CorpusSnapshots)).toEqual(
       [...manifest.tables.map((table) => table.key), manifestKey].sort(),
     )
@@ -182,16 +182,106 @@ describe('promoção num banco vazio', () => {
     expect(open.rows[0]?.n).toBe(stagingClosed.rows[0]?.n)
   })
 
-  it('mantém o verified_at de produção quando ele é mais recente', async () => {
+  it('mantém o verified_at mais recente da produção e decide a lacuna pela detecção (A1)', async () => {
+    const shifted = (ms: number) => new Date(Date.parse(manifest.createdAt) + ms).toISOString()
+    const entry = (detectedAt: string, reason: string, sources: string[]) => ({
+      sources,
+      from: '2026-11-10',
+      to: null,
+      detectedAt,
+      reason,
+    })
+    // O mark-coverage avançou o verified_at da produção depois da ingestão e marcou duas lacunas:
+    // uma vista pelo staging antes da exportação (que a ingestão resolveu: o snapshot vem sem ela)
+    // e outra detectada depois da exportação.
+    const before = entry(shifted(-3_600_000), 'Decreto já ingerido', ['rcte'])
+    const after = entry(shifted(3_600_000), 'Decreto novo', [])
     await productionOwner.query(
-      `UPDATE corpus.coverage SET verified_at = '2026-11-20', gap_reason = 'mudança detectada'
-       WHERE family = 'rcte'`,
+      `UPDATE corpus.coverage SET verified_at = '2099-11-20', gaps = '{[2026-11-10,)}',
+         gap_reason = 'x', gap_entries = $1::jsonb WHERE family = 'rcte'`,
+      [JSON.stringify([before, after])],
     )
     await promoter.container.useCases.promoteSnapshot({ manifestKey })
-    const { rows } = await productionOwner.query<{ verified_at: string; gap_reason: string }>(
-      `SELECT verified_at::text AS verified_at, gap_reason FROM corpus.coverage WHERE family = 'rcte'`,
+    const { rows } = await productionOwner.query(
+      `SELECT verified_at::text AS verified_at, gaps::text AS gaps, gap_reason, gap_entries
+       FROM corpus.coverage WHERE family = 'rcte'`,
     )
-    expect(rows[0]).toEqual({ verified_at: '2026-11-20', gap_reason: 'mudança detectada' })
+    expect(rows[0]).toEqual({
+      verified_at: '2099-11-20',
+      gaps: '{[2026-11-10,)}',
+      gap_reason: 'Decreto novo',
+      gap_entries: [after],
+    })
+
+    // Sem lacuna nova, a promoção seguinte limpa a da produção que o staging já tinha visto.
+    await productionOwner.query(
+      `UPDATE corpus.coverage SET gap_entries = $1::jsonb WHERE family = 'rcte'`,
+      [JSON.stringify([before])],
+    )
+    await promoter.container.useCases.promoteSnapshot({ manifestKey })
+    const cleared = await productionOwner.query(
+      `SELECT gaps::text AS gaps, gap_reason, gap_entries FROM corpus.coverage WHERE family = 'rcte'`,
+    )
+    expect(cleared.rows[0]).toEqual({ gaps: '{}', gap_reason: null, gap_entries: [] })
+  })
+})
+
+describe('rollback de corpus', () => {
+  it('repromove o snapshot antigo como versão nova e reabre o que a versão seguinte fechou', async () => {
+    // Staging: uma redação publicável sai (conhecimento fechado, vetor apagado) na versão 2.
+    const target = await stagingOwner.query<{ id: string }>(
+      `SELECT pv.id FROM corpus.provision_versions pv
+       WHERE upper_inf(pv.knowledge) AND pv.review_status = 'auto' ORDER BY pv.id LIMIT 1`,
+    )
+    const pv = target.rows[0]?.id ?? ''
+    await stagingOwner.query(
+      `UPDATE corpus.provision_versions SET knowledge = daterange(lower(knowledge), '2026-11-11')
+       WHERE id = $1`,
+      [pv],
+    )
+    await stagingOwner.query(
+      `UPDATE corpus.chunks SET knowledge = daterange(lower(knowledge), '2026-11-11'),
+         embedding = NULL WHERE provision_version_id = $1`,
+      [pv],
+    )
+    await stagingOwner.query(`INSERT INTO corpus.corpus_versions (notes) VALUES ('fecha uma')`)
+    const second = await exporter.container.useCases.exportSnapshot({ corpusVersion: 2 })
+    expect(
+      await promoter.container.useCases.promoteSnapshot({ manifestKey: second.manifestKey }),
+    ).toMatchObject({
+      corpusVersion: 2,
+    })
+    const state = async () =>
+      (
+        await productionOwner.query<{ open: boolean; embedded: boolean }>(
+          `SELECT bool_and(upper_inf(knowledge)) AS open, bool_and(embedding IS NOT NULL) AS embedded
+           FROM corpus.chunks WHERE provision_version_id = $1`,
+          [pv],
+        )
+      ).rows[0]
+    expect(await state()).toEqual({ open: false, embedded: false })
+
+    // Voltar ao snapshot 1 exige --rollback e vira a versão 3.
+    await expect(promoter.container.useCases.promoteSnapshot({ manifestKey })).rejects.toThrow(
+      /--rollback/,
+    )
+    const rolled = await promoter.container.useCases.promoteSnapshot({
+      manifestKey,
+      rollback: true,
+    })
+    expect(rolled.corpusVersion).toBe(3)
+    expect(await state()).toEqual({ open: true, embedded: true })
+    const versions = await productionOwner.query<{ id: number; notes: string | null }>(
+      'SELECT id, notes FROM corpus.corpus_versions ORDER BY id',
+    )
+    expect(versions.rows.at(-1)).toEqual({
+      id: 3,
+      notes: `rollback para o snapshot 1 (${manifestKey})`,
+    })
+    const coverage = await productionOwner.query<{ v: number }>(
+      'SELECT DISTINCT corpus_version AS v FROM corpus.coverage',
+    )
+    expect(coverage.rows).toEqual([{ v: 3 }])
   })
 })
 
@@ -210,25 +300,30 @@ describe('validações e retenção', () => {
     await tampered.set(BlobStoreName.CorpusSnapshots, coverageKey, changed)
     const target = createIngestionTestContext(production.ownerUrl, { blobs: tampered })
     try {
-      await expect(target.container.useCases.promoteSnapshot({ manifestKey })).rejects.toThrow(
-        /sha256/,
-      )
+      // A produção já está à frente do snapshot 1 (rollback acima): só passa com --rollback.
+      await expect(
+        target.container.useCases.promoteSnapshot({ manifestKey, rollback: true }),
+      ).rejects.toThrow(/sha256/)
     } finally {
       await target.container.close()
     }
   })
 
-  it('guarda só os 3 snapshots mais recentes', async () => {
-    for (let version = 2; version <= 4; version += 1) {
+  it('guarda só os 3 snapshots mais recentes, mais o protegido (o do lock vigente)', async () => {
+    // O staging já está na versão 2 (rollback acima).
+    for (let version = 3; version <= 5; version += 1) {
       await stagingOwner.query(`INSERT INTO corpus.corpus_versions (notes) VALUES ('teste')`)
-      const exported = await exporter.container.useCases.exportSnapshot({ corpusVersion: version })
+      const exported = await exporter.container.useCases.exportSnapshot({
+        corpusVersion: version,
+        protect: [1],
+      })
       expect(exported.manifest.corpusVersion).toBe(version)
     }
     const versions = new Set(
       blobs.keys(BlobStoreName.CorpusSnapshots).map((key) => key.split('/')[1]),
     )
-    expect([...versions].sort()).toEqual(['2', '3', '4'])
-    await expect(exporter.container.useCases.exportSnapshot({ corpusVersion: 3 })).rejects.toThrow(
+    expect([...versions].sort()).toEqual(['1', '3', '4', '5'])
+    await expect(exporter.container.useCases.exportSnapshot({ corpusVersion: 4 })).rejects.toThrow(
       /versão atual/,
     )
   })

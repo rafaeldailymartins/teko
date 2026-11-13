@@ -2,7 +2,7 @@ import type { IsoDate } from '@teko/shared/vigencia'
 
 /**
  * Escrita do `mark-coverage` em `corpus.coverage`, com o role `teko_watch` (que só pode ler a
- * tabela e atualizar `verified_at`, `gaps` e `gap_reason`).
+ * tabela e atualizar `verified_at`, `gaps`, `gap_reason` e `gap_entries`).
  */
 
 export interface FamilyGap {
@@ -10,6 +10,10 @@ export interface FamilyGap {
   /** A lacuna acrescentada é `[from, ∞)`. */
   readonly from: IsoDate
   readonly reason: string
+  /** Documentos (slug) cuja publicação resolve a lacuna; vazio = qualquer um da família. */
+  readonly sources: readonly string[]
+  /** Instante da detecção (`generatedAt` do `discovered.json`). */
+  readonly detectedAt: string
 }
 
 export interface MarkVerifiedCommand {
@@ -32,7 +36,8 @@ export interface CoverageWatchRepository {
   /**
    * Sem lacunas e sem exclusões, executa exatamente um
    * `UPDATE corpus.coverage SET verified_at = $1 WHERE verified_at < $1`. Com lacunas, acrescenta
-   * `[from, ∞)` a `gaps` e grava `gap_reason` de cada família na mesma transação.
+   * a entrada (`gap_entries`) de cada família e regrava `gaps`/`gap_reason` como a soma das
+   * entradas, na mesma transação.
    */
   markVerified(command: MarkVerifiedCommand): Promise<MarkVerifiedResult>
 }

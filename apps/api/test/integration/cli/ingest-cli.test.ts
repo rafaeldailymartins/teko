@@ -218,6 +218,13 @@ async function load(
       useCases: context.container.useCases,
       migrate: () => Promise.resolve(),
       gitSha: 'c'.repeat(40),
+      lineage: {
+        embeddingModel: context.container.embeddingModel,
+        parserRevisions: PARSER_REVISIONS,
+        extractorRevision: 1,
+        doclingVersion: '2.146.0',
+        reranker: null,
+      },
       today: () => '2026-11-11',
       defaultLockFile: lock,
       print: (line) => lines.push(line),

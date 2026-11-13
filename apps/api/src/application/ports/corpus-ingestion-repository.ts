@@ -97,6 +97,8 @@ export interface IngestionUnitOfWork {
     readonly blobRaw: string | null
     readonly blobDocling: string | null
     readonly parserRevision: number
+    /** `contentFingerprint` do resultado parseado (A5). */
+    readonly contentFingerprint: string
   }): Promise<string>
   /**
    * Fecha em `from` o `valid_during` das outras versões do documento ainda em aberto que começam
@@ -124,17 +126,24 @@ export interface IngestionUnitOfWork {
   lockOpenVersions(documentId: string): Promise<OpenProvisionVersion[]>
   /**
    * Fecha o `knowledge` (redação e chunks) em `at`, ou no dia seguinte ao início do conhecimento se
-   * `at` não for posterior a ele (o intervalo nunca fica vazio).
+   * `at` não for posterior a ele (o intervalo nunca fica vazio). Devolve o fechamento mais tardio
+   * (`null` sem linhas): as redações novas da versão começam nele, para não haver duas redações
+   * conhecidas no mesmo dia (reprocessamento da mesma versão, ADR 0026).
    */
-  closeKnowledge(ids: readonly string[], at: IsoDate): Promise<void>
+  closeKnowledge(ids: readonly string[], at: IsoDate): Promise<IsoDate | null>
   /**
    * Copia redações fechadas por `closeKnowledge` para os trechos de vigência que a versão nova não
    * reescreve, com conhecimento a partir do fechamento da original e os mesmos chunks (embeddings
-   * inclusive) e fontes. Devolve os IDs novos, na ordem.
+   * inclusive) e fontes. Roda antes de `releaseClosedEmbeddings`. Devolve os IDs novos, na ordem.
    */
   insertRemainders(
     rows: readonly { readonly sourceId: string; readonly validDuring: ValidityInterval }[],
   ): Promise<string[]>
+  /**
+   * Apaga o vetor dos chunks fechados dessas redações (a busca nunca lê conhecimento fechado, e os
+   * vetores são a maior parte do banco). Depois dos recortes, que copiam o vetor da original.
+   */
+  releaseClosedEmbeddings(ids: readonly string[]): Promise<void>
   /** Troca o `valid_during` da redação e dos chunks dela. */
   widen(
     rows: readonly { readonly id: string; readonly validDuring: ValidityInterval }[],
@@ -167,16 +176,53 @@ interface RefreshCoverageRecord {
 
 export interface CorpusIngestionRepository {
   findDocumentVersion(sha256: string): Promise<ExistingDocumentVersion | null>
+  /** A versão publicada mais recente do documento com essa impressão digital, ou `null`. */
+  findPublishedByFingerprint(
+    slug: string,
+    fingerprint: string,
+  ): Promise<{ readonly id: string; readonly parserRevision: number } | null>
   /** Leitura sem trava, para planejar os embeddings antes da transação. */
   openVersionsOf(slug: string): Promise<OpenProvisionVersion[]>
   transaction<T>(work: (uow: IngestionUnitOfWork) => Promise<T>): Promise<T>
   /**
    * Recalcula `coverage.covered` (união das vigências das redações publicáveis atuais),
-   * `verified_at` e limpa `gaps`/`gap_reason` das famílias; grava um `corpus_versions` novo e
+   * `verified_at` e tira de `gap_entries` (e de `gaps`/`gap_reason`) as lacunas resolvidas por
+   * versão de documento criada no run depois da detecção; grava um `corpus_versions` novo e
    * carimba os chunks ainda sem versão (`corpus_version = 0`). Sem família a recalcular, não grava
    * nada e devolve a versão atual.
    */
   refreshCoverage(record: RefreshCoverageRecord): Promise<{ readonly corpusVersion: number }>
+  /** Estado publicado por documento, para o gate de saúde do fim do `load`. */
+  documentHealth(): Promise<DocumentHealth[]>
+  /** Itens abertos da fila de revisão por família e motivo (o resumo do `load` mostra). */
+  openReviewQueue(): Promise<ReviewQueueCount[]>
+  /** Título e texto dos chunks de conhecimento aberto, em lotes (a poda do `embedding_cache`). */
+  openChunkTexts(): AsyncIterable<readonly OpenChunkText[]>
+}
+
+export interface OpenChunkText {
+  readonly headingPath: string
+  readonly content: string
+}
+
+/** Estado publicado de um documento (redações e chunks de conhecimento aberto). */
+export interface DocumentHealth {
+  readonly slug: string
+  readonly family: string
+  /** Dispositivos com redação publicável (`auto`/`approved`). */
+  readonly provisions: number
+  /** Chunks publicáveis. */
+  readonly chunks: number
+  /** Redações `pending`. */
+  readonly pending: number
+  /** Redações de todos os status. */
+  readonly versions: number
+}
+
+export interface ReviewQueueCount {
+  readonly family: string
+  readonly reason: string
+  readonly open: number
 }
 
 /** `corpus_version` dos chunks gravados pela ingestão até o `RefreshCoverage` do fim do run. */

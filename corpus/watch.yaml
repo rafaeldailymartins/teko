@@ -12,6 +12,10 @@
 #     com `versionPattern` (regex no nome do arquivo; os grupos viram o rótulo, unidos por `.`);
 #   - tables-ws: `versao`/`hash` das tabelas `tableIds` no metadadosXml do WS de Tabelas Externas.
 #
+# `covers` (na página ou em `documents[]`): slugs do corpus/sources.yaml cuja publicação resolve a
+# lacuna aberta pela mudança; ausente = qualquer documento da família. A ingestão só limpa a lacuna
+# quando um desses documentos ganha, no run, uma versão criada depois da detecção.
+#
 # Todo host daqui precisa estar na allowlist do SafeFetcher e no harden-runner do source-watch.yml.
 version: 1
 pages:
@@ -65,8 +69,10 @@ pages:
     documents:
       - pattern: "/efd-icms-ipi/manuais-e-documentos-tecnicos/guia-pratico[^/]*$"
         versionPattern: '(\d+)[-.](\d+)[-.](\d+)'
+        covers: [guia-pratico-efd-icms-ipi]
       - pattern: "/efd-icms-ipi/manuais-e-documentos-tecnicos/[^/]*nota-tecnica[^/]*$"
         versionPattern: '(\d{4})[-.](\d{3})'
+        covers: [notas-tecnicas-efd-icms-ipi]
 
   - id: sped-efd-reinf-leiautes
     family: efd-reinf

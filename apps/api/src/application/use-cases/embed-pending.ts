@@ -1,5 +1,9 @@
 import type { EmbeddingCache } from '../ports/embedding-cache.ts'
-import { type EmbeddingPort, EmbeddingUnavailableError } from '../ports/embedding-port.ts'
+import {
+  type EmbeddingPort,
+  EmbeddingQuotaExceededError,
+  EmbeddingUnavailableError,
+} from '../ports/embedding-port.ts'
 import type { IngestionRunRepository } from '../ports/ingestion-run-repository.ts'
 import { type BatchLimits, planEmbeddingBatches } from '../services/embedding-batches.ts'
 import { estimateNeurons, type NeuronBudget, type NeuronMeter } from '../services/neuron-budget.ts'
@@ -13,7 +17,8 @@ import { estimateNeurons, type NeuronBudget, type NeuronMeter } from '../service
  *
  * O primeiro lote roda sozinho e valida a dimensão (1024, BGE-M3). Antes de cada lote, a estimativa
  * conservadora é reservada contra o orçamento diário; se não couber, nenhum lote novo começa e o
- * resultado é `budget_exhausted` (o CLI sai com 75 e o run seguinte retoma pelo cache).
+ * resultado é `budget_exhausted` (o CLI sai com 75 e o run seguinte retoma pelo cache). A cota
+ * diária do provedor esgotada (`EmbeddingQuotaExceededError`) tem o mesmo efeito, sem retry.
  */
 
 /** Dimensão exigida dos vetores (BGE-M3; `halfvec(1024)` no schema). */
@@ -109,7 +114,11 @@ export function createEmbedPending(deps: EmbedPendingDeps): EmbedPending {
       try {
         return await deps.embeddings.embed(texts)
       } catch (error) {
-        if (!(error instanceof EmbeddingUnavailableError) || attempt >= maxAttempts) {
+        if (
+          !(error instanceof EmbeddingUnavailableError) ||
+          error instanceof EmbeddingQuotaExceededError ||
+          attempt >= maxAttempts
+        ) {
           throw error
         }
         await sleep(baseDelayMs * 2 ** (attempt - 1))
@@ -183,12 +192,21 @@ export function createEmbedPending(deps: EmbedPendingDeps): EmbedPending {
       return batch
     }
 
+    /** Cota do provedor esgotada encerra como orçamento esgotado; o resto é falha. */
+    const fail = (error: unknown): void => {
+      if (error instanceof EmbeddingQuotaExceededError) {
+        state.exhausted = true
+      } else {
+        state.failure ??= { error }
+      }
+    }
+
     const worker = async (): Promise<void> => {
       for (let batch = take(); batch !== undefined; batch = take()) {
         try {
           await runBatch(batch)
         } catch (error) {
-          state.failure ??= { error }
+          fail(error)
         }
       }
     }
@@ -199,7 +217,7 @@ export function createEmbedPending(deps: EmbedPendingDeps): EmbedPending {
       try {
         await runBatch(first)
       } catch (error) {
-        state.failure = { error }
+        fail(error)
       }
     }
     await Promise.all(Array.from({ length: Math.max(1, concurrency) }, () => worker()))

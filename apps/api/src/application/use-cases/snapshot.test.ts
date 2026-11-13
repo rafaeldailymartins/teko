@@ -70,6 +70,7 @@ function repository(options: {
   readonly targetMigration?: MigrationRef | null
   readonly targetVersion?: number | null
   readonly rows?: Partial<Record<SnapshotTable, SnapshotRow[]>>
+  readonly applied?: string[]
 }) {
   const promoted: { record: PromoteRecord; rows: Record<string, SnapshotRow[]> }[] = []
   const repo: SnapshotRepository = {
@@ -87,6 +88,8 @@ function repository(options: {
       }),
     latestMigration: () =>
       Promise.resolve(options.targetMigration === undefined ? MIGRATION : options.targetMigration),
+    migrationApplied: (hash) =>
+      Promise.resolve((options.applied ?? [MIGRATION.hash]).includes(hash)),
     currentCorpusVersion: () =>
       Promise.resolve(options.targetVersion === undefined ? null : options.targetVersion),
     async promote(record) {
@@ -183,6 +186,66 @@ describe('ExportSnapshot e PromoteSnapshot', () => {
     )
     expect([...versions].sort()).toEqual(['10', '3', '4'])
     expect(await blobs.get(BlobStoreName.CorpusSnapshots, 'outro/arquivo.txt')).not.toBeNull()
+
+    // O snapshot do lock vigente (1, já apagado) e um protegido ainda presente (3) ficam.
+    await createExportSnapshot(deps(repository({ version: 11 }).repo, blobs))({
+      corpusVersion: 11,
+      protect: [3],
+    })
+    const after = new Set(
+      blobs
+        .keys(BlobStoreName.CorpusSnapshots)
+        .filter((key) => key.startsWith('snapshots/'))
+        .map((key) => key.split('/')[1]),
+    )
+    expect([...after].sort()).toEqual(['10', '11', '3', '4'])
+  })
+
+  it('grava a linhagem no manifesto', async () => {
+    const lineage = {
+      gitSha: 'a'.repeat(40),
+      embeddingModel: '@cf/baai/bge-m3',
+      parserRevisions: { 'docling-guia': 2 },
+      extractorRevision: 1,
+      doclingVersion: '2.146.0',
+      reranker: null,
+    }
+    const exported = await createExportSnapshot(deps(repository({}).repo))({ lineage })
+    expect(exported.manifest.lineage).toEqual(lineage)
+  })
+})
+
+describe('rollback de corpus', () => {
+  it('repromove um snapshot antigo como versão nova, só com --rollback', async () => {
+    const blobs = createInMemoryBlobStore()
+    const { manifestKey } = await createExportSnapshot(
+      deps(repository({ rows: ROWS, version: 5 }).repo, blobs),
+    )({})
+    const target = (options: Parameters<typeof repository>[0]) => repository(options)
+    const promote = (options: Parameters<typeof repository>[0], rollback: boolean) => {
+      const repo = target(options)
+      return {
+        repo,
+        run: createPromoteSnapshot(deps(repo.repo, blobs))({ manifestKey, rollback }),
+      }
+    }
+    // Sem destino mais novo, rollback não faz sentido.
+    await expect(promote({ targetVersion: 5 }, true).run).rejects.toThrow(/mais antigo/)
+    // Migração do snapshot precisa já ter sido aplicada no destino (pode ser anterior à última).
+    await expect(
+      promote(
+        { targetVersion: 7, targetMigration: { hash: 'm2', name: '0005' }, applied: ['m2'] },
+        true,
+      ).run,
+    ).rejects.toThrow(/incompatível/)
+    const ok = promote(
+      { targetVersion: 7, targetMigration: { hash: 'm2', name: '0005' }, applied: ['m1', 'm2'] },
+      true,
+    )
+    expect(await ok.run).toMatchObject({ corpusVersion: 7 })
+    expect(ok.repo.promoted[0]?.record.rollbackNotes).toBe(
+      `rollback para o snapshot 5 (${manifestKey})`,
+    )
   })
 })
 

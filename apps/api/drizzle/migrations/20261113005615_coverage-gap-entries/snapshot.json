@@ -1,0 +1,47 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "b639237d-a81d-4066-ae96-0ff280a7684f",
+  "prevIds": [
+    "58c7fb31-b259-4cdd-b9ab-6c87e09969d0"
+  ],
+  "footprints": [
+    {
+      "statementType": "add_column",
+      "statementTarget": [
+        "column",
+        "corpus",
+        "coverage",
+        "gap_entries"
+      ],
+      "writes": [
+        "s|col|corpus.coverage.gap_entries",
+        "n|col|corpus.coverage.gap_entries",
+        "e|col|corpus.coverage.gap_entries"
+      ],
+      "reads": [
+        "n|tbl|corpus.coverage",
+        "n|sch|corpus"
+      ]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "coverage",
+        "name": "gap_entries",
+        "type": "jsonb",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "'[]'",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    }
+  ]
+}

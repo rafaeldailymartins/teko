@@ -14,8 +14,10 @@ import {
  * Abertura e fechamento de um run de ingestão (`corpus.ingestion_runs`).
  *
  * - `--bulk` (só staging): o HNSW de `corpus.chunks` sai antes da carga e volta no fechamento, com
- *   `maintenance_work_mem='512MB'` (construir o índice uma vez é muito mais barato que mantê-lo a
- *   cada lote). O fechamento sempre garante o índice, mesmo de um run anterior que tenha caído.
+ *   `maintenance_work_mem='256MB'` (construir o índice uma vez é muito mais barato que mantê-lo a
+ *   cada lote). O fechamento sempre garante o índice, e um run sem `--bulk` o garante já na
+ *   abertura (um `--bulk` anterior que caiu no meio deixa o staging sem HNSW). O índice é parcial
+ *   (`WHERE upper_inf(knowledge)`), como no schema.
  * - CU-h: os CU-segundos do projeto Neon são lidos no início e no fim (API v2); a diferença vai a
  *   `cu_seconds`. Sem credenciais (ou com a API fora), fica `null`.
  * - `db_bytes`: `pg_database_size` no fechamento.
@@ -89,9 +91,9 @@ export function createStartIngestionRun(deps: IngestionRunDeps): StartIngestionR
       report: { bulk, [COMPUTE_AT_START]: computeAtStart },
       startedAt: deps.clock.now(),
     })
-    if (bulk) {
-      await deps.vectorIndex.dropVectorIndex()
-    }
+    // B6: um `--bulk` que caiu no meio deixa o staging sem HNSW (a busca degrada para varredura);
+    // o run seguinte sem `--bulk` o recria logo no início, sem esperar o fechamento.
+    await (bulk ? deps.vectorIndex.dropVectorIndex() : deps.vectorIndex.ensureVectorIndex())
     return { runId }
   }
 }

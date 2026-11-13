@@ -1,0 +1,1 @@
+ALTER TABLE "corpus"."document_versions" ADD COLUMN "content_fingerprint" text;

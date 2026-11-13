@@ -284,6 +284,41 @@ describe('watchSources', () => {
     ])
   })
 
+  it('leva para a mudança os documentos que resolvem a lacuna (covers do item ou da página)', async () => {
+    const blobs = new MemoryBlobs()
+    const page: WatchPage = { ...consolidated, covers: ['rcte'] }
+    await run(blobs, [[RCTE_URL, ok(RCTE_URL, header(10986, '2026-09-16'))]], [page])
+    const { report } = await run(
+      blobs,
+      [[RCTE_URL, ok(RCTE_URL, header(10991, '2026-10-08'))]],
+      [page],
+    )
+    expect(report.changes.map((item) => item.covers)).toEqual([['rcte']])
+
+    const index: WatchPage = { ...documents, covers: ['pagina'] }
+    const docBlobs = new MemoryBlobs()
+    await run(docBlobs, [[DOCS_URL, ok(DOCS_URL, signals({ items: [] }))]], [index])
+    const doc = (url: string): WatchedItem => ({
+      key: url,
+      url,
+      versionLabel: null,
+      date: null,
+      fingerprint: '1',
+      actNumber: null,
+    })
+    const guia = { ...doc('https://www.gov.br/sped/guia-3.pdf'), covers: ['guia'] }
+    const nota = doc('https://www.gov.br/sped/nota.pdf')
+    const second = await run(
+      docBlobs,
+      [[DOCS_URL, ok(DOCS_URL, signals({ items: [guia, nota] }))]],
+      [index],
+    )
+    expect(second.report.changes.map((item) => [item.sourceUrl, item.covers])).toEqual([
+      ['https://www.gov.br/sped/guia-3.pdf', ['guia']],
+      ['https://www.gov.br/sped/nota.pdf', ['pagina']],
+    ])
+  })
+
   it('usa a data do run quando o rótulo novo não traz data', async () => {
     const blobs = new MemoryBlobs()
     await run(blobs, [[RCTE_URL, ok(RCTE_URL, header(1, '2026-01-01'))]], [consolidated])

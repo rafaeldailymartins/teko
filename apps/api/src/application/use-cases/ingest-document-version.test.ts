@@ -10,8 +10,10 @@ import type {
   ReviewItemRow,
 } from '../ports/corpus-ingestion-repository.ts'
 import { DatabaseSizeLimitError } from '../ports/database-usage.ts'
+import { ChurnLimitError } from '../services/churn.ts'
 import type { EmbedPending, EmbedPendingResult } from './embed-pending.ts'
 import {
+  contentFingerprint,
   createIngestDocumentVersion,
   planReconciliation,
   ReconciliationError,
@@ -234,6 +236,8 @@ function fakeRepository(options: {
   readonly existing?: ExistingDocumentVersion | null
   readonly open?: OpenProvisionVersion[]
   readonly provisionIds?: (keys: string[]) => Map<string, string>
+  readonly closedOn?: string
+  readonly sameFingerprint?: { id: string; parserRevision: number }
 }): { repository: CorpusIngestionRepository; recorder: Recorder } {
   const recorder: Recorder = { calls: [], inserted: [], review: [], sources: [] }
   const uow: IngestionUnitOfWork = {
@@ -264,11 +268,15 @@ function fakeRepository(options: {
     lockOpenVersions: () => Promise.resolve(options.open ?? []),
     closeKnowledge: (ids, at) => {
       recorder.calls.push(`close:${ids.join(',')}@${at}`)
-      return Promise.resolve()
+      return Promise.resolve(ids.length === 0 ? null : (options.closedOn ?? at))
     },
     insertRemainders: (rows) => {
       recorder.calls.push(`remainders:${String(rows.length)}`)
       return Promise.resolve(rows.map((_, index) => `r${String(index)}`))
+    },
+    releaseClosedEmbeddings: (ids) => {
+      recorder.calls.push(`release:${ids.join(',')}`)
+      return Promise.resolve()
     },
     widen: (rows) => {
       recorder.calls.push(`widen:${rows.map((row) => row.id).join(',')}`)
@@ -301,9 +309,15 @@ function fakeRepository(options: {
   }
   const repository: CorpusIngestionRepository = {
     findDocumentVersion: () => Promise.resolve(options.existing ?? null),
+    findPublishedByFingerprint: () => Promise.resolve(options.sameFingerprint ?? null),
     openVersionsOf: () => Promise.resolve(options.open ?? []),
     transaction: (work) => work(uow),
     refreshCoverage: () => Promise.reject(new Error('não usado')),
+    documentHealth: () => Promise.reject(new Error('não usado')),
+    openReviewQueue: () => Promise.reject(new Error('não usado')),
+    openChunkTexts: () => {
+      throw new Error('não usado')
+    },
   }
   return { repository, recorder }
 }
@@ -312,9 +326,12 @@ function setup(options: {
   readonly existing?: ExistingDocumentVersion | null
   readonly open?: OpenProvisionVersion[]
   readonly size?: number
+  readonly bytesPerChunk?: number
   readonly embed?: EmbedPendingResult
   readonly cached?: (hash: string) => number[] | undefined
   readonly provisionIds?: (keys: string[]) => Map<string, string>
+  readonly closedOn?: string
+  readonly sameFingerprint?: { id: string; parserRevision: number }
 }) {
   const { repository, recorder } = fakeRepository(options)
   const requested: string[] = []
@@ -337,12 +354,14 @@ function setup(options: {
           ),
         ),
       putMany: () => Promise.resolve(),
+      retainOnly: () => Promise.resolve(0),
     },
     embedPending,
     embeddingModel: 'bge',
     hasher,
     databaseUsage: { sizeBytes: () => Promise.resolve(options.size ?? 10) },
     maxDatabaseBytes: 100,
+    bytesPerChunk: options.bytesPerChunk ?? 1,
   })
   return { ingest, recorder, requested }
 }
@@ -376,6 +395,19 @@ describe('IngestDocumentVersion', () => {
     expect(newer.recorder.calls).toEqual([])
   })
 
+  it('B4: as redações novas começam no fechamento mais tardio (reprocessamento)', async () => {
+    const { ingest, recorder } = setup({
+      existing: { id: 'dv0', status: 'published', parserRevision: 1 },
+      open: [open('velha', 'go:rcte:art:1', '#Art. 1. Redação velha.', iv('2000-01-01'))],
+      closedOn: '2026-06-02',
+    })
+    await ingest({
+      ...command(source([version('Art. 1. Redação corrigida.', iv('2000-01-01'))])),
+      parserRevision: 2,
+    })
+    expect(recorder.inserted[0]?.knowledge).toEqual(iv('2026-06-02'))
+  })
+
   it('sha256 publicado com revisão menor do parser: reprocessa a mesma versão', async () => {
     const { ingest, recorder, requested } = setup({
       existing: { id: 'dv0', status: 'published', parserRevision: 1 },
@@ -395,11 +427,106 @@ describe('IngestDocumentVersion', () => {
     expect(recorder.calls).toContain('version:raw:rev2')
   })
 
+  it('A5: sha256 novo com o mesmo resultado parseado volta unchanged, sem gravar nem o raw', async () => {
+    const parsed = source([version('Art. 1. Texto.')])
+    const fingerprint = contentFingerprint(parsed, hasher)
+    // Outro arquivo (sha256) e outras estatísticas do parser não mudam a impressão digital.
+    expect(
+      contentFingerprint(
+        {
+          ...parsed,
+          version: { ...parsed.version, sha256: 'b'.repeat(64) },
+          stats: { notesTotal: 9, notesParsed: 9, notesToReview: 0 },
+        },
+        hasher,
+      ),
+    ).toBe(fingerprint)
+    expect(contentFingerprint(source([version('Art. 1. Outro texto.')]), hasher)).not.toBe(
+      fingerprint,
+    )
+
+    const writes: string[] = []
+    const same = setup({ sameFingerprint: { id: 'dv-antiga', parserRevision: 1 } })
+    expect(
+      await same.ingest({
+        ...command(parsed),
+        beforeWrite: () => {
+          writes.push('raw')
+          return Promise.resolve()
+        },
+      }),
+    ).toEqual({ status: 'unchanged', documentVersionId: 'dv-antiga', reason: 'fingerprint' })
+    expect(writes).toEqual([])
+    expect(same.recorder.calls).toEqual([])
+
+    // Com revisão do parser mais nova, reprocessa (e grava o raw antes da transação).
+    const newer = setup({ sameFingerprint: { id: 'dv-antiga', parserRevision: 1 } })
+    await newer.ingest({
+      ...command(parsed),
+      parserRevision: 2,
+      beforeWrite: () => {
+        writes.push(`raw antes de ${String(newer.recorder.calls.length)} chamadas`)
+        return Promise.resolve()
+      },
+    })
+    expect(writes).toEqual(['raw antes de 0 chamadas'])
+    expect(newer.recorder.calls[1]).toBe('version:raw:rev2')
+  })
+
   it('aborta acima da guarda de tamanho', async () => {
     const { ingest } = setup({ size: 101 })
     await expect(ingest(command(source([version('Art. 1. Texto.')])))).rejects.toBeInstanceOf(
       DatabaseSizeLimitError,
     )
+  })
+
+  it('guarda prospectiva: os chunks novos passariam do limite, aborta antes de embutir', async () => {
+    const { ingest, requested, recorder } = setup({ size: 60, bytesPerChunk: 25 })
+    // Duas redações novas, um chunk cada: 60 + 2 × 25 = 110 > 100.
+    const error = await ingest(
+      command(source([version('Art. 1. Texto.'), version('Art. 1. Outro.', iv('2010-01-01'))])),
+    ).catch((caught: unknown) => caught)
+    expect(error).toBeInstanceOf(DatabaseSizeLimitError)
+    expect(error).toMatchObject({
+      sizeBytes: 110,
+      limitBytes: 100,
+      projection: { currentBytes: 60, newChunks: 2, bytesPerChunk: 25 },
+    })
+    expect(String(error)).toMatch(/2 chunks novos/)
+    expect(requested).toEqual([])
+    expect(recorder.calls).toEqual([])
+
+    // Reaproveitar a mesma redação não conta chunk novo.
+    const reuse = setup({
+      size: 99,
+      bytesPerChunk: 25,
+      open: [open('pv', 'go:rcte:art:1', '#Art. 1. Texto.', iv('2000-01-01'))],
+    })
+    await expect(
+      reuse.ingest(command(source([version('Art. 1. Texto.', iv('2000-01-01'))]))),
+    ).resolves.toMatchObject({ status: 'published', provisionVersionsNew: 0 })
+  })
+
+  it('disjuntor: mudança em massa falha o item antes de embutir, salvo acceptChurn', async () => {
+    const many = Array.from({ length: 20 }, (_, index) =>
+      open(`pv${String(index)}`, `go:rcte:art:${String(index + 10)}`, '#x', iv('2000-01-01')),
+    )
+    const tripped = setup({ open: many })
+    const error = await tripped
+      .ingest(command(source([version('Art. 1. Texto.')])))
+      .catch((caught: unknown) => caught)
+    expect(error).toBeInstanceOf(ChurnLimitError)
+    expect(error).toMatchObject({ metrics: { openBefore: 20, closed: 20, provisionsLost: 20 } })
+    expect(tripped.requested).toEqual([])
+    expect(tripped.recorder.calls).toEqual([])
+
+    const accepted = setup({ open: many })
+    const result = await accepted.ingest({
+      ...command(source([version('Art. 1. Texto.')])),
+      acceptChurn: true,
+    })
+    expect(result).toMatchObject({ status: 'published', knowledgeClosed: 20 })
+    expect(result.status === 'published' ? result.churnViolations : []).toHaveLength(2)
   })
 
   it('orçamento esgotado: devolve budget_exhausted sem abrir a transação', async () => {
@@ -459,6 +586,16 @@ describe('IngestDocumentVersion', () => {
       chunksNew: 3,
       reviewItems: 2,
       neurons: 3,
+      churn: {
+        openBefore: 2,
+        closed: 1,
+        inserted: 3,
+        provisionsBefore: 1,
+        provisionsLost: 0,
+        pendingShareBefore: 0,
+        pendingShareAfter: 0.5,
+      },
+      churnViolations: [],
     })
     expect(requested).toEqual([
       'RCTE > Art. 1\n\nArt. 1. Redação nova.',
@@ -473,6 +610,7 @@ describe('IngestDocumentVersion', () => {
       'labels:1',
       'close:velha@2026-06-01',
       'remainders:0',
+      'release:velha',
       'widen:',
       'insert:3:rcte:bge',
       'sources:dv',
