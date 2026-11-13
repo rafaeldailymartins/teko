@@ -168,6 +168,11 @@ const envSchema = z
      * e sem padrão: um padrão (o antigo era 300 s) divergiria em silêncio do `.vc-config.json`.
      */
     FUNCTION_MAX_DURATION_S: z.coerce.number().int().min(1).max(HOBBY_MAX_DURATION_S).optional(),
+    /**
+     * Export estático do web (`apps/web/out`) servido pela própria API, na mesma origem: só no
+     * Plano B (Render; ADR 0029). Proibida com `RUNTIME_TARGET=vercel`, onde a CDN serve o export.
+     */
+    WEB_STATIC_DIR: z.string().trim().min(1).optional(),
     SHUTDOWN_GRACE_MS: z.coerce
       .number()
       .int()
@@ -260,6 +265,9 @@ const envSchema = z
         'FUNCTION_MAX_DURATION_S',
         'obrigatória com RUNTIME_TARGET=vercel (o maxDuration do .vc-config.json)',
       )
+    }
+    if (env.RUNTIME_TARGET === RuntimeTarget.Vercel && env.WEB_STATIC_DIR !== undefined) {
+      issue('WEB_STATIC_DIR', 'não se aplica com RUNTIME_TARGET=vercel (a CDN serve o export)')
     }
     if (env.RUNTIME_TARGET === RuntimeTarget.Render && env.TRUST_PROXY === undefined) {
       issue('TRUST_PROXY', 'obrigatória com RUNTIME_TARGET=render (valor medido no ensaio)')

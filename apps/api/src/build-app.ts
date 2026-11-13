@@ -18,6 +18,7 @@ import {
 } from '#adapters/in/http/plugins/security-headers.ts'
 import { registerProblemHandlers } from '#adapters/in/http/problem/error-handler.ts'
 import { healthRoutes } from '#adapters/in/http/routes/health.ts'
+import { registerStaticSite, staticNotFound } from '#adapters/in/http/static-site/static-site.ts'
 import type { Container } from '#app/container.ts'
 
 export interface BuildAppDeps {
@@ -59,7 +60,7 @@ export function fastifyTrustProxy(trustProxy: HttpOptions['trustProxy']): Fastif
  *  7. rate limit com store compartilhado (só quando há store; ver `HttpOptions.rateLimit`);
  *  8. Better Auth (F4);
  *  9. Swagger + Scalar em `/api/docs` (fora de produção);
- * 10. rotas;
+ * 10. rotas (e, só no Plano B, o export estático do web na mesma origem);
  * 11. error handler RFC 9457 (registrado antes de tudo para valer em todos os escopos).
  */
 export async function buildApp(deps: BuildAppDeps): Promise<FastifyInstance> {
@@ -74,7 +75,7 @@ export async function buildApp(deps: BuildAppDeps): Promise<FastifyInstance> {
 
   app.setValidatorCompiler(validatorCompiler)
   app.setSerializerCompiler(serializerCompiler)
-  registerProblemHandlers(app)
+  registerProblemHandlers(app, deps.http.staticSite === undefined ? undefined : staticNotFound)
   decorateContainer(app, deps.container)
   registerRequestIdHeader(app)
 
@@ -91,6 +92,9 @@ export async function buildApp(deps: BuildAppDeps): Promise<FastifyInstance> {
   }
 
   await app.register(healthRoutes)
+  if (deps.http.staticSite !== undefined) {
+    await registerStaticSite(app, deps.http.staticSite)
+  }
 
   return app
 }

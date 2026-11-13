@@ -1,3 +1,4 @@
+import { resolve as resolvePath } from 'node:path'
 import { AppEnv } from '@teko/shared/contracts'
 import type { FastifyBaseLogger, FastifyInstance } from 'fastify'
 import type { FixtureCorpusReader } from '#adapters/in/cli/eval-fixture/eval-fixture.ts'
@@ -524,6 +525,10 @@ export function createHttpOptions(env: Env): HttpOptions {
     requestIdHeader: network.requestIdHeader,
     eventLoopDelayGuard: network.eventLoopDelayGuard,
     docs: env.APP_ENV !== AppEnv.Production,
+    // Plano B (Render): o export do web na mesma origem; relativo ao diretório de trabalho.
+    ...(env.WEB_STATIC_DIR === undefined
+      ? {}
+      : { staticSite: { root: resolvePath(env.WEB_STATIC_DIR) } }),
     // Sem `rateLimit`: o `PgRateLimitStore` (tabela `app.rate_limits`) chega com o schema, e
     // nenhuma rota da F1 abre transação. Memória local não serve com várias instâncias.
   }

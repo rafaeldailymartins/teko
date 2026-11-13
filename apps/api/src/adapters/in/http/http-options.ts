@@ -24,6 +24,11 @@ export interface HttpOptions {
   /** Swagger + Scalar em `/api/docs` (nunca em produção). */
   readonly docs: boolean
   /**
+   * Export estático do web servido na mesma origem (só no Plano B, Render; ADR 0029). Ausente = a
+   * plataforma serve o estático (CDN da Vercel) ou não há web (CI, dev com `next dev`).
+   */
+  readonly staticSite?: { readonly root: string }
+  /**
    * Rate limit de aplicação com store compartilhado (Postgres). Ausente = não registrado: a F1 não
    * tem store nem rotas transacionais, e memória local não limita nada com várias instâncias.
    */
