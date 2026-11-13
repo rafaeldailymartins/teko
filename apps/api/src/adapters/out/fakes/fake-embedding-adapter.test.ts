@@ -1,8 +1,8 @@
-import { mkdtempSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { gzipSync } from 'node:zlib'
 import { describe, expect, it } from 'vitest'
+import { tempDir } from '../../../../test/setup/temp-dir.ts'
 import { sha256ContentHasher } from '../crypto/sha256-content-hasher.ts'
 import {
   createFakeEmbeddingAdapter,
@@ -69,7 +69,7 @@ describe('seededVector e readEmbeddingFixture', () => {
   })
 
   it('lê o JSON gzip e valida o formato', () => {
-    const dir = mkdtempSync(join(tmpdir(), 'teko-fixture-'))
+    const dir = tempDir('teko-fixture-')
     const good = join(dir, 'ok.json.gz')
     writeFileSync(good, gzipSync(JSON.stringify(fixture)))
     expect(readEmbeddingFixture(good)).toEqual(fixture)

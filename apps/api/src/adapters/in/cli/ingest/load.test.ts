@@ -1,5 +1,4 @@
-import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { sha256ContentHasher } from '#adapters/out/crypto/sha256-content-hasher.ts'
@@ -14,6 +13,7 @@ import { ChurnLimitError } from '#app/services/churn.ts'
 import { Modality, ReviewStatus, ValidityBasis } from '#domain/corpus/family.ts'
 import { indexOverrides, type Override, overrideSchema } from '#domain/corpus/overrides.ts'
 import type { ParsedSource } from '#domain/corpus/parsed-source.ts'
+import { tempDir } from '../../../../../test/setup/temp-dir.ts'
 import { CliUsageError } from './cli-common.ts'
 import { readCorpusLock } from './corpus-lock.ts'
 import { runIngestDiscover } from './discover.ts'
@@ -36,7 +36,7 @@ let lockFile: string
 let blobs: InMemoryBlobStore
 
 beforeEach(async () => {
-  dir = mkdtempSync(join(tmpdir(), 'teko-load-'))
+  dir = tempDir('teko-load-')
   planFile = join(dir, 'ingest', 'plan.json')
   doclingDir = join(dir, 'docling')
   lockFile = join(dir, 'corpus.lock.json')

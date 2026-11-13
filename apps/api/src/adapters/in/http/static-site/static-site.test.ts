@@ -1,9 +1,10 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { LOCALES } from '@teko/shared/i18n'
 import type { FastifyInstance } from 'fastify'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { removeTempDir } from '../../../../../test/setup/temp-dir.ts'
 import { buildApp } from '../../../../build-app.ts'
 import { createContainer, createHttpOptions } from '../../../../composition-root.ts'
 import { parseEnv } from '../../../../config/env.ts'
@@ -54,7 +55,7 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await app.close()
-  rmSync(root, { recursive: true, force: true })
+  removeTempDir(root)
 })
 
 describe('política do site estático', () => {

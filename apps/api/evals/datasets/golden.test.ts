@@ -1,8 +1,8 @@
-import { mkdtempSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { loadFixtureDocuments } from '../../src/adapters/in/cli/seed-fixtures/seed-fixtures.ts'
+import { tempDir } from '../../test/setup/temp-dir.ts'
 import { devTests, holdoutTests, metricsFor, toPromptfooTest } from './golden-tests.ts'
 import { GoldenSplit, goldenPath, loadGolden } from './load-golden.ts'
 import { goldenCaseSchema, goldenDatasetSchema } from './schema.ts'
@@ -79,7 +79,7 @@ describe('golden versionado', () => {
   })
 
   it('lê um arquivo arbitrário com o mesmo schema', () => {
-    const file = join(mkdtempSync(join(tmpdir(), 'teko-golden-')), 'g.yaml')
+    const file = join(tempDir('teko-golden-'), 'g.yaml')
     writeFileSync(file, '- id: um\n  question: q\n')
     expect(() => loadGolden(file)).toThrow()
   })

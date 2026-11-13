@@ -1,6 +1,5 @@
 import { createHash } from 'node:crypto'
-import { mkdtempSync, readFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import pg from 'pg'
@@ -19,6 +18,7 @@ import { BlobStoreName } from '#app/ports/blob-store.ts'
 import type { SafeFetcher } from '#app/ports/safe-fetcher.ts'
 import { createTestDatabase, type TestDatabase } from '../../setup/database.ts'
 import { createIngestionTestContext, type IngestionTestContext } from '../../setup/ingestion.ts'
+import { tempDir } from '../../setup/temp-dir.ts'
 
 /**
  * `cli ingest discover` + `cli ingest load` de ponta a ponta, com o registro real de parsers (Tabela
@@ -167,7 +167,7 @@ beforeEach(async () => {
   owner = new pg.Client({ connectionString: database.ownerUrl })
   await owner.connect()
   blobs = createInMemoryBlobStore()
-  dir = mkdtempSync(join(tmpdir(), 'teko-ingest-cli-'))
+  dir = tempDir('teko-ingest-cli-')
 }, 120_000)
 
 afterEach(async () => {
