@@ -2,15 +2,17 @@ import type pg from 'pg'
 import type { SearchQuery, SearchRepository } from '#app/ports/search-repository.ts'
 import type { Evidence } from '#domain/qa/evidence.ts'
 import {
-  HNSW_SETTINGS,
+  BEGIN_HYBRID_SEARCH,
+  BEGIN_SEARCH,
   HYBRID_SEARCH_SQL,
   LEXICAL_ONLY_SQL,
   toVectorLiteral,
 } from '../sql/hybrid-search.ts'
 
 /**
- * `SearchRepository` sobre o `pg`: transação curta com os `SET LOCAL` do HNSW e a instrução única
- * da busca híbrida. Roda como `teko_app` (só leitura no corpus) pelo pooler.
+ * `SearchRepository` sobre o `pg`: transação curta com os ajustes locais do HNSW e a instrução
+ * única da busca híbrida, em três idas ao banco. Roda como `teko_app` (só leitura no corpus) pelo
+ * pooler.
  */
 
 interface SearchRow {
@@ -33,14 +35,6 @@ interface SearchRow {
 
 const rank = (value: string | null): number | null => (value === null ? null : Number(value))
 
-/** O `pg` devolve `date` como `Date` por padrão; a consulta usa `lower()`/`upper()` sobre daterange. */
-function isoDate(value: unknown): string {
-  if (value instanceof Date) {
-    return value.toISOString().slice(0, 10)
-  }
-  return String(value)
-}
-
 export function toEvidence(row: SearchRow): Evidence {
   return Object.freeze({
     chunkId: row.id,
@@ -49,8 +43,9 @@ export function toEvidence(row: SearchRow): Evidence {
     citationLabel: row.citation_label,
     content: row.content,
     validity: Object.freeze({
-      from: isoDate(row.valid_from),
-      to: row.valid_to === null ? null : isoDate(row.valid_to),
+      // `::text` na consulta: a data chega como `AAAA-MM-DD`, sem passar por `Date` (fuso local).
+      from: row.valid_from,
+      to: row.valid_to,
     }),
     document: Object.freeze({
       versionId: row.doc_version_id,
@@ -82,12 +77,10 @@ export function createPgSearchRepository(pool: pg.Pool): SearchRepository {
     async search(query) {
       const client = await pool.connect()
       try {
-        await client.query('BEGIN READ ONLY')
-        if (query.embedding !== null) {
-          for (const statement of HNSW_SETTINGS) {
-            await client.query(statement)
-          }
-        }
+        // Uma ida ao banco para abrir a transação (com os ajustes do HNSW, no modo híbrido), uma
+        // para a busca (instrução sem nome: nada de prepared statement nomeado no PgBouncer) e uma
+        // para o COMMIT.
+        await client.query(query.embedding === null ? BEGIN_SEARCH : BEGIN_HYBRID_SEARCH)
         const result = await client.query<SearchRow>(
           query.embedding === null ? LEXICAL_ONLY_SQL : HYBRID_SEARCH_SQL,
           searchParameters(query),

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   ARM_LIMIT,
-  HNSW_SETTINGS,
+  HNSW_SETTINGS_SQL,
   HYBRID_SEARCH_SQL,
   LEXICAL_ONLY_SQL,
   RRF_K,
@@ -30,9 +30,15 @@ describe('SQL da busca híbrida', () => {
       expect(sql).toContain('c.valid_during @> $3::date AND upper_inf(c.knowledge)')
       expect(sql).toContain('p.stable_key = ANY($5::text[])')
       expect(sql).toContain('LIMIT $7::int')
+      expect(sql).toContain('lower(c.valid_during)::text AS valid_from')
+      expect(sql).toContain('upper(c.valid_during)::text AS valid_to')
     }
     expect(ARM_LIMIT).toBe(50)
-    expect(HNSW_SETTINGS).toContain('SET LOCAL hnsw.iterative_scan = relaxed_order')
+    // Os três ajustes locais à transação num só SELECT, sem parâmetros (protocolo simples).
+    expect(HNSW_SETTINGS_SQL).toContain("set_config('hnsw.iterative_scan', 'relaxed_order', true)")
+    expect(HNSW_SETTINGS_SQL).toContain("set_config('hnsw.ef_search', '100', true)")
+    expect(HNSW_SETTINGS_SQL).toContain("set_config('hnsw.max_scan_tuples', '20000', true)")
+    expect(placeholders(HNSW_SETTINGS_SQL)).toEqual([])
   })
 
   it('toVectorLiteral gera o literal do halfvec e recusa valores não finitos', () => {

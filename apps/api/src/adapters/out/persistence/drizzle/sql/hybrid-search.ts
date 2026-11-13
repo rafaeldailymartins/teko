@@ -13,6 +13,8 @@
  *   snapshot publicado mais recente que contém o chunk (ex.: RCTE consolidado de 2026 citando a
  *   redação de 2006). A vigência citada é sempre a do chunk.
  * - A variante `lexical_only` (embedding indisponível) omite os CTEs `sem` e `semantic`.
+ * - As datas da vigência saem como `::text` (`AAAA-MM-DD`): o parser padrão do `pg` cria um `Date`
+ *   à meia-noite local, e convertê-lo de volta perde um dia a leste de UTC.
  * - Um resultado por versão de dispositivo (`provision_version_id`, coluna `pv` dos braços): cada
  *   braço ranqueia só o melhor chunk de cada versão, e o RRF soma os votos por versão, com o chunk
  *   mais bem colocado como representante. Sem isso, um dispositivo partido em vários chunks (a
@@ -32,12 +34,17 @@ const EXACT_LIMIT = 10
  */
 const LEXICAL_CANDIDATES = 200
 
-/** `SET LOCAL` do braço vetorial (dentro da transação curta, compatível com o PgBouncer). */
-export const HNSW_SETTINGS = [
-  'SET LOCAL hnsw.iterative_scan = relaxed_order',
-  'SET LOCAL hnsw.ef_search = 100',
-  'SET LOCAL hnsw.max_scan_tuples = 20000',
-] as const
+/**
+ * Ajustes do braço vetorial, locais à transação curta (compatível com o PgBouncer em modo
+ * transação): `set_config(..., true)` equivale a `SET LOCAL`, e os três vão num só `SELECT`, uma
+ * ida ao banco em vez de três. Sem parâmetros, para rodar no protocolo simples junto do `BEGIN`.
+ */
+export const HNSW_SETTINGS_SQL = `SELECT set_config('hnsw.iterative_scan', 'relaxed_order', true),
+  set_config('hnsw.ef_search', '100', true), set_config('hnsw.max_scan_tuples', '20000', true)`
+
+/** Abertura da transação de leitura da busca: com o vetor, já traz os ajustes do HNSW. */
+export const BEGIN_SEARCH = 'BEGIN READ ONLY'
+export const BEGIN_HYBRID_SEARCH = `${BEGIN_SEARCH}; ${HNSW_SETTINGS_SQL}`
 
 const PUBLISHABLE_FILTER = `c.valid_during @> $3::date AND upper_inf(c.knowledge)
     AND c.family = ANY($4::text[]) AND c.review_status = ANY($6::text[])`
@@ -121,7 +128,7 @@ fused AS (
 
 const TAIL = `
 SELECT c.id, p.stable_key, c.family, c.content, c.citation_label,
-       lower(c.valid_during) AS valid_from, upper(c.valid_during) AS valid_to,
+       lower(c.valid_during)::text AS valid_from, upper(c.valid_during)::text AS valid_to,
        dv.version_label, dv.id AS doc_version_id, d.title AS doc_title, d.source_url,
        f.rrf::float8 AS rrf, f.lex_rank, f.sem_rank, f.ref_rank
 FROM fused f

@@ -1,8 +1,10 @@
 import { RefusalReason, RetrievalMode } from '@teko/shared/contracts'
 import { containsDate, ReferenceSource } from '@teko/shared/vigencia'
+import pg from 'pg'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { createDatabase } from '#adapters/out/persistence/drizzle/client.ts'
 import { createPgSearchRepository } from '#adapters/out/persistence/drizzle/repositories/pg-search-repository.ts'
+import { BEGIN_HYBRID_SEARCH } from '#adapters/out/persistence/drizzle/sql/hybrid-search.ts'
 import type { Container, RetrievalUseCases } from '#app/container.ts'
 import { EmbeddingUnavailableError } from '#app/ports/embedding-port.ts'
 import { createHybridSearch } from '#app/use-cases/hybrid-search.ts'
@@ -84,6 +86,30 @@ describe('redação na data, a partir de um snapshot consolidado posterior', () 
     const revoked = await at('2010-01')
     expect(revoked?.validity).toEqual({ from: '2009-11-23', to: null })
     expect(revoked?.content).toContain('Revogado')
+  })
+
+  it('a vigência não perde um dia quando o processo roda a leste de UTC', async () => {
+    // O parser padrão do `pg` faz `date` virar `Date` à meia-noite local; em Tóquio (UTC+9), o
+    // `toISOString()` dessa meia-noite ainda é o dia anterior.
+    const original = process.env['TZ']
+    process.env['TZ'] = 'Asia/Tokyo'
+    try {
+      const result = await retrieval.hybridSearch({
+        question: 'O que diz o art. 76, § 6º do RCTE?',
+        referenceDate: '2006-05-01',
+        families: ['rcte'],
+      })
+      expect(result.evidence.find((item) => item.stableKey === PARAGRAPH_6)?.validity).toEqual({
+        from: '2004-11-04',
+        to: '2009-11-23',
+      })
+    } finally {
+      if (original === undefined) {
+        delete process.env['TZ']
+      } else {
+        process.env['TZ'] = original
+      }
+    }
   })
 })
 
@@ -228,6 +254,28 @@ describe('degradação', () => {
       })
     } finally {
       await database2.close()
+    }
+  })
+})
+
+describe('ajustes do HNSW', () => {
+  it('vão junto do BEGIN, numa ida ao banco, e valem só dentro da transação', async () => {
+    const client = new pg.Client({ connectionString: database.appUrl })
+    await client.connect()
+    const settings = `SELECT current_setting('hnsw.ef_search', true) AS ef,
+      current_setting('hnsw.iterative_scan', true) AS scan,
+      current_setting('hnsw.max_scan_tuples', true) AS tuples`
+    try {
+      await client.query(BEGIN_HYBRID_SEARCH)
+      expect((await client.query(settings)).rows[0]).toEqual({
+        ef: '100',
+        scan: 'relaxed_order',
+        tuples: '20000',
+      })
+      await client.query('COMMIT')
+      expect((await client.query(settings)).rows[0]?.ef).not.toBe('100')
+    } finally {
+      await client.end()
     }
   })
 })

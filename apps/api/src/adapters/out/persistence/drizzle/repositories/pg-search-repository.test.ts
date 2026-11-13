@@ -1,7 +1,12 @@
 import type pg from 'pg'
 import { describe, expect, it, vi } from 'vitest'
 import type { SearchQuery } from '#app/ports/search-repository.ts'
-import { HNSW_SETTINGS, HYBRID_SEARCH_SQL, LEXICAL_ONLY_SQL } from '../sql/hybrid-search.ts'
+import {
+  BEGIN_HYBRID_SEARCH,
+  HNSW_SETTINGS_SQL,
+  HYBRID_SEARCH_SQL,
+  LEXICAL_ONLY_SQL,
+} from '../sql/hybrid-search.ts'
 import { createPgSearchRepository, searchParameters, toEvidence } from './pg-search-repository.ts'
 
 const row = {
@@ -53,7 +58,7 @@ function fakePool(fail = false) {
 }
 
 describe('toEvidence e searchParameters', () => {
-  it('converte a linha, com datas do pg e ranks nulos', () => {
+  it('converte a linha, com as datas em texto e ranks nulos', () => {
     expect(toEvidence(row)).toEqual({
       chunkId: 'c1',
       stableKey: 'go:rcte:art:76:par:6',
@@ -72,12 +77,10 @@ describe('toEvidence e searchParameters', () => {
       semanticRank: null,
       referenceRank: 2,
     })
-    const fromDates = toEvidence({
-      ...row,
-      valid_from: new Date('2004-11-04T00:00:00Z') as unknown as string,
-      valid_to: null,
+    expect(toEvidence({ ...row, valid_to: null }).validity).toEqual({
+      from: '2004-11-04',
+      to: null,
     })
-    expect(fromDates.validity).toEqual({ from: '2004-11-04', to: null })
   })
 
   it('posiciona os parâmetros e serializa o vetor', () => {
@@ -95,15 +98,16 @@ describe('toEvidence e searchParameters', () => {
 })
 
 describe('createPgSearchRepository', () => {
-  it('modo híbrido: transação só leitura com os SET LOCAL do HNSW', async () => {
+  it('modo híbrido: três idas ao banco, com os ajustes do HNSW junto do BEGIN', async () => {
     const { pool, statements, release } = fakePool()
     await expect(createPgSearchRepository(pool).search(query)).resolves.toHaveLength(1)
-    expect(statements).toEqual(['BEGIN READ ONLY', ...HNSW_SETTINGS, 'SQL(7)', 'COMMIT'])
+    expect(statements).toEqual([BEGIN_HYBRID_SEARCH, 'SQL(7)', 'COMMIT'])
+    expect(BEGIN_HYBRID_SEARCH).toBe(`BEGIN READ ONLY; ${HNSW_SETTINGS_SQL}`)
     expect(release).toHaveBeenCalledOnce()
     expect(HYBRID_SEARCH_SQL).not.toBe(LEXICAL_ONLY_SQL)
   })
 
-  it('lexical_only: sem SET LOCAL do HNSW', async () => {
+  it('lexical_only: sem os ajustes do HNSW', async () => {
     const { pool, statements } = fakePool()
     await createPgSearchRepository(pool).search({ ...query, embedding: null })
     expect(statements).toEqual(['BEGIN READ ONLY', 'SQL(7)', 'COMMIT'])
