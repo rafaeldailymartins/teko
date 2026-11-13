@@ -35,11 +35,6 @@ export function createInterval(from: IsoDate | null, to: IsoDate | null): Validi
   return Object.freeze({ from, to })
 }
 
-/** Intervalo de um único dia: `[date, date + 1)`. */
-export function singleDayInterval(date: IsoDate): ValidityInterval {
-  return createInterval(date, addDays(date, 1))
-}
-
 /** Sem limite superior: dispositivo ainda em vigor. */
 export function isOpenEnded(interval: ValidityInterval): boolean {
   return interval.to === null
