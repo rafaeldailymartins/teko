@@ -1,0 +1,171 @@
+{
+  "format": 1,
+  "corpusVersion": 12,
+  "evaluatedAt": "2026-11-13T09:46:00.841Z",
+  "gitSha": "b486c7a3cceb98636ed0ae3642405c0f8ebf7e37",
+  "runUrl": "https://github.com/rafaeldailymartins/teko/actions/runs/43403700598",
+  "retrieval": {
+    "embeddings": "workers-ai",
+    "reranker": "workers-ai"
+  },
+  "pass": true,
+  "suites": {
+    "dev": {
+      "thresholds": "retrieval-corpus",
+      "pass": true,
+      "errors": 0,
+      "metrics": {
+        "recall@10": {
+          "mean": 0.925,
+          "ci": {
+            "low": 0.8013576634835684,
+            "high": 0.9741639744267374
+          },
+          "cases": 40,
+          "threshold": 0.9,
+          "target": null,
+          "pass": true
+        },
+        "mrr": {
+          "mean": 0.6810714285714285,
+          "ci": {
+            "low": 0.5637756387925552,
+            "high": 0.7983672183503019
+          },
+          "cases": 40,
+          "threshold": 0.65,
+          "target": null,
+          "pass": true
+        },
+        "vigencia": {
+          "mean": 1,
+          "ci": {
+            "low": 0.9123783975415363,
+            "high": 1
+          },
+          "cases": 40,
+          "threshold": 1,
+          "target": null,
+          "pass": true
+        },
+        "recusa": {
+          "mean": 1,
+          "ci": {
+            "low": 0.6096657083436265,
+            "high": 1
+          },
+          "cases": 6,
+          "threshold": 1,
+          "target": null,
+          "pass": true
+        },
+        "clarificacao": {
+          "mean": 1,
+          "ci": {
+            "low": 0.5101091596030786,
+            "high": 0.9999999999999999
+          },
+          "cases": 4,
+          "threshold": 1,
+          "target": null,
+          "pass": true
+        },
+        "data_referencia": {
+          "mean": 1,
+          "ci": {
+            "low": 0.92292643579224,
+            "high": 1
+          },
+          "cases": 46,
+          "threshold": 1,
+          "target": null,
+          "pass": true
+        }
+      }
+    },
+    "holdout": {
+      "thresholds": "retrieval-holdout",
+      "pass": true,
+      "errors": 0,
+      "metrics": {
+        "recall@10": {
+          "mean": 0.7261904761904762,
+          "ci": {
+            "low": 0.5767689578050097,
+            "high": 0.8377030172078161
+          },
+          "cases": 42,
+          "threshold": null,
+          "target": null,
+          "pass": true
+        },
+        "mrr": {
+          "mean": 0.46891534391534395,
+          "ci": {
+            "low": 0.3445806153495296,
+            "high": 0.5932500724811582
+          },
+          "cases": 42,
+          "threshold": null,
+          "target": 0.7,
+          "pass": true
+        },
+        "vigencia": {
+          "mean": 1,
+          "ci": {
+            "low": 0.9162012079230888,
+            "high": 1
+          },
+          "cases": 42,
+          "threshold": 1,
+          "target": null,
+          "pass": true
+        },
+        "recusa": {
+          "mean": 1,
+          "ci": {
+            "low": 0.5655175313406071,
+            "high": 1
+          },
+          "cases": 5,
+          "threshold": 1,
+          "target": null,
+          "pass": true
+        },
+        "clarificacao": {
+          "mean": 1,
+          "ci": {
+            "low": 0.34238022395464934,
+            "high": 1
+          },
+          "cases": 2,
+          "threshold": 1,
+          "target": null,
+          "pass": true
+        },
+        "data_referencia": {
+          "mean": 1,
+          "ci": {
+            "low": 0.9299533790738349,
+            "high": 0.9999999999999999
+          },
+          "cases": 51,
+          "threshold": 1,
+          "target": null,
+          "pass": true
+        },
+        "sem_resposta": {
+          "mean": 1,
+          "ci": {
+            "low": 0.5101091596030786,
+            "high": 0.9999999999999999
+          },
+          "cases": 4,
+          "threshold": 1,
+          "target": null,
+          "pass": true
+        }
+      }
+    }
+  }
+}
