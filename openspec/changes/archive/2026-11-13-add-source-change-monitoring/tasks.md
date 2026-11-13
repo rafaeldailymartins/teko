@@ -27,5 +27,5 @@
 ## 4. Workflow
 
 - [x] 4.1 `source-watch.yml` (cron `0 9 * * *`, `detect` no staging, `mark-coverage` no `corpus-watch`, `ingest` por `workflow_call`, `watch-errors`) — actionlint 1.7.12 e `ci-config.test.sh`
-- [ ] 4.2 Evento ao Sentry quando houver mudança (F6, sem DSN ainda; TODO no workflow)
-- [ ] 4.3 Primeiro run agendado depois do merge: conferir o `verified_at` dos dois bancos e passar o harden-runner do `source-watch.yml` para `block` com os hosts observados
+- [x] 4.2 Evento ao Sentry quando houver mudança: fora do escopo da F3: o Sentry chega na F6; o TODO no workflow continua
+- [x] 4.3 Primeiro run depois do merge: o agendado de 2026-11-13 não disparou (o GitHub descartou o cron `0 9 * * *`), e o run manual 43462349735 (`workflow_dispatch` no `develop`, ainda em audit) foi verde: 0 mudança, 0 erro; `teko-staging: verified_at=2026-11-13` (2 famílias avançaram, e as demais já estavam em 2026-11-13 pelo ingest 43403700598); `teko-prod` com o aviso esperado de banco sem o schema `corpus`. Harden-runner do `detect`, do `mark-coverage` e do `watch-errors` em `block`, com os hosts observados (GitHub e releases, Actions, npm, Neon só no `mark-coverage` e as páginas do `corpus/watch.yaml`) — `ci-config.test.sh` e actionlint
