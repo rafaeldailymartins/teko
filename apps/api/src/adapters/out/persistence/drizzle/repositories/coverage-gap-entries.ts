@@ -17,7 +17,7 @@ const entrySchema = z.object({
 
 const entriesSchema = z.array(entrySchema)
 
-export class CoverageGapEntriesError extends Error {
+class CoverageGapEntriesError extends Error {
   constructor(family: string, cause: unknown) {
     super(`gap_entries inválido na cobertura de ${family}`, { cause })
     this.name = 'CoverageGapEntriesError'
@@ -25,7 +25,7 @@ export class CoverageGapEntriesError extends Error {
 }
 
 /** Lê o jsonb (o `pg` já entrega o valor decodificado; `null` = sem entradas). */
-export function parseGapEntries(family: string, value: unknown): CoverageGapEntry[] {
+function parseGapEntries(family: string, value: unknown): CoverageGapEntry[] {
   const parsed = entriesSchema.safeParse(value ?? [])
   if (!parsed.success) {
     throw new CoverageGapEntriesError(family, parsed.error)
@@ -42,7 +42,7 @@ export interface StoredGaps {
   readonly gapEntries: unknown
 }
 
-export const LEGACY_GAP_REASON = 'lacuna anterior ao registro por entrada'
+const LEGACY_GAP_REASON = 'lacuna anterior ao registro por entrada'
 
 /**
  * Entradas de uma linha de cobertura. Sem entradas e com `gaps` (linha gravada por um caminho que

@@ -59,6 +59,8 @@ export interface IngestionContainer {
   readonly neuronBudget: NeuronBudget
   /** Modelo de embedding da ingestão (`chunks.embedding_model`; linhagem do snapshot). */
   readonly embeddingModel: string
+  /** Reranker configurado (`RERANKER_PROVIDER`), ou `null`: linhagem do snapshot. */
+  readonly rerankerModel: string | null
   /** Fecha o pool do Postgres. */
   close(): Promise<void>
 }

@@ -20,7 +20,6 @@ import {
 } from '#adapters/in/cli/sources-watch/run-coverage-mark.ts'
 import { runSourcesWatch } from '#adapters/in/cli/sources-watch/run-sources-watch.ts'
 import { loadWatchConfig } from '#adapters/in/cli/sources-watch/watch-config.ts'
-import { BGE_RERANKER_MODEL } from '#adapters/out/reranker/workers-ai/workers-ai-reranker-adapter.ts'
 import type { IngestionContainer } from '#app/container.ts'
 import type { BlobStore } from '#app/ports/blob-store.ts'
 import { compareCodeUnits } from '#domain/shared/compare-code-units.ts'
@@ -32,13 +31,7 @@ import {
   createIngestionIo,
   migrateDatabase,
 } from './composition-root.ts'
-import {
-  type Env,
-  EnvValidationError,
-  loadCliEnv,
-  loadWatchEnv,
-  RerankerProvider,
-} from './config/env.ts'
+import { type Env, EnvValidationError, loadCliEnv, loadWatchEnv } from './config/env.ts'
 
 /**
  * Entrypoint da CLI (`pnpm --filter @teko/api cli <subcomando>`; empacotada como `dist/cli.mjs`).
@@ -170,8 +163,7 @@ async function runIngest(args: readonly string[]): Promise<number> {
           parserRevisions: PARSER_REVISIONS,
           extractorRevision: EXTRACTOR_REVISION,
           doclingVersion: EXTRACTOR_DOCLING_VERSION,
-          reranker:
-            env.RERANKER_PROVIDER === RerankerProvider.WorkersAi ? BGE_RERANKER_MODEL : null,
+          reranker: container.rerankerModel,
         },
         today: () => isoDateInTimeZone(new Date()),
         defaultLockFile: CORPUS_LOCK_FILE,

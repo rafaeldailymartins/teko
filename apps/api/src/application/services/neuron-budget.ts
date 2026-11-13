@@ -14,7 +14,7 @@ import { estimateTokens } from './embedding-batches.ts'
  */
 
 /** Fuso do dia do orçamento: o da cota diária do Workers AI (00:00 UTC). */
-export const NEURON_BUDGET_TIME_ZONE = 'UTC'
+const NEURON_BUDGET_TIME_ZONE = 'UTC'
 
 export const DEFAULT_EMBED_NEURON_BUDGET = 8000
 

@@ -33,7 +33,10 @@ import { createPgIngestionRunRepository } from '#adapters/out/persistence/drizzl
 import { createPgSearchRepository } from '#adapters/out/persistence/drizzle/repositories/pg-search-repository.ts'
 import { snapshotCodec } from '#adapters/out/persistence/drizzle/repositories/pg-snapshot-codec.ts'
 import { createPgSnapshotRepository } from '#adapters/out/persistence/drizzle/repositories/pg-snapshot-repository.ts'
-import { createWorkersAiRerankerAdapter } from '#adapters/out/reranker/workers-ai/workers-ai-reranker-adapter.ts'
+import {
+  BGE_RERANKER_MODEL,
+  createWorkersAiRerankerAdapter,
+} from '#adapters/out/reranker/workers-ai/workers-ai-reranker-adapter.ts'
 import { createLogger } from '#adapters/out/telemetry/logger.ts'
 import type { Container, IngestionContainer, RetrievalUseCases } from '#app/container.ts'
 import type { BackgroundTaskFailure } from '#app/ports/background-tasks.ts'
@@ -260,6 +263,7 @@ export function createIngestionContainer(
   return {
     neuronBudget,
     embeddingModel: embeddings.model,
+    rerankerModel: env.RERANKER_PROVIDER === RerankerProvider.WorkersAi ? BGE_RERANKER_MODEL : null,
     useCases: {
       startIngestionRun: createStartIngestionRun(runDeps),
       finishIngestionRun: createFinishIngestionRun(runDeps),
