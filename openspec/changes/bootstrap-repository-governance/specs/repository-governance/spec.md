@@ -44,20 +44,20 @@ privado para denúncias.
 - **WHEN** alguém precisa denunciar um comportamento inaceitável
 - **THEN** `CODE_OF_CONDUCT.md` indica o canal privado e o prazo de confirmação de 72 h
 
-### Requirement: Branches protegidos pelo Git Flow
+### Requirement: Tronco protegido
 
-Os branches `main` e `develop` MUST rejeitar push direto, e PRs para `main` SHALL vir apenas de
-`release/vX.Y.Z` ou `hotfix/vX.Y.Z`.
+O tronco `main` (trunk-based, ADR 0033) MUST rejeitar push direto e SHALL receber mudanças só por PR
+com squash.
 
 #### Scenario: Push direto rejeitado
 
-- **WHEN** alguém tenta `git push` direto em `develop` ou `main`
+- **WHEN** alguém tenta `git push` direto em `main`
 - **THEN** o GitHub rejeita o push pelos rulesets
 
 #### Scenario: PR de feature para main
 
-- **WHEN** um PR de `feature/x` mira `main`
-- **THEN** o check `gitflow-guard` falha e o PR não pode ser mesclado
+- **WHEN** um PR de `feature/x` mira `main` com os checks exigidos verdes
+- **THEN** o PR pode ser mesclado, só por squash
 
 ### Requirement: Commits assinados com DCO
 

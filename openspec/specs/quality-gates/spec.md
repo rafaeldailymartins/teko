@@ -2,14 +2,14 @@
 
 ## Purpose
 
-Define as verificações automáticas que toda mudança do Tekó passa antes de chegar a `develop` ou
-`main`, com feedback local antecipado e um único check agregador obrigatório no PR.
+Define as verificações automáticas que toda mudança do Tekó passa antes de chegar a `main`,
+com feedback local antecipado e um único check agregador obrigatório no PR.
 
 ## Requirements
 
 ### Requirement: Check agregador único
 
-Todo PR para `develop` ou `main` MUST ser aprovado pelo check `ci-gate`, que SHALL falhar quando
+Todo PR para `main` MUST ser aprovado pelo check `ci-gate`, que SHALL falhar quando
 qualquer job agregado (`affected`, `ci`, `security`, `perf`) falhar ou for cancelado, e SHALL rodar
 com `!cancelled()`, nunca com `always()`. A análise do SonarQube Cloud MUST NOT fazer parte do
 `ci-gate`: ela é só informativa.
@@ -82,7 +82,7 @@ Um PR MUST falhar quando introduzir dependência de runtime com vulnerabilidade 
 qualquer severidade ou licença fora da allowlist. Vulnerabilidades novas em dependências que o PR
 não introduziu MUST NOT reprovar o PR: o `pnpm audit --prod --audit-level low` e o osv-scanner (sobre
 os lockfiles npm e Python) SHALL rodar em push
-para `develop`/`main`, todo dia e antes dos deploys.
+para `main`, todo dia e antes dos deploys.
 
 #### Scenario: Dependência com CVE
 
@@ -91,18 +91,8 @@ para `develop`/`main`, todo dia e antes dos deploys.
 
 #### Scenario: Advisory novo sem relação com o PR
 
-- **WHEN** sai um advisory para uma dependência que já estava em `develop` e um PR só de documentação está aberto
-- **THEN** o PR continua verde, e o `audit.yml` agendado ou o próximo push em `develop` fica vermelho
-
-### Requirement: Fluxo Git Flow verificado
-
-Um PR para `main` MUST vir de `release/vX.Y.Z` ou `hotfix/vX.Y.Z`, e todo commit humano do PR MUST
-ter `Signed-off-by:`.
-
-#### Scenario: Commit sem DCO no PR
-
-- **WHEN** um PR contém um commit humano sem `Signed-off-by:`
-- **THEN** o check `dco` falha
+- **WHEN** sai um advisory para uma dependência que já estava em `main` e um PR só de documentação está aberto
+- **THEN** o PR continua verde, e o `audit.yml` agendado ou o próximo push em `main` fica vermelho
 
 ### Requirement: Tempo de CI
 
@@ -126,24 +116,24 @@ migração já existente na base.
 
 #### Scenario: Migração publicada alterada
 
-- **WHEN** um PR edita uma migração que já está em `develop`
+- **WHEN** um PR edita uma migração que já está em `main`
 - **THEN** o job `migration-guard` falha, mesmo com o label `contract`
 
 ### Requirement: Mutação noturna
 
-O `mutation.yml` MUST rodar o Stryker de todos os pacotes toda noite em `develop`, SHALL pular a
+O `mutation.yml` MUST rodar o Stryker de todos os pacotes toda noite em `main`, SHALL pular a
 rodada quando não houver commit novo desde o último run verde, e SHALL falhar se o score de
 `apps/api` (domain e application) ou de `packages/shared` ficar abaixo de 70. Nenhum workflow de PR
 MUST chamar o `mutation.yml`.
 
 #### Scenario: Score abaixo do limite
 
-- **WHEN** um commit em `develop` deixa o score do domínio de vigência em 65
+- **WHEN** um commit em `main` deixa o score do domínio de vigência em 65
 - **THEN** o job `stryker` do run noturno seguinte falha
 
 #### Scenario: Noite sem commit novo
 
-- **WHEN** o último run verde do `mutation.yml` foi no mesmo SHA de `develop`
+- **WHEN** o último run verde do `mutation.yml` foi no mesmo SHA de `main`
 - **THEN** o job `changes` sai com `run=false` e o job `stryker` é pulado
 
 ### Requirement: PR só de documentação
@@ -161,3 +151,13 @@ de pacote, as evals e o `sql-perf`.
 
 - **WHEN** um PR altera só o `.github/workflows/mutation.yml`
 - **THEN** o escopo sai com `code: true` e nenhum grupo de pacote, e o `lint` roda inteiro (actionlint e `ci-config.test.sh`)
+
+### Requirement: DCO em todo commit do PR
+
+Todo commit humano de um PR para `main` MUST ter `Signed-off-by:` com o e-mail do autor, conferido
+pelo check `dco`.
+
+#### Scenario: Commit sem DCO no PR
+
+- **WHEN** um PR contém um commit humano sem `Signed-off-by:`
+- **THEN** o check `dco` falha
