@@ -52,3 +52,21 @@ não são afetados: nesses eventos o ref é o próprio branch ou tag.
   condição do job. Quem pode empurrar branch no repositório (só o mantenedor) pode, em tese,
   escrever um workflow que use o environment a partir de outra branch. PRs de fork não recebem
   segredos de environment, então a exposição externa não muda.
+
+## Revisão (2026-11-12): trunk-based
+
+A [ADR 0033](0033-trunk-based.md) troca o Git Flow por trunk-based: `develop` vira `main`, a
+produção sai por tag `v*` e o `release-gate` passa a ser um job do `release.yml`, disparado pelo
+push da tag, e não mais um workflow em `pull_request`. Com isso:
+
+- o `release-rehearsal` deixa de aceitar todas as branches (contingência desta ADR) e passa a
+  aceitar só a tag `v*`; a fronteira volta a ser a regra do environment, e a ressalva das
+  consequências acima deixa de valer;
+- `staging`, `corpus-watch`, `maintenance` e `ops` passam de `develop` para `main`, e `production`
+  fica só com a tag `v*`;
+- o achado continua valendo para qualquer environment usado em `pull_request`: a regra de branch é
+  avaliada contra `refs/pull/N/merge`. O `evals` segue aceitando todas as branches.
+
+Os comandos estão na seção "Ações manuais do mantenedor" da ADR 0033. A mesma revisão de
+2026-11-12 altera também as ADRs 0002, 0003 e 0004 (mesma origem na Vercel, ADR 0029; gates
+enxutos, ADR 0032); o índice em [`README.md`](README.md#revisão-de-2026-11-12) lista as notas.
