@@ -39,7 +39,7 @@ context: |
     usar objetos "as const"). Imports relativos com extensão .ts.
   - Biome é o único linter/formatter. Identificadores em inglês; comentários e docs em pt-BR.
   - Git Flow (develop = staging, main = produção), squash em develop, merge commit em main.
-    Conventional Commits com os escopos do commitlint.config.mjs; DCO (git commit -s).
+    Conventional Commits com os escopos de .github/commit-types.json; DCO (git commit -s).
   - Relógio fixo em 2026-11-10 em todos os testes.
   - Saída longa de comandos vai para arquivo em diretório temporário fora do repositório
     (TEKO_TMP), sempre com o código de saída impresso; nunca pipe para head/tail/tee.

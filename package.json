@@ -36,8 +36,6 @@
   },
   "devDependencies": {
     "@biomejs/biome": "catalog:",
-    "@commitlint/cli": "catalog:",
-    "@commitlint/config-conventional": "catalog:",
     "@fission-ai/openspec": "catalog:",
     "@types/node": "catalog:",
     "@typescript/native": "catalog:",

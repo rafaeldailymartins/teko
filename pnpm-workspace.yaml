@@ -70,8 +70,6 @@ overrides:
 catalog:
   # Ferramentas da raiz
   "@biomejs/biome": 2.6.4
-  "@commitlint/cli": 21.2.4
-  "@commitlint/config-conventional": 21.2.4
   "@fission-ai/openspec": 1.16.0
   "@types/node": 24.19.2
   "@typescript/native": npm:typescript@7.0.2
