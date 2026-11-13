@@ -30,9 +30,9 @@ docs, mensagens), no estilo do que já existe: frases diretas, sem jargão desne
 
 ## Git e PRs
 
-- Hoje o tronco é `develop` (staging). Depois das ações manuais da ADR 0033, vira `main`, e a
-  produção sai por tag `v*`; até lá, onde a documentação diz `main`, use `develop`.
-- Nunca faça push no tronco nem em `main`. Branch a partir de `origin/develop` atualizado, com um
+- Trunk-based (ADR 0033): o tronco é `main`. Push em `main` vai para o staging, e a produção sai
+  por tag `v*`.
+- Nunca faça push em `main`. Branch a partir de `origin/main` atualizado, com um
   prefixo permitido: `feature/`, `fix/`, `chore/`, `docs/`, `refactor/`, `perf/`, `test/`, `ci/` ou
   `build/`.
 - Commits com `git commit -s` (DCO; a assinatura SSH já está configurada). Conventional Commits,

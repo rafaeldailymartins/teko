@@ -54,7 +54,7 @@ git config commit.gpgsign false
 git add -A
 git commit -qm base
 base_sha="$(git rev-parse HEAD)"
-git update-ref refs/remotes/origin/develop "$base_sha"
+git update-ref refs/remotes/origin/main "$base_sha"
 
 all='{"web":true,"api":true,"shared":true,"ingest":true,"rag":true,"llm":true,"docs":true,"code":true,"packages":true}'
 # Só código fora de qualquer grupo (ex.: um workflow agendado): nenhum gate de pacote, lint inteiro.
@@ -93,7 +93,7 @@ expect_scope() {
   commit_change "$name" "$@"
   local out="${work}/github_output"
   : >"$out"
-  if ! EVENT_NAME="$event" BASE_REF=develop BEFORE_SHA="$base_sha" GITHUB_OUTPUT="$out" \
+  if ! EVENT_NAME="$event" BASE_REF=main BEFORE_SHA="$base_sha" GITHUB_OUTPUT="$out" \
     GITHUB_STEP_SUMMARY='' bash .github/scripts/affected.sh >"${work}/affected.log" 2>&1; then
     echo "FAIL ${name}: affected.sh saiu com erro"
     cat "${work}/affected.log"
@@ -171,7 +171,7 @@ expect_scope "openspec: só docs" "$docs_only" push openspec/specs/hybrid-search
 expect_scope "Markdown dentro de corpus/: ingest + docs" "$ingest_docs" push corpus/README.md
 expect_scope "corpus sem Markdown: sem docs" "$ingest_only" push corpus/leiaute-periods.yaml
 expect_scope "arquivo da raiz fora de todo grupo: só code" "$code_only" push LICENSE
-expect_scope "pull_request contra origin/develop" "$packages_only" pull_request \
+expect_scope "pull_request contra origin/main" "$packages_only" pull_request \
   packages/shared/src/errors/codes.ts
 
 # --- Grupo docs (ADR 0032): PR só de documentação não tem código ---------------------------------

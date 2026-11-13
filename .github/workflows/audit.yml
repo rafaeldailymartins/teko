@@ -4,14 +4,14 @@
 # relação com a mudança. No PR fica o `dependency-review` do security.yml, que olha só as
 # dependências que o próprio PR introduz, e o `pnpm audit signatures` do job `lint`.
 #
-# Roda em push para develop/main, todo dia e, a partir da F7, chamado pelos workflows de deploy
+# Roda em push para main, todo dia e, a partir da F7, chamado pelos workflows de deploy
 # (workflow_call) antes de publicar. Falha avisa o mantenedor pelo e-mail de run vermelho; a
 # correção vai num PR próprio (override no pnpm-workspace.yaml ou subida da dependência).
 name: Audit
 
 on:
   push:
-    branches: [develop, main]
+    branches: [main]
   schedule:
     - cron: "29 6 * * *" # todo dia, 06:29 UTC
   workflow_call:

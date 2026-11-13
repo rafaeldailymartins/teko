@@ -47,7 +47,7 @@ run": o job SHALL terminar verde, com `status=budget_exhausted` e aviso no resum
 ### Requirement: PR do lock assinado
 
 Quando o `corpus/corpus.lock.json` muda e o `corpus-eval` do mesmo run passa, o workflow MUST abrir
-um PR para `develop` a partir da branch `chore/corpus-lock-<run_id>`, com título
+um PR para `main` a partir da branch `chore/corpus-lock-<run_id>`, com título
 `chore(ingest): …`, usando o token da App `teko-release-bot` e um commit criado pela API (assinado
 pelo GitHub) com `Signed-off-by`.
 
@@ -115,23 +115,28 @@ holdout MUST NOT entrar nas retrieval evals da fixture do PR.
 
 O `ingest.yml` MUST aceitar `mode: eval-only`, que pula discover, extract e load e roda só o
 `corpus-eval` contra o estado atual do staging. Sem `ref`, com o eval verde e a `corpus_version`
-do staging maior que a do lock de `develop`, o `lock-pr` SHALL abrir o PR do lock a partir do
+do staging maior que a do lock de `main`, o `lock-pr` SHALL abrir o PR do lock a partir do
 artifact `corpus-lock` que tem essa versão. Com `ref` (SHA de um PR do próprio repositório), o run
 MUST avaliar esse código e MUST NOT abrir PR de lock nem gravar histórico.
 
 #### Scenario: Golden corrigido depois de um eval vermelho
 
-- **WHEN** o lock de `develop` está na corpus_version 11, o staging na 12, e o `eval-only` passa depois da correção do golden
+- **WHEN** o lock de `main` está na corpus_version 11, o staging na 12, e o `eval-only` passa depois da correção do golden
 - **THEN** o PR do lock da corpus_version 12 é aberto com o lock do artifact do run que a exportou, sem reingerir
+
+#### Scenario: Artifact exportado antes do rename
+
+- **WHEN** a corpus_version do staging foi exportada por um run em `develop`, antes do rename para `main`, e o artifact ainda não expirou
+- **THEN** o `lock-pr` usa esse artifact e abre o PR do lock para `main`
 
 #### Scenario: PR de busca rotulado
 
 - **WHEN** um PR do próprio repositório recebe o rótulo `corpus-eval`
-- **THEN** o `ingest.yml` roda em `develop` no modo `eval-only` com o SHA do PR e nenhum PR de lock é aberto
+- **THEN** o `ingest.yml` roda em `main` no modo `eval-only` com o SHA do PR e nenhum PR de lock é aberto
 
 ### Requirement: Histórico das avaliações
 
-O `corpus-eval` MUST gravar o registro de cada run do código de `develop` no store `eval-artifacts`
+O `corpus-eval` MUST gravar o registro de cada run do código de `main` no store `eval-artifacts`
 (chave `history/corpus-v<NNNNNN>/<run_id>.json`), também com o gate vermelho, e SHALL comparar no
 resumo com o registro anterior.
 

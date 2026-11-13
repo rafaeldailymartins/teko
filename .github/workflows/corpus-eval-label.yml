@@ -1,6 +1,6 @@
 # corpus-eval de um PR pelo rótulo `corpus-eval` (ADR 0031): para PRs que mexem na busca, no
 # reranker, nos embeddings ou no SQL, mede o código do PR contra o corpus real do staging, sem
-# reingerir. O PR não recebe segredo nenhum: este workflow só dispara o ingest.yml em develop
+# reingerir. O PR não recebe segredo nenhum: este workflow só dispara o ingest.yml em main
 # (environment staging, cuja regra de branch não aceita refs/pull/N/merge, ADR 0024) no modo
 # eval-only, com o SHA do PR em `ref`. O run nunca abre PR de lock nem grava histórico.
 #
@@ -49,7 +49,7 @@ jobs:
           SERVER_URL: ${{ github.server_url }}
         run: |
           set -euo pipefail
-          gh workflow run ingest.yml --repo "$REPO" --ref develop -f mode=eval-only -f ref="$SHA"
+          gh workflow run ingest.yml --repo "$REPO" --ref main -f mode=eval-only -f ref="$SHA"
           gh pr edit "$PR" --repo "$REPO" --remove-label corpus-eval
           gh pr comment "$PR" --repo "$REPO" --body "corpus-eval disparado contra o staging (modo eval-only) para \`${SHA}\`: ${SERVER_URL}/${REPO}/actions/workflows/ingest.yml. O resultado sai no resumo do run (conjuntos dev e holdout, com intervalo de confiança); o run não abre PR de lock nem grava histórico."
           echo "- ingest.yml (eval-only) disparado para \`${SHA}\` do PR #${PR}" >>"$GITHUB_STEP_SUMMARY"

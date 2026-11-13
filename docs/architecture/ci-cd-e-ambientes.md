@@ -2,10 +2,6 @@
 
 ## Branches: trunk-based (ADR 0033)
 
-> **Transição.** Até o mantenedor executar as ações manuais da ADR 0033, o tronco ainda se chama
-> `develop`, e os checks exigidos continuam `ci-gate`, `pr-title`, `gitflow-guard`, `dco` e
-> `Analyze (*)`. Onde este documento diz `main`, leia `develop` até lá.
-
 - `main` é o tronco e o branch padrão. **Push em `main` = staging.**
 - **Produção sai por tag `v*`**, criada só pela App `teko-release-bot` (ruleset `release-tags`).
 - Branches de trabalho saem de `main` com um prefixo permitido: `feature/`, `fix/`, `chore/`,
@@ -18,9 +14,10 @@
 **Rulesets** (só rulesets, sem branch protection clássica):
 
 - **`checks-main`** (alvo `~DEFAULT_BRANCH`, sem bypass): `deletion`, `non_fast_forward`,
-  `required_signatures`, PR com squash e resolução de threads, `required_status_checks` com
-  `strict` (`ci-gate`, `pr-title`, `dco`, `Analyze (javascript-typescript)`, `Analyze (python)`;
-  `Analyze (actions)` até o mantenedor removê-lo, ADR 0032) e `code_scanning` (CodeQL,
+  `required_signatures`, PR com squash e resolução de threads, `required_status_checks` sem
+  `strict` (desligado em 2026-11-12: o branch do PR não precisa estar atualizado com `main`) com
+  `ci-gate`, `pr-title`, `dco`, `Analyze (javascript-typescript)` e `Analyze (python)`
+  (`Analyze (actions)` até o mantenedor removê-lo, ADR 0032), e `code_scanning` (CodeQL,
   `high_or_higher`).
 - **`review-main`**: PR obrigatório com **0 aprovações** e sem code owner (mantenedor único; assim
   o auto-merge funciona, inclusive no Dependabot). Com um segundo mantenedor, volta para 1
@@ -84,7 +81,7 @@ cache do Turbo salvo só em push no tronco.
 | `pr-gate.yml`      | PR                                                 | `affected` → `ci.yml`, `security.yml`, `perf.yml` (perfil `pr`), `e2e.yml` (F4), `evals.yml` (perfil `pr`, F8) → `ci-gate`       |
 | `ci.yml`           | `workflow_call`; push no tronco                    | camada rápida, integração, build e guards, `migration-guard`, Python, retrieval evals (se `rag`/`ingest`), Sonar informativo     |
 | `codeql.yml`       | PR, push no tronco, semanal                        | `Analyze (*)`                                                                                                                    |
-| `pr-hygiene.yml`   | PR                                                 | `pr-title`, `dco`, labeler (`gitflow-guard` sai com o trunk-based)                                                               |
+| `pr-hygiene.yml`   | PR                                                 | `pr-title`, `dco`, labeler (o `gitflow-guard` saiu com o trunk-based)                                                            |
 | `security.yml`     | `workflow_call`; push; agendado                    | Semgrep, gitleaks, zizmor, dependency-review (PR); `pnpm audit` e osv-scanner no `audit.yml`, fora do PR                         |
 | `scorecard.yml`    | push no tronco, semanal                            | `publish_results: true`                                                                                                          |
 | `mutation.yml`     | nightly                                            | Stryker em `apps/api` e `packages/shared`, só se houver commit novo desde o último run verde                                     |

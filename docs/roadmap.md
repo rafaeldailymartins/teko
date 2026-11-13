@@ -31,8 +31,8 @@ Pacotes aprovados pelo mantenedor, um PR por pacote:
 | D      | `ci/gates-enxutos`             | Stryker só no nightly, audit fora do PR, Sonar informativo, Codecov fora, `pnpm verify`, spikes apagados                                           | 0032       |
 | E      | `docs/plano-no-repositorio`    | este roteiro, `architecture/`, `status.md`, `CLAUDE.md` só com regras, ADR 0033 (trunk-based)                                                      | 0033       |
 
-Depois dos PRs: as ações manuais do trunk-based (ADR 0033) e o PR de seguimento que troca
-`develop` por `main` no código.
+Depois dos PRs: as ações manuais do trunk-based (ADR 0033), executadas em 2026-11-13, e o PR de
+seguimento que troca `develop` por `main` no código.
 
 ## F4: API completa
 

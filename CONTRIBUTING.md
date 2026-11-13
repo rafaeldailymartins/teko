@@ -82,9 +82,7 @@ Do not rely on `$TMPDIR` without a fallback and never write logs inside the repo
 
 ## Branches (trunk-based)
 
-The project is moving from Git Flow to trunk-based development
-([ADR 0033](docs/adr/0033-trunk-based.md)). After the maintainer renames `develop` to `main` and
-switches the rulesets:
+The project uses trunk-based development ([ADR 0033](docs/adr/0033-trunk-based.md)):
 
 - `main` is the trunk and the default branch. **A push to `main` deploys staging.**
 - **Production ships from a `vX.Y.Z` tag**, created by the release App after the release PR is
@@ -94,9 +92,7 @@ switches the rulesets:
   are also allowed. Any other name is rejected by the repository rules.
 - Every PR is **squash**-merged; the PR title must be a Conventional Commit. Merge commits and
   rebase merging are disabled. A hotfix is a patch release cut from `main`.
-
-**Until the switch**, the trunk is still called `develop`: branch from `develop` and open PRs
-against it. Direct pushes to the trunk are impossible either way.
+- Direct pushes to `main` are rejected: everything goes through a PR.
 
 To bring a PR branch up to date, use `gh pr update-branch` (or the "Update branch" button). A local
 merge needs `--signoff`: the `dco` check only exempts merge commits made by GitHub (`web-flow`).
@@ -106,10 +102,10 @@ merge needs `--signoff`: the `dco` check only exempts merge commits made by GitH
 ### Conventional Commits
 
 PR titles follow [Conventional Commits](https://www.conventionalcommits.org/): the title becomes
-the squash commit on `develop`, and the `pr-title` check enforces it. The allowed types and scopes
+the squash commit on `main`, and the `pr-title` check enforces it. The allowed types and scopes
 live in a single file, [`.github/commit-types.json`](.github/commit-types.json) (`deps-dev` is the
 scope Dependabot uses for development dependencies). Write your branch commits the same way, but
-nothing checks them locally: only the PR title reaches `develop`.
+nothing checks them locally: only the PR title reaches `main`.
 
 Examples: `feat(retrieval): filter chunks by validity range`, `fix(api): reject replayed tickets`,
 `docs(specs): add hybrid-search scenarios`. The changelog is generated from these messages by
@@ -242,13 +238,13 @@ volume).
 
 Some gates run outside pull requests on purpose (ADR 0032), so a PR only fails for what it changes:
 
-- **Mutation testing** (`mutation.yml`) runs every night on `develop`, only when there is a new
+- **Mutation testing** (`mutation.yml`) runs every night on `main`, only when there is a new
   commit since the last green run; a score below 70 turns the nightly run red.
-- **`pnpm audit`** (`audit.yml`) runs on every push to `develop`/`main`, every day and before each
+- **`pnpm audit`** (`audit.yml`) runs on every push to `main`, every day and before each
   deploy. On a PR, `dependency-review` checks the dependencies the PR adds, and the `lint` job runs
   `pnpm audit signatures`. The osv-scanner (over `pnpm-lock.yaml` and `uv.lock`, the only audit
   of the Python side) runs in the same `audit.yml`, also outside pull requests.
-- **SonarQube Cloud** (`sonar.yml`) analyzes every PR and `develop`, but only informs: it is not
+- **SonarQube Cloud** (`sonar.yml`) analyzes every PR and `main`, but only informs: it is not
   part of `ci-gate`, and its quality gate shows up in the PR decoration.
 
 Jobs that run only when their scope is affected:
@@ -284,16 +280,16 @@ runtime dependency is only used by tests or is missing from `package.json`.
 
 Git hooks (lefthook) run Biome, gitleaks (if installed), OpenSpec validation and the lockfile
 guard on commit, and the per-package part of `pnpm verify` (typecheck, dependency-cruiser,
-type-coverage and unit tests) on push, only for the packages affected since `origin/develop`. There
+type-coverage and unit tests) on push, only for the packages affected since `origin/main`. There
 is no commit-message hook (ADR 0032). The hooks
 call the binaries directly from `./node_modules/.bin` (for example
 `./node_modules/.bin/biome`), so they work even when `pnpm` is not on your PATH; run
 `pnpm install` first so those binaries exist.
 
-On a PR, the rulesets require seven checks: the aggregate `ci-gate` (which waits for `affected`,
-`ci`, `security` and `perf`), the three CodeQL analyses (`Analyze (actions)`,
-`Analyze (javascript-typescript)`, `Analyze (python)`), `pr-title`, `gitflow-guard` and `dco`.
-`Analyze (actions)` is redundant with zizmor and actionlint and will leave the rulesets and the
+On a PR, the `checks-main` ruleset requires six checks: the aggregate `ci-gate` (which waits for
+`affected`, `ci`, `security` and `perf`), the three CodeQL analyses (`Analyze (actions)`,
+`Analyze (javascript-typescript)`, `Analyze (python)`), `pr-title` and `dco`.
+`Analyze (actions)` is redundant with zizmor and actionlint and will leave the ruleset and the
 CodeQL matrix (ADR 0032). SonarQube Cloud does **not** reach the rulesets: the `sonar` job runs
 after `ci`, outside `ci-gate`, with `continue-on-error`. Do **not** add the SonarQube Cloud App
 check ("SonarQube Cloud Code Analysis") as a required ruleset check: it is never posted on fork PRs
@@ -304,8 +300,8 @@ Maintainer setup: add `SONAR_TOKEN` both as a repository secret and as a **Depen
 without it their Sonar analysis is skipped like a fork's.
 
 The SonarQube Cloud free plan analyzes only the project's main branch and pull requests. The
-project's main branch in SonarQube Cloud is the trunk (`develop` today, renamed to `main` with the
-trunk-based switch), so on push the `sonar` job runs only for the trunk.
+project's main branch in SonarQube Cloud is the trunk, `main`, so on push the `sonar` job runs
+only for the trunk.
 
 ## Non-commercial posture
 

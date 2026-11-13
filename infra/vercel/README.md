@@ -154,7 +154,7 @@ esse projeto com `--frozen-lockfile` e chamam o binário dele. No app, o único 
 `@vercel/functions` 3.7.6 (a última versão com proveniência), confinado a
 `apps/api/src/adapters/out/platform/vercel` pelo dependency-cruiser.
 
-Fluxo do `deploy-api.yml` (`develop` → `tekoia-staging`; release em `main` → `tekoia`), com
+Fluxo do `deploy-api.yml` (push em `main` → `tekoia-staging`; tag `v*` → `tekoia`), com
 `VERCEL_TOKEN`, `VERCEL_ORG_ID` e `VERCEL_PROJECT_ID` do environment do GitHub. O workflow chega na
 F7. O `spike-api-vercel.yml` da F1 exercitou parte dele no `teko-api-staging` (bundle, tarball
 atestado, deploy `--prebuilt`, smoke e `promote`, sem migrações nem env sync) e saiu do repositório

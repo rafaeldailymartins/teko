@@ -8,7 +8,7 @@
 # contra o estado atual do staging. Com `ref` (SHA de um PR do próprio repositório, disparado pelo
 # rótulo `corpus-eval`, corpus-eval-label.yml), avalia o código do PR e nunca abre PR de lock. Sem
 # `ref`, se o eval passar e a corpus_version do staging estiver à frente do corpus.lock.json de
-# develop, abre o PR do lock a partir do artifact `corpus-lock` do run que exportou essa versão
+# main, abre o PR do lock a partir do artifact `corpus-lock` do run que exportou essa versão
 # (caso de um eval vermelho por causa do golden, corrigido depois), sem reingerir nada.
 #
 # - discover: `cli ingest discover` baixa cada fonte pelo SafeFetcher, confere sha256 e pins do
@@ -680,7 +680,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          # Vazio = o commit do run (develop); no eval-only de um PR, o SHA do PR.
+          # Vazio = o commit do run (main); no eval-only de um PR, o SHA do PR.
           ref: ${{ inputs.ref }}
           persist-credentials: false
 
@@ -801,7 +801,7 @@ jobs:
     name: lock-pr
     needs: [load, corpus-eval]
     # O lock só vai a PR com o corpus-eval verde (ADR 0031): no modo completo, quando o load mudou o
-    # lock; no eval-only (sem `ref`), quando o staging está à frente do lock de develop. `!cancelled()`
+    # lock; no eval-only (sem `ref`), quando o staging está à frente do lock de main. `!cancelled()`
     # e os resultados explícitos: o extract pulado não pode pular este job.
     if: >-
       ${{ !cancelled() && needs.corpus-eval.result == 'success' && inputs.ref == ''
@@ -809,7 +809,7 @@ jobs:
       && needs.load.outputs.lock_changed == 'true') || inputs.mode == 'eval-only') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 10
-    # O GITHUB_TOKEN só lê (o lock de develop e os artifacts de outros runs); o PR sai com o token
+    # O GITHUB_TOKEN só lê (o lock de main e os artifacts de outros runs); o PR sai com o token
     # da App, que é o que dispara o pr-gate no PR aberto.
     permissions:
       contents: read
@@ -851,7 +851,9 @@ jobs:
 
       # Modo eval-only: o lock da corpus_version avaliada vem do artifact `corpus-lock` do run que a
       # exportou (o load grava o lock só quando o snapshot muda; retenção de 90 dias). Nada a abrir
-      # se o staging não está à frente do lock de develop.
+      # se o staging não está à frente do lock de main. O filtro aceita `head_branch` main e develop:
+      # o run guarda o nome do branch da época, e os artifacts exportados antes do rename de develop
+      # para main (ADR 0033, 2026-11-13) continuam valendo até expirar (90 dias).
       - name: Resolver o lock da corpus_version avaliada
         id: lock
         env:
@@ -864,15 +866,15 @@ jobs:
           set -euo pipefail
           lock="${LOCK_DIR}/corpus.lock.json"
           if [[ "$MODE" == eval-only ]]; then
-            committed="$(gh api "repos/${REPO}/contents/corpus/corpus.lock.json?ref=develop" --jq .content | base64 -d | jq -r '.corpusVersion // 0')"
+            committed="$(gh api "repos/${REPO}/contents/corpus/corpus.lock.json?ref=main" --jq .content | base64 -d | jq -r '.corpusVersion // 0')"
             if (( STAGING_VERSION <= committed )); then
-              echo "::notice title=lock-pr::O staging (corpus_version ${STAGING_VERSION}) não está à frente do lock de develop (${committed}): nenhum PR de lock."
+              echo "::notice title=lock-pr::O staging (corpus_version ${STAGING_VERSION}) não está à frente do lock de main (${committed}): nenhum PR de lock."
               echo "open=false" >>"$GITHUB_OUTPUT"
               exit 0
             fi
             mkdir -p "$LOCK_DIR"
             gh api "repos/${REPO}/actions/artifacts?name=corpus-lock&per_page=100" \
-              --jq '[.artifacts[] | select((.expired | not) and .workflow_run.head_branch == "develop")] | sort_by(.created_at) | reverse | .[] | "\(.id) \(.workflow_run.id)"' \
+              --jq '[.artifacts[] | select((.expired | not) and (.workflow_run.head_branch | IN("main", "develop")))] | sort_by(.created_at) | reverse | .[] | "\(.id) \(.workflow_run.id)"' \
               >"${RUNNER_TEMP}/lock-artifacts.txt"
             found=""
             while read -r artifact run; do
@@ -889,7 +891,7 @@ jobs:
               (( version < STAGING_VERSION )) && break
             done <"${RUNNER_TEMP}/lock-artifacts.txt"
             if [[ -z "$found" ]]; then
-              echo "::error title=lock-pr::Nenhum artifact corpus-lock de develop com a corpus_version ${STAGING_VERSION} (retenção de 90 dias). Rode o ingest completo para exportar o snapshot de novo."
+              echo "::error title=lock-pr::Nenhum artifact corpus-lock de main (ou de develop, antes do rename) com a corpus_version ${STAGING_VERSION} (retenção de 90 dias). Rode o ingest completo para exportar o snapshot de novo."
               exit 1
             fi
             echo "source_run=${found}" >>"$GITHUB_OUTPUT"
@@ -934,7 +936,7 @@ jobs:
           set -euo pipefail
           jq -e --arg v "$CORPUS_VERSION" '.pass == true and .corpusVersion == ($v | tonumber)' "$EVAL_FILE" >/dev/null
           branch="chore/corpus-lock-${RUN_ID}"
-          base_sha="$(gh api "repos/${REPO}/git/ref/heads/develop" --jq .object.sha)"
+          base_sha="$(gh api "repos/${REPO}/git/ref/heads/main" --jq .object.sha)"
           gh api "repos/${REPO}/git/refs" -f ref="refs/heads/${branch}" -f sha="$base_sha" >/dev/null
           bot_id="$(gh api "users/${APP_SLUG}%5Bbot%5D" --jq .id)"
           signoff="Signed-off-by: ${APP_SLUG}[bot] <${bot_id}+${APP_SLUG}[bot]@users.noreply.github.com>"
@@ -971,12 +973,12 @@ jobs:
             echo
             cat "$EVAL_BODY"
           } >"${RUNNER_TEMP}/pr-body.md"
-          url="$(gh pr create --repo "$REPO" --base develop --head "$branch" --title "$headline" --body-file "${RUNNER_TEMP}/pr-body.md")"
+          url="$(gh pr create --repo "$REPO" --base main --head "$branch" --title "$headline" --body-file "${RUNNER_TEMP}/pr-body.md")"
           echo "- PR do lock: ${url}" >>"$GITHUB_STEP_SUMMARY"
           # Cada PR do lock reescreve o arquivo inteiro: o novo substitui os anteriores ainda
           # abertos, que são fechados (com a branch apagada). Só os da própria App.
           new_number="${url##*/}"
-          gh pr list --repo "$REPO" --state open --base develop --author "app/${APP_SLUG}" \
+          gh pr list --repo "$REPO" --state open --base main --author "app/${APP_SLUG}" \
             --json number,headRefName \
             --jq '.[] | select(.headRefName | startswith("chore/corpus-lock-")) | .number' \
             >"${RUNNER_TEMP}/old-lock-prs.txt"

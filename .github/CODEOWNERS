@@ -1,5 +1,5 @@
-# Code owners. Hoje nenhum ruleset exige aprovação (mantenedor único; `review-develop` e
-# `review-main` pedem PR com 0 aprovações), então este arquivo só define quem é marcado para revisar.
+# Code owners. Hoje nenhum ruleset exige aprovação (mantenedor único; `review-main`
+# pede PR com 0 aprovações), então este arquivo só define quem é marcado para revisar.
 # A última regra que casa vence; as entradas específicas existem para continuar valendo quando
 # houver um segundo mantenedor, o `*` deixar de cobrir tudo e os rulesets voltarem a exigir code owner.
 

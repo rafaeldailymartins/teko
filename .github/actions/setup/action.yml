@@ -12,7 +12,7 @@ inputs:
   turbo-cache:
     description: >-
       Restaura `.turbo/cache` ('true' ou 'false'). O save fica no job e só acontece em push para
-      develop/main, para que um PR não envenene o cache dos branches protegidos.
+      main, para que um PR não envenene o cache do tronco.
     required: false
     default: "false"
 

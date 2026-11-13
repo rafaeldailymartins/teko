@@ -1,5 +1,5 @@
 # Gates de qualidade. Em PR, roda chamado pelo pr-gate.yml (que passa o escopo afetado em
-# `inputs.affected`); em push para develop/main, recalcula o escopo sozinho.
+# `inputs.affected`); em push para main, recalcula o escopo sozinho.
 #
 # Desde a F2: `migration-guard` (PR em api) e as retrieval evals (se `rag`/`ingest` afetados).
 # Ainda não está aqui (entra na F5): Storybook (`vitest --project storybook`).
@@ -16,7 +16,7 @@ on:
         required: false
         default: ""
   push:
-    branches: [develop, main]
+    branches: [main]
 
 permissions: {}
 
@@ -536,16 +536,16 @@ jobs:
 
       # Vulnerabilidades do uv.lock: osv-scanner do audit.yml, fora do PR (o pip-audit saiu, ADR 0032).
 
-  # SonarQube Cloud em push para develop, só informativo (ADR 0032; em PR quem chama o sonar.yml é
-  # o pr-gate.yml). Só develop: o plano gratuito analisa apenas a branch principal do projeto
-  # (configurada lá como `develop`) e PRs; analisar `main` falha com "Organization is not allowed
-  # to access data from non main branches". Espera test, integration e python para importar o lcov
+  # SonarQube Cloud em push para main, só informativo (ADR 0032; em PR quem chama o sonar.yml é
+  # o pr-gate.yml). Só main: o plano gratuito analisa apenas a branch principal do projeto (lá
+  # renomeada de `develop` para `main`, ADR 0033) e PRs; analisar outra branch falha com
+  # "Organization is not allowed to access data from non main branches". Espera test, integration e python para importar o lcov
   # dos unitários e da integração e o coverage.xml; não roda se um deles falhou.
   sonar:
     name: sonar
     needs: [scope, test, integration, python]
     if: >-
-      ${{ !cancelled() && github.event_name == 'push' && github.ref == 'refs/heads/develop'
+      ${{ !cancelled() && github.event_name == 'push' && github.ref == 'refs/heads/main'
       && needs.scope.result == 'success'
       && contains(fromJSON('["success", "skipped"]'), needs.test.result)
       && contains(fromJSON('["success", "skipped"]'), needs.integration.result)

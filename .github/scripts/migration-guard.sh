@@ -6,12 +6,12 @@
 #   - alteração em migração já existente na base (migração publicada é imutável), sempre.
 #
 # Uso: BASE=<ref> LABELS='["contract", ...]' bash .github/scripts/migration-guard.sh
-#   BASE   ref da base do diff (ex.: origin/develop);
+#   BASE   ref da base do diff (ex.: origin/main);
 #   LABELS JSON com os nomes dos labels do PR (vazio = nenhum).
 set -euo pipefail
 
 MIGRATIONS_DIR="apps/api/drizzle/migrations"
-base="${BASE:?defina BASE (ex.: origin/develop)}"
+base="${BASE:?defina BASE (ex.: origin/main)}"
 labels="${LABELS:-[]}"
 
 has_contract_label() {

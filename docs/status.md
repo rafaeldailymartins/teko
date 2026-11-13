@@ -19,8 +19,8 @@ no [roteiro](roadmap.md); o desenho, em [`architecture/`](architecture/README.md
 Repositório, rulesets, segurança, App de release, environments, Scorecard (7,4) e `/healthz` dos
 dois projetos Vercel conferidos em 2026-11-11. O spike de environments em `pull_request` mostrou
 que a regra é avaliada contra `refs/pull/N/merge` (ADR 0024). O environment `maintenance` (só
-`develop`) foi criado em 2026-11-11. O `dependabot.yml` estava inválido (o GitHub recusa
-`semver-*-days` no `cooldown` de `github-actions`); corrigido, com checagem no
+`develop`, hoje `main`) foi criado em 2026-11-11. O `dependabot.yml` estava inválido (o GitHub
+recusa `semver-*-days` no `cooldown` de `github-actions`); corrigido, com checagem no
 `ci-config.test.sh`.
 
 Pendência:
@@ -134,7 +134,6 @@ Pendências:
   a etapa C2 tirou o Netlify Blobs do código e dos workflows (ADR 0030);
 - revogação dos tokens e contas que saíram: o `NETLIFY_AUTH_TOKEN` e o `NETLIFY_SITE_ID` do
   environment `staging`, o site `tekoia` e a conta da Netlify; Codecov, Checkly e UptimeRobot;
-- ações manuais do trunk-based (ADR 0033): rulesets, rename de `develop` para `main`,
-  environments, Sonar; depois, o PR de seguimento que troca `develop` por `main` no código;
+- trunk-based (ADR 0033): renomear o branch principal no SonarQube Cloud (UI);
 - remover o check `Analyze (actions)` do ruleset (ADR 0032);
 - revisão do mantenedor dos casos do golden `holdout` (curadoria assistida por LLM).
