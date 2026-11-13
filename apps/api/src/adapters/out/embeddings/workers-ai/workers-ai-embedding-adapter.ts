@@ -8,8 +8,9 @@ import { type EmbeddingPort, EmbeddingUnavailableError } from '#app/ports/embedd
  * `cf-ai-neurons`, e é ele que a ingestão soma contra o orçamento.
  *
  * O host é fixo (`api.cloudflare.com`): nenhuma URL de provedor vem do ambiente (asserção de boot).
- * Falhas de rede e HTTP viram `EmbeddingUnavailableError`, que degrada a busca para
- * `lexical_only` em vez de falhar a pergunta.
+ * Falhas de rede e HTTP, corpo ilegível (não JSON ou conexão encerrada no meio da leitura) e
+ * resposta fora do esquema viram `EmbeddingUnavailableError`, que degrada a busca para
+ * `lexical_only` (e que o `embedWithRetry` da ingestão repete) em vez de falhar a pergunta.
  */
 
 const WORKERS_AI_HOST = 'api.cloudflare.com'
@@ -50,6 +51,53 @@ export function workersAiEndpoint(accountId: string, model: string = BGE_M3_MODE
   return url
 }
 
+/** Resposta do Workers AI já lida: o corpo JSON e os headers. */
+interface WorkersAiReply {
+  readonly body: unknown
+  readonly headers: Headers
+}
+
+/**
+ * `POST` JSON a um modelo do Workers AI (embeddings e reranker). Qualquer falha antes de o corpo
+ * estar lido (rede, HTTP, corpo que não é JSON, conexão encerrada no meio da leitura) vira o erro
+ * degradável de quem chama, criado por `unavailable`.
+ */
+export async function postWorkersAi(
+  request: {
+    readonly endpoint: URL
+    readonly apiToken: string
+    readonly payload: unknown
+    readonly signal?: AbortSignal | undefined
+    readonly fetch: typeof fetch
+  },
+  unavailable: (message: string, options?: { readonly cause?: unknown }) => Error,
+): Promise<WorkersAiReply> {
+  let response: Response
+  let body: unknown
+  try {
+    response = await request.fetch(request.endpoint, {
+      method: 'POST',
+      headers: {
+        authorization: `Bearer ${request.apiToken}`,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify(request.payload),
+      ...(request.signal === undefined ? {} : { signal: request.signal }),
+    })
+  } catch (error) {
+    throw unavailable('Workers AI inacessível', { cause: error })
+  }
+  if (!response.ok) {
+    throw unavailable(`Workers AI respondeu HTTP ${String(response.status)}`)
+  }
+  try {
+    body = await response.json()
+  } catch (error) {
+    throw unavailable('Workers AI devolveu um corpo ilegível', { cause: error })
+  }
+  return { body, headers: response.headers }
+}
+
 function neuronsFrom(header: string | null, body: number | undefined): number | null {
   if (body !== undefined) {
     return body
@@ -68,24 +116,17 @@ export function createWorkersAiEmbeddingAdapter(options: WorkersAiOptions): Embe
       if (texts.length === 0) {
         return []
       }
-      let response: Response
-      try {
-        response = await doFetch(endpoint, {
-          method: 'POST',
-          headers: {
-            authorization: `Bearer ${options.apiToken}`,
-            'content-type': 'application/json',
-          },
-          body: JSON.stringify({ text: texts }),
-          ...(embedOptions?.signal === undefined ? {} : { signal: embedOptions.signal }),
-        })
-      } catch (error) {
-        throw new EmbeddingUnavailableError('Workers AI inacessível', { cause: error })
-      }
-      if (!response.ok) {
-        throw new EmbeddingUnavailableError(`Workers AI respondeu HTTP ${String(response.status)}`)
-      }
-      const parsed = responseSchema.safeParse(await response.json())
+      const reply = await postWorkersAi(
+        {
+          endpoint,
+          apiToken: options.apiToken,
+          payload: { text: texts },
+          signal: embedOptions?.signal,
+          fetch: doFetch,
+        },
+        (message, errorOptions) => new EmbeddingUnavailableError(message, errorOptions),
+      )
+      const parsed = responseSchema.safeParse(reply.body)
       if (!parsed.success || !parsed.data.success || !parsed.data.result) {
         throw new EmbeddingUnavailableError('Workers AI devolveu uma resposta inesperada')
       }
@@ -100,7 +141,7 @@ export function createWorkersAiEmbeddingAdapter(options: WorkersAiOptions): Embe
         )
       }
       options.onUsage?.({
-        neurons: neuronsFrom(response.headers.get('cf-ai-neurons'), meta?.neurons),
+        neurons: neuronsFrom(reply.headers.get('cf-ai-neurons'), meta?.neurons),
         texts: texts.length,
       })
       return data
