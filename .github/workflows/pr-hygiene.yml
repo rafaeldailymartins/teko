@@ -1,6 +1,7 @@
 # Higiene de PR: título (Conventional Commits, com tipos e escopos de .github/commit-types.json),
-# Git Flow, DCO e rótulos por área.
-# `pr-title`, `gitflow-guard` e `dco` são checks obrigatórios nos rulesets.
+# DCO e rótulos por área.
+# `pr-title` e `dco` são checks obrigatórios no ruleset. O `gitflow-guard` saiu com o trunk-based
+# (ADR 0033): todo PR vai para main, de qualquer branch com prefixo permitido.
 # Sem `pull_request_target`: em PRs de fork o token é só leitura, então o labeler roda apenas
 # para branches do próprio repositório.
 name: PR hygiene
@@ -8,7 +9,7 @@ name: PR hygiene
 on:
   pull_request:
     types: [opened, edited, synchronize, reopened, ready_for_review]
-    branches: [develop, main]
+    branches: [main]
 
 permissions: {}
 
@@ -57,38 +58,6 @@ jobs:
           types: ${{ steps.lists.outputs.types }}
           scopes: ${{ steps.lists.outputs.scopes }}
           requireScope: false
-
-  gitflow-guard:
-    name: gitflow-guard
-    runs-on: ubuntu-24.04
-    timeout-minutes: 5
-    permissions: {}
-    steps:
-      - name: Harden runner
-        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
-        with:
-          egress-policy: audit
-
-      - name: PR para main só de release/vX.Y.Z ou hotfix/vX.Y.Z do próprio repositório
-        env:
-          BASE_REF: ${{ github.base_ref }}
-          HEAD_REF: ${{ github.head_ref }}
-          HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
-          REPO: ${{ github.repository }}
-        run: |
-          if [[ "$BASE_REF" != main ]]; then
-            echo "Base '${BASE_REF}': sem restrição de origem."
-            exit 0
-          fi
-          if [[ "$HEAD_REPO" != "$REPO" ]]; then
-            echo "::error title=gitflow-guard::PR para main precisa vir de um branch deste repositório (veio de ${HEAD_REPO})."
-            exit 1
-          fi
-          if [[ ! "$HEAD_REF" =~ ^(release|hotfix)/v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "::error title=gitflow-guard::PR para main só aceita release/vX.Y.Z ou hotfix/vX.Y.Z (recebido: ${HEAD_REF}). Abra o PR contra develop."
-            exit 1
-          fi
-          echo "Origem '${HEAD_REF}' aceita para main."
 
   dco:
     name: dco

@@ -3,7 +3,7 @@
 #
 # Fora do PR desde a ADR 0032: era o caminho crítico do `ci-gate` (4 a 7 min) e o score é estável
 # entre commits. Roda:
-# - toda noite, em develop, só se houver commit novo desde o último run verde deste workflow
+# - toda noite, em main, só se houver commit novo desde o último run verde deste workflow
 #   (o job `changes` compara o SHA); sem commit novo, o `stryker` é pulado;
 # - por dispatch, sempre (para conferir uma mudança no próprio workflow ou na config do Stryker).
 #

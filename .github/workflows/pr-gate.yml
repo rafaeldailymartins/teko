@@ -13,7 +13,7 @@ name: PR gate
 
 on:
   pull_request:
-    branches: [develop, main]
+    branches: [main]
 
 permissions: {}
 

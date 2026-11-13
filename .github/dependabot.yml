@@ -1,4 +1,4 @@
-# Dependabot: version updates semanais em develop (branch default, que também recebe as security
+# Dependabot: version updates semanais em main (branch default, que também recebe as security
 # updates). O cooldown acompanha o `minimumReleaseAge` de 7 dias do pnpm-workspace.yaml.
 # `commit-message` com `include: scope` gera títulos `chore(deps): …` (e `chore(deps-dev): …`
 # para dependências de desenvolvimento), aceitos pelo `pr-title`.
@@ -8,7 +8,7 @@ version: 2
 updates:
   - package-ecosystem: npm
     directory: /
-    target-branch: develop
+    target-branch: main
     schedule:
       interval: weekly
       day: monday
@@ -81,7 +81,7 @@ updates:
   # (tools/vercel-cli/pnpm-workspace.yaml; ver ADR 0002). Só os jobs de deploy o instalam.
   - package-ecosystem: npm
     directory: /tools/vercel-cli
-    target-branch: develop
+    target-branch: main
     schedule:
       interval: weekly
       day: monday
@@ -106,7 +106,7 @@ updates:
     directories:
       - /
       - /.github/actions/*
-    target-branch: develop
+    target-branch: main
     schedule:
       interval: weekly
       day: monday
@@ -127,7 +127,7 @@ updates:
 
   - package-ecosystem: uv
     directory: /tools/ingest
-    target-branch: develop
+    target-branch: main
     schedule:
       interval: weekly
       day: monday
@@ -149,7 +149,7 @@ updates:
   # Imagem da API só para a stack de CI e o Docker local; produção roda na Vercel (Node gerenciado).
   - package-ecosystem: docker
     directory: /apps/api
-    target-branch: develop
+    target-branch: main
     schedule:
       interval: weekly
       day: monday
@@ -167,7 +167,7 @@ updates:
   - package-ecosystem: docker-compose
     directories:
       - /infra/local
-    target-branch: develop
+    target-branch: main
     schedule:
       interval: weekly
       day: monday

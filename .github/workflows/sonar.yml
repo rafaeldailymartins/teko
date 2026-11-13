@@ -1,7 +1,7 @@
 # SonarQube Cloud, só informativo (ADR 0032): fora do `ci-gate`, nunca bloqueia um PR.
 #
 # Chamado pelo pr-gate.yml (job `sonar`, depois do `ci`, em paralelo com o `ci-gate`) e pelo ci.yml
-# em push para develop. Roda no mesmo run de quem chama, então baixa os artifacts de cobertura que
+# em push para main. Roda no mesmo run de quem chama, então baixa os artifacts de cobertura que
 # os jobs test, integration e python do ci.yml guardaram (os que existirem: um job pulado por
 # escopo não guarda nada). A análise automática fica DESLIGADA no projeto; escopo, exclusões e
 # caminhos de cobertura ficam em sonar-project.properties.

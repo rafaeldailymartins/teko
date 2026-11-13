@@ -1,5 +1,5 @@
 # Segurança de código, segredos, workflows e dependências. Em PR, roda chamado pelo pr-gate.yml;
-# também em push para develop/main e toda semana.
+# também em push para main e toda semana.
 #
 # O ZAP (baseline + API scan) entra quando existir a stack de CI (infra/ci/compose.yaml).
 name: Security
@@ -7,7 +7,7 @@ name: Security
 on:
   workflow_call:
   push:
-    branches: [develop, main]
+    branches: [main]
   schedule:
     - cron: "41 6 * * 1" # segunda, 06:41 UTC
 

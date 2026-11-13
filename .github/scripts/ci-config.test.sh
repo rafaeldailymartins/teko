@@ -80,8 +80,8 @@ check "sonar pula sem SONAR_TOKEN (fork/Dependabot sem o segredo)" \
   bash -c "yq -r '.jobs.sonar.steps[].run // \"\"' '$sonar' | grep -q 'if \[\[ -z \"\${SONAR_TOKEN}\" \]\]'"
 check "pr-gate chama o sonar.yml fora dos needs do ci-gate" \
   yq_true '.jobs.sonar.uses == "./.github/workflows/sonar.yml" and (.jobs."ci-gate".needs | contains(["sonar"]) | not)' .github/workflows/pr-gate.yml
-check "ci.yml chama o sonar.yml só em push para develop" \
-  bash -c "yq -r '.jobs.sonar.if' .github/workflows/ci.yml | grep -Fq \"github.event_name == 'push' && github.ref == 'refs/heads/develop'\""
+check "ci.yml chama o sonar.yml só em push para main" \
+  bash -c "yq -r '.jobs.sonar.if' .github/workflows/ci.yml | grep -Fq \"github.event_name == 'push' && github.ref == 'refs/heads/main'\""
 # Em push, o Sonar analisa a branch inteira: sem o lcov e o coverage.xml, o new_coverage vai a 0%
 # (sonar-push-without-coverage). Informativo, mas a medida da branch fica errada.
 check "test roda sempre em push (lcov para o Sonar)" \
@@ -241,8 +241,8 @@ check "ingest: modo eval-only pula o discover (e com ele extract e load)" \
 check "ingest: o artifact corpus-lock dura 90 dias (eval-only abre o PR do lock a partir dele)" \
   yq_true '.jobs.load.steps[] | select(.with.name == "corpus-lock") | .with."retention-days" == 90' "$ingest"
 label=.github/workflows/corpus-eval-label.yml
-check "corpus-eval-label: só PR do próprio repositório, dispara o ingest.yml eval-only em develop" \
-  bash -c "yq -e '.jobs.dispatch.if | test(\"head\\\\.repo\\\\.full_name == github\\\\.repository\")' '$label' >/dev/null && grep -Fq 'gh workflow run ingest.yml --repo \"\$REPO\" --ref develop -f mode=eval-only -f ref=\"\$SHA\"' '$label'"
+check "corpus-eval-label: só PR do próprio repositório, dispara o ingest.yml eval-only em main" \
+  bash -c "yq -e '.jobs.dispatch.if | test(\"head\\\\.repo\\\\.full_name == github\\\\.repository\")' '$label' >/dev/null && grep -Fq 'gh workflow run ingest.yml --repo \"\$REPO\" --ref main -f mode=eval-only -f ref=\"\$SHA\"' '$label'"
 check "ingest: load com --migrate só no staging" \
   bash -c "grep -Eq 'ingest load --target staging .*--migrate' '$ingest'"
 check "ingest: o tamanho do staging (dbBytes do relatório) sai do load e vai ao resumo, com aviso acima de 400 MB" \

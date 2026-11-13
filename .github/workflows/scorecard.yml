@@ -7,9 +7,9 @@
 name: Scorecard
 
 on:
-  # O Scorecard só suporta push e schedule no branch default (develop).
+  # O Scorecard só suporta push e schedule no branch default (main).
   push:
-    branches: [develop]
+    branches: [main]
   schedule:
     - cron: "17 4 * * 1" # segunda, 04:17 UTC
 
