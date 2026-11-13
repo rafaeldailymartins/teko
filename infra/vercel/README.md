@@ -39,19 +39,23 @@ A configuração do projeto que vive no repositório fica em `apps/api/vercel.js
 
 ## Mesma origem (ADR 0029): ações manuais do mantenedor
 
-- [ ] Nos dois projetos, apagar as env vars que saíram: Sensitive `NETLIFY_PROXY_JWS_SECRET` e
+- [x] (feito em 2026-11-13: no staging saiu o `NETLIFY_PROXY_JWS_SECRET`, o `WEB_ORIGIN` virou o
+  canônico e entrou o `RERANKER_PROVIDER`; a produção ganhou `WEB_ORIGIN` e `RERANKER_PROVIDER`;
+  `TICKET_SIGNING_KEY` e `STREAM_ORIGIN` não existiam) Nos dois projetos, apagar as env vars que saíram: Sensitive `NETLIFY_PROXY_JWS_SECRET` e
   `TICKET_SIGNING_KEY` (se gravadas) e Config `STREAM_ORIGIN`; trocar `WEB_ORIGIN` pelo domínio
   canônico; gravar `RERANKER_PROVIDER=workers-ai`; manter `FUNCTION_MAX_DURATION_S=120`, agora
   obrigatória com `RUNTIME_TARGET=vercel`. Exemplo (staging):
   `vercel env rm NETLIFY_PROXY_JWS_SECRET production --yes`,
   `vercel env rm WEB_ORIGIN production --yes` e
   `printf 'https://tekoia-staging.vercel.app' | vercel env add WEB_ORIGIN production`.
-- [ ] Netlify: apagar o site `tekoia` e revogar o PAT. A migração dos artefatos terminou em
+- [ ] Netlify: apagar o site `tekoia` (feito em 2026-11-13) e revogar o PAT. A migração dos artefatos terminou em
   2026-11-13 (etapa C2 da ADR 0030), então também saem o segredo `NETLIFY_AUTH_TOKEN` e a variável
   `NETLIFY_SITE_ID` do environment `staging` do GitHub:
   `gh secret delete NETLIFY_AUTH_TOKEN --env staging` e
-  `gh variable delete NETLIFY_SITE_ID --env staging`.
-- [ ] WAF: reaplicar as 3 regras de `firewall-rules.json` (a regra do `x-nf-sign` sai).
+  `gh variable delete NETLIFY_SITE_ID --env staging` (feito em 2026-11-13).
+- [x] WAF: as 3 regras de `firewall-rules.json` aplicadas nos dois projetos em 2026-11-13 (API
+  `PATCH /v1/security/firewall/config`, action `rules.insert`). Conferido: `/healthz` 200,
+  `/api/xyz` 403 e `POST /` 403.
 - Postura não comercial (Hobby): o Tekó é gratuito e MIT, sem anúncios, afiliados, patrocínio
   exibido ou plano pago. Um link de doação é permitido (ADR 0004).
 
@@ -261,7 +265,7 @@ registrado; o resto continua aberto:
   comum no site `tekoia`, porque o Netlify Free não tem escopo nem valor secreto). No alias
   `develop`, `deploy_context` é `branch-deploy`. Sem cache na Netlify nem na Vercel, Cookie e
   Set-Cookie passam, e o proxy soma 27 ms de mediana;
-- [ ] regras do WAF: ainda não aplicadas (`/api/v1/*` direto e sem assinatura dá 404, não 403); F7;
+- [x] regras do WAF: aplicadas em 2026-11-13 (ver acima); o smoke da F7 confere o efeito a cada deploy;
 - [ ] cold start (p95) e o pior caso de cold start + resume do Neon dentro dos 26 s do proxy: não
   medidos com rigor (risco residual da ADR 0003); a meta de menos de 10 s numa chamada proxiada é
   do DoD da F7.
