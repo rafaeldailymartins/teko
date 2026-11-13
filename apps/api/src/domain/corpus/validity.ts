@@ -383,7 +383,9 @@ export interface CitedLabel {
  */
 const ACT_CITATION = new RegExp(
   String.raw`(?:\b(?:pel[oa]s?|por(?: forca)?(?: d[oa]s?)?|conforme|nos termos d[oa]s?|de acordo com)\s+` +
-    String.raw`(?:(?:o |a )?(?:art\.?|artigo|inciso|§|paragrafo|alinea|item)\s*\S+?,?\s+(?:d[oa]s?\s+)?)*)?` +
+    // `[^\s,]+` (não `\S+?`) e no máximo 6 dispositivos: sem ambiguidade entre as repetições, o
+    // tempo fica linear (SonarQube S8786).
+    String.raw`(?:(?:o |a )?(?:art\.?|artigo|inciso|§|paragrafo|alinea|item)\s*[^\s,]+,?\s+(?:d[oa]s?\s+)?){0,6})?` +
     String.raw`\b(?:lei complementar|lei|decreto|convenio|ajuste|instrucao normativa|resolucao|protocolo|emenda constitucional|lc)\b[^,;()]*?\d[\d./]*(?:\s*,?\s*de\s+\d[\d.]*)?`,
   'g',
 )
