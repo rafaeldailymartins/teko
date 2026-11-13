@@ -18,14 +18,17 @@ context: |
   Stack
   - Monorepo pnpm 12 (catálogo estrito) + Turborepo, três pacotes JS: @teko/web, @teko/api,
     @teko/shared. Node 24 LTS; scripts da raiz em TypeScript executados por type stripping.
-  - Web: Next.js 16 com export estático (0 functions, 0 edge) na Netlify, React 19, Tailwind 4,
-    next-intl (en, pt-BR), Feature-Sliced Design (steiger). Nenhuma lógica de negócio no front.
-  - API: Fastify 5 hexagonal (domain, application, adapters) como uma única Vercel Function
-    (Fluid compute, região gru1) no Vercel Hobby, em dois projetos (teko-api e teko-api-staging,
-    domínios *.vercel.app), sem integração Git: o CI faz vercel build, atesta o .vercel/output e
-    publica com vercel deploy --prebuilt + vercel promote. Plano B: Render Free com o mesmo
-    server.ts (ADR 0004). Chamadas curtas chegam pelo proxy assinado da Netlify (x-nf-sign, JWS
-    HS256); o stream vai direto à API com ticket de uso único.
+  - Web: Next.js 16 com export estático (sem functions do Next), React 19, Tailwind 4,
+    next-intl (en, pt-BR), estrutura app/ components/ lib/. Nenhuma lógica de negócio no front.
+  - Web e API na mesma origem na Vercel (ADR 0029): o estático vai no mesmo .vercel/output da
+    API, e só /api/* e /healthz chegam à Function. API Fastify 5 hexagonal (domain, application,
+    adapters) como uma única Vercel Function (Fluid compute, região gru1) no Vercel Hobby, em dois
+    projetos (tekoia e tekoia-staging, domínios tekoia.vercel.app e tekoia-staging.vercel.app),
+    sem integração Git: o CI monta e atesta o .vercel/output e publica com vercel deploy
+    --prebuilt + vercel promote. Sessão por cookie e checagem de Origin, inclusive no stream; sem
+    proxy, ticket nem CORS. Plano B: Render Free servindo estático e API com o mesmo server.ts.
+  - Artefatos de ingestão (snapshots, raws, cache do Docling, estado do watch, histórico de
+    evals) no GitHub Releases (ADR 0030).
   - Supply chain: o catálogo do pnpm-workspace.yaml é a fonte da verdade das versões
     (minimumReleaseAge de 7 dias, trustPolicy no-downgrade). @vercel/functions fixado em 3.7.6;
     o Vercel CLI vive isolado em tools/vercel-cli (ADR 0002).
@@ -38,8 +41,11 @@ context: |
     verbatimModuleSyntax, erasableSyntaxOnly: sem enums, namespaces nem parameter properties;
     usar objetos "as const"). Imports relativos com extensão .ts.
   - Biome é o único linter/formatter. Identificadores em inglês; comentários e docs em pt-BR.
-  - Git Flow (develop = staging, main = produção), squash em develop, merge commit em main.
-    Conventional Commits com os escopos do commitlint.config.mjs; DCO (git commit -s).
+  - Trunk-based (ADR 0033): o tronco (develop até o rename, depois main) é o staging, e a
+    produção sai por tag v*. Só squash. Conventional Commits com a lista única de escopos; DCO
+    (git commit -s).
+  - Fonte de verdade: docs/roadmap.md, docs/architecture/, docs/adr/ e openspec/specs/. Mudança
+    OpenSpec só quando o comportamento especificado muda; ela é arquivada no mesmo PR.
   - Relógio fixo em 2026-11-10 em todos os testes.
   - Saída longa de comandos vai para arquivo em diretório temporário fora do repositório
     (TEKO_TMP), sempre com o código de saída impresso; nunca pipe para head/tail/tee.
@@ -48,7 +54,7 @@ context: |
   - Antes de escrever código, configuração ou workflow que dependa de biblioteca, framework,
     CLI ou serviço, consultar a documentação atual via Context7 (resolve-library-id ->
     query-docs). Toda versão fixada é conferida na fase que a introduz; divergências corrigem o
-    plano e a ADR no mesmo PR.
+    docs/architecture/ e a ADR no mesmo PR.
 
 rules:
   proposal:

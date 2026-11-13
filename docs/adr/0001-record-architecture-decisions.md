@@ -92,3 +92,22 @@ A revisão de 2026-11-10 trocou a VM Oracle pelo Vercel Hobby
   [0004 — API no Vercel Hobby com Plano B no Render](0004-vercel-hobby-api.md).
 - A correspondência entre a lista temática de ADRs do plano e os números já usados está no
   [índice](README.md#numeração-e-lista-do-plano).
+
+## Adendo (2026-11-12): documentação no repositório
+
+Decisão do mantenedor na revisão antes da F4:
+
+- **O plano de implementação fica congelado.** A fonte de verdade passa a ser o repositório:
+  [`docs/roadmap.md`](../roadmap.md) (fases F4 a F10 e o DoD de cada uma),
+  [`docs/architecture/`](../architecture/) (o desenho vigente, por área), estas ADRs e as specs
+  em `openspec/specs/`. O status das fases fica em [`docs/status.md`](../status.md), e o
+  `CLAUDE.md` guarda só as regras de trabalho.
+- **A tabela "Decisões e desvios do pedido original" acima vira histórico** (estado de
+  2026-11-11). A versão viva, já com as decisões de 2026-11-12, está em
+  [`docs/architecture/README.md`](../architecture/README.md#decisões-e-desvios-do-pedido-original).
+- **OpenSpec só quando muda requisito.** Abre-se uma mudança quando o comportamento descrito em
+  `openspec/specs/**` muda; ela é proposta, implementada e arquivada no mesmo PR. Correção que não
+  muda requisito, CI, documentação e infraestrutura dispensam a mudança.
+- **Numeração.** Decisões fora da lista temática do plano recebem o próximo número livre (a
+  revisão usou 0029 a 0033); os números reservados da lista seguem a regra do
+  [índice](README.md#numeração-e-lista-do-plano).
