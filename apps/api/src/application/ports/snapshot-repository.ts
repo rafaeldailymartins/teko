@@ -40,12 +40,33 @@ export const SNAPSHOT_FORMAT = 1
 
 const sha256Schema = z.string().regex(/^[0-9a-f]{64}$/)
 
+/**
+ * Linhagem do corpus exportado: o que produziu as linhas (o banco já guarda `parser_revision`,
+ * `embedding_model` e `ingestion_runs.git_sha` por linha; aqui vai o conjunto do run que exportou).
+ */
+export const snapshotLineageSchema = z.strictObject({
+  /** Commit do run que exportou. */
+  gitSha: z.string().min(1),
+  /** Modelo de embedding (`chunks.embedding_model`). */
+  embeddingModel: z.string().min(1),
+  /** `PARSER_REVISIONS` do código do run (ADR 0026). */
+  parserRevisions: z.record(z.string(), z.int().positive()),
+  /** `EXTRACTOR_REVISION` e a versão do Docling coberta por ela. */
+  extractorRevision: z.int().positive(),
+  doclingVersion: z.string().min(1),
+  /** Reranker configurado no run (`RERANKER_PROVIDER`), ou `null`. */
+  reranker: z.string().min(1).nullable(),
+})
+export type SnapshotLineage = z.output<typeof snapshotLineageSchema>
+
 export const snapshotManifestSchema = z.strictObject({
   format: z.literal(SNAPSHOT_FORMAT),
   corpusVersion: z.int().positive(),
   createdAt: z.iso.datetime({ offset: true }),
   /** Última migração aplicada no banco exportado (`drizzle.__drizzle_migrations`). */
   migration: z.strictObject({ hash: z.string().min(1), name: z.string().nullable() }),
+  /** Ausente nos manifestos anteriores à linhagem. */
+  lineage: snapshotLineageSchema.optional(),
   tables: z
     .array(
       z.strictObject({
@@ -82,12 +103,19 @@ export interface PromoteRecord {
   rows(table: SnapshotTable): AsyncIterable<readonly SnapshotRow[]>
   /** Data do fechamento do `knowledge` das linhas ausentes do snapshot. */
   readonly today: IsoDate
+  /**
+   * Rollback: o snapshot é mais antigo que o destino e entra como uma `corpus_version` nova, com
+   * esta nota (a cobertura das famílias do snapshot passa a apontar para ela).
+   */
+  readonly rollbackNotes?: string
 }
 
 export interface SnapshotRepository {
   /** Abre uma leitura consistente (uma transação `REPEATABLE READ`, só leitura). */
   read<T>(work: (reader: SnapshotReader) => Promise<T>): Promise<T>
   latestMigration(): Promise<MigrationRef | null>
+  /** A migração (pelo hash) já foi aplicada no banco (o rollback aceita snapshot de migração antiga). */
+  migrationApplied(hash: string): Promise<boolean>
   currentCorpusVersion(): Promise<number | null>
   /** Aplica o snapshot numa transação; devolve as linhas lidas por tabela. */
   promote(record: PromoteRecord): Promise<Readonly<Record<SnapshotTable, number>>>

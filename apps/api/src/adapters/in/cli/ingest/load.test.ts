@@ -128,6 +128,7 @@ interface Recorder {
   readonly ingested: IngestDocumentVersionCommand[]
   readonly finished: { status: string; report: Readonly<Record<string, unknown>> }[]
   readonly exports: number[]
+  readonly exportCommands: Parameters<LoadUseCases['exportSnapshot']>[0][]
   started: { bulk?: boolean | undefined; target: string } | null
   coverageCalls: number
   pruned: number
@@ -144,6 +145,14 @@ const NO_CHURN = {
     pendingShareAfter: 0,
   },
   churnViolations: [],
+} as const
+
+const LINEAGE = {
+  embeddingModel: '@cf/baai/bge-m3',
+  parserRevisions: { 'docling-guia': 2 },
+  extractorRevision: 1,
+  doclingVersion: '2.146.0',
+  reranker: null,
 } as const
 
 const HEALTH: DocumentHealth[] = [
@@ -164,6 +173,7 @@ function useCases(
     ingested: [],
     finished: [],
     exports: [],
+    exportCommands: [],
     started: null,
     coverageCalls: 0,
     pruned: 0,
@@ -216,6 +226,7 @@ function useCases(
       },
       exportSnapshot: async (command) => {
         recorder.exports.push(command.corpusVersion ?? 0)
+        recorder.exportCommands.push(command)
         const manifestKey = `snapshots/${String(corpusVersion)}/manifest.json`
         await blobs.set(BlobStoreName.CorpusSnapshots, manifestKey, '{"manifest":1}')
         return {
@@ -249,6 +260,7 @@ function deps(cases: LoadUseCases, extra: Partial<IngestLoadDeps> = {}) {
       return Promise.resolve()
     },
     gitSha: 'a'.repeat(40),
+    lineage: LINEAGE,
     today: () => '2026-11-11',
     defaultLockFile: lockFile,
     print: (line) => lines.push(line),
@@ -350,6 +362,11 @@ describe('ingest load', () => {
       manifestSha256: sha256(new TextEncoder().encode('{"manifest":1}')),
     })
     expect(Object.keys(lock.sources)).toHaveLength(6)
+    // Linhagem no manifesto e no lock; sem lock anterior, nada a proteger da retenção.
+    expect(recorder.exportCommands).toEqual([
+      { corpusVersion: 7, lineage: { gitSha: 'a'.repeat(40), ...LINEAGE } },
+    ])
+    expect(lock.lineage).toEqual({ gitSha: 'a'.repeat(40), ...LINEAGE })
     expect(lock.sources['efd-icms-ipi/guia-pratico/3.2.4']).toEqual({
       sha256: guiaSha,
       versionLabel: 'Guia 3.2.4',
@@ -488,6 +505,8 @@ describe('ingest load', () => {
     expect(await load(deps(third.useCases).value, ['--accept-churn'])).toBe(0)
     expect(third.recorder.ingested.every((command) => command.acceptChurn === true)).toBe(true)
     expect(readCorpusLock(lockFile).health?.['rcte']?.chunks).toBe(150)
+    // O snapshot do lock vigente (7) fica protegido da retenção (rollback).
+    expect(third.recorder.exportCommands[0]?.protect).toEqual([7])
     expect(third.recorder.finished[0]?.report).toMatchObject({ acceptChurn: true })
   })
 

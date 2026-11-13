@@ -496,9 +496,18 @@ export function createPgSnapshotRepository(pool: pg.Pool): SnapshotRepository {
 
     latestMigration: () => withClient(pool, latestMigration),
 
+    migrationApplied: (hash) =>
+      withClient(pool, async (client) => {
+        const result = await client.query<{ found: boolean }>(
+          'SELECT EXISTS (SELECT 1 FROM drizzle.__drizzle_migrations WHERE hash = $1) AS found',
+          [hash],
+        )
+        return result.rows[0]?.found === true
+      }),
+
     currentCorpusVersion: () => withClient(pool, currentCorpusVersion),
 
-    promote: ({ manifest, rows, today }) =>
+    promote: ({ manifest, rows, today, rollbackNotes }) =>
       withClient(pool, (client) =>
         inTransaction(client, 'BEGIN', async () => {
           const counts: Partial<Record<SnapshotTable, number>> = {}
@@ -530,6 +539,19 @@ export function createPgSnapshotRepository(pool: pg.Pool): SnapshotRepository {
           await mergeCoverage(client, manifest.createdAt)
           for (const statement of CORPUS_VERSION_STATEMENTS) {
             await client.query(statement)
+          }
+          if (rollbackNotes !== undefined) {
+            // Rollback: o conteúdo do snapshot antigo vira uma versão nova do corpus (a numeração
+            // só cresce; o snapshot seguinte do staging precisa ser mais novo que ela).
+            const created = await client.query<{ id: number }>(
+              'INSERT INTO corpus.corpus_versions (notes) VALUES ($1) RETURNING id',
+              [rollbackNotes],
+            )
+            await client.query(
+              `UPDATE corpus.coverage SET corpus_version = $1
+               WHERE family IN (SELECT family FROM snap_coverage)`,
+              [created.rows[0]?.id],
+            )
           }
           await assertPublishedSources(client)
           return countsByTable((table) => counts[table] ?? 0)

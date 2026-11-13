@@ -82,6 +82,13 @@ describe('cli snapshot promote', () => {
     expect(JSON.parse(d.printed[1] ?? '{}')).toMatchObject({ corpusVersion: 4 })
   })
 
+  it('--rollback repromove explicitamente um snapshot antigo', async () => {
+    const d = deps()
+    await runSnapshotPromote(d.value, ['--corpus-version', '3', '--rollback'])
+    expect(d.promoteCalls).toEqual([{ manifestKey: 'snapshots/3/manifest.json', rollback: true }])
+    expect(JSON.parse(d.printed[0] ?? '{}')).toMatchObject({ rollback: true })
+  })
+
   it('exige exatamente um dos dois', async () => {
     const d = deps()
     await expect(runSnapshotPromote(d.value, [])).rejects.toBeInstanceOf(SnapshotUsageError)

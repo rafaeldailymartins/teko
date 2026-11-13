@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { isoDateSchema } from '@teko/shared/vigencia'
 import { z } from 'zod'
+import { type SnapshotLineage, snapshotLineageSchema } from '#app/ports/snapshot-repository.ts'
 
 /**
  * `corpus/corpus.lock.json`: o snapshot promovível (o PR que o atualiza é a porta para a produção)
@@ -49,6 +50,8 @@ const corpusLockSchema = z.strictObject({
   sources: z.record(z.string(), lockSourceSchema),
   /** Por slug de documento; ausente num lock anterior ao gate (o primeiro run grava a base). */
   health: z.record(z.string(), lockHealthSchema).optional(),
+  /** Linhagem do snapshot (a mesma do `manifest.json`); ausente num lock anterior a ela. */
+  lineage: snapshotLineageSchema.optional(),
 })
 export type CorpusLock = z.output<typeof corpusLockSchema>
 type LockSnapshot = z.output<typeof lockSnapshotSchema>
@@ -104,15 +107,18 @@ export interface LockUpdate {
   readonly today: string
   /** Estado publicado no fim do run verde (substitui o anterior). */
   readonly health?: Readonly<Record<string, LockHealth>>
+  /** Linhagem do snapshot novo (só com `snapshot`). */
+  readonly lineage?: SnapshotLineage
 }
 
 /**
- * Lock novo: fontes acrescentadas/atualizadas e, se houver, o snapshot novo. Devolve `null` quando
- * nada muda (o arquivo não deve ser reescrito).
+ * Lock novo: fontes acrescentadas/atualizadas e, se houver, o snapshot novo (com a linhagem dele).
+ * Devolve `null` quando nada muda (o arquivo não deve ser reescrito).
  */
 export function nextCorpusLock(current: CorpusLock, update: LockUpdate): CorpusLock | null {
   const snapshot = update.snapshot ?? current.snapshot
   const health = update.health ?? current.health
+  const lineage = update.snapshot === null ? current.lineage : (update.lineage ?? current.lineage)
   const candidate: CorpusLock = {
     format: LOCK_FORMAT,
     corpusVersion: snapshot?.corpusVersion ?? current.corpusVersion,
@@ -120,6 +126,7 @@ export function nextCorpusLock(current: CorpusLock, update: LockUpdate): CorpusL
     updatedAt: current.updatedAt,
     sources: sortedRecord({ ...current.sources, ...update.sources }),
     ...(health === undefined ? {} : { health: sortedRecord(health) }),
+    ...(lineage === undefined ? {} : { lineage }),
   }
   if (serializeCorpusLock(candidate) === serializeCorpusLock(current)) {
     return null

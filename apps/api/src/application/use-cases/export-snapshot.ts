@@ -4,6 +4,7 @@ import {
   SNAPSHOT_FORMAT,
   SNAPSHOT_TABLES,
   type SnapshotCodec,
+  type SnapshotLineage,
   type SnapshotManifest,
   type SnapshotRepository,
 } from '../ports/snapshot-repository.ts'
@@ -12,8 +13,9 @@ import {
  * `ExportSnapshot` (staging, depois do `RefreshCoverage`): lê o schema `corpus` numa transação
  * consistente e grava `snapshots/<corpusVersion>/<tabela>.jsonl.zst` no store `corpus-snapshots`,
  * na ordem de FK, e por último o `manifest.json` (contagens, sha256 de cada arquivo e o hash da
- * última migração aplicada). Um manifesto só existe se todos os arquivos dele foram gravados.
- * Depois apaga os snapshots além dos 3 mais recentes.
+ * última migração aplicada, e a linhagem quando informada). Um manifesto só existe se todos os
+ * arquivos dele foram gravados. Depois apaga os snapshots além dos 3 mais recentes, menos os
+ * protegidos (o do `corpus.lock.json` vigente, que o rollback pode repromover).
  */
 
 const SNAPSHOT_PREFIX = 'snapshots/'
@@ -30,6 +32,10 @@ export function snapshotManifestKey(corpusVersion: number): string {
 interface ExportSnapshotCommand {
   /** Se informado, precisa ser a versão atual do corpus (não há exportação de versão antiga). */
   readonly corpusVersion?: number
+  /** Linhagem gravada no manifesto (modelo, revisões, extrator, reranker, commit). */
+  readonly lineage?: SnapshotLineage
+  /** Versões que a retenção não apaga (a do `corpus.lock.json` vigente: o rollback precisa dela). */
+  readonly protect?: readonly number[]
 }
 
 export type ExportSnapshot = (command: ExportSnapshotCommand) => Promise<{
@@ -63,9 +69,17 @@ function versionsIn(keys: readonly string[]): number[] {
   return [...versions].sort((a, b) => b - a)
 }
 
-async function pruneSnapshots(blobs: BlobStore, retain: number): Promise<void> {
+async function pruneSnapshots(
+  blobs: BlobStore,
+  retain: number,
+  protect: readonly number[],
+): Promise<void> {
   const keys = await blobs.list(BlobStoreName.CorpusSnapshots, SNAPSHOT_PREFIX)
-  const expired = new Set(versionsIn(keys).slice(retain))
+  const expired = new Set(
+    versionsIn(keys)
+      .slice(retain)
+      .filter((version) => !protect.includes(version)),
+  )
   for (const key of keys) {
     const match = /^snapshots\/(\d+)\//.exec(key)
     if (match?.[1] !== undefined && expired.has(Number(match[1]))) {
@@ -107,6 +121,7 @@ export function createExportSnapshot(deps: SnapshotDeps): ExportSnapshot {
         corpusVersion,
         createdAt: deps.clock.now().toISOString(),
         migration: { hash: reader.migration.hash, name: reader.migration.name },
+        ...(command.lineage === undefined ? {} : { lineage: command.lineage }),
         tables,
       }
       const manifestKey = snapshotManifestKey(corpusVersion)
@@ -117,7 +132,7 @@ export function createExportSnapshot(deps: SnapshotDeps): ExportSnapshot {
       )
       return { manifestKey, manifest }
     })
-    await pruneSnapshots(deps.blobs, SNAPSHOT_RETENTION)
+    await pruneSnapshots(deps.blobs, SNAPSHOT_RETENTION, command.protect ?? [])
     return result
   }
 }

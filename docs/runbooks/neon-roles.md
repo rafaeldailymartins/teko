@@ -4,11 +4,11 @@ Os roles de login do Tekó são criados pela API do Neon, com senha gerada pelo 
 direto para os GitHub Environments. Nenhuma senha passa por arquivo, terminal, chat ou repositório
 (plano: "Roles e privilégio mínimo"; [ADR 0009](../adr/0009-vigencia-bitemporal.md)).
 
-| Role                   | Uso                                                | Privilégios (da migração `*_constraints-grants`)                                                                              |
-| ---------------------- | -------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| owner (`neondb_owner`) | `drizzle-kit migrate`, ingestão, `promote-corpus`  | dono do banco                                                                                                                 |
-| `teko_app`             | runtime na Vercel (`-pooler`) e manutenção semanal | lê `corpus`; lê e escreve `app` e `auth`; `statement_timeout` e `idle_in_transaction_session_timeout` de 5 s no role; sem DDL |
-| `teko_watch`           | job `mark-coverage` do `source-watch.yml`          | lê `corpus.coverage`; atualiza `verified_at`, `gaps` e `gap_reason`                                                           |
+| Role                   | Uso                                                | Privilégios (da migração `*_constraints-grants`)                                                                                |
+| ---------------------- | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| owner (`neondb_owner`) | `drizzle-kit migrate`, ingestão, `promote-corpus`  | dono do banco                                                                                                                   |
+| `teko_app`             | runtime na Vercel (`-pooler`) e manutenção semanal | lê `corpus`; lê e escreve `app` e `auth`; `statement_timeout` e `idle_in_transaction_session_timeout` de 5 s no role; sem DDL   |
+| `teko_watch`           | job `mark-coverage` do `source-watch.yml`          | lê `corpus.coverage`; atualiza `verified_at`, `gaps`, `gap_reason` e `gap_entries` (este, da migração `*_coverage-gap-entries`) |
 
 ## Ordem obrigatória
 

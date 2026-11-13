@@ -6,6 +6,7 @@ import { type BlobStore, BlobStoreName } from '#app/ports/blob-store.ts'
 import type { ContentHasher } from '#app/ports/content-hasher.ts'
 import type { ReviewQueueCount } from '#app/ports/corpus-ingestion-repository.ts'
 import { DatabaseSizeLimitError } from '#app/ports/database-usage.ts'
+import type { SnapshotLineage } from '#app/ports/snapshot-repository.ts'
 import type { ChurnMetrics } from '#app/services/churn.ts'
 import { ChurnLimitError } from '#app/services/churn.ts'
 import { evaluateHealth, HEALTH_LIMITS, type HealthReport } from '#app/services/corpus-health.ts'
@@ -102,6 +103,8 @@ export interface IngestLoadDeps {
   /** Aplica as migrações (só com `--migrate --target staging`). */
   readonly migrate: () => Promise<void>
   readonly gitSha: string
+  /** Linhagem gravada no manifesto do snapshot e no lock (o `gitSha` dela é o do run). */
+  readonly lineage: Omit<SnapshotLineage, 'gitSha'>
   /** Data do run em `America/Sao_Paulo` (`verified_at` da cobertura e `updatedAt` do lock). */
   readonly today: () => IsoDate
   /** `corpus/corpus.lock.json` padrão (relativo ao repositório). */
@@ -572,9 +575,15 @@ export async function runIngestLoad(
     if (exhausted !== null) {
       return await finish('budget_exhausted', EXIT_BUDGET_EXHAUSTED)
     }
+    const lineage: SnapshotLineage = { gitSha: deps.gitSha, ...deps.lineage }
     let snapshot = null
     if (lock.snapshot?.corpusVersion !== corpusVersion) {
-      const exported = await deps.useCases.exportSnapshot({ corpusVersion })
+      const exported = await deps.useCases.exportSnapshot({
+        corpusVersion,
+        lineage,
+        // O snapshot do lock vigente é o que a produção tem: o rollback precisa dele.
+        ...(lock.snapshot === null ? {} : { protect: [lock.snapshot.corpusVersion] }),
+      })
       const manifestBytes = await deps.blobs.get(
         BlobStoreName.CorpusSnapshots,
         exported.manifestKey,
@@ -606,6 +615,7 @@ export async function runIngestLoad(
       sources,
       today: deps.today(),
       ...(health === null ? {} : { health: lockHealthOf(health) }),
+      lineage,
     })
     if (next !== null) {
       writeCorpusLock(lockFile, next)

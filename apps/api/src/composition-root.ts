@@ -259,6 +259,7 @@ export function createIngestionContainer(
   }
   return {
     neuronBudget,
+    embeddingModel: embeddings.model,
     useCases: {
       startIngestionRun: createStartIngestionRun(runDeps),
       finishIngestionRun: createFinishIngestionRun(runDeps),

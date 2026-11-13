@@ -226,6 +226,65 @@ describe('promoção num banco vazio', () => {
   })
 })
 
+describe('rollback de corpus', () => {
+  it('repromove o snapshot antigo como versão nova e reabre o que a versão seguinte fechou', async () => {
+    // Staging: uma redação publicável sai (conhecimento fechado, vetor apagado) na versão 2.
+    const target = await stagingOwner.query<{ id: string }>(
+      `SELECT pv.id FROM corpus.provision_versions pv
+       WHERE upper_inf(pv.knowledge) AND pv.review_status = 'auto' ORDER BY pv.id LIMIT 1`,
+    )
+    const pv = target.rows[0]?.id ?? ''
+    await stagingOwner.query(
+      `UPDATE corpus.provision_versions SET knowledge = daterange(lower(knowledge), '2026-11-11')
+       WHERE id = $1`,
+      [pv],
+    )
+    await stagingOwner.query(
+      `UPDATE corpus.chunks SET knowledge = daterange(lower(knowledge), '2026-11-11'),
+         embedding = NULL WHERE provision_version_id = $1`,
+      [pv],
+    )
+    await stagingOwner.query(`INSERT INTO corpus.corpus_versions (notes) VALUES ('fecha uma')`)
+    const second = await exporter.container.useCases.exportSnapshot({ corpusVersion: 2 })
+    expect(
+      await promoter.container.useCases.promoteSnapshot({ manifestKey: second.manifestKey }),
+    ).toMatchObject({
+      corpusVersion: 2,
+    })
+    const state = async () =>
+      (
+        await productionOwner.query<{ open: boolean; embedded: boolean }>(
+          `SELECT bool_and(upper_inf(knowledge)) AS open, bool_and(embedding IS NOT NULL) AS embedded
+           FROM corpus.chunks WHERE provision_version_id = $1`,
+          [pv],
+        )
+      ).rows[0]
+    expect(await state()).toEqual({ open: false, embedded: false })
+
+    // Voltar ao snapshot 1 exige --rollback e vira a versão 3.
+    await expect(promoter.container.useCases.promoteSnapshot({ manifestKey })).rejects.toThrow(
+      /--rollback/,
+    )
+    const rolled = await promoter.container.useCases.promoteSnapshot({
+      manifestKey,
+      rollback: true,
+    })
+    expect(rolled.corpusVersion).toBe(3)
+    expect(await state()).toEqual({ open: true, embedded: true })
+    const versions = await productionOwner.query<{ id: number; notes: string | null }>(
+      'SELECT id, notes FROM corpus.corpus_versions ORDER BY id',
+    )
+    expect(versions.rows.at(-1)).toEqual({
+      id: 3,
+      notes: `rollback para o snapshot 1 (${manifestKey})`,
+    })
+    const coverage = await productionOwner.query<{ v: number }>(
+      'SELECT DISTINCT corpus_version AS v FROM corpus.coverage',
+    )
+    expect(coverage.rows).toEqual([{ v: 3 }])
+  })
+})
+
 describe('validações e retenção', () => {
   it('recusa arquivo adulterado', async () => {
     const tampered = createInMemoryBlobStore()
@@ -241,25 +300,30 @@ describe('validações e retenção', () => {
     await tampered.set(BlobStoreName.CorpusSnapshots, coverageKey, changed)
     const target = createIngestionTestContext(production.ownerUrl, { blobs: tampered })
     try {
-      await expect(target.container.useCases.promoteSnapshot({ manifestKey })).rejects.toThrow(
-        /sha256/,
-      )
+      // A produção já está à frente do snapshot 1 (rollback acima): só passa com --rollback.
+      await expect(
+        target.container.useCases.promoteSnapshot({ manifestKey, rollback: true }),
+      ).rejects.toThrow(/sha256/)
     } finally {
       await target.container.close()
     }
   })
 
-  it('guarda só os 3 snapshots mais recentes', async () => {
-    for (let version = 2; version <= 4; version += 1) {
+  it('guarda só os 3 snapshots mais recentes, mais o protegido (o do lock vigente)', async () => {
+    // O staging já está na versão 2 (rollback acima).
+    for (let version = 3; version <= 5; version += 1) {
       await stagingOwner.query(`INSERT INTO corpus.corpus_versions (notes) VALUES ('teste')`)
-      const exported = await exporter.container.useCases.exportSnapshot({ corpusVersion: version })
+      const exported = await exporter.container.useCases.exportSnapshot({
+        corpusVersion: version,
+        protect: [1],
+      })
       expect(exported.manifest.corpusVersion).toBe(version)
     }
     const versions = new Set(
       blobs.keys(BlobStoreName.CorpusSnapshots).map((key) => key.split('/')[1]),
     )
-    expect([...versions].sort()).toEqual(['2', '3', '4'])
-    await expect(exporter.container.useCases.exportSnapshot({ corpusVersion: 3 })).rejects.toThrow(
+    expect([...versions].sort()).toEqual(['1', '3', '4', '5'])
+    await expect(exporter.container.useCases.exportSnapshot({ corpusVersion: 4 })).rejects.toThrow(
       /versão atual/,
     )
   })

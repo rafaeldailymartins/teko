@@ -57,6 +57,8 @@ export interface IngestionContainer {
   readonly useCases: IngestionUseCases
   /** Orçamento diário de neurons (para o relatório do run). */
   readonly neuronBudget: NeuronBudget
+  /** Modelo de embedding da ingestão (`chunks.embedding_model`; linhagem do snapshot). */
+  readonly embeddingModel: string
   /** Fecha o pool do Postgres. */
   close(): Promise<void>
 }
