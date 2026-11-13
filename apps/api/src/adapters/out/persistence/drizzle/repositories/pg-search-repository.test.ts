@@ -37,14 +37,25 @@ const query: SearchQuery = {
   limit: 12,
 }
 
-function fakePool(fail = false) {
+/** `failures`: erro da busca em cada tentativa (`undefined` = sucesso); `true` = sempre falha. */
+function fakePool(failures: boolean | readonly (Error | undefined)[] = false) {
   const statements: string[] = []
   const release = vi.fn()
+  let attempt = 0
   const client = {
     query: (text: string, values?: unknown[]) => {
       statements.push(values === undefined ? text : `SQL(${String(values.length)})`)
-      if (fail && values !== undefined) {
-        return Promise.reject(new Error('statement timeout'))
+      if (values !== undefined) {
+        const failure =
+          failures === true
+            ? new Error('statement timeout')
+            : failures === false
+              ? undefined
+              : failures[attempt]
+        attempt += 1
+        if (failure !== undefined) {
+          return Promise.reject(failure)
+        }
       }
       return Promise.resolve({ rows: values === undefined ? [] : [row] })
     },
@@ -56,6 +67,11 @@ function fakePool(fail = false) {
     release,
   }
 }
+
+const terminated = () =>
+  Object.assign(new Error('terminating connection due to administrator command'), {
+    code: '57P01',
+  })
 
 describe('toEvidence e searchParameters', () => {
   it('converte a linha, com as datas em texto e ranks nulos', () => {
@@ -118,5 +134,30 @@ describe('createPgSearchRepository', () => {
     await expect(createPgSearchRepository(pool).search(query)).rejects.toThrow('statement timeout')
     expect(statements.at(-1)).toBe('ROLLBACK')
     expect(release).toHaveBeenCalledOnce()
+    expect(release).toHaveBeenCalledWith(undefined)
+  })
+
+  it('conexão derrubada (57P01): descarta a conexão e repete a busca uma vez', async () => {
+    const { pool, statements, release } = fakePool([terminated(), undefined])
+    await expect(createPgSearchRepository(pool).search(query)).resolves.toHaveLength(1)
+    expect(statements).toEqual([
+      BEGIN_HYBRID_SEARCH,
+      'SQL(7)',
+      'ROLLBACK',
+      BEGIN_HYBRID_SEARCH,
+      'SQL(7)',
+      'COMMIT',
+    ])
+    expect(release).toHaveBeenCalledTimes(2)
+    expect(release.mock.calls[0]?.[0]).toMatchObject({ code: '57P01' })
+    expect(release.mock.calls[1]?.[0]).toBeUndefined()
+  })
+
+  it('segunda queda seguida propaga o erro', async () => {
+    const { pool, release } = fakePool([terminated(), terminated()])
+    await expect(createPgSearchRepository(pool).search(query)).rejects.toMatchObject({
+      code: '57P01',
+    })
+    expect(release).toHaveBeenCalledTimes(2)
   })
 })

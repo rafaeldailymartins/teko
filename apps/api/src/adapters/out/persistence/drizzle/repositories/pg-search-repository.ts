@@ -1,6 +1,7 @@
 import type pg from 'pg'
 import type { SearchQuery, SearchRepository } from '#app/ports/search-repository.ts'
 import type { Evidence } from '#domain/qa/evidence.ts'
+import { isTransientConnectionError, retryTransientRead } from '../client.ts'
 import {
   BEGIN_HYBRID_SEARCH,
   BEGIN_SEARCH,
@@ -72,27 +73,33 @@ export function searchParameters(query: SearchQuery): unknown[] {
   ]
 }
 
+async function searchOnce(pool: pg.Pool, query: SearchQuery): Promise<Evidence[]> {
+  const client = await pool.connect()
+  let failure: unknown
+  try {
+    // Uma ida ao banco para abrir a transação (com os ajustes do HNSW, no modo híbrido), uma
+    // para a busca (instrução sem nome: nada de prepared statement nomeado no PgBouncer) e uma
+    // para o COMMIT.
+    await client.query(query.embedding === null ? BEGIN_SEARCH : BEGIN_HYBRID_SEARCH)
+    const result = await client.query<SearchRow>(
+      query.embedding === null ? LEXICAL_ONLY_SQL : HYBRID_SEARCH_SQL,
+      searchParameters(query),
+    )
+    await client.query('COMMIT')
+    return result.rows.map(toEvidence)
+  } catch (error) {
+    failure = error
+    await client.query('ROLLBACK').catch(() => {})
+    throw error
+  } finally {
+    // Conexão que caiu não volta ao pool: `release(erro)` a descarta.
+    client.release(isTransientConnectionError(failure) ? (failure as Error) : undefined)
+  }
+}
+
 export function createPgSearchRepository(pool: pg.Pool): SearchRepository {
   return {
-    async search(query) {
-      const client = await pool.connect()
-      try {
-        // Uma ida ao banco para abrir a transação (com os ajustes do HNSW, no modo híbrido), uma
-        // para a busca (instrução sem nome: nada de prepared statement nomeado no PgBouncer) e uma
-        // para o COMMIT.
-        await client.query(query.embedding === null ? BEGIN_SEARCH : BEGIN_HYBRID_SEARCH)
-        const result = await client.query<SearchRow>(
-          query.embedding === null ? LEXICAL_ONLY_SQL : HYBRID_SEARCH_SQL,
-          searchParameters(query),
-        )
-        await client.query('COMMIT')
-        return result.rows.map(toEvidence)
-      } catch (error) {
-        await client.query('ROLLBACK').catch(() => {})
-        throw error
-      } finally {
-        client.release()
-      }
-    },
+    // Leitura idempotente (transação só leitura): um retry numa conexão nova se a primeira cair.
+    search: (query) => retryTransientRead(() => searchOnce(pool, query)),
   }
 }
