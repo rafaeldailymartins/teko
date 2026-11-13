@@ -15,15 +15,16 @@ import {
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { afterEach, beforeEach, describe, it } from 'node:test'
+import { STATIC_HEADERS } from '../apps/api/src/adapters/in/http/static-site/policy.ts'
 import {
   BuildOutputError,
   buildVercelOutput,
+  bundleClosure,
   FUNCTION_NAME,
   HANDLER,
   MAX_DURATION_S,
   OUTPUT_CONFIG,
   REQUIRED_STATIC_FILES,
-  STATIC_HEADERS,
 } from './build-vercel-output.ts'
 
 /**
@@ -80,8 +81,24 @@ beforeEach(() => {
     staticDir: join(sandbox, 'apps', 'web', 'out'),
     outputDir: join(sandbox, '.vercel', 'output'),
   }
-  write(join(paths.bundleDir, HANDLER), 'export {}\n')
-  write(join(paths.bundleDir, `${HANDLER}.map`), '{}')
+  // Forma do bundle do tsdown: chunks compartilhados entre `server.mjs` e `cli.mjs`, importados
+  // estática e dinamicamente, e um chunk que só a CLI usa.
+  const bundle = paths.bundleDir
+  write(
+    join(bundle, HANDLER),
+    'import { a } from "./composition-root-AbC1.mjs";\nconst env = await import("./env-Xy2.mjs");\n',
+  )
+  write(join(bundle, `${HANDLER}.map`), '{}')
+  write(join(bundle, 'composition-root-AbC1.mjs'), "import './shared-Q9.mjs'\nexport const a = 1\n")
+  write(join(bundle, 'composition-root-AbC1.mjs.map'), '{}')
+  write(join(bundle, 'env-Xy2.mjs'), 'export const env = {}\n')
+  write(join(bundle, 'shared-Q9.mjs'), 'export {}\n')
+  write(
+    join(bundle, 'cli.mjs'),
+    'import "./composition-root-AbC1.mjs";\nimport "./cli-only-Z.mjs";\n',
+  )
+  write(join(bundle, 'cli.mjs.map'), '{}')
+  write(join(bundle, 'cli-only-Z.mjs'), 'export {}\n')
   const nm = paths.nodeModulesDir
   write(join(nm, 'fastify', 'package.json'), '{"name":"fastify"}')
   write(join(nm, 'fastify', 'fastify.js'))
@@ -246,13 +263,16 @@ describe('buildVercelOutput', () => {
     assert.equal(MAX_DURATION_S, 120)
   })
 
-  it('leva o export para static/ e só as dependências de produção para a Function', () => {
+  it('leva o export para static/, o handler com os chunks que ele importa e só as dependências de produção', () => {
     const result = buildVercelOutput(paths)
     assert.deepEqual(tree(paths.outputDir), [
       'config.json',
       'functions',
       'functions/index.func',
       'functions/index.func/.vc-config.json',
+      'functions/index.func/composition-root-AbC1.mjs',
+      'functions/index.func/composition-root-AbC1.mjs.map',
+      'functions/index.func/env-Xy2.mjs',
       'functions/index.func/node_modules',
       'functions/index.func/node_modules/fast-json-stringify',
       'functions/index.func/node_modules/fast-json-stringify/node_modules',
@@ -263,6 +283,7 @@ describe('buildVercelOutput', () => {
       'functions/index.func/node_modules/fastify/package.json',
       'functions/index.func/server.mjs',
       'functions/index.func/server.mjs.map',
+      'functions/index.func/shared-Q9.mjs',
       'static',
       'static/404.html',
       'static/_next',
@@ -295,6 +316,27 @@ describe('buildVercelOutput', () => {
   it('falha sem o bundle do tsdown', () => {
     rmSync(join(paths.bundleDir, HANDLER))
     assert.throws(() => buildVercelOutput(paths), BuildOutputError)
+  })
+
+  it('falha se o handler importa um chunk que não existe (ERR_MODULE_NOT_FOUND no boot)', () => {
+    rmSync(join(paths.bundleDir, 'shared-Q9.mjs'))
+    assert.throws(() => buildVercelOutput(paths), /shared-Q9\.mjs é importado pelo bundle/)
+  })
+
+  it('o fechamento de imports do bundle real (apps/api/dist) é o que a Function leva', (t) => {
+    const dist = join(REPO_ROOT, 'apps', 'api', 'dist')
+    if (!existsSync(join(dist, HANDLER))) {
+      t.skip(
+        'apps/api/dist ausente: rode `pnpm --filter @teko/api build` para conferir o bundle real',
+      )
+      return
+    }
+    const files = bundleClosure(dist, HANDLER)
+    assert.ok(files.includes(HANDLER))
+    assert.ok(!files.includes('cli.mjs'))
+    for (const file of files) {
+      assert.ok(existsSync(join(dist, file)), file)
+    }
   })
 
   it('falha sem as dependências de produção', () => {

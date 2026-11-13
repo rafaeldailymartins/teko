@@ -13,7 +13,7 @@
  *     static/                             cópia de `apps/web/out` (HTML, CSS, JS, fontes)
  *     functions/index.func/
  *       .vc-config.json                   nodejs24.x, launcher Nodejs, streaming, maxDuration
- *       server.mjs, server.mjs.map        `apps/api/dist` (tsdown)
+ *       server.mjs (+ chunks), *.map      `apps/api/dist` (tsdown): o handler e o que ele importa
  *       node_modules/                     dependências de produção da API
  *
  * Só `/api/*` e `/healthz` chegam à Function; o resto é servido pela CDN a partir de `static/`. As
@@ -37,7 +37,9 @@
  * simbólicos (só os `.bin`, que ficam de fora); um link simbólico nas dependências ou no export
  * derruba o script. Ficam de fora também os metadados do pnpm (`.pnpm`, `.modules.yaml` etc.) e o
  * `@teko/shared`, que já está no bundle. Argumento na linha de comando termina com código 2;
- * falha de montagem, com 1. Não usa dependências: só o Node 24 (type stripping).
+ * falha de montagem, com 1. Não usa dependências: só o Node 24 (type stripping) e a política do site
+ * estático da API (`apps/api/src/adapters/in/http/static-site/policy.ts`, sem imports), a mesma que o
+ * Plano B (Render) usa.
  */
 import {
   copyFileSync,
@@ -45,12 +47,20 @@ import {
   lstatSync,
   mkdirSync,
   readdirSync,
+  readFileSync,
   rmSync,
   writeFileSync,
 } from 'node:fs'
 import { join, resolve } from 'node:path'
 import process from 'node:process'
 import { parseArgs } from 'node:util'
+import {
+  ACCEPT_LANGUAGE_EN,
+  IMMUTABLE_CACHE_CONTROL,
+  ROOT_REDIRECT_HEADERS,
+  STATIC_HEADERS,
+  STATIC_LOCALES,
+} from '../apps/api/src/adapters/in/http/static-site/policy.ts'
 import { compareCodeUnits, resolveInsideRoot } from './lib/cli-guards.ts'
 
 const REPO_ROOT = resolve(import.meta.dirname, '..')
@@ -101,35 +111,8 @@ export const LEGACY_HOST_REDIRECTS = [
 /** Caminhos da API (Function `index`); tudo o mais é estático. */
 export const API_PATH_PATTERN = '^/(api(?:/.*)?|healthz)$'
 
-/** Locales do export (`apps/web/src/lib/i18n/routing.ts`); o primeiro é o padrão. */
-export const LOCALES = ['pt-BR', 'en'] as const
-
-/**
- * Primeiro idioma do `Accept-Language` é inglês (`en`, `en-US`...). O redirect da raiz é o mesmo
- * que o `_redirects` da Netlify fazia (`/ /en/ 302 Language=en`, senão `/pt-BR/`).
- */
-export const ACCEPT_LANGUAGE_EN = '^\\s*en(?:-[A-Za-z0-9]+)*\\s*(?:[;,]|$)'
-
-/**
- * Headers das respostas estáticas (a API define os próprios, com CSP `default-src 'none'`). O CSP
- * daqui só traz diretivas que não dependem do HTML; o CSP completo, com os hashes dos `<script>` e
- * `<style>` inline, entra por caminho na F5 (plano, "Segurança no navegador").
- */
-export const STATIC_HEADERS = {
-  'Strict-Transport-Security': 'max-age=63072000; includeSubDomains',
-  'X-Content-Type-Options': 'nosniff',
-  'X-Frame-Options': 'DENY',
-  'Referrer-Policy': 'strict-origin-when-cross-origin',
-  'Permissions-Policy':
-    'accelerometer=(), browsing-topics=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()',
-  'Cross-Origin-Opener-Policy': 'same-origin',
-  'Cross-Origin-Resource-Policy': 'same-origin',
-  'Content-Security-Policy':
-    "object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
-} as const
-
-/** Redirect da raiz: depende do `Accept-Language`, então nunca fica em cache compartilhado. */
-const ROOT_REDIRECT_HEADERS = { 'Cache-Control': 'private, no-store', Vary: 'Accept-Language' }
+/** Locales do export; o primeiro é o padrão (fonte: a política do site estático da API). */
+const LOCALES = STATIC_LOCALES
 
 /**
  * Rotas do `config.json`, na ordem em que a Vercel as avalia:
@@ -162,7 +145,7 @@ export const OUTPUT_CONFIG = {
     { src: '^/(.*)$', headers: STATIC_HEADERS, continue: true },
     {
       src: '^/_next/static/(.*)$',
-      headers: { 'Cache-Control': 'public, max-age=31536000, immutable' },
+      headers: { 'Cache-Control': IMMUTABLE_CACHE_CONTROL },
       continue: true,
     },
     {
@@ -292,6 +275,41 @@ function copyStatic(from: string, to: string, relative = ''): number {
   return files
 }
 
+/**
+ * Imports relativos de um módulo do bundle: `from "./x.mjs"`, `import "./x.mjs"` e
+ * `import("./x.mjs")`, como o tsdown (rolldown) os emite para os chunks compartilhados.
+ */
+const RELATIVE_IMPORT =
+  /(?:\bfrom\s*|\bimport\s*\(\s*|\bimport\s+)(['"])\.\/([A-Za-z0-9._-]+\.mjs)\1/g
+
+/**
+ * O handler e todos os chunks que ele importa, direta ou indiretamente (estática ou
+ * dinamicamente). O tsdown gera chunks compartilhados entre `server.mjs` e `cli.mjs`
+ * (`composition-root-<hash>.mjs`, ...); levar só o `server.mjs` derrubaria a Function no boot com
+ * `ERR_MODULE_NOT_FOUND`. Ficam de fora o `cli.mjs` e o que só a CLI importa.
+ */
+export function bundleClosure(bundleDir: string, entry: string): string[] {
+  const seen = new Set<string>()
+  const pending = [entry]
+  while (pending.length > 0) {
+    const file = pending.pop()
+    if (file === undefined || seen.has(file)) {
+      continue
+    }
+    const path = join(bundleDir, file)
+    if (!existsSync(path)) {
+      throw new BuildOutputError(`${file} é importado pelo bundle, mas não existe em ${bundleDir}`)
+    }
+    seen.add(file)
+    for (const match of readFileSync(path, 'utf8').matchAll(RELATIVE_IMPORT)) {
+      if (match[2] !== undefined) {
+        pending.push(match[2])
+      }
+    }
+  }
+  return [...seen].sort(compareCodeUnits)
+}
+
 function writeJson(file: string, value: unknown): void {
   writeFileSync(file, `${JSON.stringify(value, null, 2)}\n`)
 }
@@ -331,10 +349,12 @@ export function buildVercelOutput(paths: BuildPaths): BuildResult {
   mkdirSync(functionDir, { recursive: true })
   writeJson(join(paths.outputDir, 'config.json'), OUTPUT_CONFIG)
   writeJson(join(functionDir, '.vc-config.json'), VC_CONFIG)
-  copyFileSync(handler, join(functionDir, HANDLER))
-  const sourceMap = `${handler}.map`
-  if (existsSync(sourceMap)) {
-    copyFileSync(sourceMap, join(functionDir, `${HANDLER}.map`))
+  for (const file of bundleClosure(paths.bundleDir, HANDLER)) {
+    copyFileSync(join(paths.bundleDir, file), join(functionDir, file))
+    const sourceMap = join(paths.bundleDir, `${file}.map`)
+    if (existsSync(sourceMap)) {
+      copyFileSync(sourceMap, join(functionDir, `${file}.map`))
+    }
   }
   const dependencyFiles = copyDependencies(paths.nodeModulesDir, join(functionDir, 'node_modules'))
   const staticFiles = copyStatic(paths.staticDir, join(paths.outputDir, 'static'))
