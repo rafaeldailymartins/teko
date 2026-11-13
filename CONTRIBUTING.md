@@ -17,7 +17,7 @@ workflow and the quality gates every change must pass. Security problems follow
 | ------- | ----------------------------------- | -------------------------------------------------------------- |
 | Node.js | `>=24.12.0 <25` (`.nvmrc`: 24)      | Root scripts run as TypeScript through Node's type stripping   |
 | pnpm    | 12.18.0, pinned by `packageManager` | Through Corepack only (see below); never install pnpm globally |
-| Docker  | Engine with Compose v2              | Local Postgres (pgvector) and the signed dev proxy             |
+| Docker  | Engine with Compose v2              | Local Postgres (pgvector) and Testcontainers                   |
 | uv      | 0.13.x (CI pins 0.13.7)             | Only for the Python ingestion tool (`tools/ingest`)            |
 | Git     | with SSH commit signing configured  | See [Commits](#commits)                                        |
 
@@ -39,14 +39,13 @@ docker compose -f infra/local/compose.yaml up -d --wait; echo "exit=$?"
 pnpm --filter @teko/api seed:fixtures; echo "exit=$?"  # migrates the local database and loads the fixture corpus
 ```
 
-- `pnpm dev:secrets` generates local-only secrets (dev proxy JWS secret, Better Auth secret,
-  database and Langfuse passwords) into git-ignored `.env` files. It never overwrites an existing
-  secret and never prints values. The signed dev token `DEV_STATIC_JWS` lasts 7 days: run the
-  command again when it expires and recreate the proxy with `docker compose ... up -d`.
+- `pnpm dev:secrets` generates local-only secrets (Better Auth secret, database and Langfuse
+  passwords) into git-ignored `.env` files. It never overwrites an existing secret and never
+  prints values.
 - The local stack binds only to `127.0.0.1`: Postgres 18 + pgvector on `5432` (change
   `TEKO_PG_PORT` in `infra/local/.env` **before** the first `pnpm dev:secrets` if that port is
-  taken) and the signed dev proxy on `8787`, which simulates the Netlify signed proxy in front of
-  the API.
+  taken). Web and API share one origin, as on Vercel: in development, Next.js rewrites `/api/*` to
+  the API (ADR 0029).
 - Optional local Langfuse (UI on `http://localhost:3100`, user `dev@teko.localhost`, password in
   `infra/local/.env`):
   `docker compose -f infra/local/compose.yaml --profile langfuse up -d --wait`.
@@ -81,24 +80,26 @@ Select-String -Path "$TEKO_TMP/teko-tests.log" -Pattern 'FAIL|failed|Error'
 
 Do not rely on `$TMPDIR` without a fallback and never write logs inside the repository.
 
-## Branches (Git Flow)
+## Branches (trunk-based)
 
-- `develop` is the default branch and maps to **staging**. `main` maps to **production**.
-- Work branches start from `develop` and use one of these prefixes: `feature/`, `fix/`, `chore/`,
-  `docs/`, `refactor/`, `perf/`, `test/`, `ci/`, `build/`. Releases and hotfixes use
-  `release/vX.Y.Z` and `hotfix/vX.Y.Z`. Dependabot's `dependabot/**` branches are also allowed.
-  Any other name is rejected by the repository rules.
-- Locally, git-flow-next 2.1.x is recommended but optional.
+The project is moving from Git Flow to trunk-based development
+([ADR 0033](docs/adr/0033-trunk-based.md)). After the maintainer renames `develop` to `main` and
+switches the rulesets:
 
-| Source → target                     | Merge method                                           |
-| ----------------------------------- | ------------------------------------------------------ |
-| `feature/*`, `fix/*`, … → `develop` | **squash**; the PR title must be a Conventional Commit |
-| `release/*`, `hotfix/*` → `main`    | merge commit                                           |
-| `main` → `develop` (back-merge)     | merge commit, auto-merge                               |
+- `main` is the trunk and the default branch. **A push to `main` deploys staging.**
+- **Production ships from a `vX.Y.Z` tag**, created by the release App after the release PR is
+  merged; the release gate and the `production` environment reviewer run on the tag.
+- Work branches start from `main` and use one of these prefixes: `feature/`, `fix/`, `chore/`,
+  `docs/`, `refactor/`, `perf/`, `test/`, `ci/`, `build/`. Dependabot's `dependabot/**` branches
+  are also allowed. Any other name is rejected by the repository rules.
+- Every PR is **squash**-merged; the PR title must be a Conventional Commit. Merge commits and
+  rebase merging are disabled. A hotfix is a patch release cut from `main`.
 
-Rebase merging is disabled and linear history is not required. Only `release/vX.Y.Z` and
-`hotfix/vX.Y.Z` branches may open PRs into `main`. Direct pushes to `main` and `develop` are
-impossible.
+**Until the switch**, the trunk is still called `develop`: branch from `develop` and open PRs
+against it. Direct pushes to the trunk are impossible either way.
+
+To bring a PR branch up to date, use `gh pr update-branch` (or the "Update branch" button). A local
+merge needs `--signoff`: the `dco` check only exempts merge commits made by GitHub (`web-flow`).
 
 ## Commits
 
@@ -132,8 +133,11 @@ protected branches require signed commits.
 
 ## OpenSpec workflow
 
-Behavior changes are specified with [OpenSpec](https://github.com/Fission-AI/OpenSpec) before they
-are implemented. Specs live in `openspec/specs/`, in-flight changes in `openspec/changes/`.
+Requirement changes are specified with [OpenSpec](https://github.com/Fission-AI/OpenSpec) before
+they are implemented. Specs live in `openspec/specs/`, in-flight changes in `openspec/changes/`.
+Open a change only when the behavior described in `openspec/specs/**` changes; fixes that keep the
+requirements, CI, docs and infrastructure work do not need one. The current design is in
+[`docs/architecture/`](docs/architecture/) and the phase plan in [`docs/roadmap.md`](docs/roadmap.md).
 
 1. **Propose.** On `feature/<id>`, create the change with `/opsx:propose` (Claude Code) or
    `pnpm exec openspec new change <id>`. It holds `proposal.md`, `design.md`, `tasks.md` and spec
@@ -142,11 +146,10 @@ are implemented. Specs live in `openspec/specs/`, in-flight changes in `openspec
    on a library, framework, CLI or service, read its current documentation through the Context7
    MCP (`resolve-library-id` → `query-docs`). The change's `design.md` must have a
    **"Fontes Context7"** section listing every library ID consulted, the version checked and the
-   topics read. If the documentation contradicts the plan or an ADR, fix the plan/ADR in the same
-   PR.
-3. **Implement** with `/opsx:apply`, ticking `tasks.md` as you go. Cover each scenario with unit or
-   integration tests. From phase F5 on, scenarios also become playwright-bdd acceptance tests
-   tagged `@spec:*`, checked against the specs by `scripts/spec-trace.ts`.
+   topics read. If the documentation contradicts `docs/architecture/` or an ADR, fix them in the
+   same PR.
+3. **Implement** with `/opsx:apply`, ticking `tasks.md` as you go. Cover each scenario with unit,
+   integration or e2e tests.
 4. **Archive** in the same PR: `pnpm exec openspec archive <id> --yes`.
 5. **Validate**: `pnpm spec:validate` (`openspec validate --all --strict --no-interactive`) runs in
    the pre-commit hook and in CI.
@@ -168,28 +171,22 @@ The supply-chain rules are documented in
   pinned to 3.7.6, the last release with SLSA provenance. Do not bump it until Vercel publishes
   with provenance again.
 
-### Deploy CLIs (`tools/vercel-cli`, `tools/netlify-cli`)
+### Deploy CLI (`tools/vercel-cli`)
 
-The Vercel CLI and the Netlify CLI live in `tools/vercel-cli` and `tools/netlify-cli`, separate pnpm
-projects (`packages: []`) with their own lockfiles. They hold the only provenance exceptions in the
-repository (`vercel` and `@vercel/*` stopped shipping SLSA provenance in August 2026, and two exact
-versions of `@netlify/serverless-functions-api`; see ADR 0002). They are **not** part of the
-workspace, are not installed by the root `pnpm install`, and only run in the deploy jobs of GitHub
-Actions:
+The Vercel CLI lives in `tools/vercel-cli`, a separate pnpm project (`packages: []`) with its own
+lockfile. It holds the provenance exceptions for `vercel` and `@vercel/*`, which stopped shipping
+SLSA provenance in August 2026 (ADR 0002). It is **not** part of the workspace, is not installed by
+the root `pnpm install`, and only runs in the deploy jobs of GitHub Actions:
 
 ```bash
 corepack pnpm --dir tools/vercel-cli install --frozen-lockfile
 corepack pnpm --dir tools/vercel-cli exec vercel --version
-corepack pnpm --dir tools/netlify-cli install --frozen-lockfile
-corepack pnpm --dir tools/netlify-cli exec netlify --version
 ```
 
-You do not need them locally: deploys happen only from CI (the API as a Build Output API assembled
-from the tsdown bundle and deployed with `vercel deploy --prebuilt`, ADR 0017; the web with
-`netlify deploy --build`). The deploy workflows (`deploy-api.yml`, `deploy-web.yml`) arrive in
-phase F7; until then only the F1 spike workflows `spike-api-vercel.yml` and `spike-web-netlify.yml`
-run these CLIs, and CI audits both trees. Never add `vercel`, `@vercel/*` or Netlify CLI exceptions
-to the root `pnpm-workspace.yaml`.
+You do not need it locally: deploys happen only from CI. One deploy publishes the web's static
+export and the API together, as a Build Output API assembled by `scripts/build-vercel-output.ts`
+and deployed with `vercel deploy --prebuilt` (ADRs 0017 and 0029). The deploy workflow arrives in
+phase F7. Never add `vercel` or `@vercel/*` exceptions to the root `pnpm-workspace.yaml`.
 
 ### Python (`tools/ingest`)
 
@@ -218,8 +215,8 @@ Run these before opening a PR (CI runs all of them again):
 | `pnpm lint:fsd`                | Feature-Sliced Design rules in `apps/web` (Steiger)                                    |
 | `pnpm exec turbo boundaries`   | package boundaries (imports outside the package, undeclared deps, tags)                |
 | `pnpm spec:validate`           | OpenSpec strict validation                                                             |
-| `pnpm check-lockfile`          | single-document lockfiles (root, `tools/vercel-cli`, `tools/netlify-cli`)              |
-| `pnpm audit --audit-level low` | known vulnerabilities; run it in `tools/vercel-cli` and `tools/netlify-cli` too        |
+| `pnpm check-lockfile`          | single-document lockfiles (root and `tools/vercel-cli`)                                |
+| `pnpm audit --audit-level low` | known vulnerabilities; run it in `tools/vercel-cli` too                                |
 | `pnpm test:mutation`           | Stryker in `apps/api` and `packages/shared`, break at 70 (run it for changed packages) |
 
 `pnpm test` runs `test:unit` and `test:integration` together.
@@ -255,7 +252,7 @@ Jobs that run only when their scope is affected:
 A PR that changes CI or root configuration (`.github/workflows`, `.github/actions`,
 `.github/scripts`, `.github/affected-paths.yml`, `turbo.json`, `package.json`,
 `pnpm-workspace.yaml`, `pnpm-lock.yaml`, `tsconfig*.json`, `biome.json`, `knip.json`,
-`lefthook.yml`, `.semgrep/`, `sonar-project.properties`, `tools/vercel-cli/`, `tools/netlify-cli/`)
+`lefthook.yml`, `.semgrep/`, `sonar-project.properties`, `tools/vercel-cli/`)
 runs every job, not just the affected ones.
 
 `pnpm knip` runs knip twice: the default pass (whole project, tests included) and a
@@ -280,8 +277,8 @@ Maintainer setup: add `SONAR_TOKEN` both as a repository secret and as a **Depen
 without it their Sonar analysis is skipped like a fork's.
 
 The SonarQube Cloud free plan analyzes only the project's main branch and pull requests. The
-project's main branch in SonarQube Cloud is `develop` (the GitHub default and integration branch),
-so on push the `sonar` job runs only for `develop`; pushes to `main` (releases) are not analyzed.
+project's main branch in SonarQube Cloud is the trunk (`develop` today, renamed to `main` with the
+trunk-based switch), so on push the `sonar` job runs only for the trunk.
 
 ## Non-commercial posture
 
