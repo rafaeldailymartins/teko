@@ -77,3 +77,4 @@ montar as fixtures (recortes mínimos, bytes originais).
 | Drizzle ORM 1.0 RC   | `/websites/rqbv2_drizzle-orm-fe_pages_dev`    | `update().set({ col: sql\`…\` })`, `where`, transação                |
 | GitHub Actions       | `/websites/github_en_actions`                 | `workflow_call` com segredos de environment, `schedule`              |
 | Testcontainers       | `/testcontainers/testcontainers-node/v12.2.0` | já usado pela F2 (`test/setup/postgres.global.ts`)                   |
+| Harden-Runner        | `/step-security/harden-runner`                | `egress-policy: block` com `allowed-endpoints` (tarefa 4.3)          |
