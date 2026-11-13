@@ -418,6 +418,78 @@ describe('reconciliação de um consolidado novo', () => {
   })
 })
 
+describe('lacunas de cobertura na ingestão (M1)', () => {
+  it('só limpa a lacuna do documento que ganhou versão nova depois da detecção', async () => {
+    const { container } = context()
+    const { useCases } = container
+    const ingest = async (runId: string, source: typeof V1, parserRevision = 1) =>
+      useCases.ingestDocumentVersion({
+        runId,
+        source,
+        blobRaw: null,
+        blobDocling: null,
+        parserRevision,
+      })
+    const gapRow = async () =>
+      (
+        await owner.query<{ gaps: string; gap_reason: string | null; gap_entries: unknown }>(
+          `SELECT gaps::text AS gaps, gap_reason, gap_entries FROM corpus.coverage
+           WHERE family = 'rcte'`,
+        )
+      ).rows[0]
+
+    const first = await useCases.startIngestionRun({ target: 'staging', gitSha: 'g' })
+    await ingest(first.runId, V1)
+    await useCases.refreshCoverage({ runId: first.runId, verifiedAt: '2026-11-10' })
+
+    // O source-watch detecta duas mudanças na família depois da primeira ingestão.
+    // Relógio do banco (o do contêiner pode diferir do da máquina).
+    const clock = await owner.query<{ now: string }>(
+      `SELECT to_char(clock_timestamp() AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS now`,
+    )
+    const detectedAt = clock.rows[0]?.now ?? ''
+    const rcteGap = {
+      sources: ['rcte'],
+      from: '2026-11-10',
+      to: null,
+      detectedAt,
+      reason: 'Decreto nº 10.995',
+    }
+    const otherGap = { ...rcteGap, sources: ['outro-documento'], reason: 'Outro documento' }
+    await owner.query(
+      `UPDATE corpus.coverage SET gaps = '{[2026-11-10,)}', gap_reason = 'x',
+         gap_entries = $1::jsonb WHERE family = 'rcte'`,
+      [JSON.stringify([rcteGap, otherGap])],
+    )
+
+    // Reprocessar a versão antiga (revisão do parser) publica o rcte, mas não resolve a lacuna.
+    const second = await useCases.startIngestionRun({ target: 'staging', gitSha: 'g' })
+    expect(await ingest(second.runId, V1, 2)).toMatchObject({
+      status: 'published',
+      reprocessed: true,
+    })
+    await useCases.refreshCoverage({ runId: second.runId, verifiedAt: '2026-11-11' })
+    expect((await gapRow())?.gap_entries).toEqual([rcteGap, otherGap])
+
+    // Uma versão nova do rcte resolve só a lacuna dele.
+    const third = await useCases.startIngestionRun({ target: 'staging', gitSha: 'g' })
+    await ingest(
+      third.runId,
+      rcteSource('dec-2', '2026-11-12', [
+        article(901, [
+          version('Art. 901. Texto original do artigo novecentos e um.', interval('2000-01-01')),
+        ]),
+      ]),
+    )
+    await useCases.refreshCoverage({ runId: third.runId, verifiedAt: '2026-11-12' })
+    expect(await gapRow()).toEqual({
+      gaps: '{[2026-11-10,)}',
+      gap_reason: 'Outro documento',
+      gap_entries: [otherGap],
+    })
+  })
+})
+
 describe('Guia: janela do período do leiaute', () => {
   it('alarga versões consecutivas iguais e recorta a vigência numa versão corretiva', async () => {
     const { container, spy } = context()

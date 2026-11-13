@@ -15,8 +15,9 @@ import { type SnapshotDeps, SnapshotError } from './export-snapshot.ts'
  * ser igual ao do manifesto (por isso roda depois da fase `migrate` do deploy), a versão do corpus
  * no destino não pode ser mais nova que a do snapshot, e o sha256 de cada arquivo é conferido.
  * A escrita é uma transação (`SnapshotRepository.promote`): upsert por chave natural, fechamento do
- * `knowledge` das linhas ausentes, `coverage` preservando `verified_at`/`gap_reason` mais recentes
- * do destino e `corpus_versions` por último.
+ * `knowledge` das linhas ausentes, `coverage` com o `verified_at` mais recente dos dois e as
+ * lacunas do snapshot mais as do destino detectadas depois da exportação (A1), e `corpus_versions`
+ * por último.
  */
 
 interface PromoteSnapshotCommand {

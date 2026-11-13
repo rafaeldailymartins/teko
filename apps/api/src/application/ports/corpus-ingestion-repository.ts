@@ -172,7 +172,8 @@ export interface CorpusIngestionRepository {
   transaction<T>(work: (uow: IngestionUnitOfWork) => Promise<T>): Promise<T>
   /**
    * Recalcula `coverage.covered` (união das vigências das redações publicáveis atuais),
-   * `verified_at` e limpa `gaps`/`gap_reason` das famílias; grava um `corpus_versions` novo e
+   * `verified_at` e tira de `gap_entries` (e de `gaps`/`gap_reason`) as lacunas resolvidas por
+   * versão de documento criada no run depois da detecção; grava um `corpus_versions` novo e
    * carimba os chunks ainda sem versão (`corpus_version = 0`). Sem família a recalcular, não grava
    * nada e devolve a versão atual.
    */

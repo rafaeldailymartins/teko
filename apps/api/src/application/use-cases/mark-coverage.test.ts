@@ -76,6 +76,7 @@ describe('markCoverage', () => {
             versionLabel: null,
             sourceUrl: 'https://www.gov.br/sped/guia-3-2-5.pdf',
             effectiveFrom: '2026-11-11',
+            covers: ['guia-pratico-efd-icms-ipi'],
           }),
         ],
         unverifiedFamilies: ['tabelas-go'],
@@ -88,6 +89,8 @@ describe('markCoverage', () => {
         reason:
           'Mudança detectada pelo source-watch em 2026-11-11: ' +
           'https://www.gov.br/sped/guia-3-2-5.pdf (desde 2026-11-11)',
+        sources: ['guia-pratico-efd-icms-ipi'],
+        detectedAt: '2026-11-11T12:00:00.000Z',
       },
       {
         family: 'rcte',
@@ -96,6 +99,8 @@ describe('markCoverage', () => {
           'Mudança detectada pelo source-watch em 2026-11-11: ' +
           'Decreto nº 10.991 (desde 2026-10-08, ainda não consolidado); ' +
           'Decreto nº 10.995 (desde 2026-11-10)',
+        sources: [],
+        detectedAt: '2026-11-11T12:00:00.000Z',
       },
     ])
     expect(repository.commands[0]?.excludeFamilies).toEqual(['tabelas-go'])
@@ -109,6 +114,23 @@ describe('markCoverage', () => {
     const [gap] = gapsFromReport(report({ changes }))
     expect(gap?.reason).toHaveLength(GAP_REASON_MAX)
     expect(gap?.reason.endsWith('…')).toBe(true)
+  })
+
+  it('separa as lacunas da família pelos documentos que as resolvem', () => {
+    const gaps = gapsFromReport(
+      report({
+        changes: [
+          change({ family: 'efd-icms-ipi', covers: ['notas-tecnicas-efd-icms-ipi'] }),
+          change({ family: 'efd-icms-ipi', covers: ['guia-pratico-efd-icms-ipi'] }),
+          change({ family: 'efd-icms-ipi', effectiveFrom: '2026-11-01', covers: [] }),
+        ],
+      }),
+    )
+    expect(gaps.map((gap) => [gap.family, gap.sources, gap.from])).toEqual([
+      ['efd-icms-ipi', [], '2026-11-01'],
+      ['efd-icms-ipi', ['guia-pratico-efd-icms-ipi'], '2026-11-10'],
+      ['efd-icms-ipi', ['notas-tecnicas-efd-icms-ipi'], '2026-11-10'],
+    ])
   })
 
   it('não repete a mesma mudança no motivo', () => {

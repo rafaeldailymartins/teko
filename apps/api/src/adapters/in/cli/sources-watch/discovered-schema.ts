@@ -26,6 +26,10 @@ const changeSchema = z.strictObject({
   pageId: z.string().max(100),
   mode: z.enum([WatchMode.Live, WatchMode.Pinned]),
   status: z.enum(['new', 'pending']),
+  covers: z
+    .array(z.string().regex(/^[a-z0-9][a-z0-9-]*$/u))
+    .max(50)
+    .optional(),
 })
 
 const reportSchema = z.strictObject({

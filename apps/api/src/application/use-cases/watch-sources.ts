@@ -143,10 +143,20 @@ interface PageOutcome {
   readonly changes: readonly DiscoveredChange[]
 }
 
+/** `covers` da mudança: o do item (padrão do índice) ou o da página; omitido se vazio. */
+function coversField(
+  page: WatchPage,
+  item?: { readonly covers?: readonly string[] | null },
+): Pick<DiscoveredChange, 'covers'> {
+  const covers = item?.covers ?? page.covers ?? []
+  return covers.length === 0 ? {} : { covers: [...covers] }
+}
+
 function change(
   page: WatchPage,
   kind: DiscoveredKind,
   fields: Pick<DiscoveredChange, 'sourceUrl' | 'effectiveFrom' | 'versionLabel'>,
+  item?: { readonly covers?: readonly string[] | null },
 ): DiscoveredChange {
   return {
     family: page.family,
@@ -155,6 +165,7 @@ function change(
     mode: page.mode,
     status: 'new',
     ...fields,
+    ...coversField(page, item),
   }
 }
 
@@ -205,7 +216,7 @@ function diffSignals(
         })
       }
     } else if (page.kind === WatchKind.DocumentIndex) {
-      changes.push(change(page, DiscoveredKind.Document, fields))
+      changes.push(change(page, DiscoveredKind.Document, fields, item))
     } else {
       changes.push(change(page, DiscoveredKind.Table, fields))
     }
@@ -307,6 +318,7 @@ function settlePending(
         pageId: page.id,
         mode: page.mode,
         status: 'pending',
+        ...coversField(page),
       })
     }
   }

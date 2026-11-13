@@ -7,6 +7,7 @@ import {
   type OpenProvisionVersion,
   UNVERSIONED_CORPUS,
 } from '#app/ports/corpus-ingestion-repository.ts'
+import { clearResolvedGaps } from '#domain/corpus/coverage-gaps.ts'
 import {
   type Family,
   isFamily,
@@ -25,6 +26,7 @@ import {
   provisionVersions,
   reviewQueue,
 } from '../schema/corpus.ts'
+import { gapColumns, storedGapEntries } from './coverage-gap-entries.ts'
 import { CorpusInvariantError } from './pg-corpus-writer.ts'
 import { groupByLevel } from './pg-ingestion-provision-levels.ts'
 
@@ -447,6 +449,45 @@ function unitOfWork(tx: Tx): IngestionUnitOfWork {
   }
 }
 
+/**
+ * Lacunas da família que continuam abertas depois do run: sai só a entrada cujo documento ganhou,
+ * neste run, uma versão publicada criada depois da detecção (M1: publicar outro documento da
+ * família, ou reprocessar uma versão antiga pela revisão do parser, não resolve a lacuna).
+ */
+async function remainingGaps(tx: Tx, family: Family, runId: string) {
+  const current = await tx.execute<{
+    gaps: string
+    gap_reason: string | null
+    gap_entries: unknown
+  }>(
+    sql`SELECT gaps::text AS gaps, gap_reason, gap_entries FROM corpus.coverage
+        WHERE family = ${family} FOR UPDATE`,
+  )
+  const row = current.rows[0]
+  const entries =
+    row === undefined
+      ? []
+      : storedGapEntries({
+          family,
+          gaps: row.gaps,
+          gapReason: row.gap_reason,
+          gapEntries: row.gap_entries,
+        })
+  if (entries.length === 0) {
+    return []
+  }
+  const published = await tx.execute<{ slug: string; created_at: string }>(sql`
+    SELECT d.slug,
+      to_char(dv.created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS created_at
+    FROM corpus.document_versions dv JOIN corpus.documents d ON d.id = dv.document_id
+    WHERE dv.ingestion_run_id = ${runId}::uuid AND dv.status = 'published'
+      AND d.family = ${family}`)
+  return clearResolvedGaps(
+    entries,
+    published.rows.map((row) => ({ slug: row.slug, createdAt: row.created_at })),
+  )
+}
+
 function asFamily(value: string): Family {
   if (!isFamily(value)) {
     throw new CorpusInvariantError(`família desconhecida no banco: ${value}`)
@@ -504,19 +545,22 @@ export function createPgCorpusIngestionRepository(db: DrizzleDb): CorpusIngestio
           throw new CorpusInvariantError('não foi possível abrir a versão do corpus')
         }
         for (const family of targets) {
+          const gaps = gapColumns(await remainingGaps(tx, family, runId))
           await tx.execute(sql`
             INSERT INTO corpus.coverage AS cov (family, jurisdiction, covered, verified_at,
-              corpus_version, gaps, gap_reason)
+              corpus_version, gaps, gap_reason, gap_entries)
             SELECT ${family}, ${jurisdictionOf(family)},
               coalesce((SELECT range_agg(pv.valid_during) FROM corpus.provision_versions pv
                 JOIN corpus.provisions p ON p.id = pv.provision_id
                 JOIN corpus.documents d ON d.id = p.document_id
                 WHERE d.family = ${family} AND upper_inf(pv.knowledge)
                   AND pv.review_status IN ('auto', 'approved')), '{}'::datemultirange),
-              ${verifiedAt}::date, ${version.id}, '{}'::datemultirange, NULL
+              ${verifiedAt}::date, ${version.id}, ${gaps.gaps}::datemultirange,
+              ${gaps.gapReason}, ${gaps.gapEntries}::jsonb
             ON CONFLICT (family) DO UPDATE SET covered = excluded.covered,
               verified_at = excluded.verified_at, corpus_version = excluded.corpus_version,
-              gaps = '{}'::datemultirange, gap_reason = NULL`)
+              gaps = excluded.gaps, gap_reason = excluded.gap_reason,
+              gap_entries = excluded.gap_entries`)
         }
         await tx
           .update(chunks)

@@ -290,6 +290,12 @@ export const coverage = corpus.table(
     corpusVersion: integer().notNull(),
     gaps: datemultirange().notNull().default(sql`'{}'::datemultirange`),
     gapReason: text(),
+    /**
+     * Lacunas por entrada (`CoverageGapEntry`: documentos que a resolvem, vigência, detecção e
+     * motivo). `gaps` e `gap_reason` são sempre a soma delas; a ingestão e a promoção decidem por
+     * entrada (lacuna detectada depois do snapshot fica na produção).
+     */
+    gapEntries: jsonb().notNull().default(sql`'[]'::jsonb`),
   },
   (t) => [check('coverage_jurisdiction', sql`${t.jurisdiction} IN ('BR', 'GO')`)],
 )

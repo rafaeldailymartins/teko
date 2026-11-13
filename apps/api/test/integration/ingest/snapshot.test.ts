@@ -89,7 +89,7 @@ describe('exportação', () => {
   it('grava um .jsonl.zst por tabela, na ordem de FK, e o manifesto por último', () => {
     expect(manifestKey).toBe('snapshots/1/manifest.json')
     expect(manifest.corpusVersion).toBe(1)
-    expect(manifest.migration.name).toMatch(/parser-revision/)
+    expect(manifest.migration.name).toMatch(/coverage-gap-entries/)
     expect(blobs.keys(BlobStoreName.CorpusSnapshots)).toEqual(
       [...manifest.tables.map((table) => table.key), manifestKey].sort(),
     )
@@ -182,16 +182,47 @@ describe('promoção num banco vazio', () => {
     expect(open.rows[0]?.n).toBe(stagingClosed.rows[0]?.n)
   })
 
-  it('mantém o verified_at de produção quando ele é mais recente', async () => {
+  it('mantém o verified_at mais recente da produção e decide a lacuna pela detecção (A1)', async () => {
+    const shifted = (ms: number) => new Date(Date.parse(manifest.createdAt) + ms).toISOString()
+    const entry = (detectedAt: string, reason: string, sources: string[]) => ({
+      sources,
+      from: '2026-11-10',
+      to: null,
+      detectedAt,
+      reason,
+    })
+    // O mark-coverage avançou o verified_at da produção depois da ingestão e marcou duas lacunas:
+    // uma vista pelo staging antes da exportação (que a ingestão resolveu: o snapshot vem sem ela)
+    // e outra detectada depois da exportação.
+    const before = entry(shifted(-3_600_000), 'Decreto já ingerido', ['rcte'])
+    const after = entry(shifted(3_600_000), 'Decreto novo', [])
     await productionOwner.query(
-      `UPDATE corpus.coverage SET verified_at = '2026-11-20', gap_reason = 'mudança detectada'
-       WHERE family = 'rcte'`,
+      `UPDATE corpus.coverage SET verified_at = '2099-11-20', gaps = '{[2026-11-10,)}',
+         gap_reason = 'x', gap_entries = $1::jsonb WHERE family = 'rcte'`,
+      [JSON.stringify([before, after])],
     )
     await promoter.container.useCases.promoteSnapshot({ manifestKey })
-    const { rows } = await productionOwner.query<{ verified_at: string; gap_reason: string }>(
-      `SELECT verified_at::text AS verified_at, gap_reason FROM corpus.coverage WHERE family = 'rcte'`,
+    const { rows } = await productionOwner.query(
+      `SELECT verified_at::text AS verified_at, gaps::text AS gaps, gap_reason, gap_entries
+       FROM corpus.coverage WHERE family = 'rcte'`,
     )
-    expect(rows[0]).toEqual({ verified_at: '2026-11-20', gap_reason: 'mudança detectada' })
+    expect(rows[0]).toEqual({
+      verified_at: '2099-11-20',
+      gaps: '{[2026-11-10,)}',
+      gap_reason: 'Decreto novo',
+      gap_entries: [after],
+    })
+
+    // Sem lacuna nova, a promoção seguinte limpa a da produção que o staging já tinha visto.
+    await productionOwner.query(
+      `UPDATE corpus.coverage SET gap_entries = $1::jsonb WHERE family = 'rcte'`,
+      [JSON.stringify([before])],
+    )
+    await promoter.container.useCases.promoteSnapshot({ manifestKey })
+    const cleared = await productionOwner.query(
+      `SELECT gaps::text AS gaps, gap_reason, gap_entries FROM corpus.coverage WHERE family = 'rcte'`,
+    )
+    expect(cleared.rows[0]).toEqual({ gaps: '{}', gap_reason: null, gap_entries: [] })
   })
 })
 

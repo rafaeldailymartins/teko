@@ -4,20 +4,25 @@ import type {
   FamilyGap,
   MarkVerifiedCommand,
 } from '#app/ports/watch-coverage-repository.ts'
+import { addGapEntry } from '#domain/corpus/coverage-gaps.ts'
 import type { DrizzleDb } from '../client.ts'
 import { coverage } from '../schema/corpus.ts'
+import { gapColumns, storedGapEntries } from './coverage-gap-entries.ts'
 
 /**
  * `corpus.coverage` pelo role `teko_watch` (`NEON_PROD_WATCH_URL`, `NEON_STAGING_WATCH_URL`), que
- * só tem `SELECT` na tabela e `UPDATE (verified_at, gaps, gap_reason)`.
+ * só tem `SELECT` na tabela e `UPDATE (verified_at, gaps, gap_reason, gap_entries)`.
  *
  * - Sem lacunas e sem exclusões: um único `UPDATE ... SET verified_at = $1 WHERE verified_at < $1`,
  *   sem transação explícita (acorda o Neon uma vez por dia e nada mais).
- * - Com lacunas: numa transação, `gaps = gaps + datemultirange(daterange(from, NULL))` e
- *   `gap_reason` por família, e depois o mesmo avanço de `verified_at`.
+ * - Com lacunas: numa transação, cada família é lida com `FOR UPDATE`, a entrada da lacuna entra
+ *   em `gap_entries` (`addGapEntry`: documentos que a resolvem, `[from, ∞)` e o instante da
+ *   detecção) e `gaps`/`gap_reason` são regravados como a soma das entradas; depois, o mesmo
+ *   avanço de `verified_at`.
  * - Famílias excluídas (verificação falhou no run) ficam fora do avanço de `verified_at`.
  */
 
+type Tx = Parameters<Parameters<DrizzleDb['transaction']>[0]>[0]
 type Executor = Pick<DrizzleDb, 'update'>
 
 function rowCount(result: { rowCount?: number | null }): number {
@@ -40,14 +45,46 @@ async function advanceVerifiedAt(
   return rowCount(result)
 }
 
-async function addGap(executor: Executor, gap: FamilyGap): Promise<number> {
-  const result = await executor
+/** Acrescenta as lacunas de uma família; devolve 1 se a família tem linha de cobertura. */
+async function addGaps(tx: Tx, family: string, gaps: readonly FamilyGap[]): Promise<number> {
+  const current = await tx.execute<{
+    gaps: string
+    gap_reason: string | null
+    gap_entries: unknown
+  }>(
+    sql`SELECT gaps::text AS gaps, gap_reason, gap_entries FROM corpus.coverage
+        WHERE family = ${family} FOR UPDATE`,
+  )
+  const row = current.rows[0]
+  if (row === undefined) {
+    return 0
+  }
+  const stored = storedGapEntries({
+    family,
+    gaps: row.gaps,
+    gapReason: row.gap_reason,
+    gapEntries: row.gap_entries,
+  })
+  const entries = gaps.reduce(
+    (acc, gap) =>
+      addGapEntry(acc, {
+        sources: gap.sources,
+        from: gap.from,
+        to: null,
+        detectedAt: gap.detectedAt,
+        reason: gap.reason,
+      }),
+    stored,
+  )
+  const columns = gapColumns(entries)
+  const result = await tx
     .update(coverage)
     .set({
-      gaps: sql`${coverage.gaps} + datemultirange(daterange(${gap.from}::date, NULL))`,
-      gapReason: gap.reason,
+      gapEntries: sql`${columns.gapEntries}::jsonb`,
+      gaps: sql`${columns.gaps}::datemultirange`,
+      gapReason: columns.gapReason,
     })
-    .where(eq(coverage.family, gap.family))
+    .where(eq(coverage.family, family))
   return rowCount(result)
 }
 
@@ -59,8 +96,8 @@ export function createPgCoverageWatchRepository(db: DrizzleDb): CoverageWatchRep
       }
       return db.transaction(async (tx) => {
         let gapRows = 0
-        for (const gap of command.gaps) {
-          gapRows += await addGap(tx, gap)
+        for (const [family, gaps] of Map.groupBy(command.gaps, (gap) => gap.family)) {
+          gapRows += await addGaps(tx, family, gaps)
         }
         return { verifiedRows: await advanceVerifiedAt(tx, command), gapRows }
       })

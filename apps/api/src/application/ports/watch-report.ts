@@ -37,6 +37,11 @@ export interface DiscoveredChange {
   readonly pageId: string
   readonly mode: WatchMode
   readonly status: DiscoveredStatus
+  /**
+   * Documentos (slug do `corpus/sources.yaml`) cuja publicação resolve a lacuna (`covers` da página
+   * ou do padrão no `corpus/watch.yaml`); ausente ou vazio = qualquer documento da família.
+   */
+  readonly covers?: readonly string[] | undefined
 }
 
 export interface WatchPageError {

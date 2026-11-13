@@ -13,6 +13,7 @@ import { createTestDatabase, type TestDatabase } from '../../setup/database.ts'
  *   migração custom), e o repositório funciona com esse privilégio mínimo.
  */
 
+const detectedAt = '2026-11-11T09:05:00.000Z'
 let database: TestDatabase
 let owner: pg.Client
 let watch: Database
@@ -106,9 +107,34 @@ describe('createPgCoverageWatchRepository (role teko_watch)', () => {
       verifiedAt: '2026-11-11',
       excludeFamilies: ['tabelas-go'],
       gaps: [
-        { family: 'rcte', from: '2026-11-10', reason: 'Decreto nº 10.995 (desde 2026-11-10)' },
-        { family: 'efd-icms-ipi', from: '2026-11-11', reason: 'Guia 3.2.5' },
-        { family: 'rcte-anexos', from: '2026-11-11', reason: 'sem linha de cobertura' },
+        {
+          family: 'rcte',
+          from: '2026-11-10',
+          reason: 'Decreto nº 10.995 (desde 2026-11-10)',
+          sources: [],
+          detectedAt,
+        },
+        {
+          family: 'efd-icms-ipi',
+          from: '2026-11-11',
+          reason: 'Guia 3.2.5',
+          sources: ['guia-pratico-efd-icms-ipi'],
+          detectedAt,
+        },
+        {
+          family: 'efd-icms-ipi',
+          from: '2026-11-20',
+          reason: 'NT 2026.004',
+          sources: ['notas-tecnicas-efd-icms-ipi'],
+          detectedAt,
+        },
+        {
+          family: 'rcte-anexos',
+          from: '2026-11-11',
+          reason: 'sem linha de cobertura',
+          sources: [],
+          detectedAt,
+        },
       ],
     })
     expect(result).toEqual({ verifiedRows: 2, gapRows: 2 })
@@ -124,7 +150,7 @@ describe('createPgCoverageWatchRepository (role teko_watch)', () => {
         family: 'efd-icms-ipi',
         verified_at: '2026-11-11',
         gaps: '{[2026-11-11,)}',
-        gap_reason: 'Guia 3.2.5',
+        gap_reason: 'antiga; Guia 3.2.5; NT 2026.004',
         covered: '{[2009-01-01,)}',
       },
       {
@@ -142,11 +168,63 @@ describe('createPgCoverageWatchRepository (role teko_watch)', () => {
         covered: '{[2009-01-01,)}',
       },
     ])
+    const entries = await owner.query<{ gap_entries: unknown }>(
+      `SELECT gap_entries FROM corpus.coverage WHERE family = 'efd-icms-ipi'`,
+    )
+    expect(entries.rows[0]?.gap_entries).toEqual([
+      {
+        sources: [],
+        from: '2026-12-01',
+        to: '2027-01-01',
+        detectedAt: null,
+        reason: 'antiga',
+      },
+      {
+        sources: ['guia-pratico-efd-icms-ipi'],
+        from: '2026-11-11',
+        to: null,
+        detectedAt,
+        reason: 'Guia 3.2.5',
+      },
+      {
+        sources: ['notas-tecnicas-efd-icms-ipi'],
+        from: '2026-11-20',
+        to: null,
+        detectedAt,
+        reason: 'NT 2026.004',
+      },
+    ])
+  })
+
+  it('a mesma lacuna detectada de novo mantém a primeira detecção', async () => {
+    const repository = createPgCoverageWatchRepository(watch.db)
+    const gap = {
+      family: 'rcte',
+      from: '2026-11-10',
+      reason: 'Decreto',
+      sources: [],
+      detectedAt,
+    }
+    await repository.markVerified({ verifiedAt: '2026-11-11', excludeFamilies: [], gaps: [gap] })
+    await repository.markVerified({
+      verifiedAt: '2026-11-12',
+      excludeFamilies: [],
+      gaps: [{ ...gap, detectedAt: '2026-11-12T09:00:00.000Z', reason: 'Decreto (pendente)' }],
+    })
+    const entries = await owner.query<{ gap_entries: unknown; gap_reason: string }>(
+      `SELECT gap_entries, gap_reason FROM corpus.coverage WHERE family = 'rcte'`,
+    )
+    expect(entries.rows[0]).toEqual({
+      gap_entries: [
+        { sources: [], from: '2026-11-10', to: null, detectedAt, reason: 'Decreto (pendente)' },
+      ],
+      gap_reason: 'Decreto (pendente)',
+    })
   })
 })
 
 describe('grants do teko_watch', () => {
-  it('tem só SELECT na tabela e UPDATE em verified_at, gaps e gap_reason', async () => {
+  it('tem só SELECT na tabela e UPDATE em verified_at, gaps, gap_reason e gap_entries', async () => {
     const tables = await owner.query<{ table_name: string; privilege_type: string }>(
       `SELECT table_schema || '.' || table_name AS table_name, privilege_type
          FROM information_schema.role_table_grants WHERE grantee = 'teko_watch' ORDER BY 1, 2`,
@@ -157,6 +235,7 @@ describe('grants do teko_watch', () => {
          WHERE grantee = 'teko_watch' AND privilege_type = 'UPDATE' ORDER BY 1`,
     )
     expect(columns.rows.map((row) => row.column_name)).toEqual([
+      'gap_entries',
       'gap_reason',
       'gaps',
       'verified_at',

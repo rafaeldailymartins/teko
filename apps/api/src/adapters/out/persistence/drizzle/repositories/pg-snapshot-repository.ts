@@ -7,6 +7,8 @@ import {
   type SnapshotRow,
   type SnapshotTable,
 } from '#app/ports/snapshot-repository.ts'
+import { type CoverageGapEntry, mergeGapsForPromotion } from '#domain/corpus/coverage-gaps.ts'
+import { gapColumns, storedGapEntries } from './coverage-gap-entries.ts'
 import { CorpusInvariantError } from './pg-corpus-writer.ts'
 
 /**
@@ -176,6 +178,8 @@ const TABLES: Readonly<Record<SnapshotTable, TableSpec>> = {
       col('corpus_version', 'integer'),
       col('gaps', 'datemultirange'),
       col('gap_reason'),
+      // Snapshots anteriores às entradas de lacuna não têm a coluna: a promoção usa `gaps`.
+      col('gap_entries', 'jsonb'),
     ],
     filter: 'true',
     orderBy: 't.family',
@@ -287,7 +291,7 @@ async function* readTable(
   }
 }
 
-/** SQL de mescla, na ordem de FK, depois de carregar as tabelas temporárias. */
+/** SQL de mescla, na ordem de FK, depois de carregar as tabelas temporárias (até `chunk_sources`). */
 function mergeStatements(): readonly string[] {
   const t = TABLES
   return [
@@ -364,21 +368,71 @@ function mergeStatements(): readonly string[] {
        JOIN map_chunks mc ON mc.snap_id = s.chunk_id
        JOIN map_document_versions mdv ON mdv.snap_id = s.document_version_id
        ON CONFLICT DO NOTHING`,
-    // coverage: o verified_at (e as lacunas) do destino vencem quando são mais recentes.
-    `INSERT INTO corpus.coverage AS cov (${columnNames(t.coverage)})
-       SELECT ${columnNames(t.coverage)} FROM snap_coverage
+  ]
+}
+
+/** corpus_versions por último, com a numeração do staging. */
+const CORPUS_VERSION_STATEMENTS = [
+  `INSERT INTO corpus.corpus_versions (id, notes)
+     SELECT id, notes FROM snap_corpus_versions ON CONFLICT (id) DO NOTHING`,
+  `SELECT setval(pg_get_serial_sequence('corpus.corpus_versions', 'id'),
+     (SELECT max(id) FROM corpus.corpus_versions))`,
+] as const
+
+interface SnapCoverageRow {
+  readonly family: string
+  readonly gaps: string
+  readonly gap_reason: string | null
+  readonly gap_entries: unknown
+}
+
+/** Entradas de uma linha de cobertura (snapshot anterior a elas ou destino legado: `gaps`). */
+function snapshotGapEntries(row: SnapCoverageRow): CoverageGapEntry[] {
+  return storedGapEntries({
+    family: row.family,
+    gaps: row.gaps,
+    gapReason: row.gap_reason,
+    gapEntries: row.gap_entries,
+  })
+}
+
+/**
+ * coverage (A1): `covered` e a versão vêm do snapshot; `verified_at` é o maior dos dois (o
+ * `mark-coverage` avança o da produção todo dia); as lacunas são as do snapshot mais as do destino
+ * detectadas depois da exportação (`mergeGapsForPromotion`). Decidir pelo `verified_at` deixava a
+ * produção com a lacuna para sempre: o dela avança todo dia e o do snapshot é o do dia da ingestão.
+ */
+async function mergeCoverage(client: pg.ClientBase, snapshotCreatedAt: string): Promise<void> {
+  const snapshot = await client.query<SnapCoverageRow>(
+    'SELECT family, gaps::text AS gaps, gap_reason, gap_entries FROM snap_coverage ORDER BY family',
+  )
+  const target = await client.query<SnapCoverageRow>(
+    `SELECT family, gaps::text AS gaps, gap_reason, gap_entries FROM corpus.coverage
+     WHERE family IN (SELECT family FROM snap_coverage) FOR UPDATE`,
+  )
+  const targetEntries = new Map(target.rows.map((row) => [row.family, snapshotGapEntries(row)]))
+  for (const row of snapshot.rows) {
+    const columns = gapColumns(
+      mergeGapsForPromotion(
+        snapshotGapEntries(row),
+        targetEntries.get(row.family) ?? [],
+        snapshotCreatedAt,
+      ),
+    )
+    await client.query(
+      `INSERT INTO corpus.coverage AS cov (family, jurisdiction, covered, verified_at,
+         corpus_version, gaps, gap_reason, gap_entries)
+       SELECT family, jurisdiction, covered, verified_at, corpus_version,
+         $2::datemultirange, $3, $4::jsonb
+       FROM snap_coverage WHERE family = $1
        ON CONFLICT (family) DO UPDATE SET jurisdiction = excluded.jurisdiction,
          covered = excluded.covered, corpus_version = excluded.corpus_version,
          verified_at = greatest(cov.verified_at, excluded.verified_at),
-         gaps = CASE WHEN cov.verified_at > excluded.verified_at THEN cov.gaps ELSE excluded.gaps END,
-         gap_reason = CASE WHEN cov.verified_at > excluded.verified_at
-           THEN cov.gap_reason ELSE excluded.gap_reason END`,
-    // corpus_versions por último, com a numeração do staging.
-    `INSERT INTO corpus.corpus_versions (id, notes)
-       SELECT id, notes FROM snap_corpus_versions ON CONFLICT (id) DO NOTHING`,
-    `SELECT setval(pg_get_serial_sequence('corpus.corpus_versions', 'id'),
-       (SELECT max(id) FROM corpus.corpus_versions))`,
-  ]
+         gaps = excluded.gaps, gap_reason = excluded.gap_reason,
+         gap_entries = excluded.gap_entries`,
+      [row.family, columns.gaps, columns.gapReason, columns.gapEntries],
+    )
+  }
 }
 
 /** Mesma invariante da escrita: todo chunk publicável atual tem fonte publicada. */
@@ -459,6 +513,10 @@ export function createPgSnapshotRepository(pool: pg.Pool): SnapshotRepository {
           }
           for (const statement of mergeStatements()) {
             await client.query(statement, statement.includes('$1') ? [today] : [])
+          }
+          await mergeCoverage(client, manifest.createdAt)
+          for (const statement of CORPUS_VERSION_STATEMENTS) {
+            await client.query(statement)
           }
           await assertPublishedSources(client)
           return countsByTable((table) => counts[table] ?? 0)
