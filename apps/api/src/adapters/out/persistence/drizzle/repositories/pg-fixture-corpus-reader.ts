@@ -6,7 +6,7 @@ import {
 import { sql } from 'drizzle-orm'
 import type { Family } from '#domain/corpus/family.ts'
 import type { DrizzleDb } from '../client.ts'
-import { CorpusInvariantError } from './pg-corpus-writer.ts'
+import { CorpusInvariantError } from './corpus-invariant-error.ts'
 
 /**
  * Leitura do corpus publicado no formato da fixture única (`seed-fixtures/fixture-schema.ts`),

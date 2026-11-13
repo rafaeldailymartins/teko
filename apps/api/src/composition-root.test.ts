@@ -3,6 +3,7 @@ import { createLogger } from '#adapters/out/telemetry/logger.ts'
 import {
   createContainer,
   createEmbeddings,
+  createFixtureSeeder,
   createHttpOptions,
   createReranker,
   createRuntime,
@@ -190,10 +191,9 @@ describe('serviços do corpus (F2)', () => {
     expect(reranker?.model).toBe('@cf/baai/bge-reranker-base')
   })
 
-  it('sem DATABASE_URL, a busca e a escrita do corpus ficam de fora', async () => {
+  it('sem DATABASE_URL, a busca fica de fora (o container HTTP nunca escreve no corpus)', async () => {
     const container = createContainer(parseEnv({ ...BASE, ...FAKE_EMBEDDINGS }))
     expect(container.useCases.retrieval).toBeNull()
-    expect(container.useCases.writeCorpus).toBeNull()
     expect(
       container.useCases.resolveReferenceDate({
         input: { periodoApuracao: '2026-10' },
@@ -205,7 +205,7 @@ describe('serviços do corpus (F2)', () => {
   })
 
   it.each(['node', 'vercel'])(
-    'com DATABASE_URL (%s), monta busca e escrita sem conectar e fecha o pool',
+    'com DATABASE_URL (%s), monta a busca sem conectar e fecha o pool',
     async (runtimeTarget) => {
       const container = createContainer(
         parseEnv({
@@ -217,9 +217,21 @@ describe('serviços do corpus (F2)', () => {
         { applicationName: 'teko-test' },
       )
       expect(container.useCases.retrieval).not.toBeNull()
-      expect(container.useCases.writeCorpus).not.toBeNull()
+      expect(container.useCases).not.toHaveProperty('writeCorpus')
       await expect(container.close()).resolves.toBeUndefined()
       await expect(container.close()).resolves.toBeUndefined()
     },
   )
+
+  it('o seed da fixture usa o container da ingestão (URL do owner), sem conectar ao montar', async () => {
+    const ownerUrl = 'postgresql://teko_owner:x@127.0.0.1:1/teko'
+    const seeder = createFixtureSeeder(
+      parseEnv({ ...BASE, ...FAKE_EMBEDDINGS, DATABASE_URL: ownerUrl }),
+      ownerUrl,
+      { clock: { now: () => new Date('2026-11-10T12:00:00-03:00') } },
+    )
+    expect(typeof seeder.seedFixtureCorpus).toBe('function')
+    await expect(seeder.close()).resolves.toBeUndefined()
+    expect(() => createFixtureSeeder(parseEnv(BASE), ownerUrl)).toThrow(/EMBEDDINGS_PROVIDER/)
+  })
 })
