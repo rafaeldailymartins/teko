@@ -104,12 +104,11 @@ impossible.
 
 ### Conventional Commits
 
-Commit messages and PR titles follow [Conventional Commits](https://www.conventionalcommits.org/)
-and are checked by commitlint (`commitlint.config.mjs`). Allowed scopes, the single source of
-truth being `commitlint.config.mjs`:
-
-`web`, `api`, `shared`, `ingest`, `retrieval`, `eval`, `obs`, `i18n`, `auth`, `db`, `ci`, `deps`,
-`deps-dev` (used by Dependabot for development dependencies), `release`, `specs`, `docs`, `infra`
+PR titles follow [Conventional Commits](https://www.conventionalcommits.org/): the title becomes
+the squash commit on `develop`, and the `pr-title` check enforces it. The allowed types and scopes
+live in a single file, [`.github/commit-types.json`](.github/commit-types.json) (`deps-dev` is the
+scope Dependabot uses for development dependencies). Write your branch commits the same way, but
+nothing checks them locally: only the PR title reaches `develop`.
 
 Examples: `feat(retrieval): filter chunks by validity range`, `fix(api): reject replayed tickets`,
 `docs(specs): add hybrid-search scenarios`. The changelog is generated from these messages by
@@ -125,7 +124,7 @@ Every human commit must carry a
 Signed-off-by: Your Name <you@example.com>
 ```
 
-commitlint enforces it locally and the `dco` check enforces it on every PR. Commits must also be
+The `dco` check enforces it on every PR. Commits must also be
 **signed** (SSH signing is recommended: `git config gpg.format ssh`,
 `git config user.signingkey <path-to-public-key>`, `git config commit.gpgsign true`), because the
 protected branches require signed commits.
@@ -187,8 +186,8 @@ corepack pnpm --dir tools/netlify-cli exec netlify --version
 You do not need them locally: deploys happen only from CI (the API as a Build Output API assembled
 from the tsdown bundle and deployed with `vercel deploy --prebuilt`, ADR 0017; the web with
 `netlify deploy --build`). The deploy workflows (`deploy-api.yml`, `deploy-web.yml`) arrive in
-phase F7; until then only the F1 spike workflows `spike-api-vercel.yml` and `spike-web-netlify.yml`
-run these CLIs, and CI audits both trees. Never add `vercel`, `@vercel/*` or Netlify CLI exceptions
+phase F7; until then nothing runs these CLIs (the F1 spike workflows were removed, ADR 0032), and
+the scheduled `audit.yml` audits both trees. Never add `vercel`, `@vercel/*` or Netlify CLI exceptions
 to the root `pnpm-workspace.yaml`.
 
 ### Python (`tools/ingest`)
@@ -200,42 +199,57 @@ exception uses `exclude-newer-package` with the exact version and is justified i
 
 ## Quality gates
 
-Run these before opening a PR (CI runs all of them again):
+Two root scripts run the gates locally (they call `pnpm` again, so `pnpm` must be on your PATH:
+`corepack enable` or a shim):
 
-| Command                        | What it checks                                                                         |
-| ------------------------------ | -------------------------------------------------------------------------------------- |
-| `pnpm lint`                    | Biome lint + format (`--error-on-warnings`)                                            |
-| `pnpm typecheck`               | TypeScript in every package and in the root scripts                                    |
-| `pnpm test:unit`               | unit tests, with the coverage thresholds                                               |
-| `pnpm test:integration`        | integration tests (Testcontainers: Docker must be running)                             |
-| `pnpm test:scripts`            | root scripts (`scripts/**/*.test.ts`, `node:test`)                                     |
-| `pnpm build`                   | API bundle (tsdown) and the web's static export                                        |
-| `pnpm knip`                    | unused files, exports and dependencies (two passes, see below)                         |
-| `pnpm dup`                     | copy-paste detection (jscpd)                                                           |
-| `pnpm type-coverage`           | type coverage ≥ 99% (`--strict`) in every package                                      |
-| `pnpm lint:monorepo`           | workspace consistency (sherif)                                                         |
-| `pnpm lint:deps`               | architecture boundaries (dependency-cruiser)                                           |
-| `pnpm lint:fsd`                | Feature-Sliced Design rules in `apps/web` (Steiger)                                    |
-| `pnpm exec turbo boundaries`   | package boundaries (imports outside the package, undeclared deps, tags)                |
-| `pnpm spec:validate`           | OpenSpec strict validation                                                             |
-| `pnpm check-lockfile`          | single-document lockfiles (root, `tools/vercel-cli`, `tools/netlify-cli`)              |
-| `pnpm audit --audit-level low` | known vulnerabilities; run it in `tools/vercel-cli` and `tools/netlify-cli` too        |
-| `pnpm test:mutation`           | Stryker in `apps/api` and `packages/shared`, break at 70 (run it for changed packages) |
+- **`pnpm verify`**, the fast layer (about a minute with a warm Turbo cache): Biome, the lockfile
+  guard, sherif, OpenSpec, jscpd, knip, the root scripts' typecheck and, through one `turbo run`,
+  typecheck, dependency-cruiser, type-coverage and unit tests in every package. Run it before every
+  PR.
+- **`pnpm verify:full`**: `verify` plus the root scripts' tests, integration tests and build
+  (Testcontainers: Docker must be running), the CI shell suites (`pnpm verify:ci`), the Python
+  gates (`pnpm verify:python`) and the vulnerability audit (`pnpm verify:audit`). Run it when you
+  touch dependencies, the database, `tools/ingest` or `.github/`.
+
+| Command                 | What it checks                                                                    |
+| ----------------------- | --------------------------------------------------------------------------------- |
+| `pnpm lint`             | Biome lint + format (`--error-on-warnings`), Markdown included                    |
+| `pnpm typecheck`        | TypeScript in every package and in the root scripts                               |
+| `pnpm test:unit`        | unit tests, with the coverage thresholds (the only coverage gate)                 |
+| `pnpm test:integration` | integration tests (Testcontainers: Docker must be running)                        |
+| `pnpm test:scripts`     | root scripts (`scripts/**/*.test.ts`, `node:test`)                                |
+| `pnpm build`            | API bundle (tsdown) and the web's static export                                   |
+| `pnpm knip`             | unused files, exports and dependencies (two passes, see below)                    |
+| `pnpm dup`              | copy-paste detection (jscpd)                                                      |
+| `pnpm type-coverage`    | type coverage ≥ 99% (`--strict`) in every package                                 |
+| `pnpm lint:monorepo`    | workspace consistency (sherif)                                                    |
+| `pnpm lint:deps`        | architecture boundaries (dependency-cruiser)                                      |
+| `pnpm spec:validate`    | OpenSpec strict validation                                                        |
+| `pnpm check-lockfile`   | single-document lockfiles (root, `tools/vercel-cli`, `tools/netlify-cli`)         |
+| `pnpm verify:audit`     | known vulnerabilities in the root (production) and in both deploy CLIs            |
+| `pnpm verify:python`    | `tools/ingest`: ruff (lint and format), pyright and pytest with `uv --frozen`     |
+| `pnpm verify:ci`        | the three CI shell suites below (need `bash`, `jq` and `yq`)                      |
+| `pnpm test:mutation`    | Stryker in `apps/api` and `packages/shared`, break at 70 (nightly in CI, not PRs) |
 
 `pnpm test` runs `test:unit` and `test:integration` together.
 
-When you touch `tools/ingest`, run its gates from that directory:
-`uv run --frozen ruff check . && uv run --frozen ruff format --check . && uv run --frozen pyright && uv run --frozen pytest`.
-CI also runs `pip-audit` over the frozen lockfile.
-
-CI also runs three shell test suites over its own configuration: `.github/scripts/affected.test.sh`
-(the affected-scope script and the turbo task graph, in a throwaway git copy),
-`.github/scripts/ci-config.test.sh` (workflow, Dependabot and Sonar invariants) and
-`.github/scripts/migration-guard.test.sh` (the migration guard below). Run them with `bash` from
-the repo root when you touch `.github/`, `turbo.json` or the root configs; they need `jq` and `yq`
+The CI shell suites are `.github/scripts/affected.test.sh` (the affected-scope script and the
+turbo task graph, in a throwaway git copy), `.github/scripts/ci-config.test.sh` (workflow and
+Dependabot invariants that actionlint and zizmor do not see) and
+`.github/scripts/migration-guard.test.sh` (the migration guard below). They need `jq` and `yq`
 (mikefarah v4). New or changed workflows also go through actionlint; locally, run it with Docker
 (`rhysd/actionlint`; in Git Bash, set `MSYS_NO_PATHCONV=1` and use a Windows-style path for the
 volume).
+
+Some gates run outside pull requests on purpose (ADR 0032), so a PR only fails for what it changes:
+
+- **Mutation testing** (`mutation.yml`) runs every night on `develop`, only when there is a new
+  commit since the last green run; a score below 70 turns the nightly run red.
+- **`pnpm audit`** (`audit.yml`) runs on every push to `develop`/`main`, every day and before each
+  deploy. On a PR, `dependency-review` checks the dependencies the PR adds, and the `lint` job runs
+  `pnpm audit signatures`. Python vulnerabilities come from osv-scanner over `uv.lock`.
+- **SonarQube Cloud** (`sonar.yml`) analyzes every PR and `develop`, but only informs: it is not
+  part of `ci-gate`, and its quality gate shows up in the PR decoration.
 
 Jobs that run only when their scope is affected:
 
@@ -250,30 +264,40 @@ Jobs that run only when their scope is affected:
   `pnpm --filter @teko/api eval:retrieval && pnpm --filter @teko/api eval:retrieval:check`.
 - `perf` (API or RAG paths): `pnpm --filter @teko/api test:sql-perf` checks the query plan and a
   median under 150 ms for the hybrid search over 100k synthetic chunks (Testcontainers).
-- `mutation`: Stryker on the affected packages, incremental against the `develop` report.
 
-A PR that changes CI or root configuration (`.github/workflows`, `.github/actions`,
+A PR that changes the PR gates or root configuration (`.github/workflows/ci.yml`,
+`.github/workflows/pr-gate.yml`, `.github/workflows/perf.yml`, `.github/actions`,
 `.github/scripts`, `.github/affected-paths.yml`, `turbo.json`, `package.json`,
 `pnpm-workspace.yaml`, `pnpm-lock.yaml`, `tsconfig*.json`, `biome.json`, `knip.json`,
 `lefthook.yml`, `.semgrep/`, `sonar-project.properties`, `tools/vercel-cli/`, `tools/netlify-cli/`)
-runs every job, not just the affected ones.
+runs every job, not just the affected ones. Other workflows (scheduled, hygiene, ingestion) do not:
+the `lint` job runs actionlint and `ci-config.test.sh` on every PR with code, and `ingest.yml` and
+`source-watch.yml` belong to the `ingest` group.
+
+A PR that only touches documentation (`docs/**`, `openspec/**`, any `*.md`, `.claude/**`: the
+`docs` group of `.github/affected-paths.yml`) runs only Biome, the lockfile guard and OpenSpec in
+the `lint` job; package jobs, evals and `sql-perf` are skipped.
 
 `pnpm knip` runs knip twice: the default pass (whole project, tests included) and a
 `--production` pass restricted to `dependencies,unlisted,unresolved,binaries`, which fails when a
 runtime dependency is only used by tests or is missing from `package.json`.
 
 Git hooks (lefthook) run Biome, gitleaks (if installed), OpenSpec validation and the lockfile
-guard on commit, commitlint on the message, and affected typecheck + unit tests on push. The hooks
+guard on commit, and the per-package part of `pnpm verify` (typecheck, dependency-cruiser,
+type-coverage and unit tests) on push, only for the packages affected since `origin/develop`. There
+is no commit-message hook (ADR 0032). The hooks
 call the binaries directly from `./node_modules/.bin` (for example
 `./node_modules/.bin/biome`), so they work even when `pnpm` is not on your PATH; run
 `pnpm install` first so those binaries exist.
 
-On a PR, the rulesets require seven checks: the aggregate `ci-gate`, the three CodeQL analyses
-(`Analyze (actions)`, `Analyze (javascript-typescript)`, `Analyze (python)`), `pr-title`,
-`gitflow-guard` and `dco`. SonarQube Cloud reaches the rulesets through `ci-gate`: the `sonar` job
-waits for the quality gate (`sonar.qualitygate.wait=true`) and fails when it fails. Do **not** add
-the SonarQube Cloud App check ("SonarQube Cloud Code Analysis") as a required ruleset check: it is
-never posted on fork PRs (no secrets, so the analysis is skipped), which would block them forever.
+On a PR, the rulesets require seven checks: the aggregate `ci-gate` (which waits for `affected`,
+`ci`, `security` and `perf`), the three CodeQL analyses (`Analyze (actions)`,
+`Analyze (javascript-typescript)`, `Analyze (python)`), `pr-title`, `gitflow-guard` and `dco`.
+`Analyze (actions)` is redundant with zizmor and actionlint and will leave the rulesets and the
+CodeQL matrix (ADR 0032). SonarQube Cloud does **not** reach the rulesets: the `sonar` job runs
+after `ci`, outside `ci-gate`, with `continue-on-error`. Do **not** add the SonarQube Cloud App
+check ("SonarQube Cloud Code Analysis") as a required ruleset check: it is never posted on fork PRs
+(no secrets, so the analysis is skipped), which would block them forever.
 
 Maintainer setup: add `SONAR_TOKEN` both as a repository secret and as a **Dependabot** secret
 (Settings → Secrets and variables → Dependabot). Dependabot PRs only see Dependabot secrets;

@@ -10,7 +10,9 @@ Define as verificações automáticas que toda mudança do Tekó passa antes de 
 ### Requirement: Check agregador único
 
 Todo PR para `develop` ou `main` MUST ser aprovado pelo check `ci-gate`, que SHALL falhar quando
-qualquer job agregado falhar ou for cancelado.
+qualquer job agregado (`affected`, `ci`, `security`, `perf`) falhar ou for cancelado, e SHALL rodar
+com `!cancelled()`, nunca com `always()`. A análise do SonarQube Cloud MUST NOT fazer parte do
+`ci-gate`: ela é só informativa.
 
 #### Scenario: Job de lint falha
 
@@ -22,15 +24,25 @@ qualquer job agregado falhar ou for cancelado.
 - **WHEN** um PR altera só `apps/web`
 - **THEN** os passos da API são pulados dentro dos jobs e o `ci-gate` continua verde se o resto passar
 
+#### Scenario: Quality gate do Sonar reprovado
+
+- **WHEN** o quality gate do SonarQube Cloud reprova o código novo de um PR com os demais jobs verdes
+- **THEN** o `ci-gate` fica verde e o resultado do Sonar aparece só na decoração do PR
+
+#### Scenario: Run cancelado por push novo
+
+- **WHEN** um push novo no PR cancela o run anterior do `pr-gate.yml`
+- **THEN** o `ci-gate` do run cancelado não roda, e vale o do run novo
+
 ### Requirement: Mensagens de commit convencionais
 
-Toda mensagem de commit e todo título de PR MUST seguir Conventional Commits com um escopo da
-lista do `commitlint.config.mjs`.
+Todo título de PR, que vira a mensagem do squash, MUST seguir Conventional Commits com um tipo e um
+escopo da lista única `.github/commit-types.json`, conferida pelo check `pr-title`.
 
 #### Scenario: Escopo desconhecido
 
-- **WHEN** alguém cria o commit `feat(frontend): nova tela`
-- **THEN** o hook `commit-msg` rejeita a mensagem porque `frontend` não é um escopo permitido
+- **WHEN** um PR tem o título `feat(frontend): nova tela`
+- **THEN** o check `pr-title` falha porque `frontend` não está em `.github/commit-types.json`
 
 #### Scenario: Título de PR inválido
 
@@ -67,12 +79,19 @@ Um commit ou PR que contenha um segredo MUST ser bloqueado pelo gitleaks antes d
 ### Requirement: Dependências vulneráveis bloqueadas
 
 Um PR MUST falhar quando introduzir dependência de runtime com vulnerabilidade conhecida de
-qualquer severidade ou licença fora da allowlist.
+qualquer severidade ou licença fora da allowlist. Vulnerabilidades novas em dependências que o PR
+não introduziu MUST NOT reprovar o PR: o `pnpm audit --prod --audit-level low` SHALL rodar em push
+para `develop`/`main`, todo dia e antes dos deploys.
 
 #### Scenario: Dependência com CVE
 
 - **WHEN** um PR adiciona uma dependência de produção com CVE de severidade baixa
-- **THEN** o `dependency-review` ou o `pnpm audit --prod --audit-level low` falha
+- **THEN** o `dependency-review` falha e o `ci-gate` fica vermelho
+
+#### Scenario: Advisory novo sem relação com o PR
+
+- **WHEN** sai um advisory para uma dependência que já estava em `develop` e um PR só de documentação está aberto
+- **THEN** o PR continua verde, e o `audit.yml` agendado ou o próximo push em `develop` fica vermelho
 
 ### Requirement: Fluxo Git Flow verificado
 
@@ -109,18 +128,35 @@ migração já existente na base.
 - **WHEN** um PR edita uma migração que já está em `develop`
 - **THEN** o job `migration-guard` falha, mesmo com o label `contract`
 
-### Requirement: Mutação no PR
+### Requirement: Mutação noturna
 
-Todo PR que afeta um pacote JS MUST rodar o Stryker nos pacotes afetados, em modo incremental, e
-SHALL reprovar o `ci-gate` se o score de `apps/api` (domain e application) ou de `packages/shared`
-ficar abaixo de 70.
+O `mutation.yml` MUST rodar o Stryker de todos os pacotes toda noite em `develop`, SHALL pular a
+rodada quando não houver commit novo desde o último run verde, e SHALL falhar se o score de
+`apps/api` (domain e application) ou de `packages/shared` ficar abaixo de 70. Nenhum workflow de PR
+MUST chamar o `mutation.yml`.
 
-#### Scenario: Teste fraco
+#### Scenario: Score abaixo do limite
 
-- **WHEN** um PR muda o domínio de vigência com testes que não matam os mutantes e o score cai para 65
-- **THEN** o job `stryker` do `mutation.yml` falha e o `ci-gate` fica vermelho
+- **WHEN** um commit em `develop` deixa o score do domínio de vigência em 65
+- **THEN** o job `stryker` do run noturno seguinte falha
 
-#### Scenario: PR só de documentação
+#### Scenario: Noite sem commit novo
 
-- **WHEN** um PR não afeta nenhum pacote JS
-- **THEN** o job `stryker` é pulado e o `ci-gate` continua verde se o resto passar
+- **WHEN** o último run verde do `mutation.yml` foi no mesmo SHA de `develop`
+- **THEN** o job `changes` sai com `run=false` e o job `stryker` é pulado
+
+### Requirement: PR só de documentação
+
+Um PR cujos arquivos alterados estão todos no grupo `docs` do `.github/affected-paths.yml` MUST
+rodar no job `lint` só o Biome, a guarda de lockfile e o `openspec validate`, e SHALL pular os jobs
+de pacote, as evals e o `sql-perf`.
+
+#### Scenario: Só ADR e README
+
+- **WHEN** um PR altera só `docs/adr/0032-gates-e-ferramentas-enxutos.md` e `README.md`
+- **THEN** o escopo sai com `code: false` e `packages: false`, e o `lint` pula knip, jscpd, os testes dos scripts e o actionlint
+
+#### Scenario: Workflow agendado alterado
+
+- **WHEN** um PR altera só o `.github/workflows/mutation.yml`
+- **THEN** o escopo sai com `code: true` e nenhum grupo de pacote, e o `lint` roda inteiro (actionlint e `ci-config.test.sh`)
