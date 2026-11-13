@@ -13,7 +13,7 @@ providers:
   - id: file://../providers/retrieval.ts
     label: teko-retrieval
 
-tests: file://../datasets/golden-tests.ts
+tests: file://../datasets/golden-tests.ts:devTests
 
 evaluateOptions:
   maxConcurrency: 4

@@ -3,12 +3,13 @@ import { GoldenSplit, goldenPath, loadGolden } from './load-golden.ts'
 import type { GoldenCase } from './schema.ts'
 
 /**
- * Testes do promptfoo gerados a partir do golden. O `default` é o conjunto `dev`
- * (`tests: file://../datasets/golden-tests.ts`, fixture do PR e `corpus-eval`); `holdoutTests` é o
- * `holdout` (`tests: file://../datasets/golden-tests.ts:holdoutTests`, só no `corpus-eval`). Cada
- * caso recebe só os asserts que se aplicam a ele: recall@10, MRR e vigência nos `answered`; recusa
- * nos `refused`; clarificação nos ambíguos; `sem_resposta` nos `unanswerable`; e a data de
- * referência quando o caso a fixa.
+ * Testes do promptfoo gerados a partir do golden: `devTests` é o conjunto `dev`
+ * (`tests: file://../datasets/golden-tests.ts:devTests`, fixture do PR e `corpus-eval`) e
+ * `holdoutTests` o `holdout` (`tests: file://../datasets/golden-tests.ts:holdoutTests`, só no
+ * `corpus-eval`). Sem export default: com ele, o promptfoo procura a função nomeada dentro do
+ * default e não a acha. Cada caso recebe só os asserts que se aplicam a ele: recall@10, MRR e
+ * vigência nos `answered`; recusa nos `refused`; clarificação nos ambíguos; `sem_resposta` nos
+ * `unanswerable`; e a data de referência quando o caso a fixa.
  */
 
 const ASSERT_FILES: Readonly<Record<MetricName, string>> = {
@@ -49,7 +50,7 @@ export function toPromptfooTest(golden: GoldenCase) {
   }
 }
 
-export default async function generateTests() {
+export async function devTests() {
   return loadGolden(goldenPath(GoldenSplit.Dev)).map(toPromptfooTest)
 }
 

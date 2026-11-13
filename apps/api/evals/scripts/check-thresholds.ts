@@ -193,7 +193,7 @@ function statusOf(metric: MetricSummary): string {
 }
 
 /** Tabela das métricas (sem título), reaproveitada pelo registro do corpus-eval. */
-export function renderMetricsTable(report: ThresholdReport): string[] {
+function renderMetricsTable(report: ThresholdReport): string[] {
   return [
     '| Métrica | Média | IC 95% | Gate | Meta | Casos | |',
     '|---|---|---|---|---|---|---|',

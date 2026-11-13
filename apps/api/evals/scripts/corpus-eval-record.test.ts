@@ -90,9 +90,10 @@ describe('registro do corpus-eval', () => {
   it('resumo e corpo do PR do lock trazem a corpus_version e as duas tabelas', () => {
     const current = record(12)
     const summary = renderEvalSummary(current, { dev, holdout })
-    expect(summary).toContain('### corpus-eval (corpus_version 12): aprovado')
-    expect(summary).toContain('#### Conjunto dev (onde se ajusta): aprovado')
-    expect(summary).toContain('#### Conjunto holdout (nunca orienta parâmetros): aprovado')
+    expect(summary).toContain('## corpus-eval (corpus_version 12): aprovado')
+    expect(summary).toContain('### Conjunto dev (onde se ajusta): aprovado')
+    expect(summary).toContain('### Conjunto holdout (nunca orienta parâmetros): aprovado')
+    expect(summary).toContain('- `mrr` caso-1: score 0.5')
     const body = renderPrBody(current)
     expect(body).toContain('### corpus-eval da corpus_version 12: aprovado')
     expect(body).toContain('| dev | mrr | 0.750 |')

@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { loadFixtureDocuments } from '../../src/adapters/in/cli/seed-fixtures/seed-fixtures.ts'
-import generateTests, { holdoutTests, metricsFor, toPromptfooTest } from './golden-tests.ts'
+import { devTests, holdoutTests, metricsFor, toPromptfooTest } from './golden-tests.ts'
 import { GoldenSplit, goldenPath, loadGolden } from './load-golden.ts'
 import { goldenCaseSchema, goldenDatasetSchema } from './schema.ts'
 
@@ -163,7 +163,7 @@ describe('testes do promptfoo gerados do golden', () => {
   })
 
   it('o gerador padrão cobre o golden inteiro', async () => {
-    const tests = await generateTests()
+    const tests = await devTests()
     expect(tests).toHaveLength(50)
     expect(new Set(tests.map((test) => test.description)).size).toBe(50)
   })

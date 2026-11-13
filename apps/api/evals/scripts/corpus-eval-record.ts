@@ -8,7 +8,7 @@ import { parseEnv } from '../../src/config/env.ts'
 import {
   checkSuite,
   loadThresholds,
-  renderMetricsTable,
+  renderSummary,
   type ThresholdReport,
   type ThresholdsFile,
 } from './check-thresholds.ts'
@@ -119,24 +119,21 @@ const SUITE_TITLES: Readonly<Record<SuiteName, string>> = {
   holdout: 'Conjunto holdout (nunca orienta parâmetros)',
 }
 
-/** Resumo do corpus-eval: as duas tabelas, com a `corpus_version` avaliada. */
+/**
+ * Resumo do corpus-eval: a `corpus_version` avaliada e, por conjunto, a tabela com os casos abaixo
+ * de 1 e os erros do provider (o mesmo resumo do `check-thresholds`).
+ */
 export function renderEvalSummary(
   record: EvalRecord,
   reports: Readonly<Record<SuiteName, ThresholdReport>>,
 ): string {
-  const lines = [
-    `### corpus-eval (corpus_version ${String(record.corpusVersion)}): ${record.pass ? 'aprovado' : 'REPROVADO'}`,
-    '',
-  ]
-  for (const suite of ['dev', 'holdout'] as const) {
-    lines.push(
-      `#### ${SUITE_TITLES[suite]}: ${reports[suite].pass ? 'aprovado' : 'REPROVADO'}`,
-      '',
-      ...renderMetricsTable(reports[suite]),
-      '',
-    )
-  }
-  return `${lines.join('\n')}\n`
+  const header = `## corpus-eval (corpus_version ${String(record.corpusVersion)}): ${record.pass ? 'aprovado' : 'REPROVADO'}\n\n`
+  return (
+    header +
+    (['dev', 'holdout'] as const)
+      .map((suite) => renderSummary(SUITE_TITLES[suite], reports[suite]))
+      .join('\n')
+  )
 }
 
 const fmt = (value: number) => value.toFixed(3)
