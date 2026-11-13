@@ -128,14 +128,15 @@ O mantenedor aprovou as recomendações da revisão de arquitetura; os pacotes e
 [roteiro](roadmap.md#revisão-antes-da-f4-2026-11-12). O plano de 2026-11-10 foi congelado: a fonte
 de verdade passou a ser este diretório (ADR 0001, adendo de 2026-11-12).
 
-Pendências:
+Concluída em 2026-11-13 (PRs #61 a #77), sem pendências:
 
 - PRs dos pacotes A, B, B2, C, D e E entraram. Os artefatos da ingestão foram migrados do Netlify
   Blobs para o GitHub Releases em 2026-11-13 (run 43355872236 do `blobs-migrate.yml`: 150 itens,
   59 raw, 55 Docling, 33 de snapshot e 3 do watch, sem falha; o dry-run seguinte deu 150 iguais) e
   a etapa C2 tirou o Netlify Blobs do código e dos workflows (ADR 0030);
-- revogação dos tokens e contas que saíram: o site `tekoia`, o PAT e a conta da Netlify (o
-  `NETLIFY_AUTH_TOKEN` e o `NETLIFY_SITE_ID` do environment `staging` saíram em 2026-11-13);
-  Codecov, Checkly e UptimeRobot;
-- trunk-based (ADR 0033): renomear o branch principal no SonarQube Cloud (UI);
+- contas e tokens que saíram, feito em 2026-11-13: site `tekoia` apagado e PAT da Netlify
+  revogado; `NETLIFY_AUTH_TOKEN` e `NETLIFY_SITE_ID` fora do environment `staging`; App do Codecov
+  desinstalado; WAF aplicado e env vars ajustadas nos dois projetos da Vercel;
+- trunk-based (ADR 0033): concluído em 2026-11-13, inclusive o branch principal `main` no
+  SonarQube Cloud;
 - revisão do mantenedor dos casos do golden `holdout`: feita em 2026-11-13 (#74).
