@@ -1,0 +1,58 @@
+# Vulnerabilidades conhecidas nas dependências npm (`pnpm audit`), fora do PR (ADR 0032): um
+# advisory novo publicado no meio do dia reprovava qualquer PR, inclusive os de documentação, sem
+# relação com a mudança. No PR fica o `dependency-review` do security.yml, que olha só as
+# dependências que o próprio PR introduz, e o `pnpm audit signatures` do job `lint`.
+#
+# Roda em push para develop/main, todo dia e, a partir da F7, chamado pelos workflows de deploy
+# (workflow_call) antes de publicar. Falha avisa o mantenedor pelo e-mail de run vermelho; a
+# correção vai num PR próprio (override no pnpm-workspace.yaml ou subida da dependência).
+name: Audit
+
+on:
+  push:
+    branches: [develop, main]
+  schedule:
+    - cron: "29 6 * * *" # todo dia, 06:29 UTC
+  workflow_call:
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: audit-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  audit:
+    name: audit
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      - name: Vulnerabilidades em dependências de produção
+        run: pnpm audit --prod --audit-level low
+
+      # O Vercel CLI roda nos deploys com o VERCEL_TOKEN: a árvore inteira dele (devDependency do
+      # projeto isolado) também precisa estar livre de vulnerabilidades conhecidas.
+      - name: Vulnerabilidades no Vercel CLI isolado (tools/vercel-cli)
+        working-directory: tools/vercel-cli
+        run: pnpm audit --audit-level low
+
+      # Idem para o Netlify CLI, que roda nos deploys da web com o NETLIFY_AUTH_TOKEN.
+      - name: Vulnerabilidades no Netlify CLI isolado (tools/netlify-cli)
+        working-directory: tools/netlify-cli
+        run: pnpm audit --audit-level low

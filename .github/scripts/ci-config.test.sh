@@ -45,6 +45,14 @@ check "lint roda este teste" job_runs_match lint 'bash \.github/scripts/ci-confi
 check "typecheck roda type-coverage no --affected" \
   job_runs_match typecheck 'turbo run .*type-coverage.*--affected'
 
+# --- pnpm audit fora do PR (ADR 0032): advisory novo não reprova PR sem relação -----------------
+check "ci.yml sem pnpm audit de advisories (só signatures, no lint)" \
+  bash -c "! grep -Eq 'pnpm audit (--|$)' .github/workflows/ci.yml && yq -r '.jobs.lint.steps[].run // \"\"' .github/workflows/ci.yml | grep -qx 'pnpm audit signatures'"
+check "audit.yml em push, agendado e workflow_call, sem pull_request" \
+  yq_true '(.on | has("push")) and (.on | has("schedule")) and (.on | has("workflow_call")) and (.on | has("pull_request") | not)' .github/workflows/audit.yml
+check "audit.yml roda pnpm audit --prod --audit-level low" \
+  bash -c "yq -r '.jobs.audit.steps[].run // \"\"' .github/workflows/audit.yml | grep -qx 'pnpm audit --prod --audit-level low'"
+
 # --- Sonar só informativo (ADR 0032): fora do ci-gate e sem bloquear -----------------------------
 sonar=.github/workflows/sonar.yml
 check "sonar.yml com continue-on-error e sem esperar o quality gate" \
