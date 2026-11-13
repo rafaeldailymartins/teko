@@ -212,7 +212,7 @@ rules:
         - /apps/api/src/config/platform.ts
         - /apps/web/src/shared/config/env.ts
         # Arquivos de config na raiz de cada pacote (next.config.ts, vitest/tsdown/drizzle/
-        # steiger/sentry configs): rodam no build ou nas ferramentas, nunca no runtime da app.
+        # sentry configs): rodam no build ou nas ferramentas, nunca no runtime da app.
         - /apps/*/*.config.ts
         - /apps/*/*.config.mts
         - /apps/*/*.config.js

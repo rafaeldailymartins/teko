@@ -1,5 +1,5 @@
 # Rótulos por área, aplicados pelo job `labeler` do pr-hygiene.yml (actions/labeler v7).
-# As áreas seguem os escopos do commitlint.
+# As áreas seguem os escopos de .github/commit-types.json.
 
 web:
   - changed-files:

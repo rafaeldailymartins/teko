@@ -1,4 +1,5 @@
-# Higiene de PR: título (Conventional Commits), Git Flow, DCO e rótulos por área.
+# Higiene de PR: título (Conventional Commits, com tipos e escopos de .github/commit-types.json),
+# Git Flow, DCO e rótulos por área.
 # `pr-title`, `gitflow-guard` e `dco` são checks obrigatórios nos rulesets.
 # Sem `pull_request_target`: em PRs de fork o token é só leitura, então o labeler roda apenas
 # para branches do próprio repositório.
@@ -21,6 +22,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
+      contents: read # ler a lista de tipos e escopos
       pull-requests: read # ler o PR (título e commits, se validateSingleCommit)
     steps:
       - name: Harden runner
@@ -28,44 +30,32 @@ jobs:
         with:
           egress-policy: audit
 
+      - name: Checkout da lista de tipos e escopos
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: .github/commit-types.json
+          sparse-checkout-cone-mode: false
+
+      - name: Ler tipos e escopos (.github/commit-types.json, lista única)
+        id: lists
+        run: |
+          {
+            echo 'types<<COMMIT_TYPES'
+            jq -r '.types[]' .github/commit-types.json
+            echo 'COMMIT_TYPES'
+            echo 'scopes<<COMMIT_SCOPES'
+            jq -r '.scopes[]' .github/commit-types.json
+            echo 'COMMIT_SCOPES'
+          } >>"$GITHUB_OUTPUT"
+
       - name: Validar título (vira a mensagem do squash)
         uses: amannn/action-semantic-pull-request@2252a14e810aa9b85c2d560bd7070c802206ecf6 # v6.1.2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          # Tipos do @commitlint/config-conventional.
-          types: |
-            build
-            chore
-            ci
-            docs
-            feat
-            fix
-            perf
-            refactor
-            revert
-            style
-            test
-          # Mesma lista do `scope-enum` do commitlint.config.mjs, mais `deps-dev`, que o
-          # Dependabot gera com `include: scope` para dependências de desenvolvimento.
-          scopes: |
-            web
-            api
-            shared
-            ingest
-            retrieval
-            eval
-            obs
-            i18n
-            auth
-            db
-            ci
-            deps
-            deps-dev
-            release
-            specs
-            docs
-            infra
+          types: ${{ steps.lists.outputs.types }}
+          scopes: ${{ steps.lists.outputs.scopes }}
           requireScope: false
 
   gitflow-guard:

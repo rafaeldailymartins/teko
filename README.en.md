@@ -10,7 +10,6 @@
 [![CodeQL](https://img.shields.io/github/actions/workflow/status/rafaeldailymartins/teko/codeql.yml?branch=develop&style=flat-square&label=CodeQL)](https://github.com/rafaeldailymartins/teko/actions/workflows/codeql.yml)
 [![OpenSSF Scorecard](https://img.shields.io/ossf-scorecard/github.com/rafaeldailymartins/teko?style=flat-square&label=OpenSSF%20Scorecard)](https://scorecard.dev/viewer/?uri=github.com/rafaeldailymartins/teko)
 [![OpenSSF Best Practices](https://img.shields.io/cii/level/16550?style=flat-square&label=OpenSSF%20Best%20Practices)](https://www.bestpractices.dev/projects/16550)
-[![Codecov](https://img.shields.io/codecov/c/github/rafaeldailymartins/teko/develop?style=flat-square&label=coverage)](https://app.codecov.io/gh/rafaeldailymartins/teko/tree/develop)
 [![Quality Gate](https://img.shields.io/sonar/quality_gate/rafaeldailymartins_teko?server=https%3A%2F%2Fsonarcloud.io&style=flat-square&label=quality%20gate)](https://sonarcloud.io/summary/new_code?id=rafaeldailymartins_teko)
 [![Mutation score](https://img.shields.io/endpoint?style=flat-square&url=https%3A%2F%2Fbadge-api.stryker-mutator.io%2Fgithub.com%2Frafaeldailymartins%2Fteko%2Fdevelop)](https://dashboard.stryker-mutator.io/reports/github.com/rafaeldailymartins/teko/develop)
 [![License: MIT](https://img.shields.io/github/license/rafaeldailymartins/teko?style=flat-square)](LICENSE)
@@ -59,35 +58,38 @@ force**. It covers EFD ICMS/IPI, EFD-REINF and the rules of the state of Goiás 
 > platform spikes are done (phases F0 and F1), and so are the validity domain, the corpus schema
 > and the hybrid search, evaluated on a fixture of real texts (phase F2).
 > The ingestion of the official sources (EFD ICMS/IPI, EFD-Reinf, RCTE, CTE, EFD-GO and Goiás
-> tables), the embeddings and daily change monitoring are implemented (phase F3); the first staging
-> load runs on Actions. The next phase brings the full API. Nothing is published and
-> answers are not usable yet.
+> tables), the embeddings and daily change monitoring are implemented, and the full corpus is
+> already in staging (phase F3). The next phase brings the full API. Nothing is published and
+> answers are not usable yet. Progress lives in [`docs/status.md`](docs/status.md) and the next
+> phases in [`docs/roadmap.md`](docs/roadmap.md) (both in Portuguese).
 
 ## 🧱 Tech stack
 
 | Layer      | Technology                                                                                                                                     |
 | ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| 🖥️ Web     | Next.js 16 static export (no functions) on Netlify, React 19, Tailwind CSS 4, next-intl (pt-BR and en), Feature-Sliced Design                  |
+| 🖥️ Web     | Next.js 16 static export served by Vercel on the same origin as the API, React 19, Tailwind CSS 4, next-intl (pt-BR and en)                    |
 | ⚙️ API     | Fastify 5 on Node.js 24, hexagonal architecture, Zod contracts shared through `@teko/shared`; a single Vercel Function (Fluid compute, `gru1`) |
 | 🗄️ Data    | PostgreSQL 18 + pgvector (Neon in `aws-sa-east-1`; Docker locally), Drizzle ORM with `pg`, hybrid search with RRF                              |
 | 🤖 AI      | BGE-M3 embeddings (Cloudflare Workers AI), Gemini free tier with Groq as fallback                                                              |
-| 📥 Ingest  | Python with Docling (TableFormer `ACCURATE`) for the PDFs, and SPED's External Tables web service                                              |
+| 📥 Ingest  | Python with Docling (TableFormer `ACCURATE`) for the PDFs, and SPED's External Tables web service; artifacts on GitHub Releases                |
 | 🧰 Tooling | pnpm 12 with a strict supply-chain policy, Turborepo, Biome, Vitest, Stryker, promptfoo, OpenSpec, lefthook, git-cliff                         |
 
 ## 🏗️ Architecture
 
 ```
-Browser
-  └── static site (Netlify) ── signed proxy (x-nf-sign) ──> Fastify API (Vercel Function, gru1)
-                                                              ├── Postgres + pgvector (Neon)
-                                                              ├── BGE-M3 embeddings (Workers AI)
-                                                              └── LLM: Gemini → Groq (fallback)
+Browser ── tekoia.vercel.app (same origin) ──┬── static site (Vercel CDN)
+                                             └── /api/* → Fastify API (Vercel Function, gru1)
+                                                   ├── Postgres + pgvector (Neon)
+                                                   ├── embeddings and reranker (Workers AI)
+                                                   └── LLM: Gemini → Groq (fallback)
 ```
 
-- The API runs in two Vercel projects: `teko-api` (production) and `teko-api-staging`.
+- Site and API live in the same Vercel project, in two environments: `tekoia` (production) and
+  `tekoia-staging`.
 - GitHub Actions builds and attests the artifact and deploys it with `vercel deploy --prebuilt`;
-  there is no Git integration. [ADR 0004](docs/adr/0004-vercel-hobby-api.md) explains why.
-- If Vercel goes away, there is a Plan B on Render Free.
+  there is no Git integration. ADRs [0004](docs/adr/0004-vercel-hobby-api.md) and 0029 explain why.
+- If Vercel goes away, there is a Plan B on Render Free that serves both the site and the API.
+- The full design, by area, is in [`docs/architecture/`](docs/architecture/) (in Portuguese).
 
 ## 🚀 Getting started
 
@@ -103,30 +105,31 @@ Browser
 corepack enable                                          # or prefix every command with "corepack"
 pnpm install --frozen-lockfile
 pnpm dev:secrets                                         # local-only secrets, outside git
-docker compose -f infra/local/compose.yaml up -d --wait  # Postgres + pgvector and the signed dev proxy
+docker compose -f infra/local/compose.yaml up -d --wait  # Postgres + pgvector
 pnpm lint && pnpm typecheck && pnpm test
 ```
 
-[CONTRIBUTING.md](CONTRIBUTING.md) has the full setup, Git Flow, the OpenSpec workflow and every
-gate.
+[CONTRIBUTING.md](CONTRIBUTING.md) has the full setup, the branch flow, the OpenSpec workflow and
+every gate.
 
 ## ✅ Quality gates
 
-Everything below fails the pull request instead of warning. The `ci-gate` check aggregates the
-jobs and is required to merge into `develop` and `main`.
+Everything below fails the pull request (or the nightly run) instead of warning. The `ci-gate`
+check aggregates the PR jobs and is required to merge into the trunk. The expensive checks
+(mutation, dependency audit, generation evals) run nightly, on schedule or before a release.
 
 | Gate                      | Tool                                                                                                                                                 |
 | ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 🎨 Formatting and lint    | Biome with no warnings, ruff in the Python ingestion, actionlint on the workflows                                                                    |
-| 🧩 Architecture           | dependency-cruiser (hexagonal), Steiger (FSD), `turbo boundaries`                                                                                    |
+| 🧩 Architecture           | dependency-cruiser (hexagonal)                                                                                                                       |
 | 🧹 Dead code and monorepo | knip, sherif, jscpd                                                                                                                                  |
 | 🔤 Types                  | strict `tsc` and type-coverage ≥ 99%; pyright in the ingestion                                                                                       |
 | 🧪 Coverage               | Vitest: ≥ 95% of lines in the API's domain and application layers and in `shared`, ≥ 80% in the adapters and the web                                 |
-| 🧬 Mutation               | Stryker, minimum score of 70                                                                                                                         |
+| 🧬 Mutation               | Stryker nightly, minimum score of 70                                                                                                                 |
 | 🔎 Retrieval              | retrieval evals (promptfoo) on the real-text fixture: recall@10 ≥ 0.9, MRR ≥ 0.7; validity, refusal, clarification and reference date with no errors |
 | ⚡ Performance            | `sql-perf` of the hybrid search over 100k chunks: no Seq Scan and a median under 150 ms                                                              |
 | 🗃️ Migrations             | `migration-guard`: expand/contract only, a published migration is immutable                                                                          |
-| 🔐 Security               | CodeQL, Semgrep, gitleaks, osv-scanner, zizmor, dependency review, pip-audit                                                                         |
+| 🔐 Security               | CodeQL, Semgrep, gitleaks, osv-scanner, zizmor, dependency review                                                                                    |
 | 📦 Supply chain           | pnpm with releases at least 7 days old and provenance                                                                                                |
 | 📐 Specs                  | `openspec validate --all --strict`                                                                                                                   |
 
@@ -143,9 +146,9 @@ affiliate links, paid plans or paid services tied to the deployment. Donations a
 
 ## 🤖 How it is built
 
-The project is developed with [Claude Code](https://claude.com/claude-code). Every change starts as
-an [OpenSpec](https://github.com/Fission-AI/OpenSpec) proposal, follows the rules in
-[`CLAUDE.md`](CLAUDE.md) and passes the gates above in CI. Architecture decisions live in
+The project is developed with [Claude Code](https://claude.com/claude-code). Every requirement
+change starts as an [OpenSpec](https://github.com/Fission-AI/OpenSpec) proposal; the work follows
+the rules in [`CLAUDE.md`](CLAUDE.md) and passes the gates above in CI. Architecture decisions live in
 [`docs/adr/`](docs/adr/) (in Portuguese).
 
 ## 📚 Project documents
@@ -153,6 +156,9 @@ an [OpenSpec](https://github.com/Fission-AI/OpenSpec) proposal, follows the rule
 - 🤝 [CONTRIBUTING.md](CONTRIBUTING.md): setup, branches, commits (DCO), OpenSpec and gates
 - 🔒 [SECURITY.md](SECURITY.md): how to report vulnerabilities privately
 - 💬 [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md): Contributor Covenant 2.1
+- 🗺️ [docs/roadmap.md](docs/roadmap.md): phases F4 to F10 and what completes each one
+- 📍 [docs/status.md](docs/status.md): where each phase stands
+- 🧭 [docs/architecture/](docs/architecture/): the current design, by area
 - 🏛️ [docs/adr/](docs/adr/): architecture decision records
 
 ## ⚖️ Disclaimer

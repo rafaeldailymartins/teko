@@ -8,8 +8,8 @@ import {
   type SnapshotTable,
 } from '#app/ports/snapshot-repository.ts'
 import { type CoverageGapEntry, mergeGapsForPromotion } from '#domain/corpus/coverage-gaps.ts'
+import { CorpusInvariantError } from './corpus-invariant-error.ts'
 import { gapColumns, storedGapEntries } from './coverage-gap-entries.ts'
-import { CorpusInvariantError } from './pg-corpus-writer.ts'
 
 /**
  * `SnapshotRepository` sobre o `pg` (owner, conexão direta), com SQL explícito: a exportação lê

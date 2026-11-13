@@ -29,7 +29,6 @@
     "src/**/*.tsx",
     "test/**/*.ts",
     "next.config.ts",
-    "steiger.config.ts",
     "vitest.config.ts"
   ],
   "exclude": ["node_modules", ".next", "out"]

@@ -26,15 +26,15 @@ import {
   provisionVersions,
   reviewQueue,
 } from '../schema/corpus.ts'
+import { CorpusInvariantError } from './corpus-invariant-error.ts'
 import { gapColumns, storedGapEntries } from './coverage-gap-entries.ts'
-import { CorpusInvariantError } from './pg-corpus-writer.ts'
 import { groupByLevel } from './pg-ingestion-provision-levels.ts'
 
 /**
  * `CorpusIngestionRepository` sobre o Drizzle (owner, conexão direta). Uma unidade de trabalho é uma
- * transação; as linhas novas vão em lotes de 500, com IDs `uuidv7()` pedidos ao banco antes (como no
- * `pg-corpus-writer`), e as operações de reconciliação (fechar, recortar, alargar) são SQL sobre as
- * linhas travadas por `lockOpenVersions`.
+ * transação; as linhas novas vão em lotes de 500, com IDs `uuidv7()` pedidos ao banco antes, e as
+ * operações de reconciliação (fechar, recortar, alargar) são SQL sobre as linhas travadas por
+ * `lockOpenVersions`. É também o caminho do seed da fixture (`SeedFixtureCorpus`).
  */
 
 const BATCH_SIZE = 500

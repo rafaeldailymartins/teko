@@ -5,7 +5,6 @@ import {
   effectiveCoverage,
   findCoveringInterval,
   isDateCovered,
-  partitionFamiliesByCoverage,
   subtractIntervals,
 } from './coverage.ts'
 import { createInterval, isAdjacent, overlaps } from './validity-interval.ts'
@@ -102,15 +101,4 @@ describe('effectiveCoverage', () => {
       expect(isDateCovered(date, effective)).toBe(expected)
     },
   )
-})
-
-describe('partitionFamiliesByCoverage', () => {
-  it('separa famílias cobertas e não cobertas', () => {
-    const result = partitionFamiliesByCoverage('2013-05-01', [
-      { family: 'efd-icms-ipi', intervals: efd },
-      { family: 'efd-reinf', intervals: [createInterval('2018-05-01', null)] },
-      { family: 'rcte', intervals: [createInterval('1997-11-01', null)] },
-    ])
-    expect(result).toEqual({ covered: ['efd-icms-ipi', 'rcte'], uncovered: ['efd-reinf'] })
-  })
 })

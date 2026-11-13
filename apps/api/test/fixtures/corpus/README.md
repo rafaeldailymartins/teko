@@ -1,9 +1,11 @@
 # Fixture única do corpus
 
 Excertos reais das fontes oficiais, usados pela integração, pelas retrieval evals, pelo e2e e (a
-partir da F8) pelo red team. O `seed-fixtures` grava esta pasta no Postgres pelo mesmo
-`CorpusWriter` da ingestão. O formato é o de
-`src/adapters/in/cli/seed-fixtures/fixture-schema.ts`:
+partir da F8) pelo red team. O `seed-fixtures` grava esta pasta no Postgres pelo mesmo caminho da
+ingestão real: cada versão de documento vira uma entrada do `IngestDocumentVersion`, na ordem de
+publicação, num run `target='fixture'`; depois o `RefreshCoverage` abre a `corpus_version` e a
+cobertura de `coverage.json` é gravada por cima da derivada. Rodar de novo não duplica nada. O
+formato é o de `src/adapters/in/cli/seed-fixtures/fixture-schema.ts`:
 
 - `documents/<slug>.json`: um documento, suas versões (snapshots ou leiautes) e os dispositivos,
   cada um com as redações e o intervalo de vigência `[from, to)` (`to: null` = vigente);
@@ -164,3 +166,7 @@ nesses tópicos são só de espaçamento da extração, então cada tópico é u
 Todos os `provisions`, `validity`, `facts` e `source_quote` dos casos respondidos saem do texto
 desta fixture. `candidates` dos ambíguos estão em ordem cronológica. Curadoria assistida, com
 todos os casos revisados pelo mantenedor em 2026-11-11 (`reviewed_at: "2026-11-11"`).
+
+É o conjunto `dev` (ADR 0031). O conjunto `holdout` (`evals/datasets/holdout.yaml`) não usa esta
+fixture: roda só no `corpus-eval`, contra o corpus real do staging, e suas perguntas não entram no
+`embeddings.json.gz`.

@@ -68,33 +68,3 @@ export function effectiveCoverage(
     .filter((interval): interval is ValidityInterval => interval !== null)
   return subtractIntervals(bounded, gaps)
 }
-
-export interface FamilyCoverageInput {
-  readonly family: string
-  readonly intervals: readonly ValidityInterval[]
-}
-
-export interface CoveragePartition {
-  readonly covered: readonly string[]
-  readonly uncovered: readonly string[]
-}
-
-/**
- * Separa as famílias pedidas em cobertas e não cobertas na data. Com cobertura parcial a busca
- * segue só nas cobertas, e as demais vão para `data-meta.uncoveredFamilies`.
- */
-export function partitionFamiliesByCoverage(
-  date: IsoDate,
-  families: readonly FamilyCoverageInput[],
-): CoveragePartition {
-  const covered: string[] = []
-  const uncovered: string[] = []
-  for (const { family, intervals } of families) {
-    if (isDateCovered(date, intervals)) {
-      covered.push(family)
-    } else {
-      uncovered.push(family)
-    }
-  }
-  return { covered, uncovered }
-}

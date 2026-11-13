@@ -1,0 +1,969 @@
+# Conjunto holdout do golden do Tekó (ADR 0031). Schema em datasets/schema.ts.
+#
+# Regras do holdout:
+# - nunca orienta parâmetros (número de candidatos, pesos, limites, prompts): o ajuste é feito no
+#   conjunto dev (golden.yaml); o holdout só mede, e decide a meta de MRR da F4;
+# - roda só no corpus-eval (ingest.yml), contra o corpus real do staging: as perguntas não têm
+#   vetor na fixture do PR;
+# - mudar o esperado de um caso exige source_quote novo, conferido no texto da fonte; um caso que
+#   reprova não é reescrito para passar.
+#
+# Grupos (primeira tag): rcte-cte 14, efd-icms-ipi 8, efd-go 5, tabelas-go 7, efd-reinf 8,
+# recusa 5, sem-resposta 4, ambiguo 2 (53 casos, 10 em inglês, 10 com mais de um dispositivo
+# esperado). Datas resolvidas com o relógio fixo de 2026-11-10 (America/Sao_Paulo).
+#
+# Curadoria assistida por LLM em 2026-11-12, pendente de revisão do mantenedor (reviewed_at nulo).
+# Perguntas escritas sem copiar o texto do dispositivo. As chaves, vigências e source_quote saem dos
+# parsers da ingestão rodados localmente sobre as fontes públicas de corpus/sources.yaml (RCTE e CTE
+# consolidados até o Decreto nº 10.986/26 e a Lei nº 24.608/26, Tabelas de Goiás 5.1.1 v151, 5.2
+# v51 e 5.3 v47, pacotes de XSD da EFD-Reinf 2.1.2) e, para a EFD ICMS/IPI e a EFD de Goiás, dos
+# textos da fixture test/fixtures/corpus. Vigência (validity) só onde há uma única fonte por
+# documento (RCTE, CTE e Tabelas): nos Guias e na REINF o staging tem várias versões e a vigência
+# esperada dependeria da reconciliação.
+
+# ---------------------------------------------------------------------------------------------
+# RCTE e CTE (14): dispositivos fora do recorte da fixture (arts. 44 a 87 do RCTE e 44 em diante do
+# CTE), com redações que mudam no tempo
+
+- id: hold-rcte-aliquota-interna-2023
+  question: Qual era a alíquota geral do ICMS nas vendas dentro de Goiás?
+  periodo_apuracao: "2023-08"
+  reference_source: periodo_apuracao
+  locale: pt-BR
+  families: [rcte]
+  expected:
+    status: answered
+    reference_date: "2023-08-01"
+    provisions: ["go:rcte:art:20:inc:I"]
+    validity: { from: "1998-01-01", to: "2024-04-01" }
+    facts: ["17% (dezessete por cento)"]
+  pair: hold-rcte-aliquota-interna
+  tags: [rcte-cte, rcte, vigencia, fora-da-fixture]
+  source_url: https://appasp.economia.go.gov.br/Legislacao/arquivos/Rcte/RCTE.htm
+  source_quote: I - 17% (dezessete por cento), na operação e prestação internas, observado o disposto no § 1º;
+  curated_by: claude-opus-5.5 (curadoria assistida por LLM; pendente de revisão do mantenedor)
+  reviewed_at: null
+
+- id: hold-rcte-aliquota-interna-2025
+  question: Qual é a alíquota modal de ICMS para operação interna em Goiás?
+  periodo_apuracao: "2025-03"
+  reference_source: periodo_apuracao
+  locale: pt-BR
+  families: [rcte]
+  expected:
+    status: answered
+    reference_date: "2025-03-01"
+    provisions: ["go:rcte:art:20:inc:I"]
+    validity: { from: "2024-04-01", to: null }
+    facts: ["19% (dezenove por cento)"]
+  pair: hold-rcte-aliquota-interna
+  tags: [rcte-cte, rcte, vigencia, fora-da-fixture]
+  source_url: https://appasp.economia.go.gov.br/Legislacao/arquivos/Rcte/RCTE.htm
+  source_quote: I - 19% (dezenove por cento), na operação e na prestação internas, observado o disposto no § 1º deste artigo;
+  curated_by: claude-opus-5.5 (curadoria assistida por LLM; pendente de revisão do mantenedor)
+  reviewed_at: null
+
+- id: hold-aliquota-interna-lei-e-regulamento
+  question: Onde a lei e o regulamento do ICMS de Goiás fixam a alíquota padrão das operações internas?
+  periodo_apuracao: "2025-09"
+  reference_source: periodo_apuracao
+  locale: pt-BR
+  families: [rcte, cte]
+  expected:
+    status: answered
+    reference_date: "2025-09-01"
+    provisions: ["go:rcte:art:20:inc:I", "go:cte:art:27:inc:I"]
+    validity: { from: "2024-04-01", to: null }
+    facts: ["19% (dezenove por cento)"]
+  tags: [rcte-cte, rcte, cte, varios-dispositivos, fora-da-fixture]
+  source_url: https://appasp.economia.go.gov.br/Legislacao/arquivos/Cte/CTE.htm
+  source_quote: I - 19% (dezenove por cento), nas operações ou nas prestações internas, excetuadas as hipóteses previstas nos incisos II, III, VII e IX;
+  curated_by: claude-opus-5.5 (curadoria assistida por LLM; pendente de revisão do mantenedor)
+  reviewed_at: null
+
+- id: hold-rcte-etanol-en
+  question: What ICMS rate applies to intrastate sales of ethanol fuel in Goiás?
+  periodo_apuracao: "2024-06"
+  reference_source: periodo_apuracao
+  locale: en
+  families: [rcte]
+  expected:
+    status: answered
+    reference_date: "2024-06-01"
+    provisions: ["go:rcte:art:20:par:1:inc:VIII"]
+    validity: { from: "2018-01-01", to: null }
+    facts: ["23% (vinte e três por cento)"]
+  tags: [rcte-cte, rcte, en, fora-da-fixture]
+  source_url: https://appasp.economia.go.gov.br/Legislacao/arquivos/Rcte/RCTE.htm
+  source_quote: VIII - 23% (vinte e três por cento), na operação interna com álcool carburante;
+  curated_by: claude-opus-5.5 (curadoria assistida por LLM; pendente de revisão do mantenedor)
+  reviewed_at: null
+
+- id: hold-rcte-ovo-aliquota-reduzida
+  question: Ovos vendidos dentro de Goiás pagam ICMS com alíquota menor que a geral?
+  periodo_apuracao: "2025-05"
+  reference_source: periodo_apuracao
+  locale: pt-BR
+  families: [rcte]
+  expected:
+    status: answered
+    reference_date: "2025-05-01"
+    provisions: ["go:rcte:art:20:par:1:inc:II", "go:rcte:art:20:par:1:inc:II:ali:a:item:4"]
+    validity: { from: "1998-01-01", to: null }
+    facts: ["12% (doze por cento)", "4. ovo;"]
+  tags: [rcte-cte, rcte, varios-dispositivos, fora-da-fixture]
+  source_url: https://appasp.economia.go.gov.br/Legislacao/arquivos/Rcte/RCTE.htm
+  source_quote: "II - 12% (doze por cento):"
+  curated_by: claude-opus-5.5 (curadoria assistida por LLM; pendente de revisão do mantenedor)
+  reviewed_at: null
+
+- id: hold-rcte-difal-uso-consumo
+  question: Comprei material de uso e consumo de fornecedor de outro estado. Como fica o ICMS devido a Goiás nessa entrada?
+  periodo_apuracao: "2024-09"
+  reference_source: periodo_apuracao
+  locale: pt-BR
+  families: [rcte]
+  expected:
+    status: answered
+    reference_date: "2024-09-01"
+    provisions: ["go:rcte:art:20:par:1:inc:IV", "go:rcte:art:20:par:1:inc:IV:ali:a"]
+    validity: { from: "1998-01-01", to: null }
+    facts: ["diferença entre a alíquota interna utilizada neste Estado e a interestadual"]
+  tags: [rcte-cte, rcte, varios-dispositivos, linguagem-de-contador, fora-da-fixture]
+  source_url: https://appasp.economia.go.gov.br/Legislacao/arquivos/Rcte/RCTE.htm
+  source_quote: IV - equivalente à diferença entre a alíquota interna utilizada neste Estado e a interestadual aplicável no Estado de origem, relativamente à
+  curated_by: claude-opus-5.5 (curadoria assistida por LLM; pendente de revisão do mantenedor)
+  reviewed_at: null
+
+- id: hold-rcte-local-difal-nao-contribuinte
+  question: Numa venda de outro estado para consumidor final em Goiás que não é contribuinte do ICMS, qual é o local da operação para cobrar o diferencial de alíquotas?
+  periodo_apuracao: "2023-10"
+  reference_source: periodo_apuracao
+  locale: pt-BR
+  families: [rcte]
+  expected:
+    status: answered
+    reference_date: "2023-10-01"
+    provisions: ["go:rcte:art:27:inc:XII", "go:rcte:art:27:inc:XII:ali:b"]
+    validity: { from: "2022-04-05", to: null }
+    facts: ["o do estabelecimento do remetente"]
+  tags: [rcte-cte, rcte, varios-dispositivos, fora-da-fixture]
+  source_url: https://appasp.economia.go.gov.br/Legislacao/arquivos/Rcte/RCTE.htm
+  source_quote: b) o do estabelecimento do remetente, quando o destinatário não for contribuinte do imposto.
+  curated_by: claude-opus-5.5 (curadoria assistida por LLM; pendente de revisão do mantenedor)
+  reviewed_at: null
+
+- id: hold-rcte-retificacao-efd-2010
+  question: Até quando o contribuinte goiano podia retificar a escrituração fiscal digital sem pedir autorização ao fisco?
+  periodo_apuracao: "2010-06"
+  reference_source: periodo_apuracao
+  locale: pt-BR
+  families: [rcte]
+  expected:
+    status: answered
+    reference_date: "2010-06-01"
+    provisions: ["go:rcte:art:356-O"]
+    validity: { from: "2009-01-01", to: "2010-12-29" }
+    facts: ["30 (trinta) dias"]
+  pair: hold-rcte-retificacao-efd
+  tags: [rcte-cte, rcte, vigencia, fora-da-fixture]
+  source_url: https://appasp.economia.go.gov.br/Legislacao/arquivos/Rcte/RCTE.htm
+  source_quote: Art. 356-O. O contribuinte pode retificar a EFD até 30 (trinta) dias após o prazo de que trata o art. 356-N
+  curated_by: claude-opus-5.5 (curadoria assistida por LLM; pendente de revisão do mantenedor)
+  reviewed_at: null
+
+- id: hold-rcte-retificacao-efd-2012
+  question: Qual o prazo para substituir o arquivo da EFD sem autorização da administração tributária goiana?
+  periodo_apuracao: "2012-05"
+  reference_source: periodo_apuracao
+  locale: pt-BR
+  families: [rcte]
+  expected:
+    status: answered
+    reference_date: "2012-05-01"
+    provisions: ["go:rcte:art:356-O"]
+    validity: { from: "2010-12-29", to: "2013-01-01" }
+    facts: ["180 (cento e oitenta) dias"]
+  pair: hold-rcte-retificacao-efd
+  tags: [rcte-cte, rcte, vigencia, fora-da-fixture]
+  source_url: https://appasp.economia.go.gov.br/Legislacao/arquivos/Rcte/RCTE.htm
+  source_quote: até 180 (cento e oitenta) dias após o prazo de que trata o art. 356-N, independentemente de autorização da administração tributária
+  curated_by: claude-opus-5.5 (curadoria assistida por LLM; pendente de revisão do mantenedor)
+  reviewed_at: null
+
+- id: hold-rcte-multa-efd-atraso
+  question: Qual a penalidade por transmitir o arquivo da EFD depois do prazo em Goiás?
+  periodo_apuracao: "2024-11"
+  reference_source: periodo_apuracao
+  locale: pt-BR
+  families: [rcte]
+  expected:
+    status: answered
+    reference_date: "2024-11-01"
+    provisions: ["go:rcte:art:371-A:inc:II"]
+    validity: { from: "2018-01-16", to: null }
+    facts: ["R$ 700,65", "por mês ou fração"]
+  tags: [rcte-cte, rcte, fora-da-fixture]
+  source_url: https://appasp.economia.go.gov.br/Legislacao/arquivos/Rcte/RCTE.htm
+  source_quote: II - R$ 700,65 (setecentos reais e sessenta e cinco centavos), por mês ou fração, pela entrega do arquivo correspondente à EFD após o prazo estipulado na legislação;
+  curated_by: claude-opus-5.5 (curadoria assistida por LLM; pendente de revisão do mantenedor)
+  reviewed_at: null
+
+- id: hold-rcte-pva-en
+  question: Which program must validate and sign the EFD file before it is sent in Goiás?
+  periodo_apuracao: "2024-02"
+  reference_source: periodo_apuracao
+  locale: en
+  families: [rcte]
+  expected:
+    status: answered
+    reference_date: "2024-02-01"
+    provisions: ["go:rcte:art:356-L"]
+    validity: { from: "2009-01-01", to: null }
+    facts: ["PVA-EFD"]
+  tags: [rcte-cte, rcte, en, fora-da-fixture]
+  source_url: https://appasp.economia.go.gov.br/Legislacao/arquivos/Rcte/RCTE.htm
+  source_quote: Programa de Validação e Assinatura da Escrituração Fiscal Digital - PVA-EFD
+  curated_by: claude-opus-5.5 (curadoria assistida por LLM; pendente de revisão do mantenedor)
+  reviewed_at: null
+
+- id: hold-rcte-tabelas-de-goias-na-efd
+  question: Quais tabelas de códigos próprias de Goiás o contribuinte precisa usar ao gerar a EFD?
+  periodo_apuracao: "2025-01"
+  reference_source: periodo_apuracao
+  locale: pt-BR
+  families: [rcte]
+  expected:
+    status: answered
+    reference_date: "2025-01-01"
+    provisions: ["go:rcte:art:356-G:par:1"]
+    validity: { from: "2009-01-01", to: null }
+    facts: ["tabelas 5.1.1, 5.2, 5.3 e 5.5"]
+  tags: [rcte-cte, rcte, fora-da-fixture]
+  source_url: https://appasp.economia.go.gov.br/Legislacao/arquivos/Rcte/RCTE.htm
+  source_quote: o contribuinte deve utilizar os códigos descritos nas tabelas 5.1.1, 5.2, 5.3 e 5.5 elaboradas pela Secretaria da Fazenda
+  curated_by: claude-opus-5.5 (curadoria assistida por LLM; pendente de revisão do mantenedor)
+  reviewed_at: null
+
+- id: hold-cte-cesta-basica-2019
+  question: Arroz e feijão estavam na lista de produtos com ICMS de 12% nas operações internas de Goiás?
+  periodo_apuracao: "2019-06"
+  reference_source: periodo_apuracao
+  locale: pt-BR
+  families: [cte]
+  expected:
+    status: answered
+    reference_date: "2019-06-01"
+    provisions: ["go:cte:art:27:inc:II:ali:a"]
+    validity: { from: "2017-12-29", to: "2021-01-01" }
+    facts: ["a) açúcar; café; farinhas de mandioca"]
+  pair: hold-cte-cesta-basica
+  tags: [rcte-cte, cte, vigencia, fora-da-fixture]
+  source_url: https://appasp.economia.go.gov.br/Legislacao/arquivos/Cte/CTE.htm
+  source_quote: a) açúcar; café; farinhas de mandioca, de milho e de trigo; fubá; iogurte; macarrão; margarina vegetal; manteiga de leite; milho; óleo vegetal comestível, exceto de oliva; queijo, inclusive requeijão; rapadura; sal iodado e vinagre;
+  curated_by: claude-opus-5.5 (curadoria assistida por LLM; pendente de revisão do mantenedor)
+  reviewed_at: null
+
+- id: hold-cte-cesta-basica-2022
+  question: Arroz e feijão têm alíquota reduzida de ICMS nas vendas internas em Goiás?
+  periodo_apuracao: "2022-06"
+  reference_source: periodo_apuracao
+  locale: pt-BR
+  families: [cte]
+  expected:
+    status: answered
+    reference_date: "2022-06-01"
+    provisions: ["go:cte:art:27:inc:II:ali:a"]
+    validity: { from: "2021-01-01", to: null }
+    facts: ["a) açúcar; arroz; café"]
+  pair: hold-cte-cesta-basica
+  tags: [rcte-cte, cte, vigencia, fora-da-fixture]
+  source_url: https://appasp.economia.go.gov.br/Legislacao/arquivos/Cte/CTE.htm
+  source_quote: a) açúcar; arroz; café; farinhas de mandioca, de milho e de trigo; feijão;
+  curated_by: claude-opus-5.5 (curadoria assistida por LLM; pendente de revisão do mantenedor)
+  reviewed_at: null
+
+# ---------------------------------------------------------------------------------------------
+# EFD ICMS/IPI (8): campos dos registros da fixture que o dev não pergunta
+
+- id: hold-efd-0000-ind-ativ
+  question: Sou comércio varejista. Que indicador de atividade informo no registro de abertura da EFD?
+  periodo_apuracao: "2025-08"
+  reference_source: periodo_apuracao
+  locale: pt-BR
+  families: [efd-icms-ipi]
+  expected:
+    status: answered
+    reference_date: "2025-08-01"
+    provisions: ["br:efd-icms-ipi:reg:0000:campo:15"]
+    facts: ["1 – Outros"]
+  tags: [efd-icms-ipi, linguagem-de-contador]
+  source_url: https://www.gov.br/sped/pt-br/assuntos/escrituracoes-digitais/efd-icms-ipi/manuais-e-documentos-tecnicos/guia-pratico-efd-versao-3-1-9.pdf
+  source_quote: "15 IND_ATIV Indicador de tipo de atividade: 0 – Industrial ou equiparado a industrial; 1 – Outros."
+  curated_by: claude-opus-5.5 (curadoria assistida por LLM; pendente de revisão do mantenedor)
+  reviewed_at: null
+
+- id: hold-efd-0000-perfil-en
+  question: Which filing profiles can be reported in the opening record of the EFD ICMS/IPI file?
+  periodo_apuracao: "2026-02"
+  reference_source: periodo_apuracao
+  locale: en
+  families: [efd-icms-ipi]
+  expected:
+    status: answered
+    reference_date: "2026-02-01"
+    provisions: ["br:efd-icms-ipi:reg:0000:campo:14"]
+    facts: ["[A, B, C]"]
+  tags: [efd-icms-ipi, en]
+  source_url: https://www.gov.br/sped/pt-br/assuntos/escrituracoes-digitais/efd-icms-ipi/manuais-e-documentos-tecnicos/guia-pratico-efd-versao-3-2-4.pdf
+  source_quote: "Campo 14 (IND_PERFIL) - Valores Válidos: [A, B, C]"
+  curated_by: claude-opus-5.5 (curadoria assistida por LLM; pendente de revisão do mantenedor)
+  reviewed_at: null
+
+- id: hold-efd-0000-arquivo-substituto
+  question: Dentro do prazo de entrega, posso mandar um arquivo substituto da EFD ICMS/IPI?
+  periodo_apuracao: "2025-05"
+  reference_source: periodo_apuracao
+  locale: pt-BR
+  families: [efd-icms-ipi]
+  expected:
+    status: answered
+    reference_date: "2025-05-01"
+    provisions: ["br:efd-icms-ipi:reg:0000:campo:03"]
+    facts: ["1 - Remessa do arquivo substituto"]
+  tags: [efd-icms-ipi, linguagem-de-contador]
+  source_url: https://www.gov.br/sped/pt-br/assuntos/escrituracoes-digitais/efd-icms-ipi/manuais-e-documentos-tecnicos/guia-pratico-efd-versao-3-1-9.pdf
+  source_quote: "Preenchimento: dentro do prazo normal de entrega o arquivo pode ser substituído."
+  curated_by: claude-opus-5.5 (curadoria assistida por LLM; pendente de revisão do mantenedor)
+  reviewed_at: null
+
+- id: hold-efd-descricao-complementar-ajuste
+  question: Quando o contribuinte é obrigado a preencher a descrição complementar dos ajustes, tanto no documento fiscal quanto na apuração do ICMS?
+  periodo_apuracao: "2026-04"
+  reference_source: periodo_apuracao
+  locale: pt-BR
+  families: [efd-icms-ipi]
+  expected:
+    status: answered
+    reference_date: "2026-04-01"
+    provisions: ["br:efd-icms-ipi:reg:C197:campo:03", "br:efd-icms-ipi:reg:E111:campo:03"]
+    facts: ["sempre que informar códigos genéricos"]
+  tags: [efd-icms-ipi, varios-dispositivos]
+  source_url: https://www.gov.br/sped/pt-br/assuntos/escrituracoes-digitais/efd-icms-ipi/manuais-e-documentos-tecnicos/guia-pratico-efd-versao-3-2-4.pdf
+  source_quote: O contribuinte deverá fazer a descrição complementar de ajustes (tabela 5.3) sempre que informar códigos genéricos.
+  curated_by: claude-opus-5.5 (curadoria assistida por LLM; pendente de revisão do mantenedor)
+  reviewed_at: null
+
+- id: hold-efd-e110-recolher-negativo
+  question: Se o saldo devedor menos as deduções der negativo, o que vai no campo de ICMS a recolher da apuração?
+  periodo_apuracao: "2025-10"
+  reference_source: periodo_apuracao
+  locale: pt-BR
+  families: [efd-icms-ipi]
+  expected:
+    status: answered
+    reference_date: "2025-10-01"
+    provisions: ["br:efd-icms-ipi:reg:E110:campo:13"]
+    facts: ["informe o valor zero neste campo"]
+  tags: [efd-icms-ipi, linguagem-de-contador]
+  source_url: https://www.gov.br/sped/pt-br/assuntos/escrituracoes-digitais/efd-icms-ipi/manuais-e-documentos-tecnicos/guia-pratico-efd-versao-3-1-9.pdf
+  source_quote: Se o resultado dessa operação for negativo, informe o valor zero neste campo
+  curated_by: claude-opus-5.5 (curadoria assistida por LLM; pendente de revisão do mantenedor)
+  reviewed_at: null
+
+- id: hold-efd-c170-ipi-decendial-en
+  question: How do I flag a ten-day IPI assessment period for an invoice item in the EFD?
+  periodo_apuracao: "2025-03"
+  reference_source: periodo_apuracao
+  locale: en
+  families: [efd-icms-ipi]
+  expected:
+    status: answered
+    reference_date: "2025-03-01"
+    provisions: ["br:efd-icms-ipi:reg:C170:campo:19"]
+    facts: ["1 - Decendial"]
+  tags: [efd-icms-ipi, en]
+  source_url: https://www.gov.br/sped/pt-br/assuntos/escrituracoes-digitais/efd-icms-ipi/manuais-e-documentos-tecnicos/guia-pratico-efd-versao-3-1-9.pdf
+  source_quote: "19 IND_APUR Indicador de período de apuração do IPI: 0 - Mensal; 1 - Decendial"
+  curated_by: claude-opus-5.5 (curadoria assistida por LLM; pendente de revisão do mantenedor)
+  reviewed_at: null
+
+- id: hold-efd-c190-fcp
+  question: O ICMS totalizado por CST, CFOP e alíquota na nota fiscal já inclui o fundo de combate à pobreza?
+  periodo_apuracao: "2026-03"
+  reference_source: periodo_apuracao
+  locale: pt-BR
+  families: [efd-icms-ipi]
+  expected:
+    status: answered
+    reference_date: "2026-03-01"
+    provisions: ["br:efd-icms-ipi:reg:C190:campo:07"]
+    facts: ["incluindo o FCP, quando aplicável"]
+  tags: [efd-icms-ipi, linguagem-de-contador]
+  source_url: https://www.gov.br/sped/pt-br/assuntos/escrituracoes-digitais/efd-icms-ipi/manuais-e-documentos-tecnicos/guia-pratico-efd-versao-3-2-4.pdf
+  source_quote: Parcela correspondente ao "Valor do ICMS", incluindo o FCP, quando aplicável, referente à combinação de CST_ICMS, CFOP e alíquota do ICMS.
+  curated_by: claude-opus-5.5 (curadoria assistida por LLM; pendente de revisão do mantenedor)
+  reviewed_at: null
+
+- id: hold-efd-c170-aliquota-zerada
+  question: Numa saída tributada integralmente, posso deixar zerada a alíquota de ICMS do item da nota?
+  periodo_apuracao: "2025-07"
+  reference_source: periodo_apuracao
+  locale: pt-BR
+  families: [efd-icms-ipi]
+  expected:
+    status: answered
+    reference_date: "2025-07-01"
+    provisions: ["br:efd-icms-ipi:reg:C170:campo:14"]
+    facts: ["deve ser maior que “0” (zero)"]
+  tags: [efd-icms-ipi, linguagem-de-contador]
+  source_url: https://www.gov.br/sped/pt-br/assuntos/escrituracoes-digitais/efd-icms-ipi/manuais-e-documentos-tecnicos/guia-pratico-efd-versao-3-1-9.pdf
+  source_quote: nas operações de saídas, se os dois últimos caracteres do CST_ICMS forem 00, 10, 20 ou 70, o campo ALIQ_ICMS deve ser maior que “0” (zero).
+  curated_by: claude-opus-5.5 (curadoria assistida por LLM; pendente de revisão do mantenedor)
+  reviewed_at: null
+
+# ---------------------------------------------------------------------------------------------
+# EFD de Goiás (5): tópicos do Guia de Goiás, com ligações às Tabelas e ao RCTE
+
+- id: hold-efdgo-registro-1400
+  question: O registro de informações sobre valor agregado precisa ser entregue por contribuinte goiano?
+  periodo_apuracao: "2026-05"
+  reference_source: periodo_apuracao
+  locale: pt-BR
+  families: [efd-go]
+  expected:
+    status: answered
+    reference_date: "2026-05-01"
+    provisions: ["go:efd-go:item:4-2"]
+    facts: ["1400 Informações sobre valor agregado"]
+  tags: [efd-go, linguagem-de-contador]
+  source_url: https://goias.gov.br/economia/wp-content/uploads/sites/45/2026/03/Guia_pratico_5.9.pdf
+  source_quote: "Os registros descritos abaixo não são exigidos por Goiás: Registro Descrição 1400 Informações sobre valor agregado"
+  curated_by: claude-opus-5.5 (curadoria assistida por LLM; pendente de revisão do mantenedor)
+  reviewed_at: null
+
+- id: hold-efdgo-difal-no-prazo
+  question: Na EFD de Goiás, com qual código de ajuste lanço o débito do diferencial de alíquotas apurado no prazo?
+  periodo_apuracao: "2026-06"
+  reference_source: periodo_apuracao
+  locale: pt-BR
+  families: [efd-go, tabelas-go]
+  expected:
+    status: answered
+    reference_date: "2026-06-01"
+    provisions: ["go:efd-go:item:14-1", "go:tabelas-go:tab:5-3:cod:GO40000029"]
+    facts: ["GO40000029", "registro C197"]
+  tags: [efd-go, tabelas-go, varios-dispositivos]
+  source_url: https://goias.gov.br/economia/wp-content/uploads/sites/45/2026/03/Guia_pratico_5.9.pdf
+  source_quote: GO40000029 Débito do montante do imposto correspondente à diferença de alíquotas, apurado no prazo.
+  curated_by: claude-opus-5.5 (curadoria assistida por LLM; pendente de revisão do mantenedor)
+  reviewed_at: null
+
+- id: hold-efdgo-dpi-en
+  question: Does a taxpayer required to keep the EFD in Goiás still have to file the DPI?
+  periodo_apuracao: "2026-04"
+  reference_source: periodo_apuracao
+  locale: en
+  families: [efd-go]
+  expected:
+    status: answered
+    reference_date: "2026-04-01"
+    provisions: ["go:efd-go:item:9"]
+    facts: ["dispensado da DPI"]
+  tags: [efd-go, en]
+  source_url: https://goias.gov.br/economia/wp-content/uploads/sites/45/2026/03/Guia_pratico_5.9.pdf
+  source_quote: O contribuinte obrigado a EFD está dispensado da DPI, a partir de 01 janeiro de 2012
+  curated_by: claude-opus-5.5 (curadoria assistida por LLM; pendente de revisão do mantenedor)
+  reviewed_at: null
+
+- id: hold-efdgo-fundeinfra
+  question: Onde a empresa que usa benefício fiscal declara na EFD a contribuição ao fundo de infraestrutura de Goiás?
+  periodo_apuracao: "2026-02"
+  reference_source: periodo_apuracao
+  locale: pt-BR
+  families: [efd-go]
+  expected:
+    status: answered
+    reference_date: "2026-02-01"
+    provisions: ["go:efd-go:item:1-4"]
+    facts: ["registro E115"]
+  tags: [efd-go, linguagem-de-contador]
+  source_url: https://goias.gov.br/economia/wp-content/uploads/sites/45/2026/03/Guia_pratico_5.9.pdf
+  source_quote: Os contribuintes que utilizam benefícios fiscais sujeitos à contribuição do FUNDEINFRA deverão informar mensalmente o valor total da contribuição ao FUNDEINFRA
+  curated_by: claude-opus-5.5 (curadoria assistida por LLM; pendente de revisão do mantenedor)
+  reviewed_at: null
+
+- id: hold-efdgo-retificacao-sem-autorizacao
+  question: Até quando posso corrigir a EFD já entregue em Goiás sem precisar de autorização da Secretaria da Economia?
+  periodo_apuracao: "2026-04"
+  reference_source: periodo_apuracao
+  locale: pt-BR
+  families: [efd-go, rcte]
+  expected:
+    status: answered
+    reference_date: "2026-04-01"
+    provisions: ["go:efd-go:item:7", "go:rcte:art:356-O:inc:I"]
+    facts: ["até o último dia do terceiro mês subsequente ao encerramento do mês da apuração"]
+  tags: [efd-go, rcte, varios-dispositivos, linguagem-de-contador]
+  source_url: https://appasp.economia.go.gov.br/Legislacao/arquivos/Rcte/RCTE.htm
+  source_quote: I - até o último dia do terceiro mês subsequente ao encerramento do mês da apuração, independentemente de autorização da administração tributária;
+  curated_by: claude-opus-5.5 (curadoria assistida por LLM; pendente de revisão do mantenedor)
+  reviewed_at: null
+
+# ---------------------------------------------------------------------------------------------
+# Tabelas de Goiás (7): códigos fora do recorte da fixture
+
+- id: hold-tabgo-estorno-monofasico
+  question: Qual código de ajuste da apuração uso para estornar o crédito das entradas ligadas à saída de combustível com ICMS monofásico?
+  periodo_apuracao: "2024-05"
+  reference_source: periodo_apuracao
+  locale: pt-BR
+  families: [tabelas-go]
+  expected:
+    status: answered
+    reference_date: "2024-05-01"
+    provisions: ["go:tabelas-go:tab:5-1-1:cod:GO010074"]
+    validity: { from: "2023-05-01", to: null }
+    facts: ["GO010074"]
+  tags: [tabelas-go, linguagem-de-contador, fora-da-fixture]
+  source_url: https://www.sped.fazenda.gov.br/spedtabelas/WsConsulta/obterTabela.ashx?idTabela=37&versao=151
+  source_quote: Estorno de crédito das operações antecedentes às saídas de combustíveis sujeitos a tributação monofásica
+  curated_by: claude-opus-5.5 (curadoria assistida por LLM; pendente de revisão do mantenedor)
+  reviewed_at: null
+
+- id: hold-tabgo-monofasico-credito-e-estorno
+  question: Quais códigos da tabela de ajustes de Goiás tratam do crédito e do estorno de crédito ligados a combustíveis com tributação monofásica?
+  periodo_apuracao: "2025-04"
+  reference_source: periodo_apuracao
+  locale: pt-BR
+  families: [tabelas-go]
+  expected:
+    status: answered
+    reference_date: "2025-04-01"
+    provisions:
+      - "go:tabelas-go:tab:5-1-1:cod:GO020176"
+      - "go:tabelas-go:tab:5-1-1:cod:GO010074"
+    validity: { from: "2023-04-28", to: null }
+    facts: ["GO020176", "GO010074"]
+  tags: [tabelas-go, varios-dispositivos, fora-da-fixture]
+  source_url: https://www.sped.fazenda.gov.br/spedtabelas/WsConsulta/obterTabela.ashx?idTabela=37&versao=151
+  source_quote: Crédito do ICMS nas aquisições de combustíveis sujeitos a tributação monofásica utilizados como insumo pelo sujeito passivo, desde que não haja vedação do crédito.
+  curated_by: claude-opus-5.5 (curadoria assistida por LLM; pendente de revisão do mantenedor)
+  reviewed_at: null
+
+- id: hold-tabgo-credito-outorgado-arroz-feijao
+  question: Qual código de ajuste uso para o crédito outorgado na compra de arroz ou feijão produzidos em Goiás?
+  periodo_apuracao: "2020-03"
+  reference_source: periodo_apuracao
+  locale: pt-BR
+  families: [tabelas-go]
+  expected:
+    status: answered
+    reference_date: "2020-03-01"
+    provisions: ["go:tabelas-go:tab:5-1-1:cod:GO020156"]
+    validity: { from: "2017-11-01", to: null }
+    facts: ["GO020156"]
+  tags: [tabelas-go, fora-da-fixture]
+  source_url: https://www.sped.fazenda.gov.br/spedtabelas/WsConsulta/obterTabela.ashx?idTabela=37&versao=151
+  source_quote: Crédito outorgado correspondente à aquisição de arroz ou feijão produzidos no Estado de Goiás.
+  curated_by: claude-opus-5.5 (curadoria assistida por LLM; pendente de revisão do mantenedor)
+  reviewed_at: null
+
+- id: hold-tabgo-feijao-goiano
+  question: Que códigos de crédito outorgado existem para operações com feijão produzido em Goiás?
+  periodo_apuracao: "2026-09"
+  reference_source: periodo_apuracao
+  locale: pt-BR
+  families: [tabelas-go]
+  expected:
+    status: answered
+    reference_date: "2026-09-01"
+    provisions:
+      - "go:tabelas-go:tab:5-1-1:cod:GO020183"
+      - "go:tabelas-go:tab:5-1-1:cod:GO020156"
+    validity: { from: "2026-06-25", to: null }
+    facts: ["GO020183", "80%"]
+  tags: [tabelas-go, varios-dispositivos, fora-da-fixture]
+  source_url: https://www.sped.fazenda.gov.br/spedtabelas/WsConsulta/obterTabela.ashx?idTabela=37&versao=151
+  source_quote: Crédito Outorgado no percentual de 80% sobre o ICMS nas op. com feijão produzidos no Estado de Goiás.
+  curated_by: claude-opus-5.5 (curadoria assistida por LLM; pendente de revisão do mantenedor)
+  reviewed_at: null
+
+- id: hold-tabgo-cte-substituto
+  question: Emiti um CT-e substituto para corrigir outro com erro. Qual código de ajuste do documento uso para estornar o débito?
+  periodo_apuracao: "2024-01"
+  reference_source: periodo_apuracao
+  locale: pt-BR
+  families: [tabelas-go]
+  expected:
+    status: answered
+    reference_date: "2024-01-01"
+    provisions: ["go:tabelas-go:tab:5-3:cod:GO20001002"]
+    validity: { from: "2023-04-02", to: null }
+    facts: ["GO20001002"]
+  tags: [tabelas-go, linguagem-de-contador, fora-da-fixture]
+  source_url: https://www.sped.fazenda.gov.br/spedtabelas/WsConsulta/obterTabela.ashx?idTabela=39&versao=47
+  source_quote: Estorno de Débito em caso de emissão de CT-e/CT-e OS substituto referenciando o CT-e/CT-e OS emitido com erro.
+  curated_by: claude-opus-5.5 (curadoria assistida por LLM; pendente de revisão do mantenedor)
+  reviewed_at: null
+
+- id: hold-tabgo-protege-grupos-geradores
+  question: Qual código de valor declaratório informa a contribuição ao PROTEGE do fabricante de grupos geradores beneficiário do PRODUZIR?
+  periodo_apuracao: "2025-02"
+  reference_source: periodo_apuracao
+  locale: pt-BR
+  families: [tabelas-go]
+  expected:
+    status: answered
+    reference_date: "2025-02-01"
+    provisions: ["go:tabelas-go:tab:5-2:cod:GO000116"]
+    validity: { from: "2023-11-01", to: null }
+    facts: ["GO000116"]
+  tags: [tabelas-go, fora-da-fixture]
+  source_url: https://www.sped.fazenda.gov.br/spedtabelas/WsConsulta/obterTabela.ashx?idTabela=38&versao=51
+  source_quote: Contribuição ao PROTEGE – Crédito outorgado para a empresa industrial produtora de grupos geradores de energia elétrica, beneficiária do PRODUZIR.
+  curated_by: claude-opus-5.5 (curadoria assistida por LLM; pendente de revisão do mantenedor)
+  reviewed_at: null
+
+- id: hold-tabgo-transporte-aereo-en
+  question: Which Goiás adjustment code covers the optional presumed credit for intrastate air transport services?
+  periodo_apuracao: "2018-05"
+  reference_source: periodo_apuracao
+  locale: en
+  families: [tabelas-go]
+  expected:
+    status: answered
+    reference_date: "2018-05-01"
+    provisions: ["go:tabelas-go:tab:5-1-1:cod:GO020098"]
+    validity: { from: "2009-01-01", to: null }
+    facts: ["GO020098", "4%"]
+  tags: [tabelas-go, en, fora-da-fixture]
+  source_url: https://www.sped.fazenda.gov.br/spedtabelas/WsConsulta/obterTabela.ashx?idTabela=37&versao=151
+  source_quote: Cr. presumido ao estabel. prestador de serv. de transp. aéreo, no perc. de 4%
+  curated_by: claude-opus-5.5 (curadoria assistida por LLM; pendente de revisão do mantenedor)
+  reviewed_at: null
+
+# ---------------------------------------------------------------------------------------------
+# EFD-Reinf (8): eventos e campos fora da fixture (R-1000, R-2020, R-2055, R-2060, R-4010, R-4040),
+# competências a partir de setembro de 2023 (leiaute 2.1.2)
+
+- id: hold-reinf-r4010-laudo-molestia
+  question: No pagamento de rendimento isento a aposentado com doença grave, em que campo informo a data do laudo médico?
+  periodo_apuracao: "2024-03"
+  reference_source: periodo_apuracao
+  locale: pt-BR
+  families: [efd-reinf]
+  expected:
+    status: answered
+    reference_date: "2024-03-01"
+    provisions: ["br:efd-reinf:evt:R-4010:grupo:rendIsento:campo:dtLaudo"]
+    facts: ["dtLaudo"]
+  tags: [efd-reinf, linguagem-de-contador, fora-da-fixture]
+  source_url: https://www.gov.br/sped/pt-br/assuntos/escrituracoes-digitais/efd-reinf/documento-tecnicos/versao-atual/esquemas-xsd/xsd-eventos
+  source_quote: Data atribuida pelo laudo da molestia grave
+  curated_by: claude-opus-5.5 (curadoria assistida por LLM; pendente de revisão do mantenedor)
+  reviewed_at: null
+
+- id: hold-reinf-r4010-ir-retido-en
+  question: In the EFD-Reinf event for payments to individuals, which field carries the income tax withheld?
+  periodo_apuracao: "2024-11"
+  reference_source: periodo_apuracao
+  locale: en
+  families: [efd-reinf]
+  expected:
+    status: answered
+    reference_date: "2024-11-01"
+    provisions: ["br:efd-reinf:evt:R-4010:grupo:infoPgto:campo:vlrIR"]
+    facts: ["vlrIR"]
+  tags: [efd-reinf, en, fora-da-fixture]
+  source_url: https://www.gov.br/sped/pt-br/assuntos/escrituracoes-digitais/efd-reinf/documento-tecnicos/versao-atual/esquemas-xsd/xsd-eventos
+  source_quote: vlrIR infoPgto E N 0-1 014 2 Valor da retencao do IR
+  curated_by: claude-opus-5.5 (curadoria assistida por LLM; pendente de revisão do mantenedor)
+  reviewed_at: null
+
+- id: hold-reinf-r2055-tipo-aquisicao
+  question: Na compra de produção rural, qual campo da Reinf indica o tipo de aquisição e que valores ele aceita?
+  periodo_apuracao: "2025-01"
+  reference_source: periodo_apuracao
+  locale: pt-BR
+  families: [efd-reinf]
+  expected:
+    status: answered
+    reference_date: "2025-01-01"
+    provisions: ["br:efd-reinf:evt:R-2055:grupo:detAquis:campo:indAquis"]
+    facts: ["indAquis", "1, 2, 3, 4, 5, 6, 7"]
+  tags: [efd-reinf, valores-validos, fora-da-fixture]
+  source_url: https://www.gov.br/sped/pt-br/assuntos/escrituracoes-digitais/efd-reinf/documento-tecnicos/versao-atual/esquemas-xsd/xsd-eventos
+  source_quote: "Indicativo da Aquisicao Valores válidos: 1, 2, 3, 4, 5, 6, 7."
+  curated_by: claude-opus-5.5 (curadoria assistida por LLM; pendente de revisão do mantenedor)
+  reviewed_at: null
+
+- id: hold-reinf-r1000-desoneracao
+  question: Como informo no cadastro do contribuinte da Reinf que a empresa está na desoneração da folha?
+  periodo_apuracao: "2024-02"
+  reference_source: periodo_apuracao
+  locale: pt-BR
+  families: [efd-reinf]
+  expected:
+    status: answered
+    reference_date: "2024-02-01"
+    provisions: ["br:efd-reinf:evt:R-1000:grupo:infoCadastro:campo:indDesoneracao"]
+    facts: ["indDesoneracao"]
+  tags: [efd-reinf, linguagem-de-contador, fora-da-fixture]
+  source_url: https://www.gov.br/sped/pt-br/assuntos/escrituracoes-digitais/efd-reinf/documento-tecnicos/versao-atual/esquemas-xsd/xsd-eventos
+  source_quote: "Indicativo de desoneracao da folha pela CPRB Valores válidos: 0, 1."
+  curated_by: claude-opus-5.5 (curadoria assistida por LLM; pendente de revisão do mantenedor)
+  reviewed_at: null
+
+- id: hold-reinf-r2060-atividade-e-valor
+  question: No evento da contribuição previdenciária sobre a receita bruta, quais campos levam o código da atividade e o valor apurado?
+  periodo_apuracao: "2024-07"
+  reference_source: periodo_apuracao
+  locale: pt-BR
+  families: [efd-reinf]
+  expected:
+    status: answered
+    reference_date: "2024-07-01"
+    provisions:
+      - "br:efd-reinf:evt:R-2060:grupo:tipoCod:campo:codAtivEcon"
+      - "br:efd-reinf:evt:R-2060:grupo:tipoCod:campo:vlrCPRBapur"
+    facts: ["codAtivEcon", "vlrCPRBapur"]
+  tags: [efd-reinf, varios-dispositivos, fora-da-fixture]
+  source_url: https://www.gov.br/sped/pt-br/assuntos/escrituracoes-digitais/efd-reinf/documento-tecnicos/versao-atual/esquemas-xsd/xsd-eventos
+  source_quote: vlrCPRBapur tipoCod E N 0-1 014 2 Valor Contribuicao Previdenciaria sobre a Receita Bruta.
+  curated_by: claude-opus-5.5 (curadoria assistida por LLM; pendente de revisão do mantenedor)
+  reviewed_at: null
+
+- id: hold-reinf-r4040-natureza-en
+  question: For payments to unidentified beneficiaries, which field identifies the nature of the income?
+  periodo_apuracao: "2025-06"
+  reference_source: periodo_apuracao
+  locale: en
+  families: [efd-reinf]
+  expected:
+    status: answered
+    reference_date: "2025-06-01"
+    provisions: ["br:efd-reinf:evt:R-4040:grupo:ideNat:campo:natRend"]
+    facts: ["natRend"]
+  tags: [efd-reinf, en, fora-da-fixture]
+  source_url: https://www.gov.br/sped/pt-br/assuntos/escrituracoes-digitais/efd-reinf/documento-tecnicos/versao-atual/esquemas-xsd/xsd-eventos
+  source_quote: natRend ideNat E C 1-1 005 - Natureza do Rendimento
+  curated_by: claude-opus-5.5 (curadoria assistida por LLM; pendente de revisão do mantenedor)
+  reviewed_at: null
+
+- id: hold-reinf-r2020-retencao-sofrida
+  question: Sou prestador de serviço com cessão de mão de obra. Em que campo da Reinf informo o valor que o tomador reteve de contribuição previdenciária?
+  periodo_apuracao: "2024-10"
+  reference_source: periodo_apuracao
+  locale: pt-BR
+  families: [efd-reinf]
+  expected:
+    status: answered
+    reference_date: "2024-10-01"
+    provisions: ["br:efd-reinf:evt:R-2020:grupo:infoTpServ:campo:vlrRetencao"]
+    facts: ["vlrRetencao"]
+  tags: [efd-reinf, linguagem-de-contador, fora-da-fixture]
+  source_url: https://www.gov.br/sped/pt-br/assuntos/escrituracoes-digitais/efd-reinf/documento-tecnicos/versao-atual/esquemas-xsd/xsd-eventos
+  source_quote: vlrRetencao infoTpServ E N 1-1 014 2 Valor da retencao
+  curated_by: claude-opus-5.5 (curadoria assistida por LLM; pendente de revisão do mantenedor)
+  reviewed_at: null
+
+- id: hold-reinf-r4010-tipos-deducao
+  question: Quais tipos de dedução posso informar no pagamento a pessoa física na Reinf?
+  periodo_apuracao: "2025-03"
+  reference_source: periodo_apuracao
+  locale: pt-BR
+  families: [efd-reinf]
+  expected:
+    status: answered
+    reference_date: "2025-03-01"
+    provisions: ["br:efd-reinf:evt:R-4010:grupo:detDed:campo:indTpDeducao"]
+    facts: ["1, 2, 3, 4, 5, 7, 8"]
+  tags: [efd-reinf, valores-validos, fora-da-fixture]
+  source_url: https://www.gov.br/sped/pt-br/assuntos/escrituracoes-digitais/efd-reinf/documento-tecnicos/versao-atual/esquemas-xsd/xsd-eventos
+  source_quote: "Indicativo do tipo de deducao Valores válidos: 1, 2, 3, 4, 5, 7, 8."
+  curated_by: claude-opus-5.5 (curadoria assistida por LLM; pendente de revisão do mantenedor)
+  reviewed_at: null
+
+# ---------------------------------------------------------------------------------------------
+# Recusas (5): fora da cobertura do staging (EFD ICMS/IPI desde 2021-01-01, EFD-Reinf desde
+# 2023-03-01, RCTE desde 1998-01-01; Anexos do RCTE só na onda C3; datas depois do verified_at)
+
+- id: hold-recusa-efd-2020
+  question: Como escriturar na apuração um ajuste de crédito outorgado de Goiás?
+  periodo_apuracao: "2020-11"
+  reference_source: periodo_apuracao
+  locale: pt-BR
+  families: [efd-icms-ipi]
+  expected:
+    status: refused
+    reference_date: "2020-11-01"
+    refusal_reason: out_of_coverage
+  tags: [recusa, antes-da-cobertura]
+  source_url: https://www.gov.br/sped/pt-br/assuntos/escrituracoes-digitais/efd-icms-ipi/manuais-e-documentos-tecnicos/guia-pratico-efd-versao-3-1-9.pdf
+  source_quote: "Atualização: 13 de maio de 2025"
+  curated_by: claude-opus-5.5 (curadoria assistida por LLM; pendente de revisão do mantenedor)
+  reviewed_at: null
+
+- id: hold-recusa-reinf-2023-01-en
+  question: Which EFD-Reinf event reports income tax withheld on payments to individuals?
+  periodo_apuracao: "2023-01"
+  reference_source: periodo_apuracao
+  locale: en
+  families: [efd-reinf]
+  expected:
+    status: refused
+    reference_date: "2023-01-01"
+    refusal_reason: out_of_coverage
+  tags: [recusa, antes-da-cobertura, en]
+  source_url: https://www.gov.br/sped/pt-br/assuntos/escrituracoes-digitais/efd-reinf/documento-tecnicos/versao-atual/leiautes/leiautes-da-efd-reinf-v-2-1-1.zip
+  source_quote: Anexo ao Ato Declaratório Executivo Cofis n° 60/2022
+  curated_by: claude-opus-5.5 (curadoria assistida por LLM; pendente de revisão do mantenedor)
+  reviewed_at: null
+
+- id: hold-recusa-anexo-ix-rcte
+  question: Quais máquinas agrícolas têm redução de base de cálculo do ICMS no Anexo IX do RCTE?
+  periodo_apuracao: "2025-06"
+  reference_source: periodo_apuracao
+  locale: pt-BR
+  families: [rcte-anexos]
+  expected:
+    status: refused
+    reference_date: "2025-06-01"
+    refusal_reason: out_of_coverage
+  tags: [recusa, anexos-c3]
+  source_url: https://appasp.economia.go.gov.br/Legislacao/arquivos/Rcte/RCTE.htm
+  source_quote: CONSOLIDADO ATÉ O DECRETO Nº 10.986, DE 16.09.26.
+  curated_by: claude-opus-5.5 (curadoria assistida por LLM; pendente de revisão do mantenedor)
+  reviewed_at: null
+
+- id: hold-recusa-cte-futuro
+  question: Qual será a alíquota interna geral do ICMS prevista no Código Tributário de Goiás?
+  reference_date: "2028-03-10"
+  reference_source: explicit
+  locale: pt-BR
+  families: [cte]
+  expected:
+    status: refused
+    reference_date: "2028-03-10"
+    refusal_reason: out_of_coverage
+  tags: [recusa, depois-do-verified-at]
+  source_url: https://appasp.economia.go.gov.br/Legislacao/arquivos/Cte/CTE.htm
+  source_quote: ATUALIZADO ATÉ A LEI Nº 24.608 DE 06.11.26
+  curated_by: claude-opus-5.5 (curadoria assistida por LLM; pendente de revisão do mantenedor)
+  reviewed_at: null
+
+- id: hold-recusa-rcte-antes-de-1998
+  question: Qual era o prazo para o contribuinte retificar a escrituração fiscal em Goiás?
+  periodo_apuracao: "1997-09"
+  reference_source: periodo_apuracao
+  locale: pt-BR
+  families: [rcte]
+  expected:
+    status: refused
+    reference_date: "1997-09-01"
+    refusal_reason: out_of_coverage
+  tags: [recusa, antes-da-cobertura]
+  source_url: https://appasp.economia.go.gov.br/Legislacao/arquivos/Rcte/RCTE.htm
+  source_quote: "Art. 20. As alíquotas do imposto são (Lei nº 11.651/91, art. 27):"
+  curated_by: claude-opus-5.5 (curadoria assistida por LLM; pendente de revisão do mantenedor)
+  reviewed_at: null
+
+# ---------------------------------------------------------------------------------------------
+# Sem resposta dentro da cobertura (4): a data e a família estão cobertas, mas nenhum dispositivo
+# responde; a busca não pode recusar por cobertura nem pedir clarificação (a resposta
+# "insuficiente" é medida pelas generation evals da F8). O source_quote mostra o trecho mais
+# próximo, que não responde.
+
+- id: hold-sem-resposta-codigo-monofasico-2022
+  question: Qual código de ajuste da apuração uso para estornar o crédito das entradas ligadas à saída de combustível com ICMS monofásico?
+  periodo_apuracao: "2022-06"
+  reference_source: periodo_apuracao
+  locale: pt-BR
+  families: [tabelas-go]
+  expected:
+    status: unanswerable
+    reference_date: "2022-06-01"
+  tags: [sem-resposta, tabelas-go, vigencia]
+  source_url: https://www.sped.fazenda.gov.br/spedtabelas/WsConsulta/obterTabela.ashx?idTabela=37&versao=151
+  source_quote: GO010074|Estorno de crédito das operações antecedentes às saídas de combustíveis sujeitos a tributação monofásica – Cláusula 17ª do Conv. ICMS 199/2022.|01052023|
+  curated_by: claude-opus-5.5 (curadoria assistida por LLM; pendente de revisão do mantenedor)
+  reviewed_at: null
+
+- id: hold-sem-resposta-iss-streaming
+  question: Qual é a alíquota do ISS sobre assinatura de streaming de vídeo segundo o regulamento do ICMS de Goiás?
+  periodo_apuracao: "2025-04"
+  reference_source: periodo_apuracao
+  locale: pt-BR
+  families: [rcte]
+  expected:
+    status: unanswerable
+    reference_date: "2025-04-01"
+  tags: [sem-resposta, rcte]
+  source_url: https://appasp.economia.go.gov.br/Legislacao/arquivos/Rcte/RCTE.htm
+  source_quote: "Art. 20. As alíquotas do imposto são (Lei nº 11.651/91, art. 27):"
+  curated_by: claude-opus-5.5 (curadoria assistida por LLM; pendente de revisão do mantenedor)
+  reviewed_at: null
+
+- id: hold-sem-resposta-folha-na-reinf
+  question: Em qual evento da EFD-Reinf informo a folha de pagamento mensal dos empregados?
+  periodo_apuracao: "2024-05"
+  reference_source: periodo_apuracao
+  locale: pt-BR
+  families: [efd-reinf]
+  expected:
+    status: unanswerable
+    reference_date: "2024-05-01"
+  tags: [sem-resposta, efd-reinf]
+  source_url: https://www.gov.br/sped/pt-br/assuntos/escrituracoes-digitais/efd-reinf/documento-tecnicos/versao-atual/esquemas-xsd/xsd-eventos
+  source_quote: R-4010 - Pagamentos/créditos a beneficiário pessoa física
+  curated_by: claude-opus-5.5 (curadoria assistida por LLM; pendente de revisão do mantenedor)
+  reviewed_at: null
+
+- id: hold-sem-resposta-aliquota-ipi-en
+  question: What IPI rate applies to soft drinks according to the EFD ICMS/IPI practical guide?
+  periodo_apuracao: "2026-03"
+  reference_source: periodo_apuracao
+  locale: en
+  families: [efd-icms-ipi]
+  expected:
+    status: unanswerable
+    reference_date: "2026-03-01"
+  tags: [sem-resposta, efd-icms-ipi, en]
+  source_url: https://www.gov.br/sped/pt-br/assuntos/escrituracoes-digitais/efd-icms-ipi/manuais-e-documentos-tecnicos/guia-pratico-efd-versao-3-2-4.pdf
+  source_quote: "19 IND_APUR Indicador de período de apuração do IPI: 0 - Mensal; 1 - Decendial"
+  curated_by: claude-opus-5.5 (curadoria assistida por LLM; pendente de revisão do mantenedor)
+  reviewed_at: null
+
+# ---------------------------------------------------------------------------------------------
+# Ambíguos (2): datas conflitantes no texto, ou data do texto contra o período escolhido
+
+- id: hold-ambiguo-aliquota-dois-meses
+  question: A alíquota interna geral do ICMS em Goiás era a mesma em março de 2024 e em maio de 2024?
+  periodo_apuracao: "2026-10"
+  reference_source: default
+  locale: pt-BR
+  families: [rcte]
+  expected:
+    status: needs_clarification
+    candidates: ["2024-03-01", "2024-05-01"]
+  tags: [ambiguo, ambiguous-text]
+  source_url: https://appasp.economia.go.gov.br/Legislacao/arquivos/Rcte/RCTE.htm
+  source_quote: I - 19% (dezenove por cento), na operação e na prestação internas, observado o disposto no § 1º deste artigo;
+  curated_by: claude-opus-5.5 (curadoria assistida por LLM; pendente de revisão do mantenedor)
+  reviewed_at: null
+
+- id: hold-ambiguo-nota-diesel-contra-pa
+  question: Para a nota de entrada de diesel emitida em 10/02/2023, qual código de estorno de crédito do ICMS monofásico uso na apuração?
+  periodo_apuracao: "2024-05"
+  reference_source: periodo_apuracao
+  locale: pt-BR
+  families: [tabelas-go]
+  expected:
+    status: needs_clarification
+    candidates: ["2023-02-10", "2024-05-01"]
+  tags: [ambiguo, explicit-conflict]
+  source_url: https://www.sped.fazenda.gov.br/spedtabelas/WsConsulta/obterTabela.ashx?idTabela=37&versao=151
+  source_quote: Estorno de crédito das operações antecedentes às saídas de combustíveis sujeitos a tributação monofásica
+  curated_by: claude-opus-5.5 (curadoria assistida por LLM; pendente de revisão do mantenedor)
+  reviewed_at: null

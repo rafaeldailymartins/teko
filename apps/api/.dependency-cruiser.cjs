@@ -1,7 +1,7 @@
 // @ts-check
 /**
- * Regras de arquitetura da API (hexagonal). É o gate real de dependências; o `turbo boundaries` é
- * só consultivo. Testes (`*.test.ts`) podem montar peças de camadas diferentes e ficam fora das
+ * Regras de arquitetura da API (hexagonal). É o gate de dependências do pacote (o `turbo boundaries`
+ * saiu, ADR 0032). Testes (`*.test.ts`) podem montar peças de camadas diferentes e ficam fora das
  * regras de camada, mas não das de ciclo e resolução.
  *
  * Os caminhos são os resolvidos: `@teko/shared` aparece como `../../packages/shared/...`

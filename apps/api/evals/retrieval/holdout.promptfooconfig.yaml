@@ -1,0 +1,23 @@
+# yaml-language-server: $schema=https://promptfoo.dev/config-schema.json
+# Retrieval evals do conjunto holdout (ADR 0031): perguntas novas, que nunca orientam parâmetros.
+# Rodam só no corpus-eval (ingest.yml), contra o corpus real do staging, com embeddings e reranker
+# reais: as perguntas do holdout não têm vetor na fixture, e o fake de embeddings em modo strict
+# recusaria cada uma. O gate é o `scripts/check-thresholds.ts` (seção retrieval-holdout).
+#
+#   EVAL_CORPUS=staging pnpm --filter @teko/api eval:retrieval:holdout
+description: Tekó — retrieval evals (holdout, corpus real)
+
+prompts:
+  - "{{question}}"
+
+providers:
+  - id: file://../providers/retrieval.ts
+    label: teko-retrieval
+
+tests: file://../datasets/golden-tests.ts:holdoutTests
+
+evaluateOptions:
+  maxConcurrency: 4
+  cache: false
+
+sharing: false

@@ -30,7 +30,10 @@
     "test:sql-perf": "vitest run --project sql-perf",
     "eval:retrieval": "promptfoo eval -c evals/retrieval/promptfooconfig.yaml --no-cache --no-write --no-progress-bar --no-table -o reports/retrieval-evals.json",
     "eval:retrieval:check": "node evals/scripts/check-thresholds.ts reports/retrieval-evals.json retrieval",
-    "eval:retrieval:check:corpus": "node evals/scripts/check-thresholds.ts reports/retrieval-evals.json retrieval-corpus"
+    "eval:retrieval:check:corpus": "node evals/scripts/check-thresholds.ts reports/retrieval-evals.json retrieval-corpus",
+    "eval:retrieval:holdout": "promptfoo eval -c evals/retrieval/holdout.promptfooconfig.yaml --no-cache --no-write --no-progress-bar --no-table -o reports/retrieval-evals-holdout.json",
+    "eval:retrieval:check:holdout": "node evals/scripts/check-thresholds.ts reports/retrieval-evals-holdout.json retrieval-holdout",
+    "eval:corpus:record": "node evals/scripts/corpus-eval-record.ts"
   },
   "dependencies": {
     "@fastify/cors": "catalog:",

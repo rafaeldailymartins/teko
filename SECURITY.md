@@ -26,14 +26,14 @@ Please include:
 Only the **latest minor release** receives security fixes. Older minors are not patched; upgrade
 to the latest release instead.
 
-| Version             | Supported                                                   |
-| ------------------- | ----------------------------------------------------------- |
-| latest `0.x` minor  | yes                                                         |
-| any older release   | no                                                          |
-| `develop` / staging | fixes land here first, then ship to production via a hotfix |
+| Version            | Supported                                           |
+| ------------------ | --------------------------------------------------- |
+| latest `0.x` minor | yes                                                 |
+| any older release  | no                                                  |
+| trunk / staging    | fixes land here first, then ship in a patch release |
 
-The project is in early development (phases F0 to F2 done) and has no tagged release yet. Until
-`v0.1.0`, reports are handled against the `develop` branch.
+The project is in early development (phases F0 to F3 done) and has no tagged release yet. Until
+`v0.1.0`, reports are handled against the trunk (`develop`, renamed to `main` by ADR 0033).
 
 ## Response targets
 
@@ -69,7 +69,7 @@ In scope:
 
 Out of scope:
 
-- vulnerabilities in third-party services themselves (Netlify, Vercel, Render, Neon, Google, Groq,
+- vulnerabilities in third-party services themselves (Vercel, Render, Neon, Google, Groq,
   Cloudflare, Langfuse, Sentry, PostHog, GitHub). Report those to the vendor. Misconfiguration of
   those services by this project (for example a Vercel firewall rule or Deployment Protection
   setting that can be bypassed) is in scope;

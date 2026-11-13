@@ -182,8 +182,8 @@ const envSchema = z
      * pergunta passam a exigir o banco; sem ela, o container não monta a busca.
      */
     DATABASE_URL: postgresUrlSchema.optional(),
-    /** Conexões do pool por instância (Fluid compute: várias invocações na mesma instância). */
-    DATABASE_MAX_CONNECTIONS: z.coerce.number().int().min(1).max(20).default(5),
+    /** Conexões do pool por instância (Fluid compute: várias invocações na mesma instância; plano: 3). */
+    DATABASE_MAX_CONNECTIONS: z.coerce.number().int().min(1).max(20).default(3),
     /** Fixture de embeddings do fake (`apps/api/test/fixtures/corpus/embeddings.json.gz`). */
     EMBEDDINGS_FIXTURE_PATH: z.string().trim().min(1).optional(),
     /** Fake em modo strict: um texto fora da fixture falha (evals e e2e). */

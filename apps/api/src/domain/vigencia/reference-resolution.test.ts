@@ -2,6 +2,7 @@ import { ReferenceSource } from '@teko/shared/vigencia'
 import { describe, expect, it } from 'vitest'
 import {
   markPeriodBoundary,
+  periodBoundaryScopes,
   type ReferenceResolution,
   ResolutionKind,
   type ResolvedReference,
@@ -205,5 +206,40 @@ describe('markPeriodBoundary', () => {
   it('desliga quando já estava ligada e a evidência não tem fronteira no mês', () => {
     const on = { ...fromPa, periodBoundaryInside: true }
     expect(markPeriodBoundary(on, []).periodBoundaryInside).toBe(false)
+  })
+
+  it('liga com um dispositivo que começa no meio do mês, sem vigência anterior', () => {
+    // A evidência (vigente no dia 1) não muda no mês; o § acrescentado em 29/07 vem da consulta de
+    // fronteiras nas unidades da evidência.
+    const evidence = [{ from: '2004-11-04', to: null }]
+    expect(markPeriodBoundary(fromPa, evidence).periodBoundaryInside).toBe(false)
+    expect(
+      markPeriodBoundary(fromPa, [...evidence, { from: '2026-07-29', to: null }])
+        .periodBoundaryInside,
+    ).toBe(true)
+  })
+})
+
+describe('periodBoundaryScopes', () => {
+  it('reduz cada chave à unidade de topo, sem repetição e em ordem', () => {
+    expect(
+      periodBoundaryScopes([
+        'go:rcte:art:76:par:6',
+        'go:rcte:art:76',
+        'br:efd-icms-ipi:reg:C100:campo:06',
+        'go:rcte:art:71:inc:I',
+        'br:efd-reinf:evt:R-4020:grupo:ideBenef:campo:isenImun',
+      ]),
+    ).toEqual([
+      'br:efd-icms-ipi:reg:C100',
+      'br:efd-reinf:evt:R-4020',
+      'go:rcte:art:71',
+      'go:rcte:art:76',
+    ])
+  })
+
+  it('ignora chaves sem unidade (nunca a família inteira) e lista vazia', () => {
+    expect(periodBoundaryScopes(['go:rcte', 'x'])).toEqual([])
+    expect(periodBoundaryScopes([])).toEqual([])
   })
 })

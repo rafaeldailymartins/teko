@@ -1,11 +1,14 @@
 import pg from 'pg'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import type { SeedFixtureCorpusResult } from '#app/use-cases/seed-fixture-corpus.ts'
 import { seedFixtureCorpus } from '../../setup/corpus.ts'
 import { createTestDatabase, type TestDatabase } from '../../setup/database.ts'
 
 /**
- * Escrita do corpus e restrições do schema sobre a fixture única (como owner):
- * - a escrita é atômica e conta documentos, redações e chunks;
+ * Seed da fixture única pelo caminho da ingestão real (`IngestDocumentVersion`, como owner) e
+ * restrições do schema:
+ * - o seed grava as 12 versões de documento num run `fixture`, com uma `corpus_version` e a
+ *   cobertura declarada; repetido, não duplica nada;
  * - `pv_no_overlap` impede redações publicáveis sobrepostas do mesmo dispositivo, mas deixa passar
  *   uma anomalia `pending` (que vai para a review_queue sem abortar o documento);
  * - o `tsv` é gerado com `immutable_unaccent`, e toda redação vigente tem fonte publicada.
@@ -13,6 +16,7 @@ import { createTestDatabase, type TestDatabase } from '../../setup/database.ts'
 
 let database: TestDatabase
 let owner: pg.Client
+let seeded: SeedFixtureCorpusResult
 
 function sqlState(error: unknown): string | undefined {
   return error instanceof Error && 'code' in error ? String(error.code) : undefined
@@ -25,7 +29,7 @@ async function scalar<T>(sql: string, params: unknown[] = []): Promise<T> {
 
 beforeAll(async () => {
   database = await createTestDatabase()
-  await seedFixtureCorpus(database.ownerUrl)
+  seeded = await seedFixtureCorpus(database.ownerUrl)
   owner = new pg.Client({ connectionString: database.ownerUrl })
   await owner.connect()
 }, 120_000)
@@ -36,14 +40,66 @@ afterAll(async () => {
 })
 
 describe('seed da fixture', () => {
+  it('ingere as versões de documento pelo caminho da ingestão real', async () => {
+    expect(seeded).toMatchObject({
+      corpusVersion: 1,
+      documentVersions: 12,
+      unchanged: 0,
+      provisionVersions: 1569,
+      chunks: 1574,
+    })
+    expect(
+      await scalar<number>(
+        `SELECT count(*)::int AS value FROM corpus.document_versions WHERE status = 'published'`,
+      ),
+    ).toBe(12)
+    expect(
+      await scalar<number>('SELECT count(*)::int AS value FROM corpus.provision_versions'),
+    ).toBe(1569)
+    // Redações iguais em duas versões do mesmo Guia ou leiaute são uma linha só, com duas fontes.
+    expect(
+      await scalar<number>(`SELECT count(*)::int AS value FROM (SELECT s.chunk_id
+        FROM corpus.chunk_sources s GROUP BY s.chunk_id HAVING count(*) > 1) shared`),
+    ).toBeGreaterThan(0)
+    // Os vetores ficaram no cache de embeddings, como num run real.
+    expect(
+      await scalar<number>('SELECT count(*)::int AS value FROM corpus.embedding_cache'),
+    ).toBeGreaterThan(1000)
+  })
+
+  it('a cobertura é a declarada na fixture, na corpus_version do seed', async () => {
+    const { rows } = await owner.query<{ family: string; covered: string; verified_at: string }>(
+      `SELECT family, covered::text AS covered, verified_at::text AS verified_at
+       FROM corpus.coverage WHERE corpus_version = 1 ORDER BY family`,
+    )
+    expect(rows).toContainEqual({
+      family: 'rcte',
+      covered: '{[1998-01-01,)}',
+      verified_at: '2026-11-10',
+    })
+    expect(rows.every((row) => row.verified_at === '2026-11-10')).toBe(true)
+  })
+
+  it('repetido, não duplica nada nem abre outra corpus_version', async () => {
+    const again = await seedFixtureCorpus(database.ownerUrl)
+    expect(again).toMatchObject({
+      corpusVersion: 1,
+      unchanged: 12,
+      provisionVersions: 0,
+      chunks: 0,
+    })
+    expect(await scalar<number>('SELECT count(*)::int AS value FROM corpus.chunks')).toBe(1574)
+  })
+
   it('grava uma versão do corpus, a cobertura e o run de ingestão', async () => {
     expect(await scalar<number>('SELECT max(id) AS value FROM corpus.corpus_versions')).toBe(1)
     expect(await scalar<number>('SELECT count(*)::int AS value FROM corpus.coverage')).toBe(6)
     expect(
-      await scalar<string>(
-        `SELECT status AS value FROM corpus.ingestion_runs WHERE target = 'fixture'`,
+      await scalar<number>(
+        `SELECT count(*)::int AS value FROM corpus.ingestion_runs
+         WHERE target = 'fixture' AND status <> 'succeeded'`,
       ),
-    ).toBe('succeeded')
+    ).toBe(0)
     expect(
       await scalar<number>(
         'SELECT count(*)::int AS value FROM corpus.chunks WHERE embedding IS NULL OR corpus_version <> 1',
@@ -131,5 +187,14 @@ describe('pv_no_overlap', () => {
         await owner.query('ROLLBACK')
       }
     }
+  })
+})
+
+describe('seed com replace', () => {
+  it('esvazia o corpus (com cache e runs) e grava de novo, na corpus_version 1', async () => {
+    const replaced = await seedFixtureCorpus(database.ownerUrl, { replace: true })
+    expect(replaced).toMatchObject({ corpusVersion: 1, unchanged: 0, chunks: 1574 })
+    expect(await scalar<number>('SELECT count(*)::int AS value FROM corpus.ingestion_runs')).toBe(1)
+    expect(await scalar<number>('SELECT count(*)::int AS value FROM corpus.coverage')).toBe(6)
   })
 })

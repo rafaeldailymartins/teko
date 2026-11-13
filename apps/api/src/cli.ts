@@ -24,9 +24,9 @@ import type { IngestionContainer } from '#app/container.ts'
 import type { BlobStore } from '#app/ports/blob-store.ts'
 import { compareCodeUnits } from '#domain/shared/compare-code-units.ts'
 import {
-  createContainer,
   createCoverageMarkTargets,
   createFixtureCorpusReader,
+  createFixtureSeeder,
   createIngestionContainer,
   createIngestionIo,
   migrateDatabase,
@@ -115,20 +115,22 @@ async function runSeedFixtures(args: readonly string[]): Promise<number> {
   if (values.migrate) {
     await migrateDatabase(databaseUrl, MIGRATIONS_FOLDER)
   }
-  const container = createContainer(env, { applicationName: 'teko-cli' })
+  // O mesmo caminho da ingestão real (`IngestDocumentVersion`), num run `target='fixture'`.
+  const seeder = createFixtureSeeder(env, databaseUrl)
   try {
-    const writeCorpus = container.useCases.writeCorpus
-    if (writeCorpus === null) {
-      throw new Error('seed-fixtures exige EMBEDDINGS_PROVIDER configurado')
-    }
-    const result = await seedFixtures(writeCorpus, values.dir, { replace: values.replace })
+    const result = await seedFixtures(seeder.seedFixtureCorpus, values.dir, {
+      replace: values.replace,
+      gitSha: env.GIT_SHA,
+      today: isoDateInTimeZone(new Date()),
+    })
     console.log(
-      `corpus_version ${String(result.corpusVersion)}: ${String(result.documents)} documentos, ` +
-        `${String(result.provisionVersions)} redações, ${String(result.chunks)} chunks`,
+      `corpus_version ${String(result.corpusVersion)}: ${String(result.documentVersions)} versões ` +
+        `de documento (${String(result.unchanged)} já publicadas), ` +
+        `${String(result.provisionVersions)} redações e ${String(result.chunks)} chunks novos`,
     )
     return 0
   } finally {
-    await container.close()
+    await seeder.close()
   }
 }
 

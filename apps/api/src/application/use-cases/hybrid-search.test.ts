@@ -30,6 +30,7 @@ function setup(embed: EmbeddingPort['embed'], timeoutMs = 3000) {
   const search = createHybridSearch({
     embeddings: embeddingsOf(embed),
     searchRepository: {
+      versionsInPeriod: () => Promise.resolve([]),
       search: (query) => {
         queries.push(query)
         return Promise.resolve([evidence])
@@ -161,6 +162,7 @@ describe('createHybridSearch com reranker (ADR 0027)', () => {
     const search = createHybridSearch({
       embeddings: embeddingsOf(() => Promise.resolve([VECTOR])),
       searchRepository: {
+        versionsInPeriod: () => Promise.resolve([]),
         search: (query) => {
           queries.push(query)
           return Promise.resolve(pool)
@@ -225,7 +227,10 @@ describe('createHybridSearch com reranker (ADR 0027)', () => {
     const rerank = vi.fn<RerankerPort['rerank']>()
     const search = createHybridSearch({
       embeddings: embeddingsOf(() => Promise.resolve([VECTOR])),
-      searchRepository: { search: () => Promise.resolve([evidence]) },
+      searchRepository: {
+        search: () => Promise.resolve([evidence]),
+        versionsInPeriod: () => Promise.resolve([]),
+      },
       reviewStatuses: ['auto'],
       embeddingTimeoutMs: 3000,
       limit: 12,

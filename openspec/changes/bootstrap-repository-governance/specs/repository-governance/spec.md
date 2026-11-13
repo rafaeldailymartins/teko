@@ -65,8 +65,8 @@ Todo commit humano MUST trazer a linha `Signed-off-by:` (DCO) e SHALL estar assi
 
 #### Scenario: Commit sem sign-off
 
-- **WHEN** um commit sem `Signed-off-by:` é criado localmente ou chega num PR
-- **THEN** o commitlint local e o check `dco` do PR falham
+- **WHEN** um commit sem `Signed-off-by:` chega num PR
+- **THEN** o check `dco` do PR falha
 
 ### Requirement: Mudanças especificadas no OpenSpec com fontes Context7
 

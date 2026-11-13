@@ -2,7 +2,14 @@
 # add-embedding-pipeline e add-docling-pdf-extraction).
 #
 #   discover (staging) → docling-models → extract (matriz, sem segredos) → load (staging)
-#     → lock-pr (App teko-release-bot) e corpus-eval (staging) → summary
+#     → corpus-eval (staging) → lock-pr (App teko-release-bot) → summary
+#
+# Modo `eval-only` (dispatch, ADR 0031): pula discover, extract e load e roda só o corpus-eval
+# contra o estado atual do staging. Com `ref` (SHA de um PR do próprio repositório, disparado pelo
+# rótulo `corpus-eval`, corpus-eval-label.yml), avalia o código do PR e nunca abre PR de lock. Sem
+# `ref`, se o eval passar e a corpus_version do staging estiver à frente do corpus.lock.json de
+# develop, abre o PR do lock a partir do artifact `corpus-lock` do run que exportou essa versão
+# (caso de um eval vermelho por causa do golden, corrigido depois), sem reingerir nada.
 #
 # - discover: `cli ingest discover` baixa cada fonte pelo SafeFetcher, confere sha256 e pins do
 #   corpus/sources.yaml e grava `<out>/plan.json` + `<out>/extract-matrix.json` (os PDFs/XLSX sem
@@ -18,10 +25,13 @@
 #   EMBED_NEURON_BUDGET), cobertura, snapshot e atualiza corpus/corpus.lock.json. Código 75 =
 #   orçamento de neurons do dia acabou: o job termina verde com status `budget_exhausted` e o
 #   próximo run retoma pelo embedding_cache.
-# - lock-pr: abre o PR `chore(ingest): …` do corpus/corpus.lock.json com o token da App
-#   teko-release-bot (commit pela API GraphQL, assinado pelo GitHub, com Signed-off-by).
 # - corpus-eval: retrieval evals (promptfoo, provider in-process) contra o staging, com embeddings
-#   reais do Workers AI e o role teko_app.
+#   e reranker reais do Workers AI e o role teko_app, nos conjuntos dev e holdout do golden. O
+#   registro (`corpus.eval.json`, métricas com intervalo de confiança e a corpus_version) vai para
+#   o artifact `corpus-eval` e para o histórico no store eval-artifacts.
+# - lock-pr: só com o corpus-eval verde, abre o PR `chore(ingest): …` com o corpus/corpus.lock.json
+#   e o corpus/corpus.eval.json, com o token da App teko-release-bot (commit pela API GraphQL,
+#   assinado pelo GitHub, com Signed-off-by), branch `chore/corpus-lock-<run_id>`.
 #
 # Produção nunca é tocada aqui: ela só recebe o corpus pelo `promote` do release.
 name: Ingest
@@ -42,6 +52,15 @@ on:
         description: Carga em massa (HNSW criado depois da carga; só staging)
         type: boolean
         default: false
+      mode:
+        description: full (ingestão completa) ou eval-only (só o corpus-eval contra o staging, ADR 0031)
+        type: choice
+        options: [full, eval-only]
+        default: full
+      ref:
+        description: eval-only - SHA (40 caracteres) do commit a avaliar, de um PR do próprio repositório; vazio = o código do branch do dispatch
+        type: string
+        default: ""
   workflow_call:
     inputs:
       target:
@@ -53,6 +72,12 @@ on:
       bulk:
         type: boolean
         default: false
+      mode:
+        type: string
+        default: full
+      ref:
+        type: string
+        default: ""
     # Num workflow chamado, o segredo do environment só chega ao job com `environment: staging` se
     # o chamador o repassar pelo nome (docs do GitHub: "Using inputs and secrets in a reusable
     # workflow"); por isso todos estão declarados aqui. Nunca `secrets: inherit`.
@@ -94,6 +119,8 @@ env:
 jobs:
   discover:
     name: discover
+    # Modo eval-only: nada é baixado nem ingerido; discover, extract e load ficam pulados.
+    if: ${{ inputs.mode != 'eval-only' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     environment: staging
@@ -537,11 +564,13 @@ jobs:
         if: steps.lock.outputs.changed == 'true'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          # Um arquivo só: fica na raiz do artifact (corpus.lock.json).
+          # Um arquivo só: fica na raiz do artifact (corpus.lock.json). 90 dias: com o corpus-eval
+          # vermelho, o modo eval-only abre o PR do lock a partir deste artifact depois que o golden
+          # for corrigido (ADR 0031).
           name: corpus-lock
           path: corpus/corpus.lock.json
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 90
 
       - name: Guardar o relatório do run
         if: ${{ !cancelled() }}
@@ -552,125 +581,21 @@ jobs:
           if-no-files-found: ignore
           retention-days: 30
 
-  lock-pr:
-    name: lock-pr
-    needs: load
-    # `if:` sem função de status ganha um success() implícito, que dá falso quando o extract foi
-    # pulado (run sem PDF novo) e pula este job junto, mesmo com o load verde. Por isso o
-    # `!cancelled()` e o resultado do load explícitos, como no próprio load.
-    if: >-
-      ${{ !cancelled() && needs.load.result == 'success'
-      && needs.load.outputs.lock_changed == 'true' }}
-    runs-on: ubuntu-24.04
-    timeout-minutes: 10
-    # O token da App (não o GITHUB_TOKEN) é o que dispara o pr-gate no PR aberto.
-    permissions: {}
-    steps:
-      - name: Harden runner
-        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
-        with:
-          egress-policy: block
-          allowed-endpoints: >
-            github.com:443
-            api.github.com:443
-            results-receiver.actions.githubusercontent.com:443
-            *.actions.githubusercontent.com:443
-            *.blob.core.windows.net:443
-
-      - name: Conferir a App teko-release-bot
-        env:
-          CLIENT_ID: ${{ vars.RELEASE_APP_CLIENT_ID }}
-          PRIVATE_KEY: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
-        run: |
-          if [[ -z "$CLIENT_ID" || -z "$PRIVATE_KEY" ]]; then
-            echo "::error title=ingest::Faltam a variável RELEASE_APP_CLIENT_ID ou o segredo RELEASE_APP_PRIVATE_KEY (nível do repositório)."
-            exit 1
-          fi
-
-      - name: Token da App teko-release-bot
-        id: app-token
-        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
-        with:
-          client-id: ${{ vars.RELEASE_APP_CLIENT_ID }}
-          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
-          permission-contents: write
-          permission-pull-requests: write
-
-      - name: Baixar o corpus.lock.json
-        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
-        with:
-          name: corpus-lock
-          path: ${{ runner.temp }}/lock
-
-      - name: Abrir o PR do lock (commit assinado pela API)
-        env:
-          GH_TOKEN: ${{ steps.app-token.outputs.token }}
-          APP_SLUG: ${{ steps.app-token.outputs.app-slug }}
-          REPO: ${{ github.repository }}
-          RUN_NUMBER: ${{ github.run_number }}
-          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-          CORPUS_VERSION: ${{ needs.load.outputs.corpus_version }}
-          LOCK_FILE: ${{ runner.temp }}/lock/corpus.lock.json
-        run: |
-          set -euo pipefail
-          jq -e 'type == "object"' "$LOCK_FILE" >/dev/null
-          branch="chore/corpus-lock-${RUN_NUMBER}"
-          base_sha="$(gh api "repos/${REPO}/git/ref/heads/develop" --jq .object.sha)"
-          gh api "repos/${REPO}/git/refs" -f ref="refs/heads/${branch}" -f sha="$base_sha" >/dev/null
-          bot_id="$(gh api "users/${APP_SLUG}%5Bbot%5D" --jq .id)"
-          signoff="Signed-off-by: ${APP_SLUG}[bot] <${bot_id}+${APP_SLUG}[bot]@users.noreply.github.com>"
-          headline="chore(ingest): atualiza o corpus.lock.json${CORPUS_VERSION:+ (corpus_version ${CORPUS_VERSION})}"
-          body="$(printf 'Snapshot exportado pelo ingest.yml no staging (%s).\n\n%s' "$RUN_URL" "$signoff")"
-          # createCommitOnBranch: o GitHub assina o commit em nome da App (commit "Verified").
-          jq -n \
-            --arg repo "$REPO" --arg branch "$branch" --arg oid "$base_sha" \
-            --arg headline "$headline" --arg body "$body" \
-            --arg contents "$(base64 -w0 "$LOCK_FILE")" \
-            '{query: "mutation($input: CreateCommitOnBranchInput!) { createCommitOnBranch(input: $input) { commit { oid url } } }",
-              variables: {input: {
-                branch: {repositoryNameWithOwner: $repo, branchName: $branch},
-                expectedHeadOid: $oid,
-                message: {headline: $headline, body: $body},
-                fileChanges: {additions: [{path: "corpus/corpus.lock.json", contents: $contents}]}
-              }}}' >"${RUNNER_TEMP}/commit.json"
-          gh api graphql --input "${RUNNER_TEMP}/commit.json" --jq '.data.createCommitOnBranch.commit.url'
-          {
-            echo "## O que muda"
-            echo
-            echo "Atualiza o \`corpus/corpus.lock.json\` com o snapshot exportado pela ingestão no staging${CORPUS_VERSION:+ (corpus_version ${CORPUS_VERSION})}."
-            echo
-            echo "- Run: ${RUN_URL}"
-            echo "- A promoção para produção acontece no release (job \`promote-corpus\`), nunca aqui."
-            echo "- Confira o job \`corpus-eval\` do mesmo run antes do merge."
-          } >"${RUNNER_TEMP}/pr-body.md"
-          url="$(gh pr create --repo "$REPO" --base develop --head "$branch" --title "$headline" --body-file "${RUNNER_TEMP}/pr-body.md")"
-          echo "- PR do lock: ${url}" >>"$GITHUB_STEP_SUMMARY"
-          # Cada PR do lock reescreve o arquivo inteiro: o novo substitui os anteriores ainda
-          # abertos, que são fechados (com a branch apagada). Só os da própria App.
-          new_number="${url##*/}"
-          gh pr list --repo "$REPO" --state open --base develop --author "app/${APP_SLUG}" \
-            --json number,headRefName \
-            --jq '.[] | select(.headRefName | startswith("chore/corpus-lock-")) | .number' \
-            >"${RUNNER_TEMP}/old-lock-prs.txt"
-          while read -r old; do
-            [[ -z "$old" || "$old" == "$new_number" ]] && continue
-            gh pr close "$old" --repo "$REPO" --delete-branch \
-              --comment "Substituído por #${new_number}: o PR do lock mais recente reescreve o \`corpus/corpus.lock.json\` inteiro."
-            echo "- PR do lock anterior fechado: #${old}" >>"$GITHUB_STEP_SUMMARY"
-          done <"${RUNNER_TEMP}/old-lock-prs.txt"
-
   corpus-eval:
     name: corpus-eval
     needs: load
-    # Mesmo motivo do lock-pr: sem `!cancelled()`, o extract pulado pula este job.
+    # Sem `!cancelled()`, o extract pulado pula este job. No modo eval-only o load fica pulado e o
+    # eval roda contra o estado atual do staging.
     if: >-
-      ${{ !cancelled() && needs.load.result == 'success'
-      && needs.load.outputs.status == 'published' }}
+      ${{ !cancelled() && (inputs.mode == 'eval-only'
+      || (needs.load.result == 'success' && needs.load.outputs.status == 'published')) }}
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 30
     environment: staging
     permissions:
       contents: read
+    outputs:
+      corpus_version: ${{ steps.record.outputs.corpus_version }}
     env:
       PROMPTFOO_DISABLE_TELEMETRY: "1"
       PROMPTFOO_DISABLE_SHARING: "1"
@@ -696,32 +621,48 @@ jobs:
             nodejs.org:443
             api.cloudflare.com:443
             *.neon.tech:5432
+            api.netlify.com:443
+            *.s3.us-east-2.amazonaws.com:443
+            *.s3.dualstack.us-east-2.amazonaws.com:443
 
-      - name: Conferir segredos do environment staging
+      - name: Conferir entradas e segredos do environment staging
         env:
+          MODE: ${{ inputs.mode }}
+          REF: ${{ inputs.ref }}
           NEON_STAGING_APP_URL: ${{ secrets.NEON_STAGING_APP_URL }}
           CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
           CF_AI_TOKEN: ${{ secrets.CF_AI_TOKEN }}
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ vars.NETLIFY_SITE_ID }}
         run: |
+          if [[ -n "$REF" && ( "$MODE" != eval-only || ! "$REF" =~ ^[0-9a-f]{40}$ ) ]]; then
+            echo "::error title=corpus-eval::ref só vale no modo eval-only e precisa ser um SHA de 40 caracteres hexadecimais."
+            exit 1
+          fi
+          names=(NEON_STAGING_APP_URL CF_ACCOUNT_ID CF_AI_TOKEN)
+          # O histórico (store eval-artifacts) só recebe o eval do código de develop.
+          [[ -z "$REF" ]] && names+=(NETLIFY_AUTH_TOKEN NETLIFY_SITE_ID)
           missing=()
-          for name in NEON_STAGING_APP_URL CF_ACCOUNT_ID CF_AI_TOKEN; do
+          for name in "${names[@]}"; do
             [[ -n "${!name}" ]] || missing+=("$name")
           done
           if (( ${#missing[@]} > 0 )); then
             printf -v list '%s, ' "${missing[@]}"
-            echo "::error title=ingest::Faltam segredos no environment 'staging': ${list%, }."
+            echo "::error title=ingest::Faltam no environment 'staging': ${list%, }."
             exit 1
           fi
 
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          # Vazio = o commit do run (develop); no eval-only de um PR, o SHA do PR.
+          ref: ${{ inputs.ref }}
           persist-credentials: false
 
       - name: Setup
         uses: ./.github/actions/setup
 
-      - name: Retrieval evals contra o staging (embeddings e reranker reais, role teko_app)
+      - name: Retrieval evals contra o staging, conjuntos dev e holdout (embeddings e reranker reais, role teko_app)
         env:
           APP_ENV: ci
           DATABASE_URL: ${{ secrets.NEON_STAGING_APP_URL }}
@@ -735,12 +676,43 @@ jobs:
           EVAL_POOL_SIZE: "50"
           CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
           CF_AI_TOKEN: ${{ secrets.CF_AI_TOKEN }}
-        run: pnpm --filter @teko/api eval:retrieval
+        run: |
+          pnpm --filter @teko/api eval:retrieval
+          pnpm --filter @teko/api eval:retrieval:holdout
 
-      # Limites próprios do corpus real (seção retrieval-corpus): trava contra regressão no nível
-      # medido, separada do gate da fixture do PR.
-      - name: Gate das retrieval evals (thresholds.json, retrieval-corpus)
-        run: pnpm --filter @teko/api eval:retrieval:check:corpus
+      # Gate do corpus real (ADR 0031): retrieval-corpus no dev (trava contra regressão) e
+      # retrieval-holdout no holdout (determinísticas em 1,00; recall e MRR informativos, meta de
+      # MRR da F4), com intervalo de confiança no resumo. O registro liga o resultado à
+      # corpus_version do staging (lida pelo teko_app) e vai ao PR do lock.
+      - name: Gate e registro do corpus-eval (thresholds.json, retrieval-corpus e retrieval-holdout)
+        id: record
+        working-directory: apps/api
+        env:
+          APP_ENV: ci
+          DATABASE_URL: ${{ secrets.NEON_STAGING_APP_URL }}
+          EMBEDDINGS_PROVIDER: workers-ai
+          RERANKER_PROVIDER: workers-ai
+          CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+          CF_AI_TOKEN: ${{ secrets.CF_AI_TOKEN }}
+          GIT_SHA: ${{ inputs.ref || github.sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: >-
+          node evals/scripts/corpus-eval-record.ts build
+          --dev reports/retrieval-evals.json --holdout reports/retrieval-evals-holdout.json
+          --out reports/corpus.eval.json --pr-body reports/corpus-eval-pr.md
+          --git-sha "$GIT_SHA" --run-url "$RUN_URL"
+
+      - name: Histórico do corpus-eval (store eval-artifacts)
+        # Também com o gate vermelho: o histórico mostra a regressão. Nunca para o código de um PR.
+        if: ${{ !cancelled() && steps.record.outputs.corpus_version != '' && inputs.ref == '' }}
+        continue-on-error: true
+        working-directory: apps/api
+        env:
+          APP_ENV: ci
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ vars.NETLIFY_SITE_ID }}
+          RUN_ID: ${{ github.run_id }}
+        run: node evals/scripts/corpus-eval-record.ts history --record reports/corpus.eval.json --run-id "$RUN_ID"
 
       - name: Guardar o resultado das evals
         if: ${{ !cancelled() }}
@@ -748,9 +720,203 @@ jobs:
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: corpus-eval
-          path: apps/api/reports/retrieval-evals.json
+          path: |
+            apps/api/reports/retrieval-evals.json
+            apps/api/reports/retrieval-evals-holdout.json
+            apps/api/reports/corpus.eval.json
+            apps/api/reports/corpus-eval-pr.md
           if-no-files-found: ignore
-          retention-days: 30
+          retention-days: 90
+
+  lock-pr:
+    name: lock-pr
+    needs: [load, corpus-eval]
+    # O lock só vai a PR com o corpus-eval verde (ADR 0031): no modo completo, quando o load mudou o
+    # lock; no eval-only (sem `ref`), quando o staging está à frente do lock de develop. `!cancelled()`
+    # e os resultados explícitos: o extract pulado não pode pular este job.
+    if: >-
+      ${{ !cancelled() && needs.corpus-eval.result == 'success' && inputs.ref == ''
+      && ((inputs.mode != 'eval-only' && needs.load.result == 'success'
+      && needs.load.outputs.lock_changed == 'true') || inputs.mode == 'eval-only') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    # O GITHUB_TOKEN só lê (o lock de develop e os artifacts de outros runs); o PR sai com o token
+    # da App, que é o que dispara o pr-gate no PR aberto.
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          egress-policy: block
+          allowed-endpoints: >
+            github.com:443
+            api.github.com:443
+            results-receiver.actions.githubusercontent.com:443
+            *.actions.githubusercontent.com:443
+            *.blob.core.windows.net:443
+
+      - name: Conferir a App teko-release-bot
+        env:
+          CLIENT_ID: ${{ vars.RELEASE_APP_CLIENT_ID }}
+          PRIVATE_KEY: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+        run: |
+          if [[ -z "$CLIENT_ID" || -z "$PRIVATE_KEY" ]]; then
+            echo "::error title=ingest::Faltam a variável RELEASE_APP_CLIENT_ID ou o segredo RELEASE_APP_PRIVATE_KEY (nível do repositório)."
+            exit 1
+          fi
+
+      - name: Baixar o resultado do corpus-eval
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: corpus-eval
+          path: ${{ runner.temp }}/eval
+
+      - name: Baixar o corpus.lock.json do load
+        if: ${{ inputs.mode != 'eval-only' }}
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: corpus-lock
+          path: ${{ runner.temp }}/lock
+
+      # Modo eval-only: o lock da corpus_version avaliada vem do artifact `corpus-lock` do run que a
+      # exportou (o load grava o lock só quando o snapshot muda; retenção de 90 dias). Nada a abrir
+      # se o staging não está à frente do lock de develop.
+      - name: Resolver o lock da corpus_version avaliada
+        id: lock
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          MODE: ${{ inputs.mode }}
+          STAGING_VERSION: ${{ needs.corpus-eval.outputs.corpus_version }}
+          LOCK_DIR: ${{ runner.temp }}/lock
+        run: |
+          set -euo pipefail
+          lock="${LOCK_DIR}/corpus.lock.json"
+          if [[ "$MODE" == eval-only ]]; then
+            committed="$(gh api "repos/${REPO}/contents/corpus/corpus.lock.json?ref=develop" --jq .content | base64 -d | jq -r '.corpusVersion // 0')"
+            if (( STAGING_VERSION <= committed )); then
+              echo "::notice title=lock-pr::O staging (corpus_version ${STAGING_VERSION}) não está à frente do lock de develop (${committed}): nenhum PR de lock."
+              echo "open=false" >>"$GITHUB_OUTPUT"
+              exit 0
+            fi
+            mkdir -p "$LOCK_DIR"
+            gh api "repos/${REPO}/actions/artifacts?name=corpus-lock&per_page=100" \
+              --jq '[.artifacts[] | select((.expired | not) and .workflow_run.head_branch == "develop")] | sort_by(.created_at) | reverse | .[] | "\(.id) \(.workflow_run.id)"' \
+              >"${RUNNER_TEMP}/lock-artifacts.txt"
+            found=""
+            while read -r artifact run; do
+              [[ -z "$artifact" ]] && continue
+              gh api "repos/${REPO}/actions/artifacts/${artifact}/zip" >"${RUNNER_TEMP}/lock.zip"
+              unzip -p "${RUNNER_TEMP}/lock.zip" corpus.lock.json >"${RUNNER_TEMP}/candidate.json"
+              version="$(jq -r '.corpusVersion // 0' "${RUNNER_TEMP}/candidate.json")"
+              if (( version == STAGING_VERSION )); then
+                cp "${RUNNER_TEMP}/candidate.json" "$lock"
+                found="$run"
+                break
+              fi
+              # Os artifacts vêm do mais novo para o mais antigo: abaixo da versão avaliada, não há mais o que procurar.
+              (( version < STAGING_VERSION )) && break
+            done <"${RUNNER_TEMP}/lock-artifacts.txt"
+            if [[ -z "$found" ]]; then
+              echo "::error title=lock-pr::Nenhum artifact corpus-lock de develop com a corpus_version ${STAGING_VERSION} (retenção de 90 dias). Rode o ingest completo para exportar o snapshot de novo."
+              exit 1
+            fi
+            echo "source_run=${found}" >>"$GITHUB_OUTPUT"
+          fi
+          jq -e 'type == "object"' "$lock" >/dev/null
+          version="$(jq -r '.corpusVersion // empty' "$lock")"
+          # O PR só leva a corpus_version que o corpus-eval avaliou.
+          if [[ "$version" != "$STAGING_VERSION" ]]; then
+            echo "::error title=lock-pr::O lock traz a corpus_version ${version:-nenhuma}, mas o corpus-eval avaliou a ${STAGING_VERSION}."
+            exit 1
+          fi
+          echo "open=true" >>"$GITHUB_OUTPUT"
+          echo "file=${lock}" >>"$GITHUB_OUTPUT"
+
+      - name: Token da App teko-release-bot
+        id: app-token
+        if: steps.lock.outputs.open == 'true'
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          client-id: ${{ vars.RELEASE_APP_CLIENT_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
+
+      - name: Abrir o PR do lock (commit assinado pela API)
+        if: steps.lock.outputs.open == 'true'
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          APP_SLUG: ${{ steps.app-token.outputs.app-slug }}
+          REPO: ${{ github.repository }}
+          # run_id, não run_number: o número é por workflow e colide entre o source-watch (que chama
+          # este workflow) e o dispatch direto. O prefixo chore/corpus-lock- fecha os PRs antigos.
+          RUN_ID: ${{ github.run_id }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          SOURCE_RUN: ${{ steps.lock.outputs.source_run }}
+          SERVER_URL: ${{ github.server_url }}
+          CORPUS_VERSION: ${{ needs.corpus-eval.outputs.corpus_version }}
+          LOCK_FILE: ${{ steps.lock.outputs.file }}
+          EVAL_FILE: ${{ runner.temp }}/eval/corpus.eval.json
+          EVAL_BODY: ${{ runner.temp }}/eval/corpus-eval-pr.md
+        run: |
+          set -euo pipefail
+          jq -e --arg v "$CORPUS_VERSION" '.pass == true and .corpusVersion == ($v | tonumber)' "$EVAL_FILE" >/dev/null
+          branch="chore/corpus-lock-${RUN_ID}"
+          base_sha="$(gh api "repos/${REPO}/git/ref/heads/develop" --jq .object.sha)"
+          gh api "repos/${REPO}/git/refs" -f ref="refs/heads/${branch}" -f sha="$base_sha" >/dev/null
+          bot_id="$(gh api "users/${APP_SLUG}%5Bbot%5D" --jq .id)"
+          signoff="Signed-off-by: ${APP_SLUG}[bot] <${bot_id}+${APP_SLUG}[bot]@users.noreply.github.com>"
+          headline="chore(ingest): atualiza o corpus.lock.json${CORPUS_VERSION:+ (corpus_version ${CORPUS_VERSION})}"
+          body="$(printf 'Snapshot exportado pela ingestão no staging e aprovado pelo corpus-eval (%s).\n\n%s' "$RUN_URL" "$signoff")"
+          # createCommitOnBranch: o GitHub assina o commit em nome da App (commit "Verified"). O
+          # resultado do corpus-eval vai junto, ao lado do lock (corpus/corpus.eval.json).
+          jq -n \
+            --arg repo "$REPO" --arg branch "$branch" --arg oid "$base_sha" \
+            --arg headline "$headline" --arg body "$body" \
+            --arg lock "$(base64 -w0 "$LOCK_FILE")" \
+            --arg eval "$(base64 -w0 "$EVAL_FILE")" \
+            '{query: "mutation($input: CreateCommitOnBranchInput!) { createCommitOnBranch(input: $input) { commit { oid url } } }",
+              variables: {input: {
+                branch: {repositoryNameWithOwner: $repo, branchName: $branch},
+                expectedHeadOid: $oid,
+                message: {headline: $headline, body: $body},
+                fileChanges: {additions: [
+                  {path: "corpus/corpus.lock.json", contents: $lock},
+                  {path: "corpus/corpus.eval.json", contents: $eval}
+                ]}
+              }}}' >"${RUNNER_TEMP}/commit.json"
+          gh api graphql --input "${RUNNER_TEMP}/commit.json" --jq '.data.createCommitOnBranch.commit.url'
+          {
+            echo "## O que muda"
+            echo
+            echo "Atualiza o \`corpus/corpus.lock.json\` com o snapshot exportado pela ingestão no staging${CORPUS_VERSION:+ (corpus_version ${CORPUS_VERSION})} e grava o resultado do \`corpus-eval\` em \`corpus/corpus.eval.json\`."
+            echo
+            echo "- Run: ${RUN_URL}"
+            if [[ -n "$SOURCE_RUN" ]]; then
+              echo "- Modo eval-only: o lock vem do run que exportou o snapshot (${SERVER_URL}/${REPO}/actions/runs/${SOURCE_RUN}); o corpus-eval deste run o aprovou, sem reingerir."
+            fi
+            echo "- A promoção para produção acontece no release (job \`promote-corpus\`), nunca aqui."
+            echo
+            cat "$EVAL_BODY"
+          } >"${RUNNER_TEMP}/pr-body.md"
+          url="$(gh pr create --repo "$REPO" --base develop --head "$branch" --title "$headline" --body-file "${RUNNER_TEMP}/pr-body.md")"
+          echo "- PR do lock: ${url}" >>"$GITHUB_STEP_SUMMARY"
+          # Cada PR do lock reescreve o arquivo inteiro: o novo substitui os anteriores ainda
+          # abertos, que são fechados (com a branch apagada). Só os da própria App.
+          new_number="${url##*/}"
+          gh pr list --repo "$REPO" --state open --base develop --author "app/${APP_SLUG}" \
+            --json number,headRefName \
+            --jq '.[] | select(.headRefName | startswith("chore/corpus-lock-")) | .number' \
+            >"${RUNNER_TEMP}/old-lock-prs.txt"
+          while read -r old; do
+            [[ -z "$old" || "$old" == "$new_number" ]] && continue
+            gh pr close "$old" --repo "$REPO" --delete-branch \
+              --comment "Substituído por #${new_number}: o PR do lock mais recente reescreve o \`corpus/corpus.lock.json\` inteiro."
+            echo "- PR do lock anterior fechado: #${old}" >>"$GITHUB_STEP_SUMMARY"
+          done <"${RUNNER_TEMP}/old-lock-prs.txt"
 
   summary:
     name: summary
@@ -772,6 +938,8 @@ jobs:
 
       - name: Resumo da ingestão
         env:
+          MODE: ${{ inputs.mode }}
+          REF: ${{ inputs.ref }}
           FAMILY: ${{ inputs.family }}
           BULK: ${{ inputs.bulk }}
           DISCOVER: ${{ needs.discover.result }}
@@ -781,6 +949,7 @@ jobs:
           LOAD: ${{ needs.load.result }}
           LOAD_STATUS: ${{ needs.load.outputs.status }}
           CORPUS_VERSION: ${{ needs.load.outputs.corpus_version }}
+          EVAL_VERSION: ${{ needs.corpus-eval.outputs.corpus_version }}
           DB_BYTES: ${{ needs.load.outputs.db_bytes }}
           LOCK_CHANGED: ${{ needs.load.outputs.lock_changed }}
           LOCK_PR: ${{ needs.lock-pr.result }}
@@ -789,7 +958,7 @@ jobs:
           {
             echo "### Ingestão no staging"
             echo
-            echo "Família: \`${FAMILY:-todas}\` · bulk: \`${BULK}\`"
+            echo "Modo: \`${MODE:-full}\`${REF:+ (código de \`${REF}\`)} · família: \`${FAMILY:-todas}\` · bulk: \`${BULK}\`"
             echo
             echo "| Etapa | Resultado |"
             echo "|---|---|"
@@ -803,11 +972,15 @@ jobs:
             else
               echo "| tamanho do staging | sem medida |"
             fi
+            echo "| corpus-eval | ${EVAL}${EVAL_VERSION:+ (corpus_version ${EVAL_VERSION})} |"
             echo "| lock-pr | ${LOCK_PR} |"
-            echo "| corpus-eval | ${EVAL} |"
             if [[ "$LOAD_STATUS" == budget_exhausted ]]; then
               echo
               echo "> Orçamento diário de neurons esgotado (código 75): rode de novo amanhã; a ingestão retoma pelo embedding_cache."
+            fi
+            if [[ "$LOCK_CHANGED" == true && "$EVAL" != success ]]; then
+              echo
+              echo "> O lock mudou, mas o corpus-eval não passou: o PR do lock espera. Se a falha for do golden, corrija-o e rode este workflow com \`mode: eval-only\`; o PR do lock sai do artifact \`corpus-lock\` deste run, sem reingerir."
             fi
           } >>"$GITHUB_STEP_SUMMARY"
           # O resumo não esconde falha: qualquer etapa vermelha deixa o run vermelho.

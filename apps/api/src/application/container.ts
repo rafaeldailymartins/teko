@@ -18,7 +18,7 @@ import type { PruneEmbeddingCache } from './use-cases/prune-embedding-cache.ts'
 import type { RefreshCoverage } from './use-cases/refresh-coverage.ts'
 import type { ResolveReferenceDate } from './use-cases/resolve-reference-date.ts'
 import type { RetrieveEvidence } from './use-cases/retrieve-evidence.ts'
-import type { WriteCorpus } from './use-cases/write-corpus.ts'
+import type { SeedFixtureCorpus } from './use-cases/seed-fixture-corpus.ts'
 
 /** Casos de uso que dependem do Postgres (montados só com `DATABASE_URL`). */
 export interface RetrievalUseCases {
@@ -33,8 +33,6 @@ interface UseCases {
   readonly resolveReferenceDate: ResolveReferenceDate
   /** `null` sem `DATABASE_URL` (as rotas que a usam chegam na F4). */
   readonly retrieval: RetrievalUseCases | null
-  /** Escrita do corpus (seed da fixture; ingestão na F3). Exige a URL do owner. */
-  readonly writeCorpus: WriteCorpus | null
 }
 
 /**
@@ -51,6 +49,8 @@ interface IngestionUseCases {
   readonly promoteSnapshot: PromoteSnapshot
   readonly inspectCorpus: InspectCorpus
   readonly pruneEmbeddingCache: PruneEmbeddingCache
+  /** Seed da fixture única pelo mesmo caminho da ingestão (só desenvolvimento, CI e testes). */
+  readonly seedFixtureCorpus: SeedFixtureCorpus
 }
 
 export interface IngestionContainer {
