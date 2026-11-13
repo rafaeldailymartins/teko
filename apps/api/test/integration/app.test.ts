@@ -170,7 +170,7 @@ describe('perfil de plataforma', () => {
   })
 
   it.each([
-    ['vercel', {}, '198.51.100.5'],
+    ['vercel', { FUNCTION_MAX_DURATION_S: '120' }, '198.51.100.5'],
     ['render', { TRUST_PROXY: '2' }, '203.0.113.50'],
     ['node', {}, '127.0.0.1'],
   ] as const)('trustProxy em %s', async (target, extra, expectedIp) => {
