@@ -35,7 +35,7 @@ function pathOf(request: FastifyRequest): string {
 }
 
 /** Requisição que o site estático atende (nunca a API). */
-export function isStaticRequest(request: FastifyRequest): boolean {
+function isStaticRequest(request: FastifyRequest): boolean {
   return (request.method === 'GET' || request.method === 'HEAD') && !API_PATH.test(pathOf(request))
 }
 
