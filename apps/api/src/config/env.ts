@@ -52,10 +52,9 @@ export const EmbeddingsProvider = {
 export type EmbeddingsProvider = (typeof EmbeddingsProvider)[keyof typeof EmbeddingsProvider]
 
 /** Backend dos artefatos da ingestão (ADR 0030): o GitHub Releases do repositório. */
-export const BlobStoreBackend = {
+const BlobStoreBackend = {
   GithubReleases: 'github-releases',
 } as const
-export type BlobStoreBackend = (typeof BlobStoreBackend)[keyof typeof BlobStoreBackend]
 
 /** Reranker da busca (ADR 0027): `none` mantém a ordem do RRF. */
 export const RerankerProvider = {
