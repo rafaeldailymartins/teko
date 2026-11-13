@@ -286,9 +286,11 @@ function createCorpusServices(
   database: Database,
   embeddings: EmbeddingPort,
   resolveReferenceDate: ResolveReferenceDate,
+  clock: Clock,
 ): CorpusServices {
   const checkCoverage = createCheckCoverage({
     coverageRepository: createPgCoverageRepository(database.db),
+    clock,
   })
   const searchRepository = createPgSearchRepository(database.pool)
   const reviewStatuses = reviewStatusesFor(env.APP_ENV)
@@ -425,7 +427,7 @@ export function createContainer(env: Env, overrides: ContainerOverrides = {}): C
       maxConnections: env.DATABASE_MAX_CONNECTIONS,
     })
     platform.attachDatabasePool(database.pool)
-    corpus = createCorpusServices(env, database, embeddings, resolveReferenceDate)
+    corpus = createCorpusServices(env, database, embeddings, resolveReferenceDate, clock)
   }
 
   return {
