@@ -701,6 +701,9 @@ jobs:
           EVAL_POOL_SIZE: "50"
           CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
           CF_AI_TOKEN: ${{ secrets.CF_AI_TOKEN }}
+          # O BLOB_STORE do workflow (github-releases) exige o token na configuração; aqui ele só
+          # lê (o job tem contents: read) e o eval não grava artefato.
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           pnpm --filter @teko/api eval:retrieval
           pnpm --filter @teko/api eval:retrieval:holdout
@@ -719,6 +722,7 @@ jobs:
           RERANKER_PROVIDER: workers-ai
           CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
           CF_AI_TOKEN: ${{ secrets.CF_AI_TOKEN }}
+          GITHUB_TOKEN: ${{ github.token }}
           GIT_SHA: ${{ inputs.ref || github.sha }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: >-
