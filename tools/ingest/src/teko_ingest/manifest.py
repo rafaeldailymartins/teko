@@ -26,6 +26,19 @@ MANIFEST_SCHEMA_VERSION: Final = 1
 (ausentes = documento inteiro) e sempre gravados (``null`` para o documento inteiro).
 """
 
+EXTRACTOR_REVISION: Final = 1
+"""Revisão do extrator (versão do Docling e configuração deste pacote), gravada no manifesto.
+
+Análoga à revisão do parser (ADR 0026): sobe quando a saída do Docling para o mesmo PDF muda
+(``docling`` novo no ``uv.lock``, TableFormer, OCR, opções do pipeline em ``convert.py``). O
+pipeline Node põe a revisão na chave do store ``corpus-docling`` (``EXTRACTOR_REVISION`` em
+``apps/api/src/adapters/in/cli/ingest/blob-keys.ts``, que tem de ser igual): uma revisão nova faz o
+``discover`` pedir a reextração. A revisão 1 é a chave sem sufixo, a de antes da revisão existir.
+"""
+
+EXTRACTOR_DOCLING_VERSION: Final = "2.146.0"
+"""Versão do ``docling`` coberta por :data:`EXTRACTOR_REVISION` (conferida contra o ``uv.lock``)."""
+
 _SHA256_RE: Final = re.compile(r"[0-9a-f]{64}")
 _PAGE_RANGE_RE: Final = re.compile(r"([0-9]+)-([0-9]+)")
 _ALLOWED_URL_SCHEMES: Final = frozenset({"http", "https"})
@@ -40,6 +53,7 @@ _FIELDS: Final = frozenset(
         "output_path",
         "page_range",
         "part",
+        "extractor_revision",
     },
 )
 _PAGE_RANGE_SHAPE: Final = "campo 'page_range' deve ser null ou [início, fim]"
@@ -164,6 +178,8 @@ class ExtractionManifest:
         created_at: Instante da extração, com fuso; é normalizado para UTC.
         output_path: Caminho POSIX da saída, relativo ao diretório ``out/``.
         page_range: Páginas convertidas quando o documento foi dividido; ``None`` = inteiro.
+        extractor_revision: Revisão do extrator (:data:`EXTRACTOR_REVISION`); ausente na leitura
+            de um manifesto anterior a ela = 1.
         schema_version: Versão do formato do manifesto.
 
     """
@@ -175,6 +191,7 @@ class ExtractionManifest:
     created_at: datetime
     output_path: str
     page_range: PageRange | None = None
+    extractor_revision: int = EXTRACTOR_REVISION
     schema_version: int = field(default=MANIFEST_SCHEMA_VERSION)
 
     def __post_init__(self) -> None:
@@ -194,6 +211,9 @@ class ExtractionManifest:
             raise ManifestError(msg)
         if not self.docling_version.strip():
             msg = "docling_version não pode ser vazio"
+            raise ManifestError(msg)
+        if type(self.extractor_revision) is not int or self.extractor_revision < 1:
+            msg = "extractor_revision deve ser um inteiro >= 1"
             raise ManifestError(msg)
         if self.created_at.utcoffset() is None:
             msg = "created_at deve ter fuso horário"
@@ -219,6 +239,7 @@ class ExtractionManifest:
             "output_path": self.output_path,
             "page_range": None if self.page_range is None else list(self.page_range.as_tuple()),
             "part": self.part,
+            "extractor_revision": self.extractor_revision,
         }
 
     def to_json(self) -> str:
@@ -247,6 +268,10 @@ class ExtractionManifest:
         if data.get("part") != expected_part:
             msg = f"campo 'part' deve ser {expected_part!r}, coerente com page_range"
             raise ManifestError(msg)
+        extractor_revision = data.get("extractor_revision", 1)
+        if type(extractor_revision) is not int:
+            msg = "campo 'extractor_revision' deve ser inteiro"
+            raise ManifestError(msg)
         return cls(
             schema_version=schema_version,
             source_id=_require_str(data, "source_id"),
@@ -256,6 +281,7 @@ class ExtractionManifest:
             created_at=created_at,
             output_path=_require_str(data, "output_path"),
             page_range=page_range,
+            extractor_revision=extractor_revision,
         )
 
     @classmethod
