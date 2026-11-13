@@ -2,7 +2,7 @@
 # Calcula o escopo afetado de um PR ou push para os gates do CI.
 #
 # - web, api, shared: `turbo query affected --packages` (dependentes incluídos pelo turbo).
-# - ingest, rag, llm: `git diff --name-only <base>...HEAD` contra os globs de
+# - ingest, rag, llm, docs: `git diff --name-only <base>...HEAD` contra os globs de
 #   .github/affected-paths.yml (pathspec `:(glob)` do git).
 # - packages: true se qualquer pacote JS foi afetado.
 #
@@ -41,8 +41,8 @@ global_pathspecs=(
   ':(glob)tools/vercel-cli/**'
   ':(glob)tools/netlify-cli/**'
 )
-path_groups=(ingest rag llm)
-keys=(web api shared ingest rag llm)
+path_groups=(ingest rag llm docs)
+keys=(web api shared ingest rag llm docs)
 
 declare -A result
 for key in "${keys[@]}"; do
@@ -150,8 +150,9 @@ json="$(
     --argjson ingest "${result[ingest]}" \
     --argjson rag "${result[rag]}" \
     --argjson llm "${result[llm]}" \
+    --argjson docs "${result[docs]}" \
     --argjson packages "$packages" \
-    '{web: $web, api: $api, shared: $shared, ingest: $ingest, rag: $rag, llm: $llm, packages: $packages}'
+    '{web: $web, api: $api, shared: $shared, ingest: $ingest, rag: $rag, llm: $llm, docs: $docs, packages: $packages}'
 )"
 
 output="${GITHUB_OUTPUT:-/dev/stdout}"
