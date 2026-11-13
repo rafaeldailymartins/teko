@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest'
-import { createCheckCoverage } from './check-coverage.ts'
 import { createResolveReferenceDate } from './resolve-reference-date.ts'
 
 describe('createResolveReferenceDate', () => {
@@ -18,35 +17,5 @@ describe('createResolveReferenceDate', () => {
     expect(
       fixed({ input: { periodoApuracao: '2026-10' }, source: 'default', questionText: 'prazo?' }),
     ).toMatchObject({ reference: { value: '2026-10-01' } })
-  })
-})
-
-describe('createCheckCoverage', () => {
-  it('decide sobre a cobertura lida do repositório', async () => {
-    let loads = 0
-    const checkCoverage = createCheckCoverage({
-      coverageRepository: {
-        loadCoverage: () => {
-          loads += 1
-          return Promise.resolve([
-            {
-              family: 'rcte',
-              jurisdiction: 'GO',
-              covered: [{ from: '1998-01-01', to: null }],
-              verifiedAt: '2026-11-10',
-              gaps: [],
-            },
-          ])
-        },
-      },
-    })
-    await expect(checkCoverage('2006-05-01', ['rcte'])).resolves.toMatchObject({
-      status: 'covered',
-      coveredFamilies: ['rcte'],
-    })
-    await expect(checkCoverage('2026-12-01', ['rcte'])).resolves.toMatchObject({
-      status: 'out_of_coverage',
-    })
-    expect(loads).toBe(2)
   })
 })

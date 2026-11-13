@@ -1,7 +1,9 @@
+import type { ValidityInterval } from '@teko/shared/vigencia'
 import { describe, expect, it, vi } from 'vitest'
 import type { Evidence } from '#domain/qa/evidence.ts'
 import { type CoverageDecision, CoverageStatus } from '#domain/vigencia/coverage-decision.ts'
 import type { CheckCoverage } from './check-coverage.ts'
+import type { FindPeriodVersions } from './find-period-versions.ts'
 import type { HybridSearch, HybridSearchResult } from './hybrid-search.ts'
 import { createResolveReferenceDate } from './resolve-reference-date.ts'
 import { createRetrieveEvidence, RetrievalOutcome } from './retrieve-evidence.ts'
@@ -44,6 +46,7 @@ function setup(options: {
   readonly decision: CoverageDecision
   readonly search?: HybridSearchResult
   readonly minEvidenceRrf?: number
+  readonly periodVersions?: ValidityInterval[]
 }) {
   const checkCoverage = vi.fn<CheckCoverage>(() => Promise.resolve(options.decision))
   const hybridSearch = vi.fn<HybridSearch>(() =>
@@ -51,13 +54,17 @@ function setup(options: {
       options.search ?? { mode: 'hybrid', evidence: [], stableKeys: [], reranked: false },
     ),
   )
+  const findPeriodVersions = vi.fn<FindPeriodVersions>(() =>
+    Promise.resolve(options.periodVersions ?? []),
+  )
   const retrieve = createRetrieveEvidence({
     resolveReferenceDate: createResolveReferenceDate({ clock }),
     checkCoverage,
     hybridSearch,
+    findPeriodVersions,
     minEvidenceRrf: options.minEvidenceRrf ?? 0,
   })
-  return { retrieve, checkCoverage, hybridSearch }
+  return { retrieve, checkCoverage, hybridSearch, findPeriodVersions }
 }
 
 const ask = {
@@ -149,6 +156,60 @@ describe('createRetrieveEvidence', () => {
       families: ['rcte'],
       signal: controller.signal,
     })
+  })
+
+  it('fronteira já na evidência: não consulta as vigências do mês', async () => {
+    const { retrieve, findPeriodVersions } = setup({
+      decision: decision('covered'),
+      search: {
+        mode: 'hybrid',
+        evidence: [evidence(0.05, '2026-01-01', '2026-07-15')],
+        stableKeys: [],
+        reranked: false,
+      },
+    })
+    await expect(retrieve(ask)).resolves.toMatchObject({
+      reference: { periodBoundaryInside: true },
+    })
+    expect(findPeriodVersions).not.toHaveBeenCalled()
+  })
+
+  it('dispositivo que começa no meio do PA, fora da evidência: liga o aviso', async () => {
+    const { retrieve, findPeriodVersions } = setup({
+      decision: decision('partial', ['efd-go']),
+      search: {
+        mode: 'hybrid',
+        evidence: [evidence(0.05, '2004-11-04', null)],
+        stableKeys: ['go:rcte:art:71'],
+        reranked: false,
+      },
+      periodVersions: [{ from: '2026-07-29', to: null }],
+    })
+    await expect(retrieve(ask)).resolves.toMatchObject({
+      reference: { value: '2026-07-01', periodBoundaryInside: true },
+    })
+    expect(findPeriodVersions).toHaveBeenCalledWith({
+      periodo: '2026-07',
+      families: ['rcte'],
+      stableKeys: ['go:rcte:art:76:par:8', 'go:rcte:art:71'],
+    })
+  })
+
+  it('data exata (sem PA): não consulta as vigências do mês', async () => {
+    const { retrieve, findPeriodVersions } = setup({
+      decision: decision('covered'),
+      search: {
+        mode: 'hybrid',
+        evidence: [evidence(0.05, '2004-11-04', null)],
+        stableKeys: [],
+        reranked: false,
+      },
+      periodVersions: [{ from: '2026-07-29', to: null }],
+    })
+    await expect(
+      retrieve({ ...ask, input: { referenceDate: '2026-07-01' }, source: 'explicit' }),
+    ).resolves.toMatchObject({ reference: { periodBoundaryInside: false, periodo: null } })
+    expect(findPeriodVersions).not.toHaveBeenCalled()
   })
 
   it('sem sinal, não passa signal à busca', async () => {

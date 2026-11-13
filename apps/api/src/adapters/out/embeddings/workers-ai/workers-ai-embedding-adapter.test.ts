@@ -97,6 +97,24 @@ describe('createWorkersAiEmbeddingAdapter', () => {
       () => Promise.resolve(json({ success: false, result: null, errors: [{ message: 'x' }] })),
     ],
     [
+      'corpo que não é JSON (página de erro do proxy)',
+      () => Promise.resolve(new Response('<html>502 Bad Gateway</html>', { status: 200 })),
+    ],
+    [
+      'conexão encerrada no meio da leitura do corpo',
+      () =>
+        Promise.resolve(
+          new Response(
+            new ReadableStream<Uint8Array>({
+              start(controller) {
+                controller.enqueue(new TextEncoder().encode('{"success":tr'))
+                controller.error(new TypeError('terminated'))
+              },
+            }),
+          ),
+        ),
+    ],
+    [
       'corpo fora do formato',
       () => Promise.resolve(json({ success: true, result: { data: 'x' } })),
     ],

@@ -3,11 +3,12 @@ import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
-import type { WriteCorpus } from '#app/use-cases/write-corpus.ts'
+import type { SeedFixtureCorpus } from '#app/use-cases/seed-fixture-corpus.ts'
 import { fixtureCoverageSchema, fixtureDocumentSchema } from './fixture-schema.ts'
 import {
   DEFAULT_FIXTURE_DIR,
   FixtureFileError,
+  fixtureSources,
   loadFixtureCommand,
   loadFixtureDocuments,
   seedFixtures,
@@ -125,6 +126,152 @@ describe('fixtureDocumentSchema', () => {
   })
 })
 
+const SEED_OPTIONS = { replace: false, gitSha: 'abc1234', today: '2026-11-12' } as const
+
+describe('fixtureSources', () => {
+  const twoVersions = fixtureDocumentSchema.parse(
+    document({
+      slug: 'guia-pratico-efd-icms-ipi',
+      family: 'efd-icms-ipi',
+      title: 'Guia Prático',
+      issuer: 'RFB',
+      sourceUrl: 'https://www.gov.br/sped',
+      versions: [
+        {
+          key: 'novo',
+          versionLabel: 'Guia 3.2.4',
+          publishedOn: '2026-07-30',
+          validDuring: { from: '2026-01-01', to: null },
+          sha256: 'b'.repeat(64),
+        },
+        {
+          key: 'antigo',
+          versionLabel: 'Guia 3.1.9',
+          publishedOn: '2025-05-13',
+          validDuring: { from: '2025-01-01', to: '2026-01-01' },
+          sha256: SHA,
+        },
+      ],
+      provisions: [
+        {
+          stableKey: 'br:efd-icms-ipi:reg:C100',
+          kind: 'registro',
+          sortPath: 'C100',
+          headingPath: 'Guia > C100',
+          versions: [
+            {
+              displayLabel: 'Registro C100',
+              validDuring: { from: '2025-01-01', to: null },
+              validityBasis: 'leiaute_period',
+              text: 'REGISTRO C100',
+              documentVersions: ['antigo', 'novo'],
+              structured: { campos: 3 },
+            },
+          ],
+        },
+        {
+          stableKey: 'br:efd-icms-ipi:reg:C100:campo:02',
+          kind: 'campo',
+          parent: 'br:efd-icms-ipi:reg:C100',
+          sortPath: 'C100.02',
+          headingPath: 'Guia > C100 > 02',
+          versions: [
+            {
+              displayLabel: 'C100, campo 02',
+              validDuring: { from: '2026-01-01', to: null },
+              validityBasis: 'leiaute_period',
+              text: 'IND_EMIT',
+              documentVersions: ['novo'],
+              knowledge: { from: '2026-07-30', to: null },
+            },
+          ],
+        },
+      ],
+    }),
+  )
+
+  it('uma fonte por versão de documento, na ordem de publicação, com as redações que a citam', () => {
+    const sources = fixtureSources([twoVersions])
+    expect(sources.map((source) => source.version.versionLabel)).toEqual([
+      'Guia 3.1.9',
+      'Guia 3.2.4',
+    ])
+    const [older, newer] = sources
+    expect(older?.version).toEqual({
+      versionLabel: 'Guia 3.1.9',
+      publishedOn: '2025-05-13',
+      validDuring: { from: '2025-01-01', to: '2026-01-01' },
+      consolidatedUntil: null,
+      actRef: null,
+      sha256: SHA,
+    })
+    expect(older?.provisions.map((provision) => provision.stableKey)).toEqual([
+      'br:efd-icms-ipi:reg:C100',
+    ])
+    expect(newer?.provisions.map((provision) => provision.stableKey)).toEqual([
+      'br:efd-icms-ipi:reg:C100',
+      'br:efd-icms-ipi:reg:C100:campo:02',
+    ])
+    // Guias e leiautes reescrevem só o próprio período.
+    expect(newer?.replacementWindow).toEqual({ from: '2026-01-01', to: null })
+    expect(newer?.provisions[1]).toMatchObject({ parent: 'br:efd-icms-ipi:reg:C100' })
+    expect(newer?.provisions[0]).not.toHaveProperty('parent')
+    // O knowledge da fixture não vai para a ingestão; structured e amendment só quando existem.
+    expect(newer?.provisions[1]?.versions[0]).not.toHaveProperty('knowledge')
+    expect(newer?.provisions[1]?.versions[0]).not.toHaveProperty('structured')
+    expect(newer?.provisions[0]?.versions[0]).toMatchObject({ structured: { campos: 3 } })
+    expect(newer).toMatchObject({
+      document: { slug: 'guia-pratico-efd-icms-ipi', family: 'efd-icms-ipi' },
+      skipped: [],
+      stats: { notesTotal: 0, notesParsed: 0, notesToReview: 0 },
+    })
+  })
+
+  it('consolidados (RCTE, CTE, tabelas de Goiás) reescrevem todo o histórico', () => {
+    const [source] = fixtureSources([fixtureDocumentSchema.parse(document())])
+    expect(source?.replacementWindow).toEqual({ from: null, to: null })
+  })
+
+  it('a fixture versionada vira as fontes de cada versão, com todas as redações', () => {
+    const documents = loadFixtureDocuments(DEFAULT_FIXTURE_DIR)
+    const sources = fixtureSources(documents)
+    expect(sources).toHaveLength(documents.reduce((sum, doc) => sum + doc.versions.length, 0))
+    const cited = new Set(
+      documents.flatMap((doc) =>
+        doc.provisions.flatMap((provision) =>
+          provision.versions.map((version) => `${provision.stableKey}@${version.displayLabel}`),
+        ),
+      ),
+    )
+    const ingested = new Set(
+      sources.flatMap((source) =>
+        source.provisions.flatMap((provision) =>
+          provision.versions.map((version) => `${provision.stableKey}@${version.displayLabel}`),
+        ),
+      ),
+    )
+    expect(ingested).toEqual(cited)
+  })
+
+  it('o knowledge da fixture é sempre atual', () => {
+    const [provision] = document().provisions
+    expect(
+      issuesOf(
+        document({
+          provisions: [
+            {
+              ...provision,
+              versions: [
+                { ...provision?.versions[0], knowledge: { from: '2026-09-16', to: '2026-10-01' } },
+              ],
+            },
+          ],
+        }),
+      ),
+    ).toEqual(['knowledge da fixture é sempre atual (to: null)'])
+  })
+})
+
 describe('seed-fixtures', () => {
   it('a fixture versionada é válida e cobre as famílias do corpus', () => {
     const documents = loadFixtureDocuments(DEFAULT_FIXTURE_DIR)
@@ -132,11 +279,43 @@ describe('seed-fixtures', () => {
     expect(new Set(documents.map((doc) => doc.family))).toEqual(
       new Set(['rcte', 'cte', 'efd-icms-ipi', 'efd-reinf', 'efd-go', 'tabelas-go']),
     )
-    const command = loadFixtureCommand(DEFAULT_FIXTURE_DIR, { replace: true })
-    expect(command.replace).toBe(true)
-    expect(command.notes).toBe(`fixture ${DEFAULT_FIXTURE_DIR}`)
+    const command = loadFixtureCommand(DEFAULT_FIXTURE_DIR, { ...SEED_OPTIONS, replace: true })
+    expect(command).toMatchObject({ replace: true, gitSha: 'abc1234', verifiedAt: '2026-11-10' })
     expect(command.coverage.every((entry) => entry.verifiedAt === '2026-11-10')).toBe(true)
+    expect(command.coverage.every((entry) => entry.gapReason === null)).toBe(true)
     expect(command.coverage.map((entry) => entry.family)).not.toContain('rcte-anexos')
+  })
+
+  it('cobertura declarada: lacunas com motivo; sem cobertura, o verified_at é hoje', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'teko-seed-'))
+    mkdirSync(join(dir, 'documents'))
+    writeFileSync(join(dir, 'documents', 'rcte.json'), JSON.stringify(document()))
+    writeFileSync(
+      join(dir, 'coverage.json'),
+      JSON.stringify([
+        {
+          family: 'rcte',
+          covered: [{ from: '1998-01-01', to: null }],
+          verifiedAt: '2026-11-09',
+          gaps: [{ interval: { from: '2026-10-01', to: null }, reason: 'mudança detectada' }],
+        },
+      ]),
+    )
+    expect(loadFixtureCommand(dir, SEED_OPTIONS)).toMatchObject({
+      verifiedAt: '2026-11-09',
+      coverage: [
+        {
+          family: 'rcte',
+          gaps: [{ from: '2026-10-01', to: null }],
+          gapReason: 'mudança detectada',
+        },
+      ],
+    })
+    writeFileSync(join(dir, 'coverage.json'), '[]')
+    expect(loadFixtureCommand(dir, SEED_OPTIONS)).toMatchObject({
+      verifiedAt: '2026-11-12',
+      coverage: [],
+    })
   })
 
   it('o § 6º do art. 76 do RCTE tem as três redações do plano no único snapshot de 2026', () => {
@@ -157,8 +336,8 @@ describe('seed-fixtures', () => {
     writeFileSync(join(dir, 'documents', 'notas.txt'), 'ignorado')
     writeFileSync(join(dir, 'coverage.json'), JSON.stringify([{ family: 'rcte' }]))
     expect(loadFixtureDocuments(dir)).toHaveLength(1)
-    expect(() => loadFixtureCommand(dir, { replace: false })).toThrow(FixtureFileError)
-    expect(() => loadFixtureCommand(dir, { replace: false })).toThrow(/coverage\.json/)
+    expect(() => loadFixtureCommand(dir, SEED_OPTIONS)).toThrow(FixtureFileError)
+    expect(() => loadFixtureCommand(dir, SEED_OPTIONS)).toThrow(/coverage\.json/)
 
     writeFileSync(join(dir, 'documents', 'ruim.json'), JSON.stringify({ slug: 'x' }))
     expect(() => loadFixtureDocuments(dir)).toThrow(/ruim\.json/)
@@ -167,16 +346,19 @@ describe('seed-fixtures', () => {
     expect(error.cause).toBeInstanceOf(Error)
   })
 
-  it('seedFixtures grava a fixture pelo WriteCorpus', async () => {
-    const writeCorpus = vi.fn<WriteCorpus>(() =>
-      Promise.resolve({ corpusVersion: 1, documents: 9, provisionVersions: 10, chunks: 11 }),
-    )
-    await expect(
-      seedFixtures(writeCorpus, DEFAULT_FIXTURE_DIR, { replace: false }),
-    ).resolves.toMatchObject({
+  it('seedFixtures grava a fixture pelo SeedFixtureCorpus', async () => {
+    const result = {
+      runId: 'r1',
       corpusVersion: 1,
-    })
-    expect(writeCorpus.mock.calls[0]?.[0]).toMatchObject({ replace: false })
+      documentVersions: 12,
+      unchanged: 0,
+      provisionVersions: 1569,
+      chunks: 1574,
+    }
+    const seed = vi.fn<SeedFixtureCorpus>(() => Promise.resolve(result))
+    await expect(seedFixtures(seed, DEFAULT_FIXTURE_DIR, SEED_OPTIONS)).resolves.toEqual(result)
+    expect(seed.mock.calls[0]?.[0]).toMatchObject({ replace: false, gitSha: 'abc1234' })
+    expect(seed.mock.calls[0]?.[0].sources.length).toBeGreaterThan(9)
   })
 })
 

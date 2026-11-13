@@ -12,9 +12,10 @@ import { isStableKey } from '#domain/corpus/provision-id.ts'
 /**
  * Formato da fixture única do corpus (`apps/api/test/fixtures/corpus/`): um JSON por documento em
  * `documents/<slug>.json` e a cobertura em `coverage.json`. É a entrada do `seed-fixtures`, que a
- * grava no Postgres pelo mesmo `CorpusWriter` da ingestão (chunking, hashes, `chunk_sources`,
- * cobertura e `corpus_versions`). Os textos são excertos reais das fontes oficiais; a procedência
- * de cada documento fica no `README.md` da fixture.
+ * grava no Postgres pelo mesmo `IngestDocumentVersion` da ingestão real (uma versão de documento
+ * por vez: chunking, hashes, embeddings pelo cache, reconciliação, `chunk_sources`), seguido do
+ * `RefreshCoverage` e da cobertura declarada aqui. Os textos são excertos reais das fontes
+ * oficiais; a procedência de cada documento fica no `README.md` da fixture.
  */
 
 const stableKeySchema = z.string().refine(isStableKey, { message: 'stable_key inválida' })
@@ -39,8 +40,16 @@ const fixtureProvisionVersionSchema = z.strictObject({
   validDuring: intervalSchema.refine((interval) => interval.from !== null, {
     message: 'valid_during precisa de limite inferior',
   }),
-  /** Padrão: [publishedOn da primeira versão de documento citada, ∞). */
-  knowledge: intervalSchema.optional(),
+  /**
+   * Informativo (o `eval-fixture export` o grava quando difere do padrão `[publishedOn da primeira
+   * versão de documento citada, ∞)`). O seed não o usa: o conhecimento sai da ingestão, como no
+   * staging. Só conhecimento atual (`to: null`): a fixture não tem redação superada.
+   */
+  knowledge: intervalSchema
+    .refine((interval) => interval.to === null, {
+      message: 'knowledge da fixture é sempre atual (to: null)',
+    })
+    .optional(),
   modality: z.enum(Modality).default(Modality.Mandatory),
   validityBasis: z.enum(ValidityBasis),
   retroactive: z.boolean().default(false),
@@ -142,3 +151,5 @@ export const fixtureCoverageSchema = z.array(
       .default([]),
   }),
 )
+
+export type FixtureCoverage = z.output<typeof fixtureCoverageSchema>

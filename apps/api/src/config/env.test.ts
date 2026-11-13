@@ -156,7 +156,7 @@ describe('parseEnv', () => {
         EMBEDDINGS_FIXTURE_PATH: 'f.json.gz',
       })
       expect(env.DATABASE_URL).toBe('postgresql://teko_app:x@localhost:5432/teko')
-      expect(env.DATABASE_MAX_CONNECTIONS).toBe(5)
+      expect(env.DATABASE_MAX_CONNECTIONS).toBe(3)
       expect(env.EMBEDDINGS_FAKE_STRICT).toBe(false)
       expect(env.MIN_EVIDENCE_RRF).toBe(0)
       expect(
@@ -167,12 +167,12 @@ describe('parseEnv', () => {
           EMBEDDINGS_FIXTURE_PATH: 'f',
           EMBEDDINGS_FAKE_STRICT: 'true',
           MIN_EVIDENCE_RRF: '0.02',
-          DATABASE_MAX_CONNECTIONS: '3',
+          DATABASE_MAX_CONNECTIONS: '4',
         }),
       ).toMatchObject({
         EMBEDDINGS_FAKE_STRICT: true,
         MIN_EVIDENCE_RRF: 0.02,
-        DATABASE_MAX_CONNECTIONS: 3,
+        DATABASE_MAX_CONNECTIONS: 4,
       })
     })
 

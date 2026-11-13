@@ -7,7 +7,7 @@ import {
   type SnapshotRow,
   type SnapshotTable,
 } from '#app/ports/snapshot-repository.ts'
-import { CorpusInvariantError } from './pg-corpus-writer.ts'
+import { CorpusInvariantError } from './corpus-invariant-error.ts'
 
 /**
  * `SnapshotRepository` sobre o `pg` (owner, conexão direta), com SQL explícito: a exportação lê

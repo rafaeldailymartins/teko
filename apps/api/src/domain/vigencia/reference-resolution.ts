@@ -155,8 +155,13 @@ export function resolveReferenceDate(args: ResolveReferenceInput): ReferenceReso
 }
 
 /**
- * Marca `periodBoundaryInside` quando a data veio de um PA e alguma vigência da evidência começa ou
- * termina dentro do mês: a redação aplicável muda no meio do período, e a UI avisa.
+ * Marca `periodBoundaryInside` quando a data veio de um PA e alguma vigência começa ou termina
+ * dentro do mês: a redação aplicável muda no meio do período, e a UI avisa.
+ *
+ * A busca roda no dia 1 do PA, então toda evidência já está em vigor nesse dia e só o fim dela pode
+ * cair dentro do mês. Um dispositivo que COMEÇA no meio do mês (redação nova sem a anterior entre
+ * as evidências, ou dispositivo acrescentado) não aparece na busca: por isso o caso de uso passa
+ * também as vigências que cruzam o mês nas unidades das evidências (`periodBoundaryScopes`).
  */
 export function markPeriodBoundary(
   reference: ResolvedReference,
@@ -169,4 +174,23 @@ export function markPeriodBoundary(
   return inside === reference.periodBoundaryInside
     ? reference
     : Object.freeze({ ...reference, periodBoundaryInside: inside })
+}
+
+/** `<jurisdição>:<família>:<tipo>:<valor>`: a unidade de topo da chave (artigo, registro, evento...). */
+const SCOPE_SEGMENTS = 4
+
+/**
+ * Unidades em que se procuram fronteiras de vigência dentro do PA: a unidade de topo de cada
+ * evidência (`go:rcte:art:76` para `go:rcte:art:76:par:6`; `br:efd-icms-ipi:reg:C100` para um
+ * campo do C100), sem repetição e ordenadas. Assim um parágrafo, inciso ou campo acrescentado no
+ * meio do mês ao artigo ou registro das evidências também conta, sem varrer a família inteira (o
+ * RCTE muda em algum ponto quase todo mês).
+ */
+export function periodBoundaryScopes(stableKeys: readonly string[]): string[] {
+  const scopes = stableKeys
+    .map((key) => key.split(':'))
+    .filter((segments) => segments.length >= SCOPE_SEGMENTS)
+    .map((segments) => segments.slice(0, SCOPE_SEGMENTS).join(':'))
+  // Ordem de unidade de código, explícita: independe do locale.
+  return [...new Set(scopes)].sort((a, b) => (a < b ? -1 : Number(a > b)))
 }

@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 import { Server } from 'node:http'
 import { afterAll, describe, expect, it, vi } from 'vitest'
 
@@ -82,5 +83,18 @@ describe('server.ts no runtime da Vercel', () => {
     const missing = await fetch(`${base}/api/v1/nada`)
     expect(missing.status).toBe(404)
     expect(missing.headers.get('content-type')).toContain('application/problem+json')
+  })
+
+  it('carrega a app por import dinâmico, depois do env (OTel e Sentry entram antes dele na F6)', () => {
+    const source = readFileSync(new URL('../../src/server.ts', import.meta.url), 'utf8')
+    const staticImports = source.match(/^import .+$/gm) ?? []
+    expect(staticImports.filter((line) => line.includes('composition-root'))).toEqual([
+      "import type { Runtime } from './composition-root.ts'",
+    ])
+    expect(staticImports.some((line) => line.includes('build-app'))).toBe(false)
+    const envAt = source.indexOf('loadEnv()')
+    const appAt = source.indexOf("await import('./composition-root.ts')")
+    expect(envAt).toBeGreaterThan(0)
+    expect(appAt).toBeGreaterThan(envAt)
   })
 })

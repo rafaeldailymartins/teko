@@ -1,6 +1,9 @@
 import { z } from 'zod'
 import { type RerankerPort, RerankerUnavailableError } from '#app/ports/reranker-port.ts'
-import { workersAiEndpoint } from '../../embeddings/workers-ai/workers-ai-embedding-adapter.ts'
+import {
+  postWorkersAi,
+  workersAiEndpoint,
+} from '../../embeddings/workers-ai/workers-ai-embedding-adapter.ts'
 
 /**
  * `bge-reranker-base` pelo Workers AI (REST): `POST https://api.cloudflare.com/client/v4/accounts/
@@ -8,7 +11,7 @@ import { workersAiEndpoint } from '../../embeddings/workers-ai/workers-ai-embedd
  * `{ result: { response: [{ id, score }] }, success }`, com `id` = posição do texto em `contexts`
  * (ADR 0027). Mesmo host fixo do adapter de embeddings.
  *
- * Falhas de rede e HTTP, resposta fora do esquema ou sem nota para algum texto viram
+ * Falhas de rede e HTTP, corpo ilegível (não JSON ou conexão encerrada), resposta fora do esquema ou sem nota para algum texto viram
  * `RerankerUnavailableError`, que mantém a ordem do RRF em vez de falhar a pergunta.
  */
 
@@ -38,24 +41,17 @@ export function createWorkersAiRerankerAdapter(options: WorkersAiRerankerOptions
       if (texts.length === 0) {
         return []
       }
-      let response: Response
-      try {
-        response = await doFetch(endpoint, {
-          method: 'POST',
-          headers: {
-            authorization: `Bearer ${options.apiToken}`,
-            'content-type': 'application/json',
-          },
-          body: JSON.stringify({ query, contexts: texts.map((text) => ({ text })) }),
-          ...(rerankOptions?.signal === undefined ? {} : { signal: rerankOptions.signal }),
-        })
-      } catch (error) {
-        throw new RerankerUnavailableError('Workers AI inacessível', { cause: error })
-      }
-      if (!response.ok) {
-        throw new RerankerUnavailableError(`Workers AI respondeu HTTP ${String(response.status)}`)
-      }
-      const parsed = responseSchema.safeParse(await response.json())
+      const reply = await postWorkersAi(
+        {
+          endpoint,
+          apiToken: options.apiToken,
+          payload: { query, contexts: texts.map((text) => ({ text })) },
+          signal: rerankOptions?.signal,
+          fetch: doFetch,
+        },
+        (message, errorOptions) => new RerankerUnavailableError(message, errorOptions),
+      )
+      const parsed = responseSchema.safeParse(reply.body)
       if (!parsed.success || !parsed.data.success || !parsed.data.result) {
         throw new RerankerUnavailableError('Workers AI devolveu uma resposta inesperada')
       }

@@ -14,7 +14,8 @@ import {
   type ResolvedReference,
 } from '#domain/vigencia/reference-resolution.ts'
 import type { CheckCoverage } from './check-coverage.ts'
-import type { HybridSearch } from './hybrid-search.ts'
+import type { FindPeriodVersions } from './find-period-versions.ts'
+import type { HybridSearch, HybridSearchResult } from './hybrid-search.ts'
 import type { ResolveReferenceDate, ResolveReferenceDateCommand } from './resolve-reference-date.ts'
 
 /**
@@ -65,8 +66,36 @@ export interface RetrieveEvidenceDeps {
   readonly resolveReferenceDate: ResolveReferenceDate
   readonly checkCoverage: CheckCoverage
   readonly hybridSearch: HybridSearch
+  /** Vigências com fronteira dentro do PA nas unidades das evidências (aviso de fronteira). */
+  readonly findPeriodVersions: FindPeriodVersions
   /** Abaixo disso (maior RRF da lista) a pergunta é recusada como `no_evidence`. */
   readonly minEvidenceRrf: number
+}
+
+/**
+ * Aviso de fronteira dentro do PA: primeiro pelas vigências das próprias evidências (o fim delas
+ * dentro do mês); se nada aparecer, pelas vigências que cruzam o mês nas unidades das evidências e
+ * das chaves citadas, onde aparece o que começa depois do dia 1 (consulta só nesse caso).
+ */
+async function referenceWithBoundary(
+  deps: RetrieveEvidenceDeps,
+  reference: ResolvedReference,
+  families: readonly string[],
+  search: HybridSearchResult,
+): Promise<ResolvedReference> {
+  const marked = markPeriodBoundary(
+    reference,
+    search.evidence.map((item) => item.validity),
+  )
+  if (marked.periodo === null || marked.periodBoundaryInside) {
+    return marked
+  }
+  const versions = await deps.findPeriodVersions({
+    periodo: marked.periodo,
+    families,
+    stableKeys: [...search.evidence.map((item) => item.stableKey), ...search.stableKeys],
+  })
+  return markPeriodBoundary(marked, versions)
 }
 
 export function createRetrieveEvidence(deps: RetrieveEvidenceDeps): RetrieveEvidence {
@@ -107,9 +136,11 @@ export function createRetrieveEvidence(deps: RetrieveEvidenceDeps): RetrieveEvid
     }
     return {
       outcome: RetrievalOutcome.Evidence,
-      reference: markPeriodBoundary(
+      reference: await referenceWithBoundary(
+        deps,
         resolution.reference,
-        search.evidence.map((item) => item.validity),
+        decision.coveredFamilies,
+        search,
       ),
       mode: search.mode,
       evidence: search.evidence,
