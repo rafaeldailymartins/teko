@@ -175,8 +175,28 @@ check "ingest: harden-runner em block, como primeiro step, em todo job" \
   yq_true '[.jobs[] | select(has("steps")) | .steps[0].uses | test("^step-security/harden-runner@")] | all' "$ingest"
 check "ingest: egress-policy block em todo job com steps" \
   yq_true '[.jobs[] | select(has("steps")) | .steps[0].with."egress-policy" == "block"] | all' "$ingest"
-check "ingest: allowlist do discover e do load inclui api.netlify.com" \
-  yq_true '[.jobs.discover, .jobs.load | .steps[0].with."allowed-endpoints" | test("(^|\\s)api\\.netlify\\.com:443")] | all' "$ingest"
+# Backend dos artefatos (ADR 0030): o BLOB_STORE do topo de cada workflow decide o que cada job
+# precisa. Com netlify (etapa C1), o PAT e api.netlify.com; com github-releases (etapa C2), o
+# GITHUB_TOKEN do job e `contents: write` só nos jobs que gravam (load e detect).
+blob_store_of() {
+  yq -r '.env.BLOB_STORE // ""' "$1"
+}
+ingest_blob_store_ok() {
+  case "$(blob_store_of "$ingest")" in
+    netlify)
+      yq_true '[.jobs.discover, .jobs.load | .steps[0].with."allowed-endpoints" | test("(^|\\s)api\\.netlify\\.com:443")] | all' "$ingest" &&
+        grep -q NETLIFY_SITE_ID <<<"$(yq -r '.jobs.discover.steps[].run // ""' "$ingest")"
+      ;;
+    github-releases)
+      yq_true '.jobs.load.permissions.contents == "write" and .jobs.discover.permissions.contents == "read" and (.jobs.load.steps[0].with."allowed-endpoints" | test("(^|\\s)uploads\\.github\\.com:443"))' "$ingest" &&
+        yq_true '[.jobs.discover, .jobs.load | .steps[] | select(.run // "" | test("cli\\.mjs")) | .env.GITHUB_TOKEN == "${{ github.token }}"] | all' "$ingest"
+      ;;
+    *) return 1 ;;
+  esac
+}
+check "ingest: credenciais e egress do BLOB_STORE (netlify na C1, github-releases na C2)" ingest_blob_store_ok
+check "ingest e source-watch usam o mesmo BLOB_STORE" \
+  bash -c "[[ \"\$(yq -r '.env.BLOB_STORE' '$ingest')\" == \"\$(yq -r '.env.BLOB_STORE' '$watch')\" ]]"
 check "ingest: allowlist do load inclui Cloudflare e Neon" \
   yq_true '.jobs.load.steps[0].with."allowed-endpoints" | (test("api\\.cloudflare\\.com:443") and test("neon\\.tech:5432"))' "$ingest"
 check "ingest: discover, load e corpus-eval no environment staging" \
@@ -249,8 +269,8 @@ check "ingest: commit do lock com Signed-off-by e branch chore/corpus-lock-<run_
   bash -c "grep -Fq 'Signed-off-by: ' '$ingest' && grep -Fq 'branch=\"chore/corpus-lock-\${RUN_ID}\"' '$ingest' && grep -Fq 'RUN_ID: \${{ github.run_id }}' '$ingest'"
 check "ingest: o PR do lock novo fecha os anteriores da própria App" \
   bash -c "grep -Fq -- '--author \"app/\${APP_SLUG}\"' '$ingest' && grep -Fq 'startswith(\"chore/corpus-lock-\")' '$ingest' && grep -Fq 'gh pr close \"\$old\"' '$ingest'"
-check "ingest: falha cedo sem NETLIFY_SITE_ID ou NEON_STAGING_PROJECT_ID" \
-  bash -c "yq -r '.jobs.discover.steps[].run // \"\"' '$ingest' | grep -q NETLIFY_SITE_ID && yq -r '.jobs.discover.steps[].run // \"\"' '$ingest' | grep -q NEON_STAGING_PROJECT_ID"
+check "ingest: falha cedo sem NEON_STAGING_PROJECT_ID ou com BLOB_STORE desconhecido" \
+  bash -c "yq -r '.jobs.discover.steps[].run // \"\"' '$ingest' | grep -q NEON_STAGING_PROJECT_ID && yq -r '.jobs.discover.steps[].run // \"\"' '$ingest' | grep -q 'BLOB_STORE .* desconhecido'"
 
 # --- F3: source-watch.yml -------------------------------------------------------------------------
 check "source-watch: cron diário 0 9 * * *" \
@@ -259,10 +279,26 @@ check "source-watch: detect no staging e mark-coverage no corpus-watch" \
   yq_true '.jobs.detect.environment == "staging" and .jobs."mark-coverage".environment == "corpus-watch"' "$watch"
 check "source-watch: mark-coverage depende do detect" \
   yq_true '.jobs."mark-coverage".needs == "detect"' "$watch"
-mark_coverage_without_netlify() {
-  ! grep -q 'NETLIFY' <<<"$(job_text "$watch" mark-coverage)"
+mark_coverage_without_blob_credentials() {
+  ! grep -Eq 'NETLIFY|GITHUB_TOKEN|github\.token' <<<"$(job_text "$watch" mark-coverage)"
 }
-check "source-watch: mark-coverage nunca vê o PAT da Netlify" mark_coverage_without_netlify
+check "source-watch: mark-coverage nunca vê a credencial dos artefatos (PAT ou GITHUB_TOKEN)" \
+  mark_coverage_without_blob_credentials
+watch_blob_store_ok() {
+  case "$(blob_store_of "$watch")" in
+    netlify)
+      grep -q NETLIFY_SITE_ID <<<"$(yq -r '.jobs.detect.steps[].run // ""' "$watch")" &&
+        yq_true '.jobs.detect.permissions.contents == "read"' "$watch"
+      ;;
+    github-releases)
+      yq_true '.jobs.detect.permissions.contents == "write" and .jobs.ingest.permissions.contents == "write"' "$watch" &&
+        yq_true '.jobs.detect.steps[] | select(.run // "" | test("sources-watch")) | .env.GITHUB_TOKEN == "${{ github.token }}"' "$watch"
+      ;;
+    *) return 1 ;;
+  esac
+}
+check "source-watch: credenciais do BLOB_STORE no detect (netlify na C1, github-releases na C2)" \
+  watch_blob_store_ok
 detect_without_database() {
   ! grep -Eq 'NEON_[A-Z_]*URL' <<<"$(job_text "$watch" detect)"
 }
@@ -275,6 +311,19 @@ mark_coverage_only_watch_secrets() {
 check "source-watch: mark-coverage só com os segredos do teko_watch" mark_coverage_only_watch_secrets
 check "source-watch: dispara o ingest.yml no staging sem secrets: inherit" \
   yq_true '.jobs.ingest.uses == "./.github/workflows/ingest.yml" and .jobs.ingest.with.target == "staging" and (.jobs.ingest.secrets | type) == "!!map"' "$watch"
+
+# --- Etapa C1 da ADR 0030: blobs-migrate.yml ------------------------------------------------------
+# Some na etapa C2 (junto com o workflow). Só manual, no environment com o PAT da Netlify, com
+# escrita nos releases, egress bloqueado e no mesmo grupo de concorrência do ingest.yml.
+migrate=.github/workflows/blobs-migrate.yml
+if [[ -f "$migrate" ]]; then
+  check "blobs-migrate: só workflow_dispatch, dry_run ligado por padrão" \
+    yq_true '(.on | keys | length) == 1 and (.on | has("workflow_dispatch")) and .on.workflow_dispatch.inputs.dry_run.default == true' "$migrate"
+  check "blobs-migrate: staging, contents: write e harden-runner em block com os hosts dos dois lados" \
+    yq_true '.jobs.migrate.environment == "staging" and .jobs.migrate.permissions.contents == "write" and .jobs.migrate.steps[0].with."egress-policy" == "block" and (.jobs.migrate.steps[0].with."allowed-endpoints" | test("uploads\\.github\\.com:443")) and (.jobs.migrate.steps[0].with."allowed-endpoints" | test("api\\.netlify\\.com:443"))' "$migrate"
+  check "blobs-migrate: mesmo grupo de concorrência do ingest.yml" \
+    bash -c "[[ \"\$(yq -r '.concurrency.group' '$migrate')\" == \"\$(yq -r '.concurrency.group' '$ingest')\" ]]"
+fi
 
 # --- Semgrep: as fixtures rodam no CI (GHA-4) ---------------------------------------------------
 check "security.yml roda semgrep test .semgrep/" \

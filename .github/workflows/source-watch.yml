@@ -1,11 +1,11 @@
 # Monitoramento diário das fontes do corpus (plano: "Monitoramento de mudanças"; mudança OpenSpec
 # add-source-change-monitoring).
 #
-# Dois jobs com environments diferentes, para o PAT da Netlify e as URLs de banco nunca ficarem
-# juntos:
+# Dois jobs com environments diferentes, para a credencial dos artefatos e as URLs de banco nunca
+# ficarem juntas:
 #   - detect (environment staging): `cli sources-watch` faz os GETs condicionais (ETag e
-#     Last-Modified em corpus-manifests/watch-state.json, no Blobs), grava discovered.json (Blobs e
-#     artifact) e expõe as mudanças como outputs. Não toca o banco.
+#     Last-Modified em corpus-manifests/watch-state.json, no BlobStore), grava discovered.json
+#     (BlobStore e artifact) e expõe as mudanças como outputs. Não toca o banco.
 #   - mark-coverage (environment corpus-watch): `cli coverage-mark` com o role teko_watch nos dois
 #     projetos do Neon. Sem mudança, um único UPDATE de verified_at por banco; com mudança, também
 #     a lacuna [effectiveFrom, ∞) e o gap_reason. Só recebe NEON_PROD_WATCH_URL e
@@ -13,6 +13,10 @@
 # Mudança em fonte `live` dispara o ingest.yml no staging (workflow_call); a promoção para produção
 # nunca é automática (PR do lock + release). Página que não pôde ser verificada não avança o
 # verified_at da família, e o job `watch-errors` deixa o run vermelho.
+#
+# Artefatos (ADR 0030): `BLOB_STORE` abaixo. Na etapa C1 continua `netlify`; a etapa C2, depois do
+# blobs-migrate.yml, troca para `github-releases` e dá `contents: write` ao detect (e ao job que
+# chama o ingest.yml), como o ci-config.test.sh cobra.
 name: Source watch
 
 on:
@@ -29,6 +33,8 @@ concurrency:
 
 env:
   TURBO_TELEMETRY_DISABLED: "1"
+  # Backend dos artefatos da ingestão (ADR 0030): netlify até a migração para o GitHub Releases.
+  BLOB_STORE: netlify
 
 jobs:
   detect:
@@ -52,14 +58,19 @@ jobs:
           # allowlist em `block`, como a do ingest.yml.
           egress-policy: audit
 
-      - name: Conferir o PAT e o site da Netlify (environment staging)
+      - name: Conferir a credencial dos artefatos (BLOB_STORE, environment staging)
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
           NETLIFY_SITE_ID: ${{ vars.NETLIFY_SITE_ID }}
         run: |
           missing=()
-          [[ -n "$NETLIFY_AUTH_TOKEN" ]] || missing+=("segredo NETLIFY_AUTH_TOKEN")
-          [[ -n "$NETLIFY_SITE_ID" ]] || missing+=("variável NETLIFY_SITE_ID (id do site tekoia)")
+          # O github-releases usa o GITHUB_TOKEN do próprio job, sem segredo a cadastrar.
+          if [[ "$BLOB_STORE" == netlify ]]; then
+            [[ -n "$NETLIFY_AUTH_TOKEN" ]] || missing+=("segredo NETLIFY_AUTH_TOKEN")
+            [[ -n "$NETLIFY_SITE_ID" ]] || missing+=("variável NETLIFY_SITE_ID (id do site tekoia)")
+          elif [[ "$BLOB_STORE" != github-releases ]]; then
+            missing+=("BLOB_STORE válido (github-releases ou netlify)")
+          fi
           if (( ${#missing[@]} > 0 )); then
             printf -v list '%s; ' "${missing[@]}"
             echo "::error title=source-watch::Faltam no environment 'staging': ${list%; }."
@@ -82,6 +93,7 @@ jobs:
           OUT: ${{ runner.temp }}/watch
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
           NETLIFY_SITE_ID: ${{ vars.NETLIFY_SITE_ID }}
+          GITHUB_TOKEN: ${{ github.token }}
         run: node apps/api/dist/cli.mjs sources-watch --config corpus/watch.yaml --out "$OUT"
 
       - name: Mudanças detectadas (outputs)
