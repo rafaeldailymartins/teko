@@ -24,6 +24,7 @@ import {
   parseAmendmentNote,
   parseNoteDate,
   parseValidityNote,
+  parseWithoutEffectNote,
   ReviewReason,
   resolveTimeline,
   SkipReason,
@@ -177,6 +178,95 @@ describe('parseValidityNote (NotaVigncia)', () => {
         RCTE,
       ),
     ).toEqual({ kind: 'not-validity' })
+  })
+})
+
+describe('parseWithoutEffectNote ("Redação … sem efeitos a partir de …")', () => {
+  // Textos literais do RCTE.htm e do CTE.htm (2026-11-13), depois da decodificação cp1252.
+  it('lê "a partir de" com data por extenso (NOTA:, sem espaço, e a alíquota de 14,17% depois)', () => {
+    expect(
+      parseWithoutEffectNote(
+        'NOTA:Redação do inciso VIII sem efeitos a partir de 23 de junho de 2022 em função da Lei Complementar Federal nº 194, de 2022, sendo que, a partir de 15 de julho de 2022, é aplicada a alíquota de 14,17% (quatorze inteiros e dezessete décimos por cento) em função',
+        RCTE,
+      ),
+    ).toEqual({ label: 'inciso viii', from: '2022-06-23', until: null })
+  })
+
+  it('lê a nota numerada com o rótulo entre aspas curvas (alínea e item)', () => {
+    expect(
+      parseWithoutEffectNote(
+        '1.Redação da alínea “a” sem efeitos a partir de 23 de junho de 2022 em função da Lei Complementar Federal nº 194, de 23 de junho de 2022.',
+        RCTE,
+      ),
+    ).toEqual({ label: 'alinea a', from: '2022-06-23', until: null })
+    expect(
+      parseWithoutEffectNote(
+        '1.Redação do item 1 sem efeitos a partir de 23 de junho de 2022 em função da Lei Complementar Federal nº 194, de 2022;',
+        CTE,
+      ),
+    ).toEqual({ label: 'item 1', from: '2022-06-23', until: null })
+    expect(
+      parseWithoutEffectNote(
+        '1. Redação do inciso XII sem efeitos a partir de 23 de junho de 2022 em função da Lei Complementar Federal nº 194, de 2022.',
+        CTE,
+      ),
+    ).toEqual({ label: 'inciso xii', from: '2022-06-23', until: null })
+  })
+
+  it('lê o período fechado "de a a b" com datas numéricas', () => {
+    expect(
+      parseWithoutEffectNote(
+        '1. Redação do inciso IX sem efeitos de 23.06.22 a 29.04.23 em função da Lei Complementar Federal nº 194, de 2022.',
+        RCTE,
+      ),
+    ).toEqual({ label: 'inciso ix', from: '2022-06-23', until: '2023-04-29' })
+  })
+
+  it('aceita "desde", "sem efeito" no singular e o dia "1º"', () => {
+    expect(
+      parseWithoutEffectNote('Nota: Redação do § 2º sem efeito desde 1º de janeiro de 2024.', RCTE),
+    ).toEqual({ label: '§ 2º', from: '2024-01-01', until: null })
+    expect(
+      parseWithoutEffectNote('Redação da alínea "b" sem efeitos a partir de 01.07.23', RCTE),
+    ).toEqual({ label: 'alinea b', from: '2023-07-01', until: null })
+  })
+
+  it('data ilegível ou período invertido voltam sem data (vão para revisão)', () => {
+    expect(
+      parseWithoutEffectNote(
+        'NOTA: Redação do inciso VIII sem efeitos a partir de 31 de junhoo de 2022.',
+        RCTE,
+      ),
+    ).toEqual({ label: 'inciso viii', from: null, until: null })
+    expect(
+      parseWithoutEffectNote('Redação do inciso IX sem efeitos de 29.04.23 a 23.06.22.', RCTE),
+    ).toEqual({ label: 'inciso ix', from: null, until: null })
+    for (const text of [
+      'Redação do inciso IX sem efeitos em função da LC 194.',
+      'Redação do inciso IX sem efeitos desde a publicação da LC 194.',
+      'Redação do inciso IX sem efeitos de 23.06.22 em função da LC 194.',
+      'Redação do inciso IX sem efeitos de 23.06.22 a partir da LC 194.',
+    ]) {
+      expect(parseWithoutEffectNote(text, RCTE), text).toEqual({
+        label: 'inciso ix',
+        from: null,
+        until: null,
+      })
+    }
+  })
+
+  it('não confunde com texto de lei, revogação, nota de vigência nem "sem aplicabilidade"', () => {
+    for (const text of [
+      'II - recebida sem efeito suspensivo (Convênio ICMS 73/91, cláusula quarta);',
+      '§ 7º O reconhecimento da isenção do IPVA feito por meio de ato declaratório torna-se sem efeito na hipótese de ser constatado',
+      'Redação revogada a partir de 01.01.16 pela Lei nº 19.021',
+      'NOTA: Redação sem - vigência em função da alteração retroagir seus efeitos a 01.04.05.',
+      '2. Redação com vigência de 01.01.16 a 31.05.23 .',
+      'Nota: A alínea "b" do inciso II do § 1º do art. 4º encontrava-se sem aplicabilidade, até a entrada em vigor de Lei Complementar 190/2022',
+      '2.Alínea “a” declarada inconstitucional, a partir de 1º de janeiro de 2024, pela decisão do Supremo Tribunal Federal',
+    ]) {
+      expect(parseWithoutEffectNote(text, RCTE)).toBeNull()
+    }
   })
 })
 
@@ -419,6 +509,7 @@ function candidate(overrides: Partial<VersionCandidate>): VersionCandidate {
     noteLast: null,
     withoutValidity: false,
     parentBlock: null,
+    withoutEffect: null,
     marks: [],
     ...overrides,
   }
@@ -696,6 +787,115 @@ describe('resolveTimeline', () => {
     expect(version).toMatchObject({
       validDuring: { from: '2006-07-12', to: '2008-08-01' },
       review: { reason: ReviewReason.StyleMismatch, rawNote: 'nota' },
+    })
+  })
+
+  describe('nota "sem efeitos"', () => {
+    const SEM_EFEITOS = 'NOTA:Redação do inciso VIII sem efeitos a partir de 23 de junho de 2022'
+
+    it('termina a redação vigente na data, sem redação seguinte (RCTE art. 20, § 1º, VIII)', () => {
+      const { versions } = resolveTimeline(
+        [
+          candidate({ superseded: true, inlineFirst: '2007-01-01', inlineLast: '2017-12-31' }),
+          candidate({
+            inlineFirst: '2018-01-01',
+            withoutEffect: { from: '2022-06-23', until: null, rawNote: SEM_EFEITOS },
+          }),
+        ],
+        CONTEXT,
+      )
+      expect(versions.map((version) => [version.validDuring, version.review])).toEqual([
+        [{ from: '2007-01-01', to: '2018-01-01' }, null],
+        [{ from: '2018-01-01', to: '2022-06-23' }, null],
+      ])
+    })
+
+    it('dá o fim à redação superada sem nota de vigência, e a seguinte começa nele', () => {
+      const { versions } = resolveTimeline(
+        [
+          candidate({
+            superseded: true,
+            amendmentFrom: '2005-04-01',
+            amendmentOwn: true,
+            withoutEffect: { from: '2022-06-23', until: null, rawNote: SEM_EFEITOS },
+          }),
+          candidate({ text: 'a) dispositivo declarado inconstitucional por decisão do STF' }),
+        ],
+        CONTEXT,
+      )
+      expect(versions.map((version) => [version.validDuring, version.review?.reason])).toEqual([
+        [{ from: '2005-04-01', to: '2022-06-23' }, undefined],
+        [{ from: '2022-06-23', to: null }, ReviewReason.OpeningMissing],
+      ])
+    })
+
+    it('com o período fechado, parte a redação em duas (RCTE art. 20, § 1º, IX)', () => {
+      const { versions } = resolveTimeline(
+        [
+          candidate({
+            superseded: true,
+            inlineFirst: '2016-01-01',
+            noteFirst: '2016-01-01',
+            noteLast: '2023-05-31',
+            withoutEffect: { from: '2022-06-23', until: '2023-04-29', rawNote: 'nota' },
+          }),
+          candidate({ amendmentFrom: '2023-06-01', amendmentOwn: true, text: 'IX - Revogado;' }),
+        ],
+        CONTEXT,
+      )
+      expect(versions.map((version) => [version.index, version.validDuring])).toEqual([
+        [0, { from: '2016-01-01', to: '2022-06-23' }],
+        [0, { from: '2023-04-30', to: '2023-06-01' }],
+        [1, { from: '2023-06-01', to: null }],
+      ])
+      expect(versions.every((version) => version.review === null)).toBe(true)
+    })
+
+    it('vale o fim mais cedo entre a nota de vigência e a nota "sem efeitos" (CTE art. 27, XII)', () => {
+      const [version] = resolveTimeline(
+        [
+          candidate({
+            superseded: true,
+            inlineFirst: '2016-01-01',
+            noteFirst: '2016-01-01',
+            noteLast: '2023-05-31',
+            withoutEffect: { from: '2022-06-23', until: null, rawNote: 'nota' },
+          }),
+        ],
+        CONTEXT,
+      ).versions
+      expect(version?.validDuring).toEqual({ from: '2016-01-01', to: '2022-06-23' })
+    })
+
+    it('nota posterior ao fim não muda nada; redação que começa sem efeito vai para revisão', () => {
+      const [ended] = resolveTimeline(
+        [
+          candidate({
+            superseded: true,
+            noteFirst: '2001-01-01',
+            noteLast: '2005-03-31',
+            withoutEffect: { from: '2022-06-23', until: null, rawNote: 'nota' },
+          }),
+        ],
+        CONTEXT,
+      ).versions
+      expect(ended).toMatchObject({
+        validDuring: { from: '2001-01-01', to: '2005-04-01' },
+        review: null,
+      })
+      const [late] = resolveTimeline(
+        [
+          candidate({
+            inlineFirst: '2023-01-01',
+            withoutEffect: { from: '2022-06-23', until: null, rawNote: 'nota' },
+          }),
+        ],
+        CONTEXT,
+      ).versions
+      expect(late).toMatchObject({
+        validDuring: { from: '2023-01-01', to: null },
+        review: { reason: ReviewReason.NoteAmbiguous, rawNote: 'nota' },
+      })
     })
   })
 })

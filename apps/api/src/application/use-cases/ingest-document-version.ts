@@ -63,7 +63,7 @@ import type { EmbedPending } from './embed-pending.ts'
  *
  * Reconciliação por dispositivo (`stable_key`), contra as redações de conhecimento aberto, com a
  * janela `W = replacementWindow` (consolidados: tudo; Guias e leiautes: o próprio período):
- * - mesma identidade (hash do conteúdo, modalidade e classe de revisão) e mesmo intervalo →
+ * - mesma identidade (hash do conteúdo, modalidade, classe de revisão e título) e mesmo intervalo →
  *   reaproveita a linha e só acrescenta fontes;
  * - mesma identidade e `T = (E − W) ∪ P` contíguo contendo `E` → alarga a linha (e os chunks) até
  *   `T` (versões consecutivas iguais viram uma linha só);
@@ -174,6 +174,8 @@ interface ReconcilableVersion {
   readonly modality: Modality
   readonly reviewStatus: ReviewStatus
   readonly validDuring: ValidityInterval
+  /** Título do dispositivo, que vai para os chunks (texto do embedding e `tsv`). */
+  readonly headingPath: string
 }
 
 export interface ReconcileInput {
@@ -210,11 +212,17 @@ function reviewClass(status: ReviewStatus): string {
   return PUBLISHABLE_REVIEW_STATUSES.includes(status) ? 'publishable' : status
 }
 
+/**
+ * Mesma redação: texto, modalidade, classe de revisão e título. O título muda com uma correção do
+ * parser (ex.: capítulo acrescido que não era reconhecido) e está nos chunks e no embedding, então
+ * título diferente não reaproveita a linha.
+ */
 function sameIdentity(existing: OpenProvisionVersion, parsed: ReconcilableVersion): boolean {
   return (
     existing.contentHash === parsed.contentHash &&
     existing.modality === parsed.modality &&
-    reviewClass(existing.reviewStatus) === reviewClass(parsed.reviewStatus)
+    reviewClass(existing.reviewStatus) === reviewClass(parsed.reviewStatus) &&
+    (existing.headingPath === null || existing.headingPath === parsed.headingPath)
   )
 }
 
@@ -344,6 +352,7 @@ function prepare(source: ParsedSource, hasher: ContentHasher): PreparedProvision
       modality: version.modality,
       reviewStatus: version.reviewStatus,
       validDuring: version.validDuring,
+      headingPath: provision.headingPath,
       chunks: chunkText(version.text, version.displayLabel).map((piece) => {
         const embeddingInput = embeddingText(provision.headingPath, piece.content)
         return {

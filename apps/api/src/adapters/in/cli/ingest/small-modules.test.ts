@@ -72,6 +72,8 @@ describe('parsers/index', () => {
     }
     // A correção do registro 0000 e das linhas fundidas (#33) sobe o docling-guia para 2.
     expect(PARSER_REVISIONS[ParserName.DoclingGuia]).toBe(2)
+    // Notas "sem efeitos" e títulos acrescidos (CAPÍTULO IV-A) sobem o go-html-state-machine para 2.
+    expect(PARSER_REVISIONS[ParserName.GoHtmlStateMachine]).toBe(2)
   })
 })
 
