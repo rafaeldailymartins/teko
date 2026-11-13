@@ -13,8 +13,8 @@ import { createTestDatabase, type TestDatabase } from '../setup/database.ts'
  * `sql-perf` (plano: Busca híbrida > Testes), sobre ~100k chunks sintéticos
  * (`perf/seed/synthetic.sql`; numa data, ~25% das linhas em vigor, ~4% numa família só):
  *
- * - com filtro amplo, o plano usa o HNSW (`chunks_embedding_hnsw`), o GIN do `tsv` e o GiST de
- *   (family, valid_during), sem `Seq Scan` em `corpus.chunks`; com filtro seletivo, o Postgres troca
+ * - com filtro amplo, o plano usa o HNSW (`chunks_embedding_hnsw`) e o GIN do `tsv`, ambos parciais
+ *   (`WHERE upper_inf(knowledge)`), sem `Seq Scan` em `corpus.chunks`; com filtro seletivo, o Postgres troca
  *   o HNSW pelo KNN exato sobre o GiST (mais barato e exato), e continua sem `Seq Scan`;
  * - com o HNSW forçado e filtro seletivo, o braço vetorial devolve k linhas (iterative scan do
  *   pgvector 0.8, `relaxed_order`);
@@ -195,14 +195,16 @@ describe('busca híbrida sobre 100k chunks', () => {
     expect(rows[0]?.total).toBeGreaterThanOrEqual(100_000)
   })
 
-  it('com filtro amplo usa HNSW, GIN e GiST, sem Seq Scan em corpus.chunks', async () => {
+  it('com filtro amplo usa o HNSW e o GIN parciais, sem Seq Scan em corpus.chunks', async () => {
     const { indexes, chunkSeqScans } = await explain(
       HYBRID_SEARCH_SQL,
       parameters(1, '2015-06-01', ALL_FAMILIES),
     )
+    // Com o HNSW e o GIN parciais (`WHERE upper_inf(knowledge)`), o braço da referência citada
+    // parte do índice único de `stable_key` (como o SQL prevê) em vez do GiST; a mediana ficou na
+    // mesma proporção da referência da máquina (medido em 2026-11-12).
     expect(indexes).toContain('chunks_embedding_hnsw')
     expect(indexes).toContain('chunks_tsv_gin')
-    expect(indexes).toContain('chunks_family_valid_during_gist')
     expect(chunkSeqScans).toEqual([])
   })
 
