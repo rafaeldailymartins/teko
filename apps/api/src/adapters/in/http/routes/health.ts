@@ -2,17 +2,17 @@ import { HealthStatus, healthResponseSchema } from '@teko/shared/contracts'
 import type { FastifyPluginAsyncZod } from 'fastify-type-provider-zod'
 
 /**
- * Liveness: `GET /healthz` (direto: smoke do deploy, UptimeRobot, healthcheck do Caddy da stack
- * de CI e do Render) e `GET /api/healthz` (via proxy da Netlify). Só reflete o estado do processo
- * e **nunca** toca o banco, para que pings externos nunca acordem o Neon. Fora da Vercel, em
- * drenagem (SIGTERM), responde 503 com `status: 'draining'`.
+ * Liveness: `GET /healthz` (smoke do deploy, monitor externo, healthcheck da stack de CI e do
+ * Render) e `GET /api/healthz` (o mesmo, sob o prefixo da API que a web usa). Só reflete o estado
+ * do processo e **nunca** toca o banco, para que pings externos nunca acordem o Neon. Fora da
+ * Vercel, em drenagem (SIGTERM), responde 503 com `status: 'draining'`.
  *
  * Sem rate limit e com log só a partir de `warn`, para não inundar os logs com uma linha por
  * checagem.
  */
 const HEALTH_ROUTES = [
-  { url: '/healthz', operationId: 'getHealthDirect', summary: 'Liveness (acesso direto)' },
-  { url: '/api/healthz', operationId: 'getHealth', summary: 'Liveness (via proxy)' },
+  { url: '/healthz', operationId: 'getHealthDirect', summary: 'Liveness (infraestrutura)' },
+  { url: '/api/healthz', operationId: 'getHealth', summary: 'Liveness (prefixo da API)' },
 ] as const
 
 export const healthRoutes: FastifyPluginAsyncZod = async (app) => {

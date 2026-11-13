@@ -13,7 +13,7 @@ import { DEFAULT_WATCH_CONFIG, loadWatchConfig, WatchConfigError } from './watch
 /**
  * `cli sources-watch [--config corpus/watch.yaml] [--out <dir>] [--dry-run]` (job `detect` do
  * `source-watch.yml`, environment `staging`). Lê e grava `corpus-manifests/watch-state.json` e
- * `discovered.json` no Blobs (PAT da Netlify), faz os GETs condicionais pelo SafeFetcher e grava
+ * `discovered.json` no BlobStore (ADR 0030), faz os GETs condicionais pelo SafeFetcher e grava
  * `<out>/discovered.json` para o workflow (outputs e artifact do `mark-coverage`). Não toca o banco.
  *
  * Saída: 0 quando o run terminou, mesmo com páginas que falharam (elas ficam em `errors` e a

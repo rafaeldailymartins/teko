@@ -55,8 +55,6 @@
     "quota_exceeded": "O limite diário de perguntas foi atingido.",
     "rate_limited": "Muitas solicitações em pouco tempo. Aguarde alguns instantes e tente de novo.",
     "service_paused": "O serviço está pausado temporariamente.",
-    "ticket_invalid": "A conexão da resposta expirou. Tente de novo.",
-    "ticket_reused": "Esta resposta já foi aberta em outra conexão.",
     "stream_busy": "Já há uma resposta em andamento. Aguarde ou interrompa-a.",
     "upstream_unavailable": "O provedor de IA está indisponível no momento. Tente mais tarde.",
     "region_restricted": "O Tekó não está disponível na sua região.",

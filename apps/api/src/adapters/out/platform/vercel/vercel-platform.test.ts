@@ -14,13 +14,11 @@ afterEach(() => {
 })
 
 describe('createVercelClientIp', () => {
-  const clientIp = createVercelClientIp({ trustNetlifyClientIp: false })
+  const clientIp = createVercelClientIp()
 
-  it('no caminho direto usa o x-real-ip da borda, não o forwardedIp', () => {
+  it('usa o x-real-ip da borda, não o forwardedIp', () => {
     expect(
       clientIp.resolve({
-        path: 'direct',
-        signatureValid: false,
         headers: { 'x-real-ip': '203.0.113.7' },
         forwardedIp: '127.0.0.1',
       }),
@@ -32,8 +30,6 @@ describe('createVercelClientIp', () => {
     (value) => {
       expect(
         clientIp.resolve({
-          path: 'direct',
-          signatureValid: false,
           headers: { 'x-real-ip': value },
           forwardedIp: '127.0.0.1',
         }),
@@ -41,18 +37,13 @@ describe('createVercelClientIp', () => {
     },
   )
 
-  it('no caminho proxiado ignora o x-real-ip (é o IP de saída da Netlify)', () => {
-    const input = {
-      path: 'proxied',
-      signatureValid: true,
-      headers: { 'x-real-ip': '198.51.100.1', 'x-nf-client-connection-ip': '203.0.113.9' },
-      forwardedIp: '198.51.100.1',
-    } as const
-    expect(clientIp.resolve(input)).toEqual({ ip: null, source: 'none' })
-    expect(createVercelClientIp({ trustNetlifyClientIp: true }).resolve(input)).toEqual({
-      ip: '203.0.113.9',
-      source: 'netlify_proxy',
-    })
+  it('ignora headers de IP de terceiros (não há proxy na frente; ADR 0029)', () => {
+    expect(
+      clientIp.resolve({
+        headers: { 'x-nf-client-connection-ip': '203.0.113.9' },
+        forwardedIp: '198.51.100.1',
+      }),
+    ).toEqual({ ip: null, source: 'none' })
   })
 })
 

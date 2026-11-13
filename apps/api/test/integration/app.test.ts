@@ -13,7 +13,7 @@ import { EnvValidationError, parseEnv } from '../../src/config/env.ts'
  * externa configurada.
  */
 
-const WEB_ORIGIN = 'https://develop--tekoia.netlify.app'
+const WEB_ORIGIN = 'https://tekoia-staging.vercel.app'
 
 /** Recorte do OpenAPI usado nas asserções. */
 const openApiDocumentSchema = z.object({
@@ -40,16 +40,18 @@ const ENVS = {
     RUNTIME_TARGET: 'vercel',
     VERCEL: '1',
     VERCEL_REGION: 'gru1',
+    FUNCTION_MAX_DURATION_S: '120',
   },
   production: {
     APP_ENV: 'production',
     NODE_ENV: 'production',
-    WEB_ORIGIN: 'https://tekoia.netlify.app',
+    WEB_ORIGIN: 'https://tekoia.vercel.app',
     APP_VERSION: '0.1.0',
     GIT_SHA: 'abc1234',
     RUNTIME_TARGET: 'vercel',
     VERCEL: '1',
     VERCEL_REGION: 'gru1',
+    FUNCTION_MAX_DURATION_S: '120',
   },
 } as const
 
@@ -158,7 +160,7 @@ describe('boot em staging e produção', () => {
 
 describe('perfil de plataforma', () => {
   it('na Vercel usa o x-vercel-id da borda como request id', async () => {
-    const { app } = await start('ci', { RUNTIME_TARGET: 'vercel' })
+    const { app } = await start('ci', { RUNTIME_TARGET: 'vercel', FUNCTION_MAX_DURATION_S: '120' })
     const vercelId = 'gru1::gru1::8lfqm-1762780000000-0a1b2c3d4e5f'
     const res = await app.inject({
       url: '/healthz',
@@ -168,7 +170,7 @@ describe('perfil de plataforma', () => {
   })
 
   it.each([
-    ['vercel', {}, '198.51.100.5'],
+    ['vercel', { FUNCTION_MAX_DURATION_S: '120' }, '198.51.100.5'],
     ['render', { TRUST_PROXY: '2' }, '203.0.113.50'],
     ['node', {}, '127.0.0.1'],
   ] as const)('trustProxy em %s', async (target, extra, expectedIp) => {
@@ -183,11 +185,12 @@ describe('perfil de plataforma', () => {
   })
 
   it('o resolvedor de IP da Vercel ignora o forwardedIp', async () => {
-    const { container } = await start('ci', { RUNTIME_TARGET: 'vercel' })
+    const { container } = await start('ci', {
+      RUNTIME_TARGET: 'vercel',
+      FUNCTION_MAX_DURATION_S: '120',
+    })
     expect(
       container.clientIp.resolve({
-        path: 'direct',
-        signatureValid: false,
         headers: { 'x-real-ip': '203.0.113.9' },
         forwardedIp: '127.0.0.1',
       }),
@@ -286,28 +289,15 @@ describe('OpenAPI + Scalar', () => {
 })
 
 describe('CORS', () => {
-  const STREAM_URL = '/api/v1/questions/0b9f5b0e-3f43-4c62-9f7e-0d1c2b3a4f5e/stream'
-
-  it('preflight do stream aceita só a origem configurada', async () => {
+  // Web e API na mesma origem (ADR 0029): nenhuma rota responde CORS, nem o stream.
+  it('nenhuma rota responde CORS, nem o preflight do stream', async () => {
     const { app } = await start('ci')
-    const allowed = await app.inject({
+    const preflight = await app.inject({
       method: 'OPTIONS',
-      url: STREAM_URL,
-      headers: { origin: WEB_ORIGIN, 'access-control-request-method': 'POST' },
-    })
-    expect(allowed.statusCode).toBe(204)
-    expect(allowed.headers['access-control-allow-origin']).toBe(WEB_ORIGIN)
-
-    const denied = await app.inject({
-      method: 'OPTIONS',
-      url: STREAM_URL,
+      url: '/api/v1/questions/0b9f5b0e-3f43-4c62-9f7e-0d1c2b3a4f5e/stream',
       headers: { origin: 'https://evil.example', 'access-control-request-method': 'POST' },
     })
-    expect(denied.headers['access-control-allow-origin']).toBeUndefined()
-  })
-
-  it('as demais rotas não respondem CORS', async () => {
-    const { app } = await start('ci')
+    expect(preflight.headers['access-control-allow-origin']).toBeUndefined()
     const res = await app.inject({ url: '/api/healthz', headers: { origin: WEB_ORIGIN } })
     expect(res.headers['access-control-allow-origin']).toBeUndefined()
   })

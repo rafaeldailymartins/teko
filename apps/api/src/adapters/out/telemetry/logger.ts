@@ -13,11 +13,9 @@ export const REDACTED = '[REDACTED]'
 const LOG_REDACT_PATHS = [
   'req.headers.authorization',
   'req.headers.cookie',
-  'req.headers["x-nf-sign"]',
   'res.headers["set-cookie"]',
   'headers.authorization',
   'headers.cookie',
-  'headers["x-nf-sign"]',
   'headers["set-cookie"]',
   'question',
   '*.question',

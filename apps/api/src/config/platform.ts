@@ -30,14 +30,6 @@ import {
  * O `attachDatabasePool` só age na Vercel; nas demais plataformas o pool vive com o processo.
  */
 
-/**
- * `x-nf-client-connection-ip` vale no caminho proxiado, e só com assinatura `x-nf-sign` válida: no
- * spike F1 (c), a Netlify sobrescreveu um valor forjado pelo cliente com o IP real, enquanto a
- * chamada direta à Vercel deixa o valor forjado passar (por isso a assinatura é obrigatória).
- * Resultado registrado na ADR 0003.
- */
-export const NETLIFY_CLIENT_IP_TRUSTED = true
-
 /** Na Vercel, a borda sobrescreve `X-Forwarded-For`/`x-real-ip`: confia-se em exatamente 1 salto. */
 const VERCEL_TRUST_PROXY_HOPS = 1
 
@@ -129,13 +121,23 @@ export interface PlatformDeps {
   readonly onBackgroundFailure: (failure: BackgroundTaskFailure) => void
 }
 
+/**
+ * `maxDuration` da Function: `parseEnv` já exige `FUNCTION_MAX_DURATION_S` com
+ * `RUNTIME_TARGET=vercel`; este guarda impede que um `Env` montado de outro jeito caia num padrão.
+ */
+function vercelMaxDurationMs(env: Env): number {
+  if (env.FUNCTION_MAX_DURATION_S === undefined) {
+    throw new Error('FUNCTION_MAX_DURATION_S ausente com RUNTIME_TARGET=vercel')
+  }
+  return env.FUNCTION_MAX_DURATION_S * 1000
+}
+
 export function createPlatformAdapters(env: Env, deps: PlatformDeps): PlatformAdapters {
-  const ipOptions = { trustNetlifyClientIp: NETLIFY_CLIENT_IP_TRUSTED }
   if (env.RUNTIME_TARGET === RuntimeTarget.Vercel) {
     return {
       backgroundTasks: createVercelBackgroundTasks(deps.onBackgroundFailure),
-      clientIp: createVercelClientIp(ipOptions),
-      invocationDeadline: createVercelInvocationDeadline(env.FUNCTION_MAX_DURATION_S * 1000),
+      clientIp: createVercelClientIp(),
+      invocationDeadline: createVercelInvocationDeadline(vercelMaxDurationMs(env)),
       attachDatabasePool: (pool) => {
         vercelAttachDatabasePool(pool)
       },
@@ -143,7 +145,7 @@ export function createPlatformAdapters(env: Env, deps: PlatformDeps): PlatformAd
   }
   return {
     backgroundTasks: createNodeBackgroundTasks(deps.onBackgroundFailure),
-    clientIp: createNodeClientIp(ipOptions),
+    clientIp: createNodeClientIp(),
     invocationDeadline: nodeInvocationDeadline,
     attachDatabasePool: nodeAttachDatabasePool,
   }

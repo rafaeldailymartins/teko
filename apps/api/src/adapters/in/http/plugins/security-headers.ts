@@ -25,7 +25,7 @@ export async function registerSecurityHeaders(app: FastifyInstance): Promise<voi
 
 /**
  * Hook global em `/api/*`: `Cache-Control: private, no-store` e `Vary: Cookie`. Impede que a CDN
- * da Netlify cacheie respostas proxiadas (que dependem da sessão). O Fastify não gera ETag, e
+ * da Vercel cacheie respostas da API (que dependem da sessão). O Fastify não gera ETag, e
  * nenhum plugin de ETag é registrado.
  */
 export const API_CACHE_CONTROL = 'private, no-store'

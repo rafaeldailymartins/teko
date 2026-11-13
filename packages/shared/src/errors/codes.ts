@@ -2,9 +2,11 @@
  * Conjunto fechado de códigos de erro da API (campo `code` do problem+json e do chunk `error`
  * do stream). A web tem uma chave de i18n `errors.<code>` para cada um.
  *
- * Os 11 códigos do plano, mais três: `forbidden` e `not_found` cobrem respostas que a superfície
- * HTTP já prevê (403 sem assinatura do proxy, 404 de pergunta/dispositivo inexistente e de rotas
- * de eval fora do CI) e que nenhum dos outros códigos descreve; `rate_limited` é o 429 do
+ * Os códigos do plano (sem `ticket_invalid` e `ticket_reused`, que saíram com o ticket do stream na
+ * ADR 0029: um segundo stream da mesma pergunta é `stream_busy`), mais três: `forbidden` e
+ * `not_found` cobrem respostas que a superfície HTTP já prevê (403 de `Origin` recusada, 404 de
+ * pergunta/dispositivo inexistente e de rotas de eval fora do CI) e que nenhum dos outros códigos
+ * descreve; `rate_limited` é o 429 do
  * `@fastify/rate-limit` (janela curta, com `Retry-After`), distinto da cota diária
  * (`quota_exceeded`, que exige `meta.scope` e `resetAt`).
  */
@@ -17,8 +19,6 @@ export const ErrorCode = {
   QuotaExceeded: 'quota_exceeded',
   RateLimited: 'rate_limited',
   ServicePaused: 'service_paused',
-  TicketInvalid: 'ticket_invalid',
-  TicketReused: 'ticket_reused',
   StreamBusy: 'stream_busy',
   UpstreamUnavailable: 'upstream_unavailable',
   RegionRestricted: 'region_restricted',
@@ -47,8 +47,6 @@ export const ERROR_CODE_SPECS: Readonly<Record<ErrorCode, ErrorCodeSpec>> = {
   quota_exceeded: { status: 429, title: 'Daily quota exceeded', retryable: true },
   rate_limited: { status: 429, title: 'Too many requests', retryable: true },
   service_paused: { status: 503, title: 'Service paused', retryable: true },
-  ticket_invalid: { status: 401, title: 'Stream ticket invalid or expired', retryable: false },
-  ticket_reused: { status: 409, title: 'Stream ticket already used', retryable: false },
   stream_busy: { status: 409, title: 'Another answer is already streaming', retryable: true },
   upstream_unavailable: { status: 503, title: 'Upstream provider unavailable', retryable: true },
   region_restricted: {

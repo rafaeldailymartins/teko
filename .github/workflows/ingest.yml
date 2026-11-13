@@ -21,7 +21,7 @@
 #   `docling-<sha256>[-p<início>-<fim>]`. Sem segredos e sem environment; HF_HUB_OFFLINE garante
 #   que o Docling só usa os modelos do cache.
 # - load: `cli ingest load --migrate` (desvio consciente da F3: o staging ainda não tinha migrações;
-#   só com --target staging) sobe raw/docling ao Blobs, grava as versões, embeddings (orçamento
+#   só com --target staging) sobe raw/docling ao BlobStore, grava as versões, embeddings (orçamento
 #   EMBED_NEURON_BUDGET), cobertura, snapshot e atualiza corpus/corpus.lock.json. Código 75 =
 #   orçamento de neurons do dia acabou: o job termina verde com status `budget_exhausted` e o
 #   próximo run retoma pelo embedding_cache.
@@ -32,6 +32,10 @@
 # - lock-pr: só com o corpus-eval verde, abre o PR `chore(ingest): …` com o corpus/corpus.lock.json
 #   e o corpus/corpus.eval.json, com o token da App teko-release-bot (commit pela API GraphQL,
 #   assinado pelo GitHub, com Signed-off-by), branch `chore/corpus-lock-<run_id>`.
+#
+# Artefatos (raw, Docling, snapshots): `BLOB_STORE` abaixo (ADR 0030). Na etapa C1 continua
+# `netlify` (PAT da Netlify); a etapa C2, depois do `blobs-migrate.yml`, troca para
+# `github-releases` e dá `contents: write` ao load (o `ci-config.test.sh` cobra as duas formas).
 #
 # Produção nunca é tocada aqui: ela só recebe o corpus pelo `promote` do release.
 name: Ingest
@@ -115,6 +119,8 @@ concurrency:
 env:
   TURBO_TELEMETRY_DISABLED: "1"
   NEXT_TELEMETRY_DISABLED: "1"
+  # Backend dos artefatos da ingestão (ADR 0030): netlify até a migração para o GitHub Releases.
+  BLOB_STORE: netlify
 
 jobs:
   discover:
@@ -173,8 +179,19 @@ jobs:
             exit 1
           fi
           missing=()
-          [[ -n "$NETLIFY_AUTH_TOKEN" ]] || missing+=("segredo NETLIFY_AUTH_TOKEN")
-          [[ -n "$NETLIFY_SITE_ID" ]] || missing+=("variável NETLIFY_SITE_ID (id do site tekoia: Site configuration > Site details)")
+          # Credenciais do backend dos artefatos (BLOB_STORE, ADR 0030). O github-releases usa o
+          # GITHUB_TOKEN do próprio job, sem segredo a cadastrar.
+          case "$BLOB_STORE" in
+            netlify)
+              [[ -n "$NETLIFY_AUTH_TOKEN" ]] || missing+=("segredo NETLIFY_AUTH_TOKEN")
+              [[ -n "$NETLIFY_SITE_ID" ]] || missing+=("variável NETLIFY_SITE_ID (id do site tekoia: Site configuration > Site details)")
+              ;;
+            github-releases) ;;
+            *)
+              echo "::error title=ingest::BLOB_STORE '${BLOB_STORE}' desconhecido (github-releases ou netlify)."
+              exit 1
+              ;;
+          esac
           [[ -n "$NEON_STAGING_PROJECT_ID" ]] || missing+=("variável NEON_STAGING_PROJECT_ID (medição de CU-h)")
           if (( ${#missing[@]} > 0 )); then
             printf -v list '%s; ' "${missing[@]}"
@@ -199,6 +216,8 @@ jobs:
           OUT: ${{ runner.temp }}/ingest
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
           NETLIFY_SITE_ID: ${{ vars.NETLIFY_SITE_ID }}
+          # O discover só lê os artefatos: o token de leitura do job basta.
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           args=(ingest discover --target staging --out "$OUT")
           [[ -n "$FAMILY" ]] && args+=(--family "$FAMILY")
@@ -441,6 +460,7 @@ jobs:
             objects.githubusercontent.com:443
             raw.githubusercontent.com:443
             release-assets.githubusercontent.com:443
+            uploads.github.com:443
             results-receiver.actions.githubusercontent.com:443
             *.actions.githubusercontent.com:443
             *.blob.core.windows.net:443
@@ -464,7 +484,12 @@ jobs:
           NEON_STAGING_PROJECT_ID: ${{ vars.NEON_STAGING_PROJECT_ID }}
         run: |
           missing=()
-          for name in NEON_STAGING_MIGRATE_URL NEON_API_KEY_STAGING CF_ACCOUNT_ID CF_AI_TOKEN NETLIFY_AUTH_TOKEN NETLIFY_SITE_ID NEON_STAGING_PROJECT_ID; do
+          required=(NEON_STAGING_MIGRATE_URL NEON_API_KEY_STAGING CF_ACCOUNT_ID CF_AI_TOKEN NEON_STAGING_PROJECT_ID)
+          # Credenciais do backend dos artefatos (BLOB_STORE, ADR 0030).
+          if [[ "$BLOB_STORE" == netlify ]]; then
+            required+=(NETLIFY_AUTH_TOKEN NETLIFY_SITE_ID)
+          fi
+          for name in "${required[@]}"; do
             [[ -n "${!name}" ]] || missing+=("$name")
           done
           if (( ${#missing[@]} > 0 )); then
@@ -515,6 +540,7 @@ jobs:
           CF_AI_TOKEN: ${{ secrets.CF_AI_TOKEN }}
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
           NETLIFY_SITE_ID: ${{ vars.NETLIFY_SITE_ID }}
+          GITHUB_TOKEN: ${{ github.token }}
           NEON_API_KEY_STAGING: ${{ secrets.NEON_API_KEY_STAGING }}
           NEON_STAGING_PROJECT_ID: ${{ vars.NEON_STAGING_PROJECT_ID }}
         run: |
@@ -614,6 +640,7 @@ jobs:
             objects.githubusercontent.com:443
             raw.githubusercontent.com:443
             release-assets.githubusercontent.com:443
+            uploads.github.com:443
             results-receiver.actions.githubusercontent.com:443
             *.actions.githubusercontent.com:443
             *.blob.core.windows.net:443
@@ -711,6 +738,7 @@ jobs:
           APP_ENV: ci
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
           NETLIFY_SITE_ID: ${{ vars.NETLIFY_SITE_ID }}
+          GITHUB_TOKEN: ${{ github.token }}
           RUN_ID: ${{ github.run_id }}
         run: node evals/scripts/corpus-eval-record.ts history --record reports/corpus.eval.json --run-id "$RUN_ID"
 

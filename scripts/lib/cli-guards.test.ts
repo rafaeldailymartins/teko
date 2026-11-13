@@ -199,7 +199,6 @@ describe('scripts da raiz de ponta a ponta (S8707/S8701/S8705: sem caminho nem e
     assert.equal(result.status, 0, result.stderr)
     assert.match(result.stderr, /check-lockfile: pnpm-lock\.yaml ok/)
     assert.match(result.stderr, /check-lockfile: tools\/vercel-cli\/pnpm-lock\.yaml ok/)
-    assert.match(result.stderr, /check-lockfile: tools\/netlify-cli\/pnpm-lock\.yaml ok/)
   })
 
   for (const args of [

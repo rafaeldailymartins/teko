@@ -24,8 +24,9 @@ import { compareCodeUnits } from '#domain/shared/compare-code-units.ts'
  *   código (`TRUST_PROXY` é proibida); no Render vem do ensaio do Plano B (`TRUST_PROXY`
  *   obrigatória); no CI e local, a rede do Caddy (`DEFAULT_TRUST_PROXY`, só em development e ci);
  * - ingestão (F3): `NETLIFY_AUTH_TOKEN` com `NETLIFY_SITE_ID` e `NEON_API_KEY_STAGING` com
- *   `NEON_STAGING_PROJECT_ID` vêm aos pares, e as credenciais da ingestão são proibidas na API
- *   publicada (`RUNTIME_TARGET` vercel ou render).
+ *   `NEON_STAGING_PROJECT_ID` vêm aos pares; `BLOB_STORE` exige as credenciais do backend
+ *   escolhido (ADR 0030); e as credenciais da ingestão (inclusive o `GITHUB_TOKEN`) são proibidas
+ *   na API publicada (`RUNTIME_TARGET` vercel ou render).
  *
  * As mensagens de erro citam só o nome da variável, nunca o valor (pode ser segredo).
  */
@@ -36,7 +37,7 @@ const LOG_LEVELS = ['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent'
 export const RuntimeTarget = {
   /** Processo Node comum: `pnpm dev`, stack de CI, Docker local. */
   Node: 'node',
-  /** Vercel Hobby (`teko-api`, `teko-api-staging`), uma Function Fastify em Fluid compute. */
+  /** Vercel Hobby (`tekoia`, `tekoia-staging`), uma Function Fastify em Fluid compute. */
   Vercel: 'vercel',
   /** Plano B: web service do Render Free. */
   Render: 'render',
@@ -49,6 +50,13 @@ export const EmbeddingsProvider = {
   Fake: 'fake',
 } as const
 export type EmbeddingsProvider = (typeof EmbeddingsProvider)[keyof typeof EmbeddingsProvider]
+
+/** Backend dos artefatos da ingestão (ADR 0030). `netlify` sai na etapa C2. */
+export const BlobStoreBackend = {
+  GithubReleases: 'github-releases',
+  Netlify: 'netlify',
+} as const
+export type BlobStoreBackend = (typeof BlobStoreBackend)[keyof typeof BlobStoreBackend]
 
 /** Reranker da busca (ADR 0027): `none` mantém a ordem do RRF. */
 export const RerankerProvider = {
@@ -112,7 +120,7 @@ const exactOriginSchema = z
   .url({ protocol: /^https?$/, error: 'deve ser uma URL http(s)' })
   .refine((value) => URL.canParse(value) && new URL(value).origin === value, {
     error:
-      'deve ser uma origem exata, sem caminho nem barra final (ex.: https://tekoia.netlify.app)',
+      'deve ser uma origem exata, sem caminho nem barra final (ex.: https://tekoia.vercel.app)',
   })
 
 const trustProxyListSchema = z.array(z.union([z.ipv4(), z.ipv6(), z.cidrv4(), z.cidrv6()])).min(1)
@@ -154,13 +162,17 @@ const envSchema = z
     TRUST_PROXY: trustProxySchema.optional(),
     /** Variável de sistema da Vercel (só em runtime; falta no build com `--prebuilt`). */
     VERCEL_REGION: z.string().trim().min(1).optional(),
-    /** Precisa acompanhar o `maxDuration` efetivo da Function (`vercel.json` ou padrão do Hobby). */
-    FUNCTION_MAX_DURATION_S: z.coerce
-      .number()
-      .int()
-      .min(1)
-      .max(HOBBY_MAX_DURATION_S)
-      .default(HOBBY_MAX_DURATION_S),
+    /**
+     * `maxDuration` da Function (`.vc-config.json` de `scripts/build-vercel-output.ts`, que o teste
+     * do script confere contra `infra/vercel/env.*.json`). Obrigatória com `RUNTIME_TARGET=vercel`
+     * e sem padrão: um padrão (o antigo era 300 s) divergiria em silêncio do `.vc-config.json`.
+     */
+    FUNCTION_MAX_DURATION_S: z.coerce.number().int().min(1).max(HOBBY_MAX_DURATION_S).optional(),
+    /**
+     * Export estático do web (`apps/web/out`) servido pela própria API, na mesma origem: só no
+     * Plano B (Render; ADR 0029). Proibida com `RUNTIME_TARGET=vercel`, onde a CDN serve o export.
+     */
+    WEB_STATIC_DIR: z.string().trim().min(1).optional(),
     SHUTDOWN_GRACE_MS: z.coerce
       .number()
       .int()
@@ -172,11 +184,6 @@ const envSchema = z
     EMBEDDINGS_PROVIDER: z.enum(EmbeddingsProvider).optional(),
     /** Reranker da busca (ADR 0027); `workers-ai` usa as mesmas `CF_ACCOUNT_ID` e `CF_AI_TOKEN`. */
     RERANKER_PROVIDER: z.enum(RerankerProvider).default(RerankerProvider.None),
-    /**
-     * Segredo HS256 do proxy assinado da Netlify (`x-nf-sign`), o mesmo valor gravado no site.
-     * Gravado no staging desde o spike F1 (c); quem o usa é o plugin `netlifySignature`, na F4.
-     */
-    NETLIFY_PROXY_JWS_SECRET: z.string().min(32).optional(),
     /**
      * Postgres do runtime (Neon `-pooler`, role `teko_app`). Opcional até a F4, quando as rotas de
      * pergunta passam a exigir o banco; sem ela, o container não monta a busca.
@@ -198,8 +205,22 @@ const envSchema = z
     MIN_EVIDENCE_RRF: z.coerce.number().min(0).max(1).default(0),
     // --- Ingestão (CLI `ingest`, `snapshot`, `eval-fixture`; só no Actions e localmente) -------
     /**
+     * Onde ficam os artefatos da ingestão (ADR 0030). Sem valor, o GitHub Releases quando há
+     * `GITHUB_TOKEN`, e o store em memória quando não há (execução local). `netlify` só vale até a
+     * etapa C2 (o `ingest blobs-migrate` copia tudo do Netlify Blobs para os releases).
+     */
+    BLOB_STORE: z.enum(BlobStoreBackend).optional(),
+    /** Token do job (`github.token`), com `contents: write` só nos jobs que gravam artefatos. */
+    GITHUB_TOKEN: z.string().trim().min(20).optional(),
+    /** `owner/repo` dos releases (variável padrão do Actions). */
+    GITHUB_REPOSITORY: z
+      .string()
+      .trim()
+      .regex(/^[A-Za-z0-9-]+\/[A-Za-z0-9._-]+$/, { error: 'deve ser owner/repo' })
+      .optional(),
+    /**
      * PAT da Netlify (segredo do environment `staging`) para o Netlify Blobs; vem junto com
-     * `NETLIFY_SITE_ID`. Sem os dois, a CLI usa o store em memória (execução local).
+     * `NETLIFY_SITE_ID`. Só com `BLOB_STORE=netlify` ou no `ingest blobs-migrate` (etapa C1).
      */
     NETLIFY_AUTH_TOKEN: z.string().trim().min(20).optional(),
     /** ID do site `tekoia` (variável do environment `staging`), dono dos stores do Blobs. */
@@ -239,6 +260,15 @@ const envSchema = z
     if (env.RUNTIME_TARGET === RuntimeTarget.Vercel && env.TRUST_PROXY !== undefined) {
       issue('TRUST_PROXY', 'não se aplica com RUNTIME_TARGET=vercel (1 salto, fixo no código)')
     }
+    if (env.RUNTIME_TARGET === RuntimeTarget.Vercel && env.FUNCTION_MAX_DURATION_S === undefined) {
+      issue(
+        'FUNCTION_MAX_DURATION_S',
+        'obrigatória com RUNTIME_TARGET=vercel (o maxDuration do .vc-config.json)',
+      )
+    }
+    if (env.RUNTIME_TARGET === RuntimeTarget.Vercel && env.WEB_STATIC_DIR !== undefined) {
+      issue('WEB_STATIC_DIR', 'não se aplica com RUNTIME_TARGET=vercel (a CDN serve o export)')
+    }
     if (env.RUNTIME_TARGET === RuntimeTarget.Render && env.TRUST_PROXY === undefined) {
       issue('TRUST_PROXY', 'obrigatória com RUNTIME_TARGET=render (valor medido no ensaio)')
     }
@@ -277,6 +307,18 @@ const envSchema = z
         'NETLIFY_AUTH_TOKEN e NETLIFY_SITE_ID vêm juntas (Netlify Blobs da ingestão)',
       )
     }
+    if (
+      env.BLOB_STORE === BlobStoreBackend.Netlify &&
+      (env.NETLIFY_AUTH_TOKEN === undefined || env.NETLIFY_SITE_ID === undefined)
+    ) {
+      issue('BLOB_STORE', 'netlify exige NETLIFY_AUTH_TOKEN e NETLIFY_SITE_ID')
+    }
+    if (env.BLOB_STORE === BlobStoreBackend.GithubReleases && env.GITHUB_TOKEN === undefined) {
+      issue('GITHUB_TOKEN', 'obrigatória com BLOB_STORE=github-releases')
+    }
+    if (env.GITHUB_TOKEN !== undefined && env.GITHUB_REPOSITORY === undefined) {
+      issue('GITHUB_REPOSITORY', 'obrigatória com GITHUB_TOKEN (owner/repo dos releases)')
+    }
     if ((env.NEON_API_KEY_STAGING === undefined) !== (env.NEON_STAGING_PROJECT_ID === undefined)) {
       issue(
         env.NEON_API_KEY_STAGING === undefined ? 'NEON_API_KEY_STAGING' : 'NEON_STAGING_PROJECT_ID',
@@ -287,8 +329,9 @@ const envSchema = z
       env.RUNTIME_TARGET === RuntimeTarget.Vercel ||
       env.RUNTIME_TARGET === RuntimeTarget.Render
     ) {
-      // A API publicada nunca recebe credenciais da ingestão (Blobs e API do Neon ficam no Actions).
-      for (const name of ['NETLIFY_AUTH_TOKEN', 'NEON_API_KEY_STAGING'] as const) {
+      // A API publicada nunca recebe credenciais da ingestão (artefatos e API do Neon ficam no
+      // Actions).
+      for (const name of ['NETLIFY_AUTH_TOKEN', 'GITHUB_TOKEN', 'NEON_API_KEY_STAGING'] as const) {
         if (env[name] !== undefined) {
           issue(
             name,

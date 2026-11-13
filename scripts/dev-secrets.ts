@@ -1,21 +1,19 @@
 /**
  * Gera os segredos de desenvolvimento local (`pnpm dev:secrets`).
  *
- * - `apps/api/.env`: segredos da API (proxy assinado de dev, Better Auth, DATABASE_URL) e o
- *   provedor de embeddings local (fake sobre a fixture).
- * - `infra/local/.env`: interpolação do `infra/local/compose.yaml` (Postgres, JWS do Caddy, Langfuse).
+ * - `apps/api/.env`: segredos da API (Better Auth, DATABASE_URL) e o provedor de embeddings local
+ *   (fake sobre a fixture).
+ * - `infra/local/.env`: interpolação do `infra/local/compose.yaml` (Postgres e Langfuse).
  *
  * Regras:
  * - Segredo existente NUNCA é sobrescrito: só as chaves ausentes são acrescentadas.
- * - A única exceção é `DEV_STATIC_JWS`, que é um token derivado (não um segredo): ele é assinado
- *   de novo quando falta, expira em menos de 24 h ou não confere com o `DEV_PROXY_JWS_SECRET` atual.
  * - Nenhum valor é impresso; o script só lista os nomes das chaves criadas.
  * - Os arquivos precisam estar ignorados pelo git; caso contrário, o script aborta sem escrever.
  *
  * Uso: node scripts/dev-secrets.ts
  */
 import { execFileSync } from 'node:child_process'
-import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto'
+import { randomBytes } from 'node:crypto'
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join, relative, resolve } from 'node:path'
 import { exit } from 'node:process'
@@ -25,12 +23,8 @@ const repoRoot = resolve(import.meta.dirname, '..')
 const apiEnvPath = join(repoRoot, 'apps', 'api', '.env')
 const infraEnvPath = join(repoRoot, 'infra', 'local', '.env')
 
-/** Origem do `next dev`; vai no claim `site_url`, como a Netlify faz com a URL do site. */
+/** Origem do `next dev`, que repassa `/api/*` para a API (web e API na mesma origem, ADR 0029). */
 const DEV_SITE_URL = 'http://localhost:3000'
-/** Validade do JWS estático do proxy de dev (7 dias). */
-const JWS_TTL_SECONDS = 7 * 24 * 60 * 60
-/** Renova o JWS quando faltar menos que isto para expirar. */
-const JWS_RENEW_MARGIN_SECONDS = 24 * 60 * 60
 const DEFAULT_PG_PORT = '5432'
 
 const hex = (bytes: number): string => randomBytes(bytes).toString('hex')
@@ -101,43 +95,6 @@ function assertGitIgnored(path: string, git: string | undefined): void {
   }
 }
 
-const base64url = (input: string | Buffer): string => Buffer.from(input).toString('base64url')
-
-const hmacSha256 = (secret: string, data: string): Buffer =>
-  createHmac('sha256', secret).update(data).digest()
-
-/** JWS HS256 com os mesmos claims do header `x-nf-sign` da Netlify, com `deploy_context=dev`. */
-function signDevJws(secret: string, nowSeconds: number): string {
-  const header = base64url(JSON.stringify({ alg: 'HS256', typ: 'JWT' }))
-  const payload = base64url(
-    JSON.stringify({
-      deploy_context: 'dev',
-      exp: nowSeconds + JWS_TTL_SECONDS,
-      iss: 'netlify',
-      site_url: DEV_SITE_URL,
-    }),
-  )
-  const signingInput = `${header}.${payload}`
-  return `${signingInput}.${hmacSha256(secret, signingInput).toString('base64url')}`
-}
-
-function isJwsUsable(token: string | undefined, secret: string, nowSeconds: number): boolean {
-  if (token === undefined) return false
-  const [header, payload, signature] = token.split('.')
-  if (header === undefined || payload === undefined || signature === undefined) return false
-  const expected = hmacSha256(secret, `${header}.${payload}`)
-  const received = Buffer.from(signature, 'base64url')
-  if (received.length !== expected.length || !timingSafeEqual(received, expected)) return false
-  try {
-    const claims = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8')) as {
-      exp?: unknown
-    }
-    return typeof claims.exp === 'number' && claims.exp - nowSeconds > JWS_RENEW_MARGIN_SECONDS
-  } catch {
-    return false
-  }
-}
-
 type Plan = { path: string; header: string; additions: Array<[string, string]> }
 
 function missing(
@@ -172,7 +129,6 @@ function main(): void {
     assertGitIgnored(path, git)
   }
 
-  const nowSeconds = Math.floor(Date.now() / 1000)
   const api = readEnv(apiEnvPath)
   const infra = readEnv(infraEnvPath)
 
@@ -181,7 +137,7 @@ function main(): void {
     path: infraEnvPath,
     header:
       '# Gerado por `pnpm dev:secrets` (fora do git). Segredos só de desenvolvimento local.\n' +
-      '# Segredos existentes nunca são sobrescritos; DEV_STATIC_JWS é renovado ao expirar.',
+      '# Segredos existentes nunca são sobrescritos.',
     additions: missing(infra.entries, [
       ['TEKO_PG_PORT', () => DEFAULT_PG_PORT],
       ['POSTGRES_PASSWORD', () => hex(24)],
@@ -204,7 +160,7 @@ function main(): void {
     return value
   }
 
-  // apps/api/.env: fonte de verdade do segredo do proxy assinado de dev.
+  // apps/api/.env: segredos e configuração local da API.
   const apiPlan: Plan = {
     path: apiEnvPath,
     header:
@@ -222,26 +178,11 @@ function main(): void {
       // fake sobre a fixture única (o `pnpm --filter @teko/api seed:fixtures` grava o corpus).
       ['EMBEDDINGS_PROVIDER', () => 'fake'],
       ['EMBEDDINGS_FIXTURE_PATH', () => 'test/fixtures/corpus/embeddings.json.gz'],
-      ['DEV_PROXY_JWS_SECRET', () => hex(32)],
       ['BETTER_AUTH_SECRET', () => hex(32)],
       ['LANGFUSE_BASE_URL', () => 'http://localhost:3100'],
       ['LANGFUSE_PUBLIC_KEY', () => infraValue('LANGFUSE_INIT_PROJECT_PUBLIC_KEY')],
       ['LANGFUSE_SECRET_KEY', () => infraValue('LANGFUSE_INIT_PROJECT_SECRET_KEY')],
     ]),
-  }
-
-  const proxySecret =
-    api.entries.get('DEV_PROXY_JWS_SECRET') ??
-    apiPlan.additions.find(([key]) => key === 'DEV_PROXY_JWS_SECRET')?.[1]
-  if (proxySecret === undefined) throw new Error('dev-secrets: DEV_PROXY_JWS_SECRET ausente')
-
-  const infraReplacements = new Map<string, string>()
-  let jwsRenewed = false
-  if (!isJwsUsable(infra.entries.get('DEV_STATIC_JWS'), proxySecret, nowSeconds)) {
-    const token = signDevJws(proxySecret, nowSeconds)
-    if (infra.entries.has('DEV_STATIC_JWS')) infraReplacements.set('DEV_STATIC_JWS', token)
-    else infraPlan.additions.push(['DEV_STATIC_JWS', token])
-    jwsRenewed = true
   }
 
   const report = (plan: Plan, changed: boolean): void => {
@@ -263,13 +204,7 @@ function main(): void {
   }
 
   report(apiPlan, applyPlan(apiPlan, api.content, new Map()))
-  report(infraPlan, applyPlan(infraPlan, infra.content, infraReplacements))
-  if (jwsRenewed) {
-    console.log(
-      'dev-secrets: DEV_STATIC_JWS assinado (validade de 7 dias). ' +
-        'Recrie o proxy: docker compose -f infra/local/compose.yaml up -d',
-    )
-  }
+  report(infraPlan, applyPlan(infraPlan, infra.content, new Map()))
 }
 
 main()

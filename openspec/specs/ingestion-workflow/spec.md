@@ -10,12 +10,14 @@ segredos, com qual saída de rede e como o resultado chega ao repositório.
 ### Requirement: Ingestão só no staging
 
 O `ingest.yml` MUST aceitar só `target=staging` (dispatch e `workflow_call`) e SHALL falhar no
-primeiro job, com a instrução de cadastro, se faltarem a variável `NETLIFY_SITE_ID`, a variável
-`NEON_STAGING_PROJECT_ID` ou o segredo `NETLIFY_AUTH_TOKEN` do environment `staging`.
+primeiro job, com a instrução de cadastro, se faltar a variável `NEON_STAGING_PROJECT_ID`, se o
+`BLOB_STORE` declarado no workflow for desconhecido ou se faltar a credencial do backend dele (com
+`netlify`, a variável `NETLIFY_SITE_ID` e o segredo `NETLIFY_AUTH_TOKEN` do environment `staging`;
+com `github-releases`, o `GITHUB_TOKEN` do próprio job).
 
 #### Scenario: Variável ausente
 
-- **WHEN** o environment `staging` não tem `NETLIFY_SITE_ID`
+- **WHEN** o `BLOB_STORE` é `netlify` e o environment `staging` não tem `NETLIFY_SITE_ID`
 - **THEN** o job `discover` falha antes do checkout com a mensagem que nomeia a variável e o comando `gh variable set`
 
 #### Scenario: Produção pedida
@@ -75,7 +77,9 @@ O commit do PR do lock MUST levar, ao lado do lock, o registro do `corpus-eval`
 ### Requirement: Egress bloqueado
 
 Todo job do `ingest.yml` MUST começar pelo harden-runner em `egress-policy: block`, com allowlist
-por job; a do `discover` e a do `load` SHALL incluir `api.netlify.com`.
+por job; com `BLOB_STORE: netlify`, a do `discover` e a do `load` SHALL incluir `api.netlify.com`;
+com `github-releases`, a do `load` SHALL incluir `uploads.github.com` e só o `load` SHALL ter
+`contents: write`.
 
 #### Scenario: Host fora da lista
 
@@ -138,3 +142,14 @@ resumo com o registro anterior.
 
 - **WHEN** o `corpus-eval` roda para a corpus_version 12 depois de um registro da 11
 - **THEN** o resumo mostra, por conjunto e métrica, o valor anterior, o atual e a diferença
+
+### Requirement: Workflow de migração dos artefatos
+
+O `blobs-migrate.yml` MUST rodar só por `workflow_dispatch`, no environment `staging`, com
+`contents: write`, harden-runner em `block` e o grupo de concorrência do `ingest.yml`, e SHALL
+começar em `dry_run` por padrão.
+
+#### Scenario: Ingestão durante a migração
+
+- **WHEN** o `ingest.yml` é disparado enquanto o `blobs-migrate.yml` roda
+- **THEN** a ingestão espera a migração terminar

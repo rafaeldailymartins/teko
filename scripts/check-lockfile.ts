@@ -5,7 +5,7 @@
  * Uso: node scripts/check-lockfile.ts (sem argumentos)
  *
  * Os lockfiles verificados são uma lista fixa (`LOCKFILE_DIRS`), resolvida a partir do próprio
- * script: o da raiz e os dos projetos isolados `tools/vercel-cli` e `tools/netlify-cli`, cada um
+ * script: o da raiz e o do projeto isolado `tools/vercel-cli`, cada um
  * com o `package.json` vizinho. O script não aceita caminho na linha de comando; qualquer argumento é erro de uso
  * (código 2), e nenhum valor da linha de comando chega a uma leitura de arquivo.
  */
@@ -16,7 +16,7 @@ import { resolveInsideRoot } from './lib/cli-guards.ts'
 
 const REPO_ROOT = resolve(import.meta.dirname, '..')
 /** Diretórios (relativos à raiz) com lockfile próprio; o `package.json` vizinho também é lido. */
-const LOCKFILE_DIRS = ['.', 'tools/vercel-cli', 'tools/netlify-cli'] as const
+const LOCKFILE_DIRS = ['.', 'tools/vercel-cli'] as const
 const FORBIDDEN_KEYS = ['devEngines', 'configDependencies'] as const
 
 const labelOf = (dir: string): string => (dir === '.' ? 'pnpm-lock.yaml' : `${dir}/pnpm-lock.yaml`)

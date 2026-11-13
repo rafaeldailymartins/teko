@@ -27,16 +27,16 @@ Sem Feature-Sliced Design (o steiger saiu, ADR 0032):
 
 ```text
 apps/web/
-  app/[locale]/{layout,page,not-found}.tsx
-  app/[locale]/{chat,provision,compare,history,settings,sign-in,coverage,about,privacy,terms,[...rest]}/page.tsx
-  src/app/          # providers, estilos globais, script de tema
-  src/components/   # ui/ (shadcn) e componentes de tela
-  src/lib/          # api/ (cliente gerado e transporte do chat), i18n/, theme/, validity/, analytics/
+  src/app/                     # rotas do App Router (só reexportam) e globals.css
+  src/app/[locale]/{layout,page,not-found}.tsx
+  src/app/[locale]/{chat,provision,compare,history,settings,sign-in,coverage,about,privacy,terms,[...rest]}/page.tsx
+  src/components/              # ui/ (shadcn), páginas e componentes de tela
+  src/lib/                     # site, i18n/, theme, contrast; depois api/, validity/, analytics/
   messages/{en,pt-BR}.json
 ```
 
-A divisão fina dentro de `components/` e `lib/` segue o código (a reorganização sai do PR da
-ADR 0029).
+As rotas ficam em `src/app` (o Next aceita o App Router dentro de `src/`) e só reexportam de
+`src/components`; não há mais `app/` nem `pages/` na raiz de `apps/web`.
 
 O Biome restringe `fetch(` a `src/lib/api`. A fronteira com a API é o contrato de `@teko/shared` e o
 cliente gerado.

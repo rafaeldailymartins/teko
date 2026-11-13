@@ -20,7 +20,16 @@ function sendProblem(reply: FastifyReply, problem: ProblemDetails): FastifyReply
   return reply.code(problem.status).type(PROBLEM_CONTENT_TYPE).send(JSON.stringify(problem))
 }
 
-export function registerProblemHandlers(app: FastifyInstance): void {
+/**
+ * Alternativa ao problem+json no 404 (o site estático do Plano B, ADR 0029): devolve a resposta,
+ * ou `null` para seguir com o problem+json.
+ */
+export type NotFoundFallback = (request: FastifyRequest, reply: FastifyReply) => FastifyReply | null
+
+export function registerProblemHandlers(
+  app: FastifyInstance,
+  notFoundFallback: NotFoundFallback = () => null,
+): void {
   app.setErrorHandler((error, request, reply) => {
     const problem = problemFromError(error, contextOf(request))
     if (problem.status >= 500) {
@@ -31,7 +40,9 @@ export function registerProblemHandlers(app: FastifyInstance): void {
     return sendProblem(reply, problem)
   })
 
-  app.setNotFoundHandler((request, reply) =>
-    sendProblem(reply, notFoundProblem(request.method, contextOf(request))),
+  app.setNotFoundHandler(
+    (request, reply) =>
+      notFoundFallback(request, reply) ??
+      sendProblem(reply, notFoundProblem(request.method, contextOf(request))),
   )
 }

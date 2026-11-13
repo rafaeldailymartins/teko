@@ -2,7 +2,7 @@ import type { Family } from '#domain/corpus/family.ts'
 import type { SourceFormat } from './sources.ts'
 
 /**
- * Chaves dos artefatos de fonte no Netlify Blobs (plano, "Escrita, Blobs, snapshot e promoção"):
+ * Chaves dos artefatos de fonte no `BlobStore` (ADR 0030; plano, "Escrita, Blobs, snapshot e promoção"):
  * `{family}/{docSlug}/{versionLabel}/{sha256}.{ext}`, no store `corpus-raw` (arquivo como baixado)
  * e `corpus-docling` (`{sha256}.json`, ou `{sha256}-p<início>-<fim>.json` por parte de
  * `page_range`). O segmento de versão é o rótulo curto da fonte (`3.2.4`, `5.9`, `2.1.2d`), ou,

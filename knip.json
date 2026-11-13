@@ -17,9 +17,8 @@
       "ignoreDependencies": ["pino-pretty"]
     },
     "apps/web": {
-      "entry": ["app/**/*.{ts,tsx}!"],
-      "project": ["app/**/*.{ts,tsx}!", "src/**/*.{ts,tsx}!"],
-      "ignoreUnresolved": ["/apps/web/netlify/plugins/context-routing"]
+      "entry": ["src/app/**/*.{ts,tsx}!"],
+      "project": ["src/**/*.{ts,tsx}!"]
     },
     "packages/shared": {
       "entry": ["src/*/index.ts!"],

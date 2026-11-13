@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from 'vitest'
 import { createLogger } from '#adapters/out/telemetry/logger.ts'
 import {
+  createBlobStore,
+  createBlobsMigrationStores,
   createContainer,
   createEmbeddings,
   createFixtureSeeder,
@@ -15,7 +17,7 @@ import { VERCEL_SHUTDOWN } from './config/platform.ts'
 
 const BASE = {
   APP_ENV: 'ci',
-  WEB_ORIGIN: 'https://develop--tekoia.netlify.app',
+  WEB_ORIGIN: 'https://tekoia-staging.vercel.app',
   APP_VERSION: '0.0.0-abc1234',
   GIT_SHA: 'abc1234',
   LOG_LEVEL: 'silent',
@@ -74,10 +76,47 @@ describe('createContainer', () => {
   })
 })
 
+describe('createBlobStore (ADR 0030)', () => {
+  const GITHUB = {
+    GITHUB_TOKEN: 'ghs_token-de-teste-com-mais-de-20',
+    GITHUB_REPOSITORY: 'dono/repo',
+  }
+  const NETLIFY = {
+    NETLIFY_AUTH_TOKEN: 'nfp_token-de-teste-com-mais-de-20',
+    NETLIFY_SITE_ID: '0b7c1a2e-3f4d-4e5a-9b6c-7d8e9f0a1b2c',
+  }
+
+  it('sem credenciais, o store em memória; com o GITHUB_TOKEN, o GitHub Releases (padrão)', () => {
+    expect(createBlobStore(parseEnv(BASE))).toHaveProperty('keys')
+    expect(createBlobStore(parseEnv({ ...BASE, ...GITHUB }))).toHaveProperty('sha256Of')
+    expect(
+      createBlobStore(parseEnv({ ...BASE, ...GITHUB, BLOB_STORE: 'github-releases' })),
+    ).toHaveProperty('sha256Of')
+  })
+
+  it('BLOB_STORE=netlify usa o Netlify Blobs mesmo com o GITHUB_TOKEN presente (etapa C1)', () => {
+    const store = createBlobStore(
+      parseEnv({ ...BASE, ...GITHUB, ...NETLIFY, BLOB_STORE: 'netlify' }),
+    )
+    expect(store).not.toHaveProperty('sha256Of')
+    expect(store).not.toHaveProperty('keys')
+  })
+
+  it('a migração exige as duas pontas', () => {
+    expect(() => createBlobsMigrationStores(parseEnv({ ...BASE, ...GITHUB }))).toThrow(
+      /NETLIFY_AUTH_TOKEN, NETLIFY_SITE_ID, GITHUB_TOKEN e GITHUB_REPOSITORY/,
+    )
+    const { source, target } = createBlobsMigrationStores(
+      parseEnv({ ...BASE, ...GITHUB, ...NETLIFY }),
+    )
+    expect(source).not.toHaveProperty('sha256Of')
+    expect(target).toHaveProperty('sha256Of')
+  })
+})
+
 describe('createHttpOptions', () => {
   it('no CI e local confia só na rede do Caddy, usa o X-Request-Id dele e não liga rate limit', () => {
     expect(createHttpOptions(parseEnv(BASE))).toEqual({
-      webOrigin: 'https://develop--tekoia.netlify.app',
       trustProxy: ['172.30.0.0/24'],
       requestIdHeader: 'x-request-id',
       eventLoopDelayGuard: true,
@@ -90,7 +129,7 @@ describe('createHttpOptions', () => {
       ...BASE,
       APP_ENV: 'production',
       NODE_ENV: 'production',
-      WEB_ORIGIN: 'https://tekoia.netlify.app',
+      WEB_ORIGIN: 'https://tekoia.vercel.app',
       RUNTIME_TARGET: 'render',
       TRUST_PROXY: '1',
     })
@@ -98,7 +137,9 @@ describe('createHttpOptions', () => {
   })
 
   it('na Vercel confia em exatamente 1 salto e usa o x-vercel-id', () => {
-    const options = createHttpOptions(parseEnv({ ...BASE, RUNTIME_TARGET: 'vercel' }))
+    const options = createHttpOptions(
+      parseEnv({ ...BASE, RUNTIME_TARGET: 'vercel', FUNCTION_MAX_DURATION_S: '120' }),
+    )
     expect(options.trustProxy).toBe(1)
     expect(options.requestIdHeader).toBe('x-vercel-id')
     expect(options.eventLoopDelayGuard).toBe(false)
@@ -144,7 +185,9 @@ describe('createRuntime', () => {
   })
 
   it('na Vercel usa o perfil de encerramento de 500 ms', async () => {
-    const { app, shutdown } = await createRuntime(parseEnv({ ...BASE, RUNTIME_TARGET: 'vercel' }))
+    const { app, shutdown } = await createRuntime(
+      parseEnv({ ...BASE, RUNTIME_TARGET: 'vercel', FUNCTION_MAX_DURATION_S: '120' }),
+    )
     expect(shutdown).toEqual(VERCEL_SHUTDOWN)
     await app.close()
   })
@@ -212,6 +255,7 @@ describe('serviços do corpus (F2)', () => {
           ...BASE,
           ...FAKE_EMBEDDINGS,
           RUNTIME_TARGET: runtimeTarget,
+          FUNCTION_MAX_DURATION_S: '120',
           DATABASE_URL: 'postgresql://teko_app:x@127.0.0.1:1/teko',
         }),
         { applicationName: 'teko-test' },

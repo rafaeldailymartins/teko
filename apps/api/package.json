@@ -36,10 +36,10 @@
     "eval:corpus:record": "node evals/scripts/corpus-eval-record.ts"
   },
   "dependencies": {
-    "@fastify/cors": "catalog:",
     "@fastify/helmet": "catalog:",
     "@fastify/rate-limit": "catalog:",
     "@fastify/sensible": "catalog:",
+    "@fastify/static": "catalog:",
     "@fastify/swagger": "catalog:",
     "@fastify/under-pressure": "catalog:",
     "@netlify/blobs": "catalog:",
