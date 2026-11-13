@@ -1,18 +1,24 @@
 /**
- * Monta o `.vercel/output` (Build Output API v3) da API a partir do bundle do tsdown, no lugar do
- * builder zero-config do Fastify (spike F1 (b), ADR 0017). O zero-config compila `src/server.ts`
- * mantendo os imports relativos com extensão `.ts`, e a Function cai no boot com
- * `ERR_MODULE_NOT_FOUND`; o bundle do tsdown já resolve os subpath imports e embute
+ * Monta o `.vercel/output` (Build Output API v3) do projeto Vercel único do Tekó: o export
+ * estático do Next (`apps/web/out`) em `static/` e a API, a partir do bundle do tsdown, numa só
+ * Function (ADR 0017 e ADR 0029, web e API na mesma origem). O builder zero-config do Fastify não
+ * serve: ele compila `src/server.ts` mantendo os imports relativos com extensão `.ts`, e a Function
+ * cai no boot com `ERR_MODULE_NOT_FOUND`; o bundle do tsdown já resolve os subpath imports e embute
  * `@teko/shared`.
  *
- * Saída (uma só Function, que recebe todas as rotas):
+ * Saída:
  *
  *   .vercel/output/
- *     config.json                         version 3 + rotas (filesystem, depois tudo para `/`)
+ *     config.json                         version 3 + rotas escritas à mão (`OUTPUT_CONFIG`)
+ *     static/                             cópia de `apps/web/out` (HTML, CSS, JS, fontes)
  *     functions/index.func/
  *       .vc-config.json                   nodejs24.x, launcher Nodejs, streaming, maxDuration
  *       server.mjs, server.mjs.map        `apps/api/dist` (tsdown)
  *       node_modules/                     dependências de produção da API
+ *
+ * Só `/api/*` e `/healthz` chegam à Function; o resto é servido pela CDN a partir de `static/`. As
+ * rotas ficam escritas aqui, sem o `@vercel/routing-utils` (sem proveniência; ADR 0002), e o
+ * `scripts/build-vercel-output.test.ts` fixa cada uma.
  *
  * O handler é o próprio `server.mjs`, sem entrypoint de plataforma: o launcher `Nodejs` da Vercel
  * troca `http.Server.prototype.listen` por um interceptador, importa o módulo e encaminha as
@@ -21,14 +27,15 @@
  *
  * Uso (no runner do Actions ou local), depois de:
  *
+ *   pnpm --filter @teko/web build
  *   pnpm --filter @teko/api build
  *   pnpm --filter @teko/api --prod deploy --ignore-scripts --config.node-linker=hoisted dist/vercel/api-prod
  *   node scripts/build-vercel-output.ts
  *
  * Não aceita argumento algum: todos os caminhos são constantes derivadas da raiz do repositório
  * (ver `scripts/lib/cli-guards.ts`). O `node-linker=hoisted` deixa o `node_modules` sem links
- * simbólicos (só os `.bin`, que ficam de fora); um link simbólico nas dependências derruba o
- * script. Ficam de fora também os metadados do pnpm (`.pnpm`, `.modules.yaml` etc.) e o
+ * simbólicos (só os `.bin`, que ficam de fora); um link simbólico nas dependências ou no export
+ * derruba o script. Ficam de fora também os metadados do pnpm (`.pnpm`, `.modules.yaml` etc.) e o
  * `@teko/shared`, que já está no bundle. Argumento na linha de comando termina com código 2;
  * falha de montagem, com 1. Não usa dependências: só o Node 24 (type stripping).
  */
@@ -48,7 +55,7 @@ import { compareCodeUnits, resolveInsideRoot } from './lib/cli-guards.ts'
 
 const REPO_ROOT = resolve(import.meta.dirname, '..')
 
-/** Nome da Function: `index` atende `/`, e a rota catch-all manda tudo para lá. */
+/** Nome da Function: `index` atende `/`, e as rotas da API mandam para lá. */
 export const FUNCTION_NAME = 'index'
 
 /** Arquivo do bundle que vira o handler da Function (entry `server` do `apps/api/tsdown.config.ts`). */
@@ -56,9 +63,9 @@ export const HANDLER = 'server.mjs'
 
 /**
  * Duração máxima de uma invocação, em segundos: o teto de 100 s do stream mais 20 s de reserva para
- * a finalização (plano, Streaming). Precisa ser igual a `FUNCTION_MAX_DURATION_S` em
- * `infra/vercel/env.*.json` (a API calcula o prazo de cada invocação a partir dela); o teste
- * `scripts/build-vercel-output.test.ts` confere.
+ * a finalização (plano, Streaming). `FUNCTION_MAX_DURATION_S` é obrigatória com
+ * `RUNTIME_TARGET=vercel` (sem padrão no `apps/api/src/config/env.ts`) e precisa ser igual a este
+ * valor em `infra/vercel/env.*.json`; o teste `scripts/build-vercel-output.test.ts` confere.
  */
 export const MAX_DURATION_S = 120
 
@@ -81,20 +88,127 @@ export const VC_CONFIG = {
 } as const
 
 /**
- * Rotas do `config.json`: primeiro os arquivos estáticos (não há nenhum), depois tudo vai para a
- * Function com o caminho original restaurado, como o builder zero-config do Fastify faz.
+ * Domínios antigos (`teko-api*.vercel.app`, de antes da renomeação dos projetos) → domínio canônico
+ * do mesmo projeto. O cookie de sessão e o `rpID` das passkeys dependem de um host único, então os
+ * antigos só redirecionam (308, preserva método e corpo). Cada projeto só tem o próprio domínio
+ * antigo; as duas regras no mesmo `config.json` não se cruzam.
+ */
+export const LEGACY_HOST_REDIRECTS = [
+  { from: 'teko-api.vercel.app', to: 'https://tekoia.vercel.app' },
+  { from: 'teko-api-staging.vercel.app', to: 'https://tekoia-staging.vercel.app' },
+] as const
+
+/** Caminhos da API (Function `index`); tudo o mais é estático. */
+export const API_PATH_PATTERN = '^/(api(?:/.*)?|healthz)$'
+
+/** Locales do export (`apps/web/src/lib/i18n/routing.ts`); o primeiro é o padrão. */
+export const LOCALES = ['pt-BR', 'en'] as const
+
+/**
+ * Primeiro idioma do `Accept-Language` é inglês (`en`, `en-US`...). O redirect da raiz é o mesmo
+ * que o `_redirects` da Netlify fazia (`/ /en/ 302 Language=en`, senão `/pt-BR/`).
+ */
+export const ACCEPT_LANGUAGE_EN = '^\\s*en(?:-[A-Za-z0-9]+)*\\s*(?:[;,]|$)'
+
+/**
+ * Headers das respostas estáticas (a API define os próprios, com CSP `default-src 'none'`). O CSP
+ * daqui só traz diretivas que não dependem do HTML; o CSP completo, com os hashes dos `<script>` e
+ * `<style>` inline, entra por caminho na F5 (plano, "Segurança no navegador").
+ */
+export const STATIC_HEADERS = {
+  'Strict-Transport-Security': 'max-age=63072000; includeSubDomains',
+  'X-Content-Type-Options': 'nosniff',
+  'X-Frame-Options': 'DENY',
+  'Referrer-Policy': 'strict-origin-when-cross-origin',
+  'Permissions-Policy':
+    'accelerometer=(), browsing-topics=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()',
+  'Cross-Origin-Opener-Policy': 'same-origin',
+  'Cross-Origin-Resource-Policy': 'same-origin',
+  'Content-Security-Policy':
+    "object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
+} as const
+
+/** Redirect da raiz: depende do `Accept-Language`, então nunca fica em cache compartilhado. */
+const ROOT_REDIRECT_HEADERS = { 'Cache-Control': 'private, no-store', Vary: 'Accept-Language' }
+
+/**
+ * Rotas do `config.json`, na ordem em que a Vercel as avalia:
+ *
+ * 1. domínios antigos → canônico (308, antes de tudo, inclusive da API);
+ * 2. `/api/*` e `/healthz` → Function `index`, com o caminho original restaurado (o mesmo que o
+ *    zero-config do Fastify emitia); a rota não continua, então nada abaixo vale para a API;
+ * 3. headers de segurança em todo o estático e `/_next/static/*` imutável (`continue`);
+ * 4. `/` → `/en/` ou `/pt-BR/` pelo `Accept-Language` (302; o `index.html` da raiz fica como página
+ *    de entrada para quem não segue redirect);
+ * 5. `/pt-br/...` (a grafia que a Netlify gerava) → `/pt-BR/...`;
+ * 6. `trailingSlash: true` do Next: caminho sem extensão e sem barra final ganha a barra (308);
+ * 7. `filesystem`: o arquivo do `static/` (o diretório serve o `index.html`);
+ * 8. o que sobrou é 404: a página do locale do caminho, ou o `404.html` da raiz.
  */
 export const OUTPUT_CONFIG = {
   version: 3,
   routes: [
-    { handle: 'filesystem' },
+    ...LEGACY_HOST_REDIRECTS.map(({ from, to }) => ({
+      src: '^/(.*)$',
+      has: [{ type: 'host', value: from }],
+      status: 308,
+      headers: { Location: `${to}/$1` },
+    })),
     {
-      src: '/(.*)',
+      src: API_PATH_PATTERN,
       dest: '/',
       transforms: [{ type: 'request.path', op: 'set', args: '/$1' }],
     },
+    { src: '^/(.*)$', headers: STATIC_HEADERS, continue: true },
+    {
+      src: '^/_next/static/(.*)$',
+      headers: { 'Cache-Control': 'public, max-age=31536000, immutable' },
+      continue: true,
+    },
+    {
+      src: '^/$',
+      has: [{ type: 'header', key: 'accept-language', value: { re: ACCEPT_LANGUAGE_EN } }],
+      status: 302,
+      headers: { Location: '/en/', ...ROOT_REDIRECT_HEADERS },
+    },
+    {
+      src: '^/$',
+      status: 302,
+      headers: { Location: `/${LOCALES[0]}/`, ...ROOT_REDIRECT_HEADERS },
+    },
+    {
+      src: '^/pt-br(/.*)?$',
+      caseSensitive: true,
+      status: 308,
+      headers: { Location: '/pt-BR$1' },
+    },
+    {
+      src: '^/((?!\\.well-known/)(?:[^/]+/)*[^/.]+)$',
+      status: 308,
+      headers: { Location: '/$1/' },
+    },
+    { handle: 'filesystem' },
+    ...LOCALES.map((locale) => ({
+      src: `^/${locale}(?:/.*)?$`,
+      dest: `/${locale}/404/index.html`,
+      status: 404,
+    })),
+    { src: '^/.*$', dest: '/404.html', status: 404 },
   ],
 } as const
+
+/** Arquivos que o export precisa ter (a raiz de entrada e as páginas de 404). */
+export const REQUIRED_STATIC_FILES = [
+  'index.html',
+  '404.html',
+  ...LOCALES.flatMap((locale) => [`${locale}/index.html`, `${locale}/404/index.html`]),
+] as const
+
+/**
+ * Arquivos de configuração de outros hosts que não podem ir para o `static/` (ficariam públicos e
+ * sem efeito): os da Netlify e qualquer `.env`.
+ */
+const FORBIDDEN_STATIC_NAME = /^(?:_redirects|_headers|netlify\.toml|\.env(?:\..*)?)$/
 
 /** Entradas do topo do `node_modules` que não vão para a Function. */
 const SKIPPED_TOP_LEVEL = new Set(['.bin', '.pnpm', '.modules.yaml', '@teko'])
@@ -109,6 +223,8 @@ export interface BuildPaths {
   readonly bundleDir: string
   /** `node_modules` das dependências de produção (`pnpm deploy --prod`, linker hoisted). */
   readonly nodeModulesDir: string
+  /** Export estático do Next (`apps/web/out`). */
+  readonly staticDir: string
   /** Diretório `.vercel/output` a (re)criar. */
   readonly outputDir: string
 }
@@ -149,6 +265,33 @@ function copyDependencies(from: string, to: string, topLevel = true, relative = 
   return files
 }
 
+/** Copia o export estático, recusando links simbólicos e arquivos de configuração de outro host. */
+function copyStatic(from: string, to: string, relative = ''): number {
+  mkdirSync(to, { recursive: true })
+  let files = 0
+  for (const name of readdirSync(from).sort(compareCodeUnits)) {
+    const source = join(from, name)
+    const target = join(to, name)
+    const path = relative === '' ? name : `${relative}/${name}`
+    const stat = lstatSync(source)
+    if (stat.isSymbolicLink()) {
+      throw new BuildOutputError(`link simbólico no export estático: ${path}`)
+    }
+    if (FORBIDDEN_STATIC_NAME.test(name)) {
+      throw new BuildOutputError(`arquivo proibido no export estático: ${path}`)
+    }
+    if (stat.isDirectory()) {
+      files += copyStatic(source, target, path)
+    } else if (stat.isFile()) {
+      copyFileSync(source, target)
+      files += 1
+    } else {
+      throw new BuildOutputError(`tipo de arquivo não suportado no export estático: ${path}`)
+    }
+  }
+  return files
+}
+
 function writeJson(file: string, value: unknown): void {
   writeFileSync(file, `${JSON.stringify(value, null, 2)}\n`)
 }
@@ -156,11 +299,10 @@ function writeJson(file: string, value: unknown): void {
 export interface BuildResult {
   readonly functionDir: string
   readonly dependencyFiles: number
+  readonly staticFiles: number
 }
 
-/** Recria `outputDir` com o `config.json` e a Function `index.func`. */
-export function buildVercelOutput(paths: BuildPaths): BuildResult {
-  const handler = join(paths.bundleDir, HANDLER)
+function assertInputs(paths: BuildPaths, handler: string): void {
   if (!existsSync(handler)) {
     throw new BuildOutputError(
       `${handler} não existe; rode \`pnpm --filter @teko/api build\` antes`,
@@ -171,6 +313,18 @@ export function buildVercelOutput(paths: BuildPaths): BuildResult {
       `${paths.nodeModulesDir} não tem as dependências de produção da API; rode o \`pnpm deploy --prod\` antes`,
     )
   }
+  const missing = REQUIRED_STATIC_FILES.filter((file) => !existsSync(join(paths.staticDir, file)))
+  if (missing.length > 0) {
+    throw new BuildOutputError(
+      `${paths.staticDir} não tem ${missing.join(', ')}; rode \`pnpm --filter @teko/web build\` antes`,
+    )
+  }
+}
+
+/** Recria `outputDir` com o `config.json`, o `static/` e a Function `index.func`. */
+export function buildVercelOutput(paths: BuildPaths): BuildResult {
+  const handler = join(paths.bundleDir, HANDLER)
+  assertInputs(paths, handler)
 
   rmSync(paths.outputDir, { recursive: true, force: true })
   const functionDir = join(paths.outputDir, 'functions', `${FUNCTION_NAME}.func`)
@@ -183,7 +337,8 @@ export function buildVercelOutput(paths: BuildPaths): BuildResult {
     copyFileSync(sourceMap, join(functionDir, `${HANDLER}.map`))
   }
   const dependencyFiles = copyDependencies(paths.nodeModulesDir, join(functionDir, 'node_modules'))
-  return { functionDir, dependencyFiles }
+  const staticFiles = copyStatic(paths.staticDir, join(paths.outputDir, 'static'))
+  return { functionDir, dependencyFiles, staticFiles }
 }
 
 function main(): void {
@@ -198,6 +353,7 @@ function main(): void {
   const result = buildVercelOutput({
     bundleDir: inside('apps', 'api', 'dist'),
     nodeModulesDir: inside('dist', 'vercel', 'api-prod', 'node_modules'),
+    staticDir: inside('apps', 'web', 'out'),
     outputDir: inside('.vercel', 'output'),
   })
   console.log(
@@ -206,6 +362,7 @@ function main(): void {
       runtime: VC_CONFIG.runtime,
       maxDuration: VC_CONFIG.maxDuration,
       dependencyFiles: result.dependencyFiles,
+      staticFiles: result.staticFiles,
     }),
   )
 }
