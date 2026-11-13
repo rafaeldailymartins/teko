@@ -1,11 +1,14 @@
 import type { MetricName } from '../asserts/metrics.ts'
-import { loadGolden } from './load-golden.ts'
+import { GoldenSplit, goldenPath, loadGolden } from './load-golden.ts'
 import type { GoldenCase } from './schema.ts'
 
 /**
- * Testes do promptfoo gerados a partir do golden (`tests: file://../datasets/golden-tests.ts`). Cada
+ * Testes do promptfoo gerados a partir do golden. O `default` é o conjunto `dev`
+ * (`tests: file://../datasets/golden-tests.ts`, fixture do PR e `corpus-eval`); `holdoutTests` é o
+ * `holdout` (`tests: file://../datasets/golden-tests.ts:holdoutTests`, só no `corpus-eval`). Cada
  * caso recebe só os asserts que se aplicam a ele: recall@10, MRR e vigência nos `answered`; recusa
- * nos `refused`; clarificação nos ambíguos; e a data de referência quando o caso a fixa.
+ * nos `refused`; clarificação nos ambíguos; `sem_resposta` nos `unanswerable`; e a data de
+ * referência quando o caso a fixa.
  */
 
 const ASSERT_FILES: Readonly<Record<MetricName, string>> = {
@@ -15,17 +18,18 @@ const ASSERT_FILES: Readonly<Record<MetricName, string>> = {
   recusa: 'refusal.ts',
   clarificacao: 'clarification.ts',
   data_referencia: 'reference-date.ts',
+  sem_resposta: 'no-answer.ts',
+}
+
+const STATUS_METRICS: Readonly<Record<GoldenCase['expected']['status'], readonly MetricName[]>> = {
+  answered: ['recall@10', 'mrr', 'vigencia'],
+  refused: ['recusa'],
+  needs_clarification: ['clarificacao'],
+  unanswerable: ['sem_resposta'],
 }
 
 export function metricsFor(golden: GoldenCase): MetricName[] {
-  const metrics: MetricName[] = []
-  if (golden.expected.status === 'answered') {
-    metrics.push('recall@10', 'mrr', 'vigencia')
-  } else if (golden.expected.status === 'refused') {
-    metrics.push('recusa')
-  } else {
-    metrics.push('clarificacao')
-  }
+  const metrics = [...STATUS_METRICS[golden.expected.status]]
   if (golden.expected.reference_date !== undefined) {
     metrics.push('data_referencia')
   }
@@ -46,5 +50,9 @@ export function toPromptfooTest(golden: GoldenCase) {
 }
 
 export default async function generateTests() {
-  return loadGolden().map(toPromptfooTest)
+  return loadGolden(goldenPath(GoldenSplit.Dev)).map(toPromptfooTest)
+}
+
+export async function holdoutTests() {
+  return loadGolden(goldenPath(GoldenSplit.Holdout)).map(toPromptfooTest)
 }
