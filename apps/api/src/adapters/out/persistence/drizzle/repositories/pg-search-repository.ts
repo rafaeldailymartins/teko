@@ -1,5 +1,9 @@
 import type pg from 'pg'
-import type { SearchQuery, SearchRepository } from '#app/ports/search-repository.ts'
+import type {
+  PeriodVersionsQuery,
+  SearchQuery,
+  SearchRepository,
+} from '#app/ports/search-repository.ts'
 import type { Evidence } from '#domain/qa/evidence.ts'
 import { isTransientConnectionError, retryTransientRead } from '../client.ts'
 import {
@@ -7,6 +11,7 @@ import {
   BEGIN_SEARCH,
   HYBRID_SEARCH_SQL,
   LEXICAL_ONLY_SQL,
+  PERIOD_VERSIONS_SQL,
   toVectorLiteral,
 } from '../sql/hybrid-search.ts'
 
@@ -97,9 +102,27 @@ async function searchOnce(pool: pg.Pool, query: SearchQuery): Promise<Evidence[]
   }
 }
 
+interface PeriodVersionRow {
+  readonly valid_from: string
+  readonly valid_to: string | null
+}
+
+export function periodVersionsParameters(query: PeriodVersionsQuery): unknown[] {
+  return [query.period.from, query.period.to, query.families, query.reviewStatuses, query.scopes]
+}
+
 export function createPgSearchRepository(pool: pg.Pool): SearchRepository {
   return {
-    // Leitura idempotente (transação só leitura): um retry numa conexão nova se a primeira cair.
+    // Leituras idempotentes (transação só leitura): um retry numa conexão nova se a primeira cair.
     search: (query) => retryTransientRead(() => searchOnce(pool, query)),
+    async versionsInPeriod(query) {
+      if (query.scopes.length === 0 || query.families.length === 0) {
+        return []
+      }
+      const { rows } = await retryTransientRead(() =>
+        pool.query<PeriodVersionRow>(PERIOD_VERSIONS_SQL, periodVersionsParameters(query)),
+      )
+      return rows.map((row) => ({ from: row.valid_from, to: row.valid_to }))
+    },
   }
 }

@@ -155,6 +155,25 @@ export const LEXICAL_ONLY_SQL = `${COMMON_HEAD.replace(
   'WITH unused_vector AS (SELECT $2::text AS v), tsq AS MATERIALIZED (',
 )}${exactArm(false)}${fused(false)}${TAIL}`
 
+/**
+ * Vigências que têm fronteira dentro do período `[$1, $2)` (o mês do PA), com os filtros da busca
+ * ($3 famílias, $4 `review_status`, conhecimento atual), nos dispositivos sob as unidades $5 (a
+ * chave ou as descendentes, `k:%`; as unidades são `tipo:valor` de topo, sem `_` nem `%`). Consulta
+ * barata, pelos índices de `stable_key` e `provision_id`, só quando a referência veio de um PA.
+ */
+export const PERIOD_VERSIONS_SQL = `
+SELECT DISTINCT lower(pv.valid_during)::text AS valid_from, upper(pv.valid_during)::text AS valid_to
+FROM corpus.provisions p
+JOIN corpus.documents d ON d.id = p.document_id
+JOIN corpus.provision_versions pv ON pv.provision_id = p.id
+WHERE d.family = ANY($3::text[])
+  AND (p.stable_key = ANY($5::text[])
+       OR EXISTS (SELECT 1 FROM unnest($5::text[]) AS k WHERE p.stable_key LIKE k || ':%'))
+  AND pv.valid_during && daterange($1::date, $2::date)
+  AND upper_inf(pv.knowledge) AND pv.review_status = ANY($4::text[])
+  AND (lower(pv.valid_during) > $1::date OR upper(pv.valid_during) < $2::date)
+ORDER BY valid_from, valid_to`
+
 /** `[0.1,0.2,...]`, o formato de entrada do `halfvec`. */
 export function toVectorLiteral(vector: readonly number[]): string {
   if (vector.some((value) => !Number.isFinite(value))) {

@@ -56,6 +56,7 @@ import { createStreamBudget } from '#app/services/stream-budget.ts'
 import { createCheckCoverage } from '#app/use-cases/check-coverage.ts'
 import { createEmbedPending } from '#app/use-cases/embed-pending.ts'
 import { createExportSnapshot } from '#app/use-cases/export-snapshot.ts'
+import { createFindPeriodVersions } from '#app/use-cases/find-period-versions.ts'
 import { createGetHealth } from '#app/use-cases/get-health.ts'
 import { createHybridSearch } from '#app/use-cases/hybrid-search.ts'
 import {
@@ -289,10 +290,12 @@ function createCorpusServices(
   const checkCoverage = createCheckCoverage({
     coverageRepository: createPgCoverageRepository(database.db),
   })
+  const searchRepository = createPgSearchRepository(database.pool)
+  const reviewStatuses = reviewStatusesFor(env.APP_ENV)
   const hybridSearch = createHybridSearch({
     embeddings,
-    searchRepository: createPgSearchRepository(database.pool),
-    reviewStatuses: reviewStatusesFor(env.APP_ENV),
+    searchRepository,
+    reviewStatuses,
     embeddingTimeoutMs: QUESTION_EMBEDDING_TIMEOUT_MS,
     limit: SEARCH_LIMIT,
     reranker: createReranker(env),
@@ -307,6 +310,7 @@ function createCorpusServices(
         resolveReferenceDate,
         checkCoverage,
         hybridSearch,
+        findPeriodVersions: createFindPeriodVersions({ searchRepository, reviewStatuses }),
         minEvidenceRrf: env.MIN_EVIDENCE_RRF,
       }),
     },

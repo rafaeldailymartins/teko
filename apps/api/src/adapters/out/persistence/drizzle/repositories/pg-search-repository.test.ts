@@ -6,8 +6,14 @@ import {
   HNSW_SETTINGS_SQL,
   HYBRID_SEARCH_SQL,
   LEXICAL_ONLY_SQL,
+  PERIOD_VERSIONS_SQL,
 } from '../sql/hybrid-search.ts'
-import { createPgSearchRepository, searchParameters, toEvidence } from './pg-search-repository.ts'
+import {
+  createPgSearchRepository,
+  periodVersionsParameters,
+  searchParameters,
+  toEvidence,
+} from './pg-search-repository.ts'
 
 const row = {
   id: 'c1',
@@ -151,6 +157,36 @@ describe('createPgSearchRepository', () => {
     expect(release).toHaveBeenCalledTimes(2)
     expect(release.mock.calls[0]?.[0]).toMatchObject({ code: '57P01' })
     expect(release.mock.calls[1]?.[0]).toBeUndefined()
+  })
+
+  it('versionsInPeriod: parâmetros posicionais, datas em texto e sem consulta quando vazio', async () => {
+    const poolQuery = vi
+      .fn()
+      .mockRejectedValueOnce(terminated())
+      .mockResolvedValue({ rows: [{ valid_from: '2005-12-29', valid_to: null }] })
+    const repository = createPgSearchRepository({ query: poolQuery } as unknown as pg.Pool)
+    const periodQuery = {
+      period: { from: '2005-12-01', to: '2006-01-01' },
+      scopes: ['go:cte:art:47'],
+      families: ['cte'],
+      reviewStatuses: ['auto', 'approved'] as const,
+    }
+    await expect(repository.versionsInPeriod(periodQuery)).resolves.toEqual([
+      { from: '2005-12-29', to: null },
+    ])
+    // A primeira tentativa caiu (57P01) e a leitura foi repetida.
+    expect(poolQuery).toHaveBeenCalledTimes(2)
+    expect(poolQuery).toHaveBeenLastCalledWith(PERIOD_VERSIONS_SQL, [
+      '2005-12-01',
+      '2006-01-01',
+      ['cte'],
+      ['auto', 'approved'],
+      ['go:cte:art:47'],
+    ])
+    expect(periodVersionsParameters(periodQuery)).toHaveLength(5)
+    await expect(repository.versionsInPeriod({ ...periodQuery, scopes: [] })).resolves.toEqual([])
+    await expect(repository.versionsInPeriod({ ...periodQuery, families: [] })).resolves.toEqual([])
+    expect(poolQuery).toHaveBeenCalledTimes(2)
   })
 
   it('segunda queda seguida propaga o erro', async () => {

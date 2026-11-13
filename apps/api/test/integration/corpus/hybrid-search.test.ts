@@ -1,12 +1,13 @@
 import { RefusalReason, RetrievalMode } from '@teko/shared/contracts'
-import { containsDate, ReferenceSource } from '@teko/shared/vigencia'
+import { containsDate, hasBoundaryInsidePeriod, ReferenceSource } from '@teko/shared/vigencia'
 import pg from 'pg'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { createDatabase } from '#adapters/out/persistence/drizzle/client.ts'
+import { createDatabase, type Database } from '#adapters/out/persistence/drizzle/client.ts'
 import { createPgSearchRepository } from '#adapters/out/persistence/drizzle/repositories/pg-search-repository.ts'
 import { BEGIN_HYBRID_SEARCH } from '#adapters/out/persistence/drizzle/sql/hybrid-search.ts'
 import type { Container, RetrievalUseCases } from '#app/container.ts'
 import { EmbeddingUnavailableError } from '#app/ports/embedding-port.ts'
+import { createFindPeriodVersions } from '#app/use-cases/find-period-versions.ts'
 import { createHybridSearch } from '#app/use-cases/hybrid-search.ts'
 import { createRetrieveEvidence, RetrievalOutcome } from '#app/use-cases/retrieve-evidence.ts'
 import { PUBLISHABLE_REVIEW_STATUSES } from '#domain/corpus/family.ts'
@@ -27,6 +28,8 @@ const PARAGRAPH_6 = 'go:rcte:art:76:par:6'
 let database: TestDatabase
 let container: Container
 let retrieval: RetrievalUseCases
+/** Pool próprio como `teko_app`, para chamar o repositório direto. */
+let appDatabase: Database
 
 beforeAll(async () => {
   database = await createTestDatabase()
@@ -37,9 +40,11 @@ beforeAll(async () => {
     throw new Error('container sem retrieval')
   }
   retrieval = container.useCases.retrieval
+  appDatabase = createDatabase({ url: database.appUrl, applicationName: 'teko-test' })
 }, 120_000)
 
 afterAll(async () => {
+  await appDatabase?.close()
   await container?.close()
   await database?.drop()
 })
@@ -198,6 +203,7 @@ describe('degradação', () => {
           rerankCandidates: 30,
           rerankTimeoutMs: 2000,
         }),
+        findPeriodVersions: () => Promise.resolve([]),
         minEvidenceRrf: 0,
       })
       const result = await retrieve({
@@ -240,6 +246,7 @@ describe('degradação', () => {
         resolveReferenceDate: container.useCases.resolveReferenceDate,
         checkCoverage: retrieval.checkCoverage,
         hybridSearch,
+        findPeriodVersions: () => Promise.resolve([]),
         minEvidenceRrf: 0,
       })({
         input: { periodoApuracao: '2006-05' },
@@ -255,6 +262,95 @@ describe('degradação', () => {
     } finally {
       await database2.close()
     }
+  })
+})
+
+describe('fronteira de vigência dentro do PA', () => {
+  // CTE, art. 47: em 01/12/2005 só o caput está em vigor; os §§ 1º a 3º (e incisos) foram
+  // acrescentados com vigência a partir de 29/12/2005. A busca roda no dia 1 e não os enxerga.
+  const ART_47 = 'go:cte:art:47'
+
+  it('o repositório acha as vigências que começam no meio do mês na unidade da evidência', async () => {
+    const repository = createPgSearchRepository(appDatabase.pool)
+    const versions = await repository.versionsInPeriod({
+      period: { from: '2005-12-01', to: '2006-01-01' },
+      scopes: [ART_47],
+      families: ['cte'],
+      reviewStatuses: PUBLISHABLE_REVIEW_STATUSES,
+    })
+    expect(versions).toContainEqual({ from: '2005-12-29', to: null })
+    for (const version of versions) {
+      expect(hasBoundaryInsidePeriod('2005-12', [version])).toBe(true)
+    }
+    const otherFamily = await repository.versionsInPeriod({
+      period: { from: '2005-12-01', to: '2006-01-01' },
+      scopes: [ART_47],
+      families: ['rcte'],
+      reviewStatuses: PUBLISHABLE_REVIEW_STATUSES,
+    })
+    expect(otherFamily).toEqual([])
+  })
+
+  /**
+   * `RetrieveEvidence` real (cobertura, busca e fronteiras no banco), no modo léxico: a pergunta
+   * não está na fixture de embeddings, e o braço `exact` acha o art. 47 pela referência citada.
+   */
+  function lexicalRetrieve() {
+    const repository = createPgSearchRepository(appDatabase.pool)
+    return createRetrieveEvidence({
+      resolveReferenceDate: container.useCases.resolveReferenceDate,
+      checkCoverage: retrieval.checkCoverage,
+      hybridSearch: createHybridSearch({
+        embeddings: {
+          model: 'indisponível',
+          dimensions: 1024,
+          embed: () => Promise.reject(new EmbeddingUnavailableError('fora do ar')),
+        },
+        searchRepository: repository,
+        reviewStatuses: PUBLISHABLE_REVIEW_STATUSES,
+        embeddingTimeoutMs: 3000,
+        limit: 12,
+        reranker: null,
+        rerankCandidates: 40,
+        rerankTimeoutMs: 3000,
+      }),
+      findPeriodVersions: createFindPeriodVersions({
+        searchRepository: repository,
+        reviewStatuses: PUBLISHABLE_REVIEW_STATUSES,
+      }),
+      minEvidenceRrf: 0,
+    })
+  }
+
+  it('avisa a fronteira do dispositivo acrescentado no meio do PA, ausente da evidência', async () => {
+    const result = await lexicalRetrieve()({
+      input: { periodoApuracao: '2005-12' },
+      source: ReferenceSource.PeriodoApuracao,
+      questionText: 'O que diz o art. 47 do CTE?',
+      families: ['cte'],
+    })
+    if (result.outcome !== RetrievalOutcome.Evidence) {
+      throw new Error(`sem evidência: ${result.outcome}`)
+    }
+    expect(result.evidence.map((item) => item.stableKey)).toContain(ART_47)
+    // Antes, só as vigências da evidência contavam, e nenhuma tem fronteira em 12/2005.
+    expect(
+      hasBoundaryInsidePeriod(
+        '2005-12',
+        result.evidence.map((item) => item.validity),
+      ),
+    ).toBe(false)
+    expect(result.reference.periodBoundaryInside).toBe(true)
+  })
+
+  it('data exata (fora de PA) não consulta fronteiras', async () => {
+    const result = await lexicalRetrieve()({
+      input: { referenceDate: '2005-12-01' },
+      source: ReferenceSource.Explicit,
+      questionText: 'O que diz o art. 47 do CTE?',
+      families: ['cte'],
+    })
+    expect(result).toMatchObject({ reference: { periodBoundaryInside: false, periodo: null } })
   })
 })
 
