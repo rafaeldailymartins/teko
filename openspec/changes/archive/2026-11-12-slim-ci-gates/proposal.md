@@ -13,7 +13,7 @@ serviço de terceiros ou de advisory do dia, e um PR de documentação que roda 
 
 - **Mutação fora do PR:** o `mutation.yml` fica só com `schedule` (noturno, e só se houver commit
   novo desde o último run verde) e `workflow_dispatch`; o `pr-gate.yml` não o chama mais.
-- **`pnpm audit` fora do PR:** vai para o `audit.yml` (push para develop/main, diário,
+- **`pnpm audit` e osv-scanner fora do PR:** vão para o `audit.yml` (push para develop/main, diário,
   `workflow_dispatch` e `workflow_call` para os deploys da F7). No PR ficam o `dependency-review` e o
   `pnpm audit signatures`.
 - **Sonar informativo:** `sonar.yml` chamado depois do `ci`, fora dos `needs` do `ci-gate`, sem

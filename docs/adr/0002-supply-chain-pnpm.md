@@ -215,8 +215,8 @@ usam `exclude-newer-package` com a versão exata e justificativa nesta ADR.
   lockfile isolado do CLI sair da política.
 - `uv sync --frozen` no job `python` do `ci.yml`.
 - `pnpm audit signatures` no job `lint` do PR; `pnpm audit --prod --audit-level low` (e o dos CLIs
-  isolados) no `audit.yml`, em push, todo dia e nos deploys (ADR 0032); osv-scanner e
-  dependency-review no `security.yml`.
+  isolados) e osv-scanner no `audit.yml`, em push, todo dia e nos deploys (ADR 0032);
+  dependency-review no `security.yml`, em todo PR.
 
 ## Opções descartadas
 
@@ -268,4 +268,5 @@ O primeiro run real do PR #1 mostrou duas coisas que a análise local não pegav
   `@commitlint/config-conventional` do catálogo.
 - **`pnpm audit` fora do PR.** Os advisories são conferidos pelo `audit.yml` (push, todo dia e, na
   F7, antes de cada deploy); no PR ficam o `dependency-review` e o `pnpm audit signatures`.
-- **Sem `pip-audit`.** O osv-scanner do `security.yml` já audita o `uv.lock` inteiro.
+- **Sem `pip-audit`.** O osv-scanner já audita o `uv.lock` inteiro; ele também saiu do PR e roda
+  no `audit.yml`, junto com o `pnpm audit`.

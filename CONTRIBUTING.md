@@ -247,7 +247,8 @@ Some gates run outside pull requests on purpose (ADR 0032), so a PR only fails f
   commit since the last green run; a score below 70 turns the nightly run red.
 - **`pnpm audit`** (`audit.yml`) runs on every push to `develop`/`main`, every day and before each
   deploy. On a PR, `dependency-review` checks the dependencies the PR adds, and the `lint` job runs
-  `pnpm audit signatures`. Python vulnerabilities come from osv-scanner over `uv.lock`.
+  `pnpm audit signatures`. The osv-scanner (over `pnpm-lock.yaml` and `uv.lock`, the only audit
+  of the Python side) runs in the same `audit.yml`, also outside pull requests.
 - **SonarQube Cloud** (`sonar.yml`) analyzes every PR and `develop`, but only informs: it is not
   part of `ci-gate`, and its quality gate shows up in the PR decoration.
 

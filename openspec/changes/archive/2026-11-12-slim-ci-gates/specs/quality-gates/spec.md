@@ -48,7 +48,8 @@ escopo da lista única `.github/commit-types.json`, conferida pelo check `pr-tit
 
 Um PR MUST falhar quando introduzir dependência de runtime com vulnerabilidade conhecida de
 qualquer severidade ou licença fora da allowlist. Vulnerabilidades novas em dependências que o PR
-não introduziu MUST NOT reprovar o PR: o `pnpm audit --prod --audit-level low` SHALL rodar em push
+não introduziu MUST NOT reprovar o PR: o `pnpm audit --prod --audit-level low` e o osv-scanner (sobre
+os lockfiles npm e Python) SHALL rodar em push
 para `develop`/`main`, todo dia e antes dos deploys.
 
 #### Scenario: Dependência com CVE

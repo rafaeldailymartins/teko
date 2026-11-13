@@ -17,8 +17,8 @@ Na revisão de arquitetura de 2026-11-12 (antes da F4), o PR gate tinha mediana 
 
 Além do tempo, três gates reprovavam PRs por motivos alheios à mudança:
 
-- o `pnpm audit` rodava em todo PR, inclusive de documentação, e um advisory novo publicado no meio
-  do dia reprovava qualquer PR aberto;
+- o `pnpm audit` (no `ci.yml`) e o osv-scanner (no `security.yml`) rodavam em todo PR, inclusive
+  de documentação, e um advisory novo publicado no meio do dia reprovava qualquer PR aberto;
 - os uploads ao Codecov usavam `fail_ci_if_error: true`: uma queda do serviço reprovava o PR;
 - o Sonar entrava no `ci-gate` pelo `sonar.qualitygate.wait`, de modo que uma fila lenta ou uma
   regra do "Sonar way" bloqueava o merge, sem que isso fosse um gate decidido pelo projeto.
@@ -46,10 +46,12 @@ Como deixar o PR gate rápido e reprovando só pelo que a mudança causa, sem pe
    `workflow_dispatch`. No agendado, o job `changes` compara `github.sha` com o SHA do último run
    verde do próprio workflow em `develop` e pula o `stryker` se forem iguais (antes ele rodava com
    `--force` todo dia). O limite continua 70; um score abaixo deixa o run noturno vermelho.
-2. **`pnpm audit` fora do PR.** O `audit.yml` roda o `pnpm audit --prod --audit-level low` (e o dos
-   CLIs isolados) em push para `develop`/`main`, todo dia às 06:29 UTC, por `workflow_dispatch` e
-   por `workflow_call`; os workflows de deploy da F7 o chamam antes de publicar. No PR ficam o
-   `dependency-review` (só o que o PR introduz) e o `pnpm audit signatures`, no job `lint`.
+2. **`pnpm audit` e osv-scanner fora do PR.** O `audit.yml` roda o
+   `pnpm audit --prod --audit-level low` (e o dos CLIs isolados) e o osv-scanner sobre o
+   `pnpm-lock.yaml` e o `uv.lock` (a única auditoria do Python) em push para `develop`/`main`, todo
+   dia às 06:29 UTC, por `workflow_dispatch` e por `workflow_call`; os workflows de deploy da F7 o
+   chamam antes de publicar. No PR ficam o `dependency-review` (só o que o PR introduz) e o
+   `pnpm audit signatures`, no job `lint`.
 3. **Sonar informativo e Codecov removido.** O job `sonar` vira o `sonar.yml`, chamado pelo
    `pr-gate.yml` depois do `ci` e fora dos `needs` do `ci-gate`, e pelo `ci.yml` em push para
    `develop`. Sem `sonar.qualitygate.wait` e com `continue-on-error`: o quality gate aparece pela
@@ -121,7 +123,8 @@ seguram o `ci-gate`. O novo caminho crítico, em PR de API, é o `sql-perf`.
 
 - `bash .github/scripts/ci-config.test.sh`: `ci-gate` com `!cancelled()` e os `needs` certos; só
   o `perf` pode pular; `mutation.yml` só agendado e pulando sem commit novo; nenhum `pnpm audit` de
-  advisories no `ci.yml`; `audit.yml` sem `pull_request`; `sonar.yml` com `continue-on-error`, sem
+  advisories no `ci.yml`; `audit.yml` sem `pull_request` e com o osv-scanner, que não está mais no
+  `security.yml`; `dependency-review` no PR; `sonar.yml` com `continue-on-error`, sem
   `qualitygate.wait` e fora dos `needs` do `ci-gate`; nada de Codecov; camada do lint para PR de
   docs.
 - `bash .github/scripts/affected.test.sh`: grupo `docs`, chave `code` e os workflows que não marcam

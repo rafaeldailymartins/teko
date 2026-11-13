@@ -60,7 +60,11 @@ lint_docs_only_layer() {
 check "lint: só Biome, lockfile e OpenSpec rodam sem código; o resto depende de HAS_CODE" lint_docs_only_layer
 check "affected-paths.yml tem o grupo docs" yq_true '.docs | length > 0' .github/affected-paths.yml
 
-# --- pnpm audit fora do PR (ADR 0032): advisory novo não reprova PR sem relação -----------------
+# --- pnpm audit e osv-scanner fora do PR (ADR 0032): advisory novo não reprova PR sem relação ----
+check "osv-scanner no audit.yml (uv.lock incluído) e fora do security.yml" \
+  bash -c "yq -e '.jobs.\"osv-scanner\".steps[] | select(.uses // \"\" | test(\"osv-scanner-action\"))' .github/workflows/audit.yml >/dev/null && grep -Fq -- '--lockfile=tools/ingest/uv.lock' .github/workflows/audit.yml && ! grep -q 'osv-scanner-action' .github/workflows/security.yml"
+check "dependency-review continua no PR (security.yml)" \
+  yq_true '.jobs."dependency-review".if == "github.event_name == '"'"'pull_request'"'"'"' .github/workflows/security.yml
 check "ci.yml sem pnpm audit de advisories (só signatures, no lint)" \
   bash -c "! grep -Eq 'pnpm audit (--|$)' .github/workflows/ci.yml && yq -r '.jobs.lint.steps[].run // \"\"' .github/workflows/ci.yml | grep -qx 'pnpm audit signatures'"
 check "audit.yml em push, agendado e workflow_call, sem pull_request" \

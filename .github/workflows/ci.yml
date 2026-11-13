@@ -540,7 +540,7 @@ jobs:
           if-no-files-found: ignore
           retention-days: 1
 
-      # Vulnerabilidades do uv.lock: osv-scanner do security.yml (o pip-audit saiu, ADR 0032).
+      # Vulnerabilidades do uv.lock: osv-scanner do audit.yml, fora do PR (o pip-audit saiu, ADR 0032).
 
   # SonarQube Cloud em push para develop, só informativo (ADR 0032; em PR quem chama o sonar.yml é
   # o pr-gate.yml). Só develop: o plano gratuito analisa apenas a branch principal do projeto
