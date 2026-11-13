@@ -1,7 +1,9 @@
-# Hooks locais (ver "Qualidade, testes e segurança > lefthook" no plano).
-# O CI repete todos estes gates; os hooks só antecipam o feedback.
+# Hooks locais. O CI repete todos estes gates; os hooks só antecipam o feedback.
 # Os binários são chamados direto de node_modules/.bin para funcionar mesmo sem `corepack enable`
 # (sem pnpm no PATH).
+#
+# Sem hook de commit-msg (ADR 0032): o que chega a develop é o título do PR, que vira a mensagem
+# do squash e é conferido pelo check `pr-title`; o DCO é conferido pelo check `dco`.
 pre-commit:
   parallel: true
   commands:
@@ -23,12 +25,12 @@ pre-commit:
       glob: "{pnpm-lock.yaml,tools/vercel-cli/pnpm-lock.yaml,tools/netlify-cli/pnpm-lock.yaml}"
       run: node scripts/check-lockfile.ts
 
-commit-msg:
-  commands:
-    commitlint:
-      run: ./node_modules/.bin/commitlint --edit {1}
-
+# A parte por pacote do `pnpm verify` (typecheck, dependency-cruiser, type-coverage e unitários),
+# só nos pacotes afetados desde origin/develop. Lint, OpenSpec e lockfile já passaram no
+# pre-commit; os checks do repositório inteiro (knip, jscpd, sherif) ficam no `pnpm verify` e no CI.
 pre-push:
   commands:
     affected:
-      run: ./node_modules/.bin/turbo run typecheck test:unit --affected
+      env:
+        TURBO_SCM_BASE: origin/develop
+      run: ./node_modules/.bin/turbo run typecheck lint:deps type-coverage test:unit --affected

@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Testes de regressão da configuração de CI: invariantes que já quebraram uma vez e que nenhum
-# linter (actionlint, zizmor) enxerga, porque o YAML continua válido sem elas.
+# linter (actionlint, zizmor) enxerga, porque o YAML continua válido sem elas. É o lugar das
+# checagens de workflow (ci-gate, Sonar, audit, mutação, ingest.yml, source-watch.yml e seus
+# harden-runner); o que o actionlint ou o zizmor já reprovam não se repete aqui (ADR 0032).
 #
 # Uso: bash .github/scripts/ci-config.test.sh (na raiz). Requer yq (mikefarah v4) e jq.
 set -euo pipefail
@@ -33,39 +35,77 @@ job_runs_match() {
   grep -Eq -- "$2" <<<"$(job_runs "$1")"
 }
 
+yq_true() {
+  yq -e "$1" "$2" >/dev/null 2>&1
+}
+
 # --- Gates do plano que o CI precisa rodar (plan-gates-missing-in-ci) --------------------------
 check "lint roda o jscpd (pnpm dup)" job_runs_match lint '^pnpm dup$'
-check "lint roda turbo boundaries" job_runs_match lint 'turbo boundaries'
 check "lint roda os testes do affected.sh" job_runs_match lint 'bash \.github/scripts/affected\.test\.sh'
 check "lint roda este teste" job_runs_match lint 'bash \.github/scripts/ci-config\.test\.sh'
 check "typecheck roda type-coverage no --affected" \
   job_runs_match typecheck 'turbo run .*type-coverage.*--affected'
 
-# --- Sonar: o resultado do quality gate entra no ci-gate (GHA-3) -------------------------------
-sonar_args() {
-  yq -r '.jobs.sonar.steps[] | select(.uses // "" | test("sonarqube-scan-action")) | .with.args' \
-    .github/workflows/ci.yml
+# --- PR só de docs (ADR 0032): o lint roda Biome, lockfile e OpenSpec, e pula o resto ------------
+lint_docs_only_layer() {
+  # Uma linha por passo com `run`: "<if ou sempre> <primeira linha do run>".
+  local steps always others
+  steps="$(yq -r '.jobs.lint.steps[] | select(has("run")) | (.if // "sempre") + " " + (.run | split("\n") | .[0])' \
+    .github/workflows/ci.yml)" || return 1
+  always="$(sort <<<"$(grep '^sempre ' <<<"$steps")")"
+  others="$(grep -v '^sempre ' <<<"$steps" | grep -v "^env.HAS_CODE == 'true' " || true)"
+  [[ "$always" == $'sempre pnpm check-lockfile\nsempre pnpm lint\nsempre pnpm spec:validate' && -z "$others" ]] &&
+    yq_true '.jobs.lint.env.HAS_CODE == "${{ fromJSON(needs.scope.outputs.json).code }}"' .github/workflows/ci.yml
 }
-check "sonar espera e aplica o quality gate" \
-  bash -c "$(declare -f sonar_args); sonar_args | grep -q 'sonar.qualitygate.wait=true'"
-check "sonar com timeout do quality gate" \
-  bash -c "$(declare -f sonar_args); sonar_args | grep -Eq 'sonar.qualitygate.timeout=[0-9]+'"
+check "lint: só Biome, lockfile e OpenSpec rodam sem código; o resto depende de HAS_CODE" lint_docs_only_layer
+check "affected-paths.yml tem o grupo docs" yq_true '.docs | length > 0' .github/affected-paths.yml
+
+# --- pnpm audit e osv-scanner fora do PR (ADR 0032): advisory novo não reprova PR sem relação ----
+check "osv-scanner no audit.yml (uv.lock incluído) e fora do security.yml" \
+  bash -c "yq -e '.jobs.\"osv-scanner\".steps[] | select(.uses // \"\" | test(\"osv-scanner-action\"))' .github/workflows/audit.yml >/dev/null && grep -Fq -- '--lockfile=tools/ingest/uv.lock' .github/workflows/audit.yml && ! grep -q 'osv-scanner-action' .github/workflows/security.yml"
+check "dependency-review continua no PR (security.yml)" \
+  yq_true '.jobs."dependency-review".if == "github.event_name == '"'"'pull_request'"'"'"' .github/workflows/security.yml
+check "ci.yml sem pnpm audit de advisories (só signatures, no lint)" \
+  bash -c "! grep -Eq 'pnpm audit (--|$)' .github/workflows/ci.yml && yq -r '.jobs.lint.steps[].run // \"\"' .github/workflows/ci.yml | grep -qx 'pnpm audit signatures'"
+check "audit.yml em push, agendado e workflow_call, sem pull_request" \
+  yq_true '(.on | has("push")) and (.on | has("schedule")) and (.on | has("workflow_call")) and (.on | has("pull_request") | not)' .github/workflows/audit.yml
+check "audit.yml roda pnpm audit --prod --audit-level low" \
+  bash -c "yq -r '.jobs.audit.steps[].run // \"\"' .github/workflows/audit.yml | grep -qx 'pnpm audit --prod --audit-level low'"
+
+# --- Sonar só informativo (ADR 0032): fora do ci-gate e sem bloquear -----------------------------
+sonar=.github/workflows/sonar.yml
+check "sonar.yml com continue-on-error e sem esperar o quality gate" \
+  bash -c "yq -e '.jobs.sonar.\"continue-on-error\" == true' '$sonar' >/dev/null && ! grep -q 'qualitygate.wait' '$sonar'"
 check "sonar pula sem SONAR_TOKEN (fork/Dependabot sem o segredo)" \
-  bash -c "yq -r '.jobs.sonar.steps[].run // \"\"' .github/workflows/ci.yml | grep -q 'if \[\[ -z \"\${SONAR_TOKEN}\" \]\]'"
+  bash -c "yq -r '.jobs.sonar.steps[].run // \"\"' '$sonar' | grep -q 'if \[\[ -z \"\${SONAR_TOKEN}\" \]\]'"
+check "pr-gate chama o sonar.yml fora dos needs do ci-gate" \
+  yq_true '.jobs.sonar.uses == "./.github/workflows/sonar.yml" and (.jobs."ci-gate".needs | contains(["sonar"]) | not)' .github/workflows/pr-gate.yml
+check "ci.yml chama o sonar.yml só em push para develop" \
+  bash -c "yq -r '.jobs.sonar.if' .github/workflows/ci.yml | grep -Fq \"github.event_name == 'push' && github.ref == 'refs/heads/develop'\""
 # Em push, o Sonar analisa a branch inteira: sem o lcov e o coverage.xml, o new_coverage vai a 0%
-# e o quality gate reprova (sonar-push-without-coverage).
+# (sonar-push-without-coverage). Informativo, mas a medida da branch fica errada.
 check "test roda sempre em push (lcov para o Sonar)" \
   bash -c "yq -r '.jobs.test.if' .github/workflows/ci.yml | grep -q \"github.event_name == 'push' ||\""
 check "python roda sempre em push (coverage.xml para o Sonar)" \
   bash -c "yq -r '.jobs.python.if' .github/workflows/ci.yml | grep -q \"github.event_name == 'push' ||\""
-check "ci-gate depende do workflow ci (que inclui o sonar)" \
-  bash -c "yq -e '.jobs.\"ci-gate\".needs | contains([\"ci\"])' .github/workflows/pr-gate.yml >/dev/null"
+check "Codecov fora do CI" \
+  bash -c "! grep -rqi 'codecov' .github/workflows && [[ ! -e codecov.yml ]]"
 
-# --- Gates da F2: mutação, sql-perf, migration-guard e retrieval evals entram no ci-gate --------
-check "ci-gate depende de mutation e perf"   bash -c "yq -e '.jobs.\"ci-gate\".needs | contains([\"mutation\", \"perf\"])' .github/workflows/pr-gate.yml >/dev/null"
-# Só mutation e perf podem pular (workflows só com jobs filtrados por escopo); ci e security, nunca.
-check "ci-gate aceita skip só de mutation e perf" \
-  bash -c "yq -r '.jobs.\"ci-gate\".steps[] | select(.uses // \"\" | test(\"alls-green\")) | .with.\"allowed-skips\"' .github/workflows/pr-gate.yml | jq -e 'sort == [\"mutation\", \"perf\"]' >/dev/null"
+# --- ci-gate (ADR 0032): agregador sem `always()`, sem mutação e com só o perf podendo pular ----
+check "ci-gate roda com !cancelled(), não always()" \
+  yq_true '.jobs."ci-gate".if == "${{ !cancelled() }}"' .github/workflows/pr-gate.yml
+check "ci-gate depende de affected, ci, security e perf" \
+  yq_true '(.jobs."ci-gate".needs | sort | join(",")) == "affected,ci,perf,security"' .github/workflows/pr-gate.yml
+# Só o perf pode pular (workflow só com jobs filtrados por escopo); ci e security, nunca.
+check "ci-gate aceita skip só do perf" \
+  bash -c "yq -r '.jobs.\"ci-gate\".steps[] | select(.uses // \"\" | test(\"alls-green\")) | .with.\"allowed-skips\"' .github/workflows/pr-gate.yml | jq -e '. == [\"perf\"]' >/dev/null"
+# Stryker só no noturno, e só com commit novo desde o último run verde.
+check "mutation.yml fora do PR (só schedule e workflow_dispatch)" \
+  yq_true '(.on | keys | sort | join(",")) == "schedule,workflow_dispatch"' .github/workflows/mutation.yml
+check "mutation.yml pula o stryker sem commit novo" \
+  yq_true '.jobs.stryker.needs == "changes" and .jobs.stryker.if == "needs.changes.outputs.run == '"'"'true'"'"'"' .github/workflows/mutation.yml
+check "nenhum workflow de PR chama o mutation.yml" \
+  bash -c "! grep -q 'workflows/mutation.yml' .github/workflows/pr-gate.yml .github/workflows/ci.yml"
 check "lint roda os testes do migration-guard" job_runs_match lint 'bash .github/scripts/migration-guard.test.sh'
 check "migration-guard roda o script com os labels do PR" job_runs_match migration-guard 'bash .github/scripts/migration-guard.sh'
 check "retrieval-evals aplica o gate do thresholds.json" job_runs_match retrieval-evals 'eval:retrieval:check'
@@ -118,32 +158,14 @@ no_unanchored_out_jscpd() {
 check "sonar.exclusions sem **/out/**" no_unanchored_out_sonar
 check ".jscpd.json sem **/out/**" no_unanchored_out_jscpd
 
-# --- Todo workflow: actions fixadas por SHA e checkout sem credenciais persistidas ---------------
-actions_pinned_by_sha() {
-  local bad
-  bad="$(yq -r '.. | select(tag == "!!map" and has("uses")) | .uses' .github/workflows/*.yml .github/actions/*/action.yml |
-    grep -Ev '^(\./|---$)|@[0-9a-f]{40}$' || true)"
-  if [[ -n "$bad" ]]; then
-    echo "     uses sem SHA: ${bad//$'\n'/, }"
-    return 1
-  fi
-}
-checkout_without_credentials() {
-  local bad
-  bad="$(yq -r '.jobs[]?.steps[]? | select(.uses // "" | test("^actions/checkout@")) | .with."persist-credentials" | tostring' \
-    .github/workflows/*.yml | grep -Ev '^(false|---)$' || true)"
-  [[ -z "$bad" ]]
-}
-check "actions fixadas por SHA (exceto as locais)" actions_pinned_by_sha
-check "todo checkout com persist-credentials: false" checkout_without_credentials
+# Actions fixadas por SHA e checkout sem credenciais persistidas não são conferidos aqui: o zizmor
+# do security.yml já reprova os dois (auditorias `unpinned-uses`, que desde a 1.20 exige hash em
+# toda action, e `artipacked`) (ADR 0032).
 
 # --- F3: ingest.yml (plano: Workflows; Environments e segredos) ---------------------------------
 ingest=.github/workflows/ingest.yml
 watch=.github/workflows/source-watch.yml
 
-yq_true() {
-  yq -e "$1" "$2" >/dev/null 2>&1
-}
 # Texto de um job inteiro (env, steps, with), para procurar segredos e comandos.
 job_text() {
   yq -o=json ".jobs.\"$2\"" "$1"

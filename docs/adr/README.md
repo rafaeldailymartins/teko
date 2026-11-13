@@ -23,7 +23,7 @@ o roteiro, em [`docs/roadmap.md`](../roadmap.md).
 | 0029                                                 | Web e API na mesma origem na Vercel                                                  | accepted |
 | 0030                                                 | Artefatos de ingestão no GitHub Releases                                             | accepted |
 | 0031                                                 | RAGOps: avaliação dev/holdout, gate do corpus-eval, linhagem e rollback              | accepted |
-| 0032                                                 | Gates e ferramentas de CI enxutos                                                    | accepted |
+| [0032](0032-gates-e-ferramentas-enxutos.md)          | Gates e ferramentas de CI enxutos                                                    | accepted |
 | [0033](0033-trunk-based.md)                          | Trunk-based com `main` como tronco, produção por tag `v*` e changelog pelo git-cliff | accepted |
 
 As ADRs 0029 a 0032 chegam pelos PRs da revisão de 2026-11-12 ([status](../status.md)), um por

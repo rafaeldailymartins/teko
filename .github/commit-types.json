@@ -1,0 +1,35 @@
+{
+  "$comment": "Tipos e escopos de Conventional Commits aceitos no título do PR (check pr-title do pr-hygiene.yml), que vira a mensagem do squash. Lista única: CONTRIBUTING, template de PR e labeler apontam para cá. deps-dev é o escopo que o Dependabot gera para dependências de desenvolvimento.",
+  "types": [
+    "build",
+    "chore",
+    "ci",
+    "docs",
+    "feat",
+    "fix",
+    "perf",
+    "refactor",
+    "revert",
+    "style",
+    "test"
+  ],
+  "scopes": [
+    "web",
+    "api",
+    "shared",
+    "ingest",
+    "retrieval",
+    "eval",
+    "obs",
+    "i18n",
+    "auth",
+    "db",
+    "ci",
+    "deps",
+    "deps-dev",
+    "release",
+    "specs",
+    "docs",
+    "infra"
+  ]
+}

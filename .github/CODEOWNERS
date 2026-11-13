@@ -1,6 +1,7 @@
-# Code owners. Os rulesets `review-main` e `review-develop` exigem aprovação do code owner.
+# Code owners. Hoje nenhum ruleset exige aprovação (mantenedor único; `review-develop` e
+# `review-main` pedem PR com 0 aprovações), então este arquivo só define quem é marcado para revisar.
 # A última regra que casa vence; as entradas específicas existem para continuar valendo quando
-# houver um segundo mantenedor e o `*` deixar de cobrir tudo.
+# houver um segundo mantenedor, o `*` deixar de cobrir tudo e os rulesets voltarem a exigir code owner.
 
 * @rafaeldailymartins
 
@@ -8,6 +9,7 @@
 /.github/ @rafaeldailymartins
 /.semgrep/ @rafaeldailymartins
 /sonar-project.properties @rafaeldailymartins
+/pnpm-workspace.yaml @rafaeldailymartins
 
 # Domínio de vigência e regras de negócio
 /apps/api/src/domain/ @rafaeldailymartins
@@ -29,7 +31,3 @@
 
 # Vercel CLI isolado: lockfile próprio e as únicas exceções de trustPolicy para a Vercel
 /tools/vercel-cli/ @rafaeldailymartins
-
-# Exceções de vulnerabilidade (reason, prova de caminho não alcançável, ignoreUntil <= 30 dias)
-/.grype.yaml @rafaeldailymartins
-/osv-scanner.toml @rafaeldailymartins

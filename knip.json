@@ -1,6 +1,7 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema.json",
   "ignoreFiles": [".semgrep/**"],
+  "ignoreBinaries": ["uv"],
   "workspaces": {
     ".": {
       "entry": ["scripts/*.ts!", "scripts/**/*.test.ts"]
@@ -16,7 +17,7 @@
       "ignoreDependencies": ["pino-pretty"]
     },
     "apps/web": {
-      "entry": ["app/**/*.{ts,tsx}!", "steiger.config.ts"],
+      "entry": ["app/**/*.{ts,tsx}!"],
       "project": ["app/**/*.{ts,tsx}!", "src/**/*.{ts,tsx}!"],
       "ignoreUnresolved": ["/apps/web/netlify/plugins/context-routing"]
     },

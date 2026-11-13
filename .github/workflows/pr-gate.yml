@@ -4,7 +4,7 @@
 # job `affected`, e os jobs não afetados terminam como `skipped`. Cada workflow entra aqui na fase
 # que o cria (ver "CI/CD, Git Flow e ambientes > Workflows" no plano):
 #   - F1: ci.yml, security.yml (este arquivo)
-#   - F2: mutation.yml (Stryker incremental) e perf.yml (perfil `pr`: sql-perf)
+#   - F2: perf.yml (perfil `pr`: sql-perf). O mutation.yml saiu do PR (ADR 0032): só noturno.
 #   - e2e.yml (se web/api afetados) e evals.yml (perfil `pr`, se llm afetado) entram nas fases
 #     que os criam. Ao adicionar um deles: (1) novo job com `uses:` e `with: { affected: ... }`;
 #     (2) incluí-lo em `needs` do `ci-gate`; (3) se o job inteiro puder ser pulado por um `if:`,
@@ -40,6 +40,8 @@ jobs:
       ingest: ${{ steps.scope.outputs.ingest }}
       rag: ${{ steps.scope.outputs.rag }}
       llm: ${{ steps.scope.outputs.llm }}
+      docs: ${{ steps.scope.outputs.docs }}
+      code: ${{ steps.scope.outputs.code }}
     steps:
       - name: Harden runner
         uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
@@ -70,12 +72,19 @@ jobs:
     uses: ./.github/workflows/ci.yml
     permissions:
       contents: read
-      id-token: write # upload de cobertura ao Codecov via OIDC
     with:
       affected: ${{ needs.affected.outputs.json }}
-    # Só o segredo que o ci.yml declara (nunca `secrets: inherit`). Em PR do Dependabot ele vem dos
-    # segredos do Dependabot; em PR de fork chega vazio e o job `sonar` pula a análise sem falhar.
-    # Com o token, o job `sonar` espera o quality gate e reprova o `ci-gate` se ele reprovar.
+
+  # SonarQube Cloud, só informativo (ADR 0032): depois do `ci` (usa os artifacts de cobertura do
+  # mesmo run), em paralelo com o `ci-gate` e fora dos `needs` dele. Só o segredo que o sonar.yml
+  # declara (nunca `secrets: inherit`); em PR do Dependabot ele vem dos segredos do Dependabot, em
+  # PR de fork chega vazio e a análise é pulada.
+  sonar:
+    name: sonar
+    needs: ci
+    uses: ./.github/workflows/sonar.yml
+    permissions:
+      contents: read
     secrets:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
@@ -84,17 +93,6 @@ jobs:
     uses: ./.github/workflows/security.yml
     permissions:
       contents: read
-
-  mutation:
-    name: mutation
-    needs: affected
-    uses: ./.github/workflows/mutation.yml
-    permissions:
-      contents: read
-    with:
-      affected: ${{ needs.affected.outputs.json }}
-    secrets:
-      STRYKER_DASHBOARD_API_KEY: ${{ secrets.STRYKER_DASHBOARD_API_KEY }}
 
   perf:
     name: perf
@@ -108,8 +106,10 @@ jobs:
 
   ci-gate:
     name: ci-gate
-    if: always()
-    needs: [affected, ci, security, mutation, perf]
+    # `!cancelled()` e não `always()`: um run cancelado (push novo no PR) não deve publicar um
+    # `ci-gate` verde ou vermelho por cima do run que o substituiu.
+    if: ${{ !cancelled() }}
+    needs: [affected, ci, security, perf]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions: {}
@@ -124,9 +124,9 @@ jobs:
         with:
           jobs: ${{ toJSON(needs) }}
           # Jobs que podem terminar como `skipped` sem reprovar o gate. Nenhum job deste workflow é
-          # condicional: o filtro por escopo acontece dentro de ci.yml, mutation.yml e perf.yml. Mas
-          # o mutation.yml e o perf.yml só têm jobs filtrados: num PR sem pacote afetado (só
-          # corpus/, como o PR do corpus.lock.json), todos pulam e o GitHub reporta o workflow
-          # chamado inteiro como `skipped`. Falha continua sendo `failure`. O ci.yml sempre roda o
-          # lint e não entra aqui. Os que vierem com `if:` aqui (e2e, evals) entram nesta lista.
-          allowed-skips: '["mutation", "perf"]'
+          # condicional: o filtro por escopo acontece dentro de ci.yml e perf.yml. Mas o perf.yml
+          # só tem jobs filtrados: num PR sem api nem rag afetados (só corpus/ ou docs), todos
+          # pulam e o GitHub reporta o workflow chamado inteiro como `skipped`. Falha continua
+          # sendo `failure`. O ci.yml sempre roda o lint e não entra aqui. Os que vierem com `if:`
+          # aqui (e2e, evals) entram nesta lista.
+          allowed-skips: '["perf"]'

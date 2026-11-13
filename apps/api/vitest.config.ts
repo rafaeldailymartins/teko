@@ -12,7 +12,7 @@ import { defineConfig } from 'vitest/config'
  * Cobertura (v8), thresholds do plano: `domain/**` e `application/**` 95/90/95/95 por arquivo;
  * `adapters/**` 80/70/80/80 no agregado. A rodada de integração (`test:integration`) também mede
  * cobertura, sem thresholds e em `coverage-integration/`: é ela que exercita a persistência e a
- * CLI, e o lcov dela vai junto com o dos unitários para o Sonar e o Codecov.
+ * CLI, e o lcov dela vai junto com o dos unitários para o Sonar (informativo, ADR 0032).
  */
 const INTEGRATION_RUN = process.argv.includes('integration')
 const STRICT_THRESHOLDS = {
