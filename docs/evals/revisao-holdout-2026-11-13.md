@@ -158,6 +158,9 @@ reranker veem.
    como contínuo). Decidir se o parser fecha a redação na data da nota (e, então, se o caso do
    etanol vira `unanswerable` em 2024-06 ou ganha a vigência nova) ou se a nota passa a ir para a
    `review_queue`. Até lá o caso não tem `validity`.
+   **Parser corrigido em 2026-11-13** (`fix-rcte-sem-efeitos-e-titulos-acrescidos`, revisão 2): o
+   VIII fica `[2018-01-01, 2022-06-23)` e o IX, `[2016-01-01, 2022-06-23)` e
+   `[2023-04-30, 2023-06-01)`. Continua em aberto só a `validity` do caso do etanol.
 4. **Granularidade do esperado nas listas de produtos.** O caso do ovo espera o inciso ("II - 12%")
    e o item ("4. ovo;"), sem a alínea "a" ("na operação interna com os seguintes produtos"); os da
    cesta básica esperam só a alínea, sem o inciso que tem a alíquota. Vale fixar uma regra (o
@@ -168,7 +171,8 @@ reranker veem.
 - **Título errado no RCTE.** O parser não reconhece "CAPÍTULO IV-A DA ESCRITURAÇÃO FISCAL DIGITAL -
   EFD": os arts. 356-C a 356-S ficam com o `headingPath` "… CAPÍTULO IV - DOS LIVROS FISCAIS > Seção
   XII - Do Livro de Movimentação de Produto - LMP", e esse título entra no embedding de todos os
-  dispositivos da EFD no RCTE.
+  dispositivos da EFD no RCTE. Corrigido em 2026-11-13 (a classe `PargrafoAlterador-titulo` passou
+  a ser título; mais seis subseções e capítulos acrescidos no RCTE e um no CTE).
 - **Ovo.** O Convênio ICM 44/75 isenta ovos, e Goiás costuma trazer isso no Anexo IX, que está fora
   da cobertura (onda C3); não deu para conferir no texto. A resposta "12%" está certa para a
   alíquota, mas pode ser incompleta na prática.

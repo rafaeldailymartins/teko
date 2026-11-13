@@ -25,9 +25,12 @@ export const PARSERS: Readonly<Record<ParserName, Parser>> = {
  * - `docling-guia` 2: título do bloco junto ao do registro 0000 e linhas fundidas pelo TableFormer.
  * - `docling-generic` 2: tabela com uma linha por parágrafo e as células com o cabeçalho da coluna
  *   (`Cabeçalho: valor; …`), em vez de achatada num parágrafo só (A8).
+ * - `go-html-state-machine` 2: a nota "Redação … sem efeitos a partir de …" termina a redação (ou
+ *   tira dela o período "de a a b"), e os títulos acrescidos (`PargrafoAlterador-titulo`, como o
+ *   "CAPÍTULO IV-A" da EFD no RCTE) entram no `headingPath`.
  */
 export const PARSER_REVISIONS: Readonly<Record<ParserName, number>> = {
-  [ParserName.GoHtmlStateMachine]: 1,
+  [ParserName.GoHtmlStateMachine]: 2,
   [ParserName.DoclingGuia]: 2,
   [ParserName.DoclingGeneric]: 2,
   [ParserName.ReinfXsd]: 1,

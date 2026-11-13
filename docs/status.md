@@ -82,8 +82,10 @@ Concluída em 2026-11-12. Código entregue em 2026-11-11 (#25); o primeiro run r
 - Mudanças arquivadas: `add-rcte-cte-html-parser`, `add-go-code-tables-ingestion`,
   `add-embedding-pipeline`, `add-docling-pdf-extraction`, `add-sped-guides-ingestion`,
   `add-parser-revision`, `add-reranker`, `fix-hybrid-search-provision-dedup` e
-  `add-http-pinned-guides`; em 2026-11-13, `add-source-change-monitoring` e
-  `fix-safe-fetcher-retries` (#46).
+  `add-http-pinned-guides`; em 2026-11-13, `add-source-change-monitoring`,
+  `fix-safe-fetcher-retries` (#46) e `fix-rcte-sem-efeitos-e-titulos-acrescidos` (revisão 2 do
+  `go-html-state-machine`: notas "sem efeitos" da LC 194/2022 e títulos acrescidos como o
+  "CAPÍTULO IV-A" da EFD; o próximo run reprocessa o RCTE e o CTE).
 - ADRs 0011, 0025 (reconciliação por janela, aceita pelo mantenedor em 2026-11-12), 0026, 0027 e
   0028 (exceção http com pin), todas accepted.
 - Medido nos arquivos oficiais: 95,8% das `NotaVigncia` do RCTE e 96,6% das do CTE, o resto

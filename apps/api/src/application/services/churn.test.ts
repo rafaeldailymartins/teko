@@ -20,6 +20,7 @@ function open(n: number, status: OpenProvisionVersion['reviewStatus'] = 'auto') 
       reviewStatus: status,
       contentHash: 'h',
       validDuring: { from: '2000-01-01', to: null },
+      headingPath: null,
     }),
   )
 }

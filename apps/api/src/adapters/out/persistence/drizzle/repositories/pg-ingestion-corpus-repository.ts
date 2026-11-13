@@ -76,6 +76,7 @@ interface OpenVersionRow {
   readonly review_status: ReviewStatus
   readonly content_hash: string
   readonly valid_during: string
+  readonly heading_path: string | null
 }
 
 function toOpenVersion(row: OpenVersionRow): OpenProvisionVersion {
@@ -86,6 +87,7 @@ function toOpenVersion(row: OpenVersionRow): OpenProvisionVersion {
     reviewStatus: row.review_status,
     contentHash: row.content_hash,
     validDuring: parseRange(row.valid_during),
+    headingPath: row.heading_path,
   }
 }
 
@@ -105,7 +107,9 @@ async function openVersions(
 ): Promise<OpenProvisionVersion[]> {
   const result = await executor.execute<OpenVersionRow>(sql`
     SELECT pv.id, p.stable_key, pv.modality, pv.review_status, pv.content_hash,
-           pv.valid_during::text AS valid_during
+           pv.valid_during::text AS valid_during,
+           (SELECT c.heading_path FROM corpus.chunks c
+            WHERE c.provision_version_id = pv.id ORDER BY c.ordinal LIMIT 1) AS heading_path
     FROM corpus.provision_versions pv
     JOIN corpus.provisions p ON p.id = pv.provision_id
     JOIN corpus.documents d ON d.id = p.document_id
