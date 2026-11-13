@@ -58,7 +58,7 @@ Atualize esta seção no PR que fecha cada fase ou spike.
     token do Workers AI está no `tools/ingest/.env` local e no environment `staging`
     (`CF_AI_TOKEN`, `CF_ACCOUNT_ID`).
   - As rotas `/api/_spike/*` e a `TEKO_SPIKE_SENSITIVE` saíram do código; os workflows de spike
-    ficam só com os passos que não dependem delas, como referência para a F7. As env vars Config
+    saíram em 2026-11-12 (ADR 0032); a referência para a F7 fica no histórico do git. As env vars Config
     da F1 do `teko-api-staging` foram gravadas à mão (a F7 automatiza).
   - O projeto `teko-api` (produção) existe e `teko-api.vercel.app` está reservado por um
     placeholder (a API real e as env vars chegam na F7).

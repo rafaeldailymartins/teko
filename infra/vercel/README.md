@@ -138,8 +138,9 @@ esse projeto com `--frozen-lockfile` e chamam o binário dele. No app, o único 
 
 Fluxo do `deploy-api.yml` (`develop` → `teko-api-staging`; release em `main` → `teko-api`), com
 `VERCEL_TOKEN`, `VERCEL_ORG_ID` e `VERCEL_PROJECT_ID` do environment do GitHub. O workflow chega na
-F7; até lá, só o `spike-api-vercel.yml` exercita parte dele no `teko-api-staging` (bundle, tarball
-atestado, deploy `--prebuilt`, smoke e `promote`, sem migrações nem env sync):
+F7. O `spike-api-vercel.yml` da F1 exercitou parte dele no `teko-api-staging` (bundle, tarball
+atestado, deploy `--prebuilt`, smoke e `promote`, sem migrações nem env sync) e saiu do repositório
+em 2026-11-12 (ADR 0032); a referência fica no histórico do git:
 
 1. `pnpm install --frozen-lockfile`, `pnpm audit --prod` e osv-scanner no commit exato;
 2. sem `vercel pull` nem `vercel build` (ADR 0017): `pnpm --filter @teko/api build` (tsdown),
@@ -186,7 +187,7 @@ O builder zero-config do Fastify não é usado (ADR 0017): no spike F1 (b) ele c
 
 ## Pendências que dependem de tokens (spikes F1 (b) e (c))
 
-O `spike-api-vercel.yml` roda no environment `staging` do GitHub. Itens marcados têm resultado
+O `spike-api-vercel.yml` (removido em 2026-11-12, ADR 0032) rodava no environment `staging` do GitHub. Itens marcados têm resultado
 registrado; o resto continua aberto:
 
 - [x] zero-config detecta `src/server.ts` no monorepo pnpm com Root Directory `apps/api` e resolve

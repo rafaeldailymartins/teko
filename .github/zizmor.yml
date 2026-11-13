@@ -14,5 +14,3 @@ rules:
       - perf.yml
       - pr-gate.yml
       - source-watch.yml
-      - spike-api-vercel.yml
-      - spike-web-netlify.yml
