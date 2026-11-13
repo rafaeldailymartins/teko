@@ -20,8 +20,8 @@ o roteiro, em [`docs/roadmap.md`](../roadmap.md).
 | [0026](0026-revisao-do-parser.md)                    | Revisão do parser na identidade da versão de documento                               | accepted |
 | [0027](0027-reranker-workers-ai.md)                  | Reranker do Workers AI na busca híbrida                                              | accepted |
 | [0028](0028-excecao-http-com-pin.md)                 | Exceção http com pin para os Guias do portal antigo do SPED                          | accepted |
-| 0029                                                 | Web e API na mesma origem na Vercel                                                  | accepted |
-| 0030                                                 | Artefatos de ingestão no GitHub Releases                                             | accepted |
+| [0029](0029-web-e-api-na-mesma-origem.md)            | Web e API na mesma origem na Vercel                                                  | accepted |
+| [0030](0030-artefatos-no-github-releases.md)         | Artefatos de ingestão no GitHub Releases                                             | accepted |
 | [0031](0031-ragops-avaliacao-e-gates.md)             | RAGOps: avaliação dev/holdout, gate do corpus-eval, linhagem e rollback              | accepted |
 | [0032](0032-gates-e-ferramentas-enxutos.md)          | Gates e ferramentas de CI enxutos                                                    | accepted |
 | [0033](0033-trunk-based.md)                          | Trunk-based com `main` como tronco, produção por tag `v*` e changelog pelo git-cliff | accepted |
@@ -39,6 +39,7 @@ uma nota de revisão apontando para a ADR nova, sem reescrever a decisão origin
 | 0002         | saem as exceções da Netlify (`tools/netlify-cli`, `@netlify/plugin-nextjs`) e do steiger | 0029, 0032 |
 | 0003         | os spikes (a) e (c), de web na Netlify e proxy assinado, ficam superados                 | 0029       |
 | 0004         | projetos `tekoia` e `tekoia-staging`, mesma origem, WAF sem a regra do `x-nf-sign`       | 0029       |
+| 0017         | o `.vercel/output` leva o estático e rotas próprias; a Function leva os chunks do bundle | 0029       |
 | 0024         | o `release-rehearsal` passa a aceitar só a tag `v*`; não há mais PR de release           | 0033       |
 
 ## Numeração e lista do plano

@@ -270,3 +270,18 @@ O primeiro run real do PR #1 mostrou duas coisas que a análise local não pegav
   F7, antes de cada deploy); no PR ficam o `dependency-review` e o `pnpm audit signatures`.
 - **Sem `pip-audit`.** O osv-scanner já audita o `uv.lock` inteiro; ele também saiu do PR e roda
   no `audit.yml`, junto com o `pnpm audit`.
+
+## Adendo (2026-11-12): mesma origem na Vercel ([ADR 0029](0029-web-e-api-na-mesma-origem.md))
+
+- **Sai o `tools/netlify-cli`** com as exceções dele: `trustPolicyExclude` do
+  `@netlify/serverless-functions-api`, os `allowBuilds`, os `overrides` de `sharp` e
+  `@netlify/redirect-matcher`, o `ignoreGhsas`/`allow-ghsas` do `deepmerge` (GHSA-gcqx-w48m-w2h4) e
+  as licenças de `normalize-package-data` e `spdx-exceptions` no `dependency-review`. O
+  `check-lockfile`, o Dependabot, o `audit.yml` e o `pnpm verify:audit` ficam só com o
+  `tools/vercel-cli`.
+- **Sai o `@netlify/plugin-nextjs`** do catálogo e do `@teko/web`: o export vai para o `static/`
+  do `.vercel/output`, sem build da Netlify.
+- **Sai o `@fastify/cors`** (o stream deixou de ser cross-origin) e **entra o `@fastify/static`
+  10.1.10** (proveniência SLSA, MIT; dependências `@fastify/send`, `@fastify/accept-negotiator`,
+  `content-disposition` e `mime`, aceitas pelo `trustPolicy: no-downgrade`), usado só pelo Plano B.
+- O `@netlify/blobs` fica até a etapa C2 da [ADR 0030](0030-artefatos-no-github-releases.md).

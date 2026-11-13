@@ -140,21 +140,25 @@ imprime uma linha por item, mostra a fila de `pending` por família e motivo, e 
 ## Artefatos no GitHub Releases
 
 A porta `BlobStore` tem o adapter de GitHub Releases (ADR 0030), escolhido por `BLOB_STORE`
-(padrão `github-releases`). Releases **prerelease**, com `make_latest=false`, assets nomeados pelo
-sha256:
+(padrão `github-releases`). Releases **prerelease**, com `make_latest=false`, nunca `v*`:
 
-| Release (tag)                   | Conteúdo                                                                      |
-| ------------------------------- | ----------------------------------------------------------------------------- |
-| `corpus-v<N>`                   | snapshot da `corpus_version` N (um `.jsonl.zst` por tabela + `manifest.json`) |
-| `corpus-raw-<shard>`            | arquivos baixados das fontes                                                  |
-| `corpus-docling-r<rev>-<shard>` | saída do Docling por `EXTRACTOR_REVISION`                                     |
-| `corpus-watch-state`            | estado do `source-watch` (ETag, Last-Modified, hashes)                        |
-| `corpus-eval-history`           | métricas do `corpus-eval` por `corpus_version`                                |
+| Release (tag)               | Conteúdo                                                                      |
+| --------------------------- | ----------------------------------------------------------------------------- |
+| `corpus-v<N>`               | snapshot da `corpus_version` N (um `.jsonl.zst` por tabela + `manifest.json`) |
+| `corpus-raw-<0-f>`          | arquivos baixados das fontes                                                  |
+| `corpus-docling-<0-f>`      | saída do Docling (a revisão do extrator vai na chave)                         |
+| `corpus-watch-state-<0-3>`  | estado do `source-watch` e os `discovered.json`                               |
+| `corpus-eval-history-<0-3>` | métricas do `corpus-eval` por `corpus_version`                                |
 
-- Shards por prefixo do sha256, por causa do limite de 1.000 assets por release.
+- Shard = `sha256(chave) mod shards`, por causa do limite de 1.000 assets por release; o asset é a
+  chave com `/` trocado por `__` (as chaves de fonte já trazem o sha256 do conteúdo).
+- Download e upload conferem o `digest` sha256 que o GitHub calcula; gravar o mesmo conteúdo não
+  sobe nada.
 - Gravação só com `GITHUB_TOKEN` de `contents: write` nos jobs que gravam; leitura é pública.
 - Migração em duas etapas: C1 traz o adapter, o comando `ingest blobs-migrate` (idempotente, confere
-  o sha256) e o workflow `blobs-migrate.yml`; C2 remove o adapter da Netlify, o comando e o workflow.
+  o sha256) e o workflow `blobs-migrate.yml`, com o `ingest.yml` e o `source-watch.yml` ainda em
+  `BLOB_STORE: netlify`; C2, depois da migração, troca os dois para `github-releases` e remove o
+  adapter da Netlify, o comando e o workflow.
 
 ## Snapshot, promoção e rollback
 
@@ -184,7 +188,7 @@ commit do PR do lock, em `corpus/corpus.eval.json` (métricas e intervalos de `d
 - Páginas: índices SPED (EFD ICMS/IPI e REINF), `RCTE.htm`, `CTE.htm`, os sumários anuais
   `INDICES/sumarios/Decretos_{yyyy}.htm`, `leis_atualizadoras.htm`, Guia EFD-GO e o WS de Tabelas
   Externas. O cabeçalho "CONSOLIDADO ATÉ O DECRETO Nº …" é o sinal barato; o diff é por dispositivo.
-- Job `detect` (environment `staging`): lê e grava o estado no release `corpus-watch-state`, grava
+- Job `detect` (environment `staging`): lê e grava o estado no `BlobStore` (`corpus-watch-state-*`), grava
   `discovered.json` e chama o `ingest.yml` (`workflow_call`) para o staging. Não toca o banco.
 - Job `mark-coverage` (environment `corpus-watch`, role `teko_watch` nos dois projetos): sem
   mudança, um `UPDATE … SET verified_at = <dia do run>`; com mudança, também `gaps` e `gap_reason`

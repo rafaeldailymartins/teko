@@ -316,7 +316,8 @@ Esgotado o `stream_seconds`, perguntas que exigiriam stream recebem `quota_excee
 
 1. **Deny** em `/api/*` fora dos prefixos conhecidos (`/api/healthz`, `/api/auth/*`, `/api/v1/*` e,
    só no staging, `/api/docs*`). O estático e `/healthz` passam.
-2. Livre (a regra do `x-nf-sign` saiu com a Netlify).
+2. **Deny** em métodos diferentes de GET e HEAD fora de `/api/*` e `/healthz`: o estático só é
+   lido (no lugar da regra do `x-nf-sign`, que saiu com a Netlify).
 3. **Rate limit** em `POST /api/v1/questions/*/stream`, por IP, 10 requests em 60 s → 429.
 
 Nenhuma regra usa Challenge. Tráfego negado pelo WAF não invoca a Function e não conta CDN

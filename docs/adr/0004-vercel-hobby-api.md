@@ -193,3 +193,15 @@ Também descartada: uma segunda conta Vercel para somar cotas, que viola a polí
     `attachDatabasePool`, `getDeadline` nas versões atuais);
   - `/websites/render`: instância Free (750 h por workspace, spin-down em 15 min, cerca de 1 min
     para voltar, suspensão sem forma de pagamento).
+
+## Revisão (2026-11-12): web e API na mesma origem ([ADR 0029](0029-web-e-api-na-mesma-origem.md))
+
+- Os projetos foram renomeados para `tekoia` (produção) e `tekoia-staging`, com os domínios
+  canônicos `tekoia.vercel.app` e `tekoia-staging.vercel.app`; `teko-api.vercel.app` e
+  `teko-api-staging.vercel.app` continuam nos projetos e respondem 308 para o canônico.
+- O mesmo projeto serve o export estático da web (CDN) e a Function (`/api/*` e `/healthz`):
+  `WEB_ORIGIN` passa a ser o domínio canônico, e saem o `STREAM_ORIGIN`, o ticket do stream, o CORS
+  e o `NETLIFY_PROXY_JWS_SECRET`.
+- WAF: a regra 2 (`x-nf-sign`) vira "o estático só aceita GET e HEAD"; a regra 1 deixa o estático
+  passar e nega `/api/*` desconhecido; a regra 3 (rate limit do stream) continua.
+- Plano B: o serviço do Render serve também o export (`WEB_STATIC_DIR`), na mesma origem.

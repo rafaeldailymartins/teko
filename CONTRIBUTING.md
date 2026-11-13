@@ -224,8 +224,8 @@ Two root scripts run the gates locally (they call `pnpm` again, so `pnpm` must b
 | `pnpm lint:monorepo`    | workspace consistency (sherif)                                                    |
 | `pnpm lint:deps`        | architecture boundaries (dependency-cruiser)                                      |
 | `pnpm spec:validate`    | OpenSpec strict validation                                                        |
-| `pnpm check-lockfile`   | single-document lockfiles (root and `tools/vercel-cli`)                              |
-| `pnpm verify:audit`     | known vulnerabilities in the root (production) and in both deploy CLIs            |
+| `pnpm check-lockfile`   | single-document lockfiles (root and `tools/vercel-cli`)                           |
+| `pnpm verify:audit`     | known vulnerabilities in the root (production) and in the deploy CLI              |
 | `pnpm verify:python`    | `tools/ingest`: ruff (lint and format), pyright and pytest with `uv --frozen`     |
 | `pnpm verify:ci`        | the three CI shell suites below (need `bash`, `jq` and `yq`)                      |
 | `pnpm test:mutation`    | Stryker in `apps/api` and `packages/shared`, break at 70 (nightly in CI, not PRs) |
