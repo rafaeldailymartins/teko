@@ -27,7 +27,7 @@ o roteiro, em [`docs/roadmap.md`](../roadmap.md).
 | [0033](0033-trunk-based.md)                          | Trunk-based com `main` como tronco, produção por tag `v*` e changelog pelo git-cliff | accepted |
 
 As ADRs 0029 a 0032 chegam pelos PRs da revisão de 2026-11-12 ([status](../status.md)), um por
-pacote; o link entra quando o arquivo estiver em `develop`.
+pacote; o link entra quando o arquivo estiver em `main`.
 
 ### Revisão de 2026-11-12
 

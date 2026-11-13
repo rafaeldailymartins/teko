@@ -215,13 +215,13 @@ A branch do PR do lock é `chore/corpus-lock-<run_id>` (o prefixo fecha os PRs d
 Modo **`eval-only`** (`mode: eval-only`): pula discover, extract e load e roda só o `corpus-eval`
 contra o staging, sem reingerir.
 
-- Sem `ref` (dispatch em `develop`): se o eval passar e a `corpus_version` do staging estiver à
-  frente do lock de `develop`, abre o PR do lock com o `corpus.lock.json` do artifact `corpus-lock`
+- Sem `ref` (dispatch em `main`): se o eval passar e a `corpus_version` do staging estiver à
+  frente do lock de `main`, abre o PR do lock com o `corpus.lock.json` do artifact `corpus-lock`
   do run que exportou essa versão (90 dias de retenção). É o caminho depois de um eval vermelho por
   causa do golden: corrige-se o golden e roda-se o `eval-only`.
 - Com `ref` (SHA de um PR): para PRs que mexem em busca, reranker, embeddings ou SQL. O rótulo
   `corpus-eval` num PR do próprio repositório faz o `corpus-eval-label.yml` disparar o `ingest.yml`
-  em `develop` com o SHA do PR; o run não abre PR de lock nem grava histórico.
+  em `main` com o SHA do PR; o run não abre PR de lock nem grava histórico.
 
 O harden-runner do `ingest.yml` fica em `block`.
 

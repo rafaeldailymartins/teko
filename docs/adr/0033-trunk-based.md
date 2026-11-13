@@ -64,14 +64,16 @@ Opção escolhida: **trunk-based**.
   disparado por push em `main` e o git-flow-next local.
 - **Ficam:** `ci-gate`, `pr-title`, `dco`, `Analyze (*)` (o `Analyze (actions)` sai quando o
   mantenedor tirá-lo do ruleset, ADR 0032), `required_signatures`, `non_fast_forward`,
-  `deletion`, `code_scanning`, `required_review_thread_resolution`, `strict`.
+  `deletion`, `code_scanning` e `required_review_thread_resolution`.
+- O `strict` dos checks exigidos (branch do PR atualizado com o tronco) **não** fica: o mantenedor
+  o desligou em 2026-11-12, por recomendação da revisão de arquitetura.
 
 ### Transição
 
-Enquanto o mantenedor não troca os rulesets e o branch, nada muda no repositório: `develop`
-continua o padrão e os nomes dos checks exigidos (`ci-gate`, `pr-title`, `gitflow-guard`, `dco`,
-`Analyze (*)`) continuam existindo. A troca segue a ordem abaixo, e um PR de seguimento ajusta o
-código (lista ao fim).
+Os passos abaixo (API e rulesets) foram executados em 2026-11-13 pelo orquestrador, com
+autorização do mantenedor, na ordem listada: `develop` virou `main`, o branch padrão, e o
+`gitflow-guard` deixou de ser exigido antes do PR de seguimento, que tira o job do código (lista ao
+fim). Da parte pela interface, falta renomear o branch principal no SonarQube Cloud.
 
 ### Ações manuais do mantenedor
 
@@ -157,6 +159,8 @@ Depois dos passos acima, um PR (`ci/`) troca `develop` por `main` e remove o Git
   `scorecard.yml`, `security.yml`, `mutation.yml`, `pr-gate.yml`, `ingest.yml` e
   `.github/actions/setup/action.yml`;
 - o job `gitflow-guard` sai do `pr-hygiene.yml`;
+- o `lock-pr` do `ingest.yml` (modo `eval-only`) aceita artifacts `corpus-lock` de runs com
+  `head_branch` `main` ou `develop`: os exportados antes do rename valem até expirar (90 dias);
 - `target-branch: develop` → `main` em todas as entradas do `.github/dependabot.yml`;
 - `vcs.defaultBranch` do `biome.json`, `.github/scripts/{affected.test.sh,migration-guard.sh}`,
   `ci-config.test.sh`, `CODEOWNERS`;

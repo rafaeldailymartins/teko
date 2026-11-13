@@ -33,7 +33,7 @@ to the latest release instead.
 | trunk / staging    | fixes land here first, then ship in a patch release |
 
 The project is in early development (phases F0 to F3 done) and has no tagged release yet. Until
-`v0.1.0`, reports are handled against the trunk (`develop`, renamed to `main` by ADR 0033).
+`v0.1.0`, reports are handled against the trunk (`main`).
 
 ## Response targets
 
@@ -45,8 +45,8 @@ The project is in early development (phases F0 to F3 done) and has no tagged rel
 | Fix released for **high** severity     | within 30 days of triage |
 | Medium / low                           | next regular release     |
 
-Severity follows CVSS v4. Fixes for production reach `main` through a `hotfix/vX.Y.Z` branch, and
-a GitHub Security Advisory (with a CVE when applicable) is published once the fix is live.
+Severity follows CVSS v4. Fixes for production land on `main` through a regular PR and ship in a
+patch release (tag `vX.Y.Z`), and a GitHub Security Advisory (with a CVE when applicable) is published once the fix is live.
 
 ## Scope
 

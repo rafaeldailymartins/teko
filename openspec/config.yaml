@@ -41,7 +41,7 @@ context: |
     verbatimModuleSyntax, erasableSyntaxOnly: sem enums, namespaces nem parameter properties;
     usar objetos "as const"). Imports relativos com extensão .ts.
   - Biome é o único linter/formatter. Identificadores em inglês; comentários e docs em pt-BR.
-  - Trunk-based (ADR 0033): o tronco (develop até o rename, depois main) é o staging, e a
+  - Trunk-based (ADR 0033): o tronco main é o staging, e a
     produção sai por tag v*. Só squash. Conventional Commits com a lista única de escopos
     (.github/commit-types.json); DCO (git commit -s).
   - Fonte de verdade: docs/roadmap.md, docs/architecture/, docs/adr/ e openspec/specs/. Mudança
