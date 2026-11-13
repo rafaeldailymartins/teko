@@ -1,5 +1,4 @@
-import { mkdtempSync, readFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { beforeEach, describe, expect, it } from 'vitest'
 import {
@@ -7,6 +6,7 @@ import {
   type InMemoryBlobStore,
 } from '#adapters/out/fakes/in-memory-blob-store.ts'
 import { BlobStoreName } from '#app/ports/blob-store.ts'
+import { tempDir } from '../../../../../test/setup/temp-dir.ts'
 import { doclingBlobKey, rawBlobKey } from './blob-keys.ts'
 import { CliUsageError } from './cli-common.ts'
 import { parseDiscoverArgs, runIngestDiscover } from './discover.ts'
@@ -28,7 +28,7 @@ let blobs: InMemoryBlobStore
 let lines: string[]
 
 beforeEach(() => {
-  out = mkdtempSync(join(tmpdir(), 'teko-discover-'))
+  out = tempDir('teko-discover-')
   blobs = createInMemoryBlobStore()
   lines = []
 })

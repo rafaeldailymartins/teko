@@ -1,4 +1,4 @@
-import { mkdtemp, writeFile } from 'node:fs/promises'
+import { writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
@@ -7,6 +7,7 @@ import type {
   MarkVerifiedCommand,
 } from '#app/ports/watch-coverage-repository.ts'
 import type { DiscoveredReport } from '#app/ports/watch-report.ts'
+import { tempDir } from '../../../../../test/setup/temp-dir.ts'
 import { parseDiscoveredReport } from './discovered-schema.ts'
 import {
   COVERAGE_MARK_USAGE,
@@ -36,7 +37,7 @@ const REPORT: DiscoveredReport = {
 }
 
 async function writeReport(content: string): Promise<string> {
-  const dir = await mkdtemp(join(tmpdir(), 'teko-coverage-mark-'))
+  const dir = tempDir('teko-coverage-mark-')
   const file = join(dir, 'discovered.json')
   await writeFile(file, content)
   return file

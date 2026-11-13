@@ -1,10 +1,11 @@
 import { spawnSync } from 'node:child_process'
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { removeTempDir } from '../setup/temp-dir.ts'
 
 /**
  * Regressão da fronteira hexagonal no Biome (override de `src/domain/**` e `src/application/**`
@@ -88,7 +89,7 @@ beforeAll(() => {
 }, 60_000)
 
 afterAll(() => {
-  rmSync(sandbox, { recursive: true, force: true })
+  removeTempDir(sandbox)
 })
 
 describe('biome.json: fronteira hexagonal de src/domain e src/application', () => {

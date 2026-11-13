@@ -1,9 +1,9 @@
 import { spawnSync } from 'node:child_process'
-import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 import type { SeedFixtureCorpus } from '#app/use-cases/seed-fixture-corpus.ts'
+import { tempDir } from '../../../../../test/setup/temp-dir.ts'
 import { fixtureCoverageSchema, fixtureDocumentSchema } from './fixture-schema.ts'
 import {
   DEFAULT_FIXTURE_DIR,
@@ -287,7 +287,7 @@ describe('seed-fixtures', () => {
   })
 
   it('cobertura declarada: lacunas com motivo; sem cobertura, o verified_at é hoje', () => {
-    const dir = mkdtempSync(join(tmpdir(), 'teko-seed-'))
+    const dir = tempDir('teko-seed-')
     mkdirSync(join(dir, 'documents'))
     writeFileSync(join(dir, 'documents', 'rcte.json'), JSON.stringify(document()))
     writeFileSync(
@@ -330,7 +330,7 @@ describe('seed-fixtures', () => {
   })
 
   it('arquivo de documento ou de cobertura inválido vira FixtureFileError com o caminho', () => {
-    const dir = mkdtempSync(join(tmpdir(), 'teko-seed-'))
+    const dir = tempDir('teko-seed-')
     mkdirSync(join(dir, 'documents'))
     writeFileSync(join(dir, 'documents', 'ok.json'), JSON.stringify(document()))
     writeFileSync(join(dir, 'documents', 'notas.txt'), 'ignorado')

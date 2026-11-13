@@ -1,8 +1,8 @@
-import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { repoPath } from '../../../../../test/setup/repo-root.ts'
+import { tempDir } from '../../../../../test/setup/temp-dir.ts'
 import { doclingBlobKey, doclingPartId, rawBlobKey, slugify } from './blob-keys.ts'
 import { CliUsageError, EXIT_USAGE, errorMessage, isIngestTarget } from './cli-common.ts'
 import {
@@ -125,7 +125,7 @@ describe('corpus-lock', () => {
   const source = { sha256: SHA, versionLabel: 'Guia 3.2.4', publishedOn: '2026-07-30' }
 
   it('lock vazio quando o arquivo não existe; lê e grava em ordem estável', () => {
-    const dir = mkdtempSync(join(tmpdir(), 'teko-lock-'))
+    const dir = tempDir('teko-lock-')
     const file = join(dir, 'corpus.lock.json')
     expect(readCorpusLock(file)).toEqual(EMPTY_LOCK)
     const next = nextCorpusLock(EMPTY_LOCK, {
@@ -162,7 +162,7 @@ describe('corpus-lock', () => {
   })
 
   it('recusa lock fora do formato', () => {
-    const dir = mkdtempSync(join(tmpdir(), 'teko-lock-'))
+    const dir = tempDir('teko-lock-')
     const file = join(dir, 'corpus.lock.json')
     writeFileSync(file, '{"format": 2}')
     expect(() => readCorpusLock(file)).toThrow(CorpusLockError)

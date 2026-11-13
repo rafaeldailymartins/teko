@@ -1,7 +1,7 @@
-import { mkdtempSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { tempDir } from '../../test/setup/temp-dir.ts'
 import {
   checkSuite,
   evaluateThresholds,
@@ -183,7 +183,7 @@ describe('thresholds.json', () => {
   })
 
   it('checkSuite lê o arquivo do promptfoo e recusa suíte desconhecida', () => {
-    const path = join(mkdtempSync(join(tmpdir(), 'teko-thresholds-')), 'out.json')
+    const path = join(tempDir('teko-thresholds-'), 'out.json')
     writeFileSync(path, JSON.stringify(output))
     expect(checkSuite(path, 'x', { suites: { x: { mrr: 0.7 } }, metas: {} }).pass).toBe(true)
     expect(() => checkSuite(path, 'y', file)).toThrow('suite desconhecida')

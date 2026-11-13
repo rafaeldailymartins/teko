@@ -1,7 +1,7 @@
-import { mkdirSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { tempDir } from '../../../../../test/setup/temp-dir.ts'
 import { CliUsageError } from '../ingest/cli-common.ts'
 import { fixtureDocumentSchema } from '../seed-fixtures/fixture-schema.ts'
 import {
@@ -58,7 +58,7 @@ const COVERAGE = [
 ]
 
 function currentFixture(): string {
-  const dir = mkdtempSync(join(tmpdir(), 'teko-fixture-'))
+  const dir = tempDir('teko-fixture-')
   mkdirSync(join(dir, 'documents'))
   writeFileSync(
     join(dir, 'documents', 'rcte.json'),
@@ -87,7 +87,7 @@ function reader(documents: unknown[], coverage: unknown = COVERAGE) {
 describe('eval-fixture export', () => {
   it('regenera só os dispositivos da fixture atual, com a cobertura das famílias dela', async () => {
     const fixture = currentFixture()
-    const out = mkdtempSync(join(tmpdir(), 'teko-export-'))
+    const out = tempDir('teko-export-')
     const staging = document([
       provision('go:rcte:art:76:par:6', '0076.p06', 'go:rcte:art:76'),
       provision('go:rcte:art:77', '0077'),
@@ -128,7 +128,7 @@ describe('eval-fixture export', () => {
 
   it('falha com documento fora do formato, ausente ou sem nenhum dispositivo', async () => {
     const fixture = currentFixture()
-    const out = mkdtempSync(join(tmpdir(), 'teko-export-'))
+    const out = tempDir('teko-export-')
     const args = ['export', '--from', 'staging', '--out', out, '--fixture', fixture]
     const print = () => undefined
     await expect(

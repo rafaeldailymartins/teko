@@ -1,9 +1,9 @@
-import { mkdtemp, readFile, writeFile } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
+import { readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { type BlobStore, BlobStoreName } from '#app/ports/blob-store.ts'
 import type { SafeFetcher } from '#app/ports/safe-fetcher.ts'
+import { tempDir } from '../../../../../test/setup/temp-dir.ts'
 import { runSourcesWatch, SOURCES_WATCH_USAGE } from './run-sources-watch.ts'
 
 const clock = { now: () => new Date('2026-11-11T12:00:00Z') }
@@ -45,7 +45,7 @@ function header(number: string): Uint8Array {
 }
 
 async function workspace(config = CONFIG): Promise<{ dir: string; config: string }> {
-  const dir = await mkdtemp(join(tmpdir(), 'teko-sources-watch-'))
+  const dir = tempDir('teko-sources-watch-')
   const path = join(dir, 'watch.yaml')
   await writeFile(path, config)
   return { dir, config: path }
