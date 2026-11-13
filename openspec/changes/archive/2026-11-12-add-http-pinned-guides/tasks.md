@@ -16,4 +16,4 @@
 
 ## 3. Verificação
 
-- [ ] 3.1 Ingest no staging com os cinco Guias publicados e o `corpus-eval` verde
+- [x] 3.1 Ingest no staging com os cinco Guias publicados (run 43322283697: 304 MB, 673 neurons) e o `corpus-eval` verde (run 43332437880, com o `staging_validity` do E110 no golden)

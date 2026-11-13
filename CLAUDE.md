@@ -110,11 +110,17 @@ Atualize esta seção no PR que fecha cada fase ou spike.
     novo do lock fecha os anteriores;
   - o `ci-gate` aceita `mutation` e `perf` pulados (PR que só muda `corpus/`).
 
+  Ainda em 2026-11-12 (mudança arquivada `add-http-pinned-guides`, ADR 0028): Guias 3.0.6, 3.0.8,
+  3.1.2, 3.1.3 e 3.1.6 do portal antigo, em http com pin, e cobertura da EFD ICMS/IPI desde
+  2021-01-01 (corpus_version 11). O staging foi de 265 MB para 304 MB (673 neurons); o resumo do
+  `ingest.yml` mostra o tamanho, com aviso acima de 400 MB. `corpus-eval` verde (run 43332437880):
+  recall@10 0,925, MRR 0,662 e demais 1,00.
+
   Pendências:
   - primeiro `source-watch` agendado (`verified_at` diário; depois passar o harden-runner dele
     para `block`) e arquivar `add-source-change-monitoring`;
-  - conferir o tamanho do staging (`corpus.ingestion_runs.db_bytes`, alvo ≤ 400 MB);
-  - arquivar `fix-safe-fetcher-retries` depois de um run sem queda por erro de rede.
+  - arquivar `fix-safe-fetcher-retries` depois do `source-watch` (os ingests de 2026-11-12 já
+    rodaram sem queda por erro de rede).
 - **F4 em diante:** a F4 começa quando o mantenedor decidir.
 
 ## Como trabalhar
