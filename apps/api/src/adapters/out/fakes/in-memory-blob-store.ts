@@ -2,7 +2,7 @@ import type { BlobStore, BlobStoreName } from '#app/ports/blob-store.ts'
 import { compareCodeUnits } from '#domain/shared/compare-code-units.ts'
 
 /**
- * `BlobStore` em memória: testes e execução local sem `NETLIFY_AUTH_TOKEN`. Copia os bytes na
+ * `BlobStore` em memória: testes e execução local sem credenciais de backend. Copia os bytes na
  * entrada e na saída, como um store remoto (quem grava não altera o que foi gravado).
  */
 export interface InMemoryBlobStore extends BlobStore {

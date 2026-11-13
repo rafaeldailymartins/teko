@@ -249,6 +249,7 @@ describe('parseEnv', () => {
     const SITE_ID = '0b7c1a2e-3f4d-4e5a-9b6c-7d8e9f0a1b2c'
     const TOKEN = 'nfp_token-de-teste-com-mais-de-20'
     const NEON_KEY = 'napi_chave-de-teste-com-mais-de-20'
+    const GH_TOKEN = 'ghs_token-de-teste-com-mais-de-20'
 
     it('aplica os padrões do orçamento e da guarda de tamanho', () => {
       const env = parseEnv(DEV_ENV)
@@ -313,13 +314,63 @@ describe('parseEnv', () => {
         ...PROD_ENV,
         NETLIFY_AUTH_TOKEN: TOKEN,
         NETLIFY_SITE_ID: SITE_ID,
+        GITHUB_TOKEN: GH_TOKEN,
+        GITHUB_REPOSITORY: 'dono/repo',
         NEON_API_KEY_STAGING: NEON_KEY,
         NEON_STAGING_PROJECT_ID: 'p1',
       })
       expect(problems).toEqual([
         'NETLIFY_AUTH_TOKEN: proibida com RUNTIME_TARGET=render (só a CLI de ingestão usa)',
+        'GITHUB_TOKEN: proibida com RUNTIME_TARGET=render (só a CLI de ingestão usa)',
         'NEON_API_KEY_STAGING: proibida com RUNTIME_TARGET=render (só a CLI de ingestão usa)',
       ])
+    })
+
+    describe('BLOB_STORE (ADR 0030)', () => {
+      it('sem valor, aceita a ausência de credenciais (store em memória na execução local)', () => {
+        expect(parseEnv(DEV_ENV).BLOB_STORE).toBeUndefined()
+      })
+
+      it('github-releases exige GITHUB_TOKEN; o token exige GITHUB_REPOSITORY', () => {
+        expect(problemsOf({ ...DEV_ENV, BLOB_STORE: 'github-releases' })).toEqual([
+          'GITHUB_TOKEN: obrigatória com BLOB_STORE=github-releases',
+        ])
+        expect(problemsOf({ ...DEV_ENV, GITHUB_TOKEN: GH_TOKEN })).toEqual([
+          'GITHUB_REPOSITORY: obrigatória com GITHUB_TOKEN (owner/repo dos releases)',
+        ])
+        expect(
+          parseEnv({
+            ...DEV_ENV,
+            BLOB_STORE: 'github-releases',
+            GITHUB_TOKEN: GH_TOKEN,
+            GITHUB_REPOSITORY: 'dono/repo',
+          }),
+        ).toMatchObject({ BLOB_STORE: 'github-releases', GITHUB_REPOSITORY: 'dono/repo' })
+      })
+
+      it('netlify exige o PAT e o site', () => {
+        expect(problemsOf({ ...DEV_ENV, BLOB_STORE: 'netlify' })).toEqual([
+          'BLOB_STORE: netlify exige NETLIFY_AUTH_TOKEN e NETLIFY_SITE_ID',
+        ])
+        expect(
+          parseEnv({
+            ...DEV_ENV,
+            BLOB_STORE: 'netlify',
+            NETLIFY_AUTH_TOKEN: TOKEN,
+            NETLIFY_SITE_ID: SITE_ID,
+          }).BLOB_STORE,
+        ).toBe('netlify')
+      })
+
+      it.each([
+        ['BLOB_STORE', 's3'],
+        ['GITHUB_REPOSITORY', 'sem-barra'],
+        ['GITHUB_TOKEN', 'curto'],
+      ])('rejeita %s=%j', (key, value) => {
+        expect(problemsOf({ ...DEV_ENV, [key]: value }).join('\n')).toMatch(
+          new RegExp(`^${key}:`, 'm'),
+        )
+      })
     })
   })
 

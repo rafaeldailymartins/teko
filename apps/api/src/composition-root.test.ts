@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from 'vitest'
 import { createLogger } from '#adapters/out/telemetry/logger.ts'
 import {
+  createBlobStore,
+  createBlobsMigrationStores,
   createContainer,
   createEmbeddings,
   createFixtureSeeder,
@@ -71,6 +73,44 @@ describe('createContainer', () => {
     const container = createContainer(parseEnv(BASE))
     container.backgroundTasks.run('flush', Promise.reject(new Error('x')), { timeoutMs: 100 })
     await expect(container.backgroundTasks.drain(1_000)).resolves.toBe(0)
+  })
+})
+
+describe('createBlobStore (ADR 0030)', () => {
+  const GITHUB = {
+    GITHUB_TOKEN: 'ghs_token-de-teste-com-mais-de-20',
+    GITHUB_REPOSITORY: 'dono/repo',
+  }
+  const NETLIFY = {
+    NETLIFY_AUTH_TOKEN: 'nfp_token-de-teste-com-mais-de-20',
+    NETLIFY_SITE_ID: '0b7c1a2e-3f4d-4e5a-9b6c-7d8e9f0a1b2c',
+  }
+
+  it('sem credenciais, o store em memória; com o GITHUB_TOKEN, o GitHub Releases (padrão)', () => {
+    expect(createBlobStore(parseEnv(BASE))).toHaveProperty('keys')
+    expect(createBlobStore(parseEnv({ ...BASE, ...GITHUB }))).toHaveProperty('sha256Of')
+    expect(
+      createBlobStore(parseEnv({ ...BASE, ...GITHUB, BLOB_STORE: 'github-releases' })),
+    ).toHaveProperty('sha256Of')
+  })
+
+  it('BLOB_STORE=netlify usa o Netlify Blobs mesmo com o GITHUB_TOKEN presente (etapa C1)', () => {
+    const store = createBlobStore(
+      parseEnv({ ...BASE, ...GITHUB, ...NETLIFY, BLOB_STORE: 'netlify' }),
+    )
+    expect(store).not.toHaveProperty('sha256Of')
+    expect(store).not.toHaveProperty('keys')
+  })
+
+  it('a migração exige as duas pontas', () => {
+    expect(() => createBlobsMigrationStores(parseEnv({ ...BASE, ...GITHUB }))).toThrow(
+      /NETLIFY_AUTH_TOKEN, NETLIFY_SITE_ID, GITHUB_TOKEN e GITHUB_REPOSITORY/,
+    )
+    const { source, target } = createBlobsMigrationStores(
+      parseEnv({ ...BASE, ...GITHUB, ...NETLIFY }),
+    )
+    expect(source).not.toHaveProperty('sha256Of')
+    expect(target).toHaveProperty('sha256Of')
   })
 })
 
