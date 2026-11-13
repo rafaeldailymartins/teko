@@ -9,7 +9,7 @@
 #   reprova não é reescrito para passar.
 #
 # Grupos (primeira tag): rcte-cte 14, efd-icms-ipi 8, efd-go 5, tabelas-go 7, efd-reinf 8,
-# recusa 5, sem-resposta 4, ambiguo 2 (53 casos, 10 em inglês, 10 com mais de um dispositivo
+# recusa 5, sem-resposta 4, ambiguo 2 (53 casos, 10 em inglês, 11 com mais de um dispositivo
 # esperado). Datas resolvidas com o relógio fixo de 2026-11-10 (America/Sao_Paulo).
 #
 # Curadoria assistida por LLM em 2026-11-12, pendente de revisão do mantenedor (reviewed_at nulo).
@@ -20,6 +20,12 @@
 # textos da fixture test/fixtures/corpus. Vigência (validity) só onde há uma única fonte por
 # documento (RCTE, CTE e Tabelas): nos Guias e na REINF o staging tem várias versões e a vigência
 # esperada dependeria da reconciliação.
+#
+# Revisão independente assistida por LLM em 2026-11-13, contra as fontes baixadas de novo e os
+# parsers locais, depois do primeiro corpus-eval (run 43403700598): 4 casos corrigidos (etanol,
+# retificação da EFD-GO, feijão goiano e PROTEGE de grupos geradores, cada um com o comentário da
+# revisão e source_quote novo) e 2 em dúvida, sem mudança. Relatório em
+# docs/evals/revisao-holdout-2026-11-13.md.
 
 # ---------------------------------------------------------------------------------------------
 # RCTE e CTE (14): dispositivos fora do recorte da fixture (arts. 44 a 87 do RCTE e 44 em diante do
@@ -87,15 +93,19 @@
   reference_source: periodo_apuracao
   locale: en
   families: [rcte]
+  # revisão independente (LLM) 2026-11-13: o esperado dizia 23%, mas a NOTA do próprio inciso
+  # VIII no RCTE tira o efeito dessa redação desde 23/06/2022 (LC 194/2022) e manda aplicar 14,17%
+  # desde 15/07/2022 (EC 123/2022, art. 4º). O parser não lê a nota "sem efeitos a partir de" e
+  # grava o 23% como vigente ([2018-01-01, null) no staging); por isso a vigência esperada saiu do
+  # caso até o mantenedor decidir como o parser trata essa nota. Dispositivo esperado mantido.
   expected:
     status: answered
     reference_date: "2024-06-01"
     provisions: ["go:rcte:art:20:par:1:inc:VIII"]
-    validity: { from: "2018-01-01", to: null }
-    facts: ["23% (vinte e três por cento)"]
+    facts: ["14,17% (quatorze inteiros e dezessete décimos por cento)"]
   tags: [rcte-cte, rcte, en, fora-da-fixture]
   source_url: https://appasp.economia.go.gov.br/Legislacao/arquivos/Rcte/RCTE.htm
-  source_quote: VIII - 23% (vinte e três por cento), na operação interna com álcool carburante;
+  source_quote: NOTA:Redação do inciso VIII sem efeitos a partir de 23 de junho de 2022 em função da Lei Complementar Federal nº 194, de 2022, sendo que, a partir de 15 de julho de 2022, é aplicada a alíquota de 14,17% (quatorze inteiros e dezessete décimos por cento) em função do disposto no art. 4º da Emenda Constitucional nº 123, de 14 de julho de 2022.
   curated_by: claude-opus-5.5 (curadoria assistida por LLM; pendente de revisão do mantenedor)
   reviewed_at: null
 
@@ -123,6 +133,10 @@
   reference_source: periodo_apuracao
   locale: pt-BR
   families: [rcte]
+  # revisão independente (LLM) 2026-11-13, DÚVIDA (sem mudança): a pergunta é ampla ("como fica o
+  # ICMS"), e também respondem o art. 65, III (cálculo do diferencial na aquisição para uso e
+  # consumo), o art. 4º, § 1º, II (incidência) e o art. 12, IV (base de cálculo). Cabe ao mantenedor
+  # decidir se entram no esperado ou se o caso fica só com a alíquota do art. 20, § 1º, IV, "a".
   expected:
     status: answered
     reference_date: "2024-09-01"
@@ -499,14 +513,21 @@
   reference_source: periodo_apuracao
   locale: pt-BR
   families: [efd-go, rcte]
+  # revisão independente (LLM) 2026-11-13: o esperado parava no inciso I, mas desde 11/11/2022
+  # (Decreto nº 10.164/22) o inciso II do art. 356-O dispensa a autorização também depois desse
+  # prazo, quando houver prova inequívoca de erro de fato; o item 7 do Guia de Goiás registra a
+  # mesma dispensa. Entrou o inciso II (chave conferida no parser), o fato correspondente e a citação
+  # nova. Ressalvas que a resposta gerada deve trazer: § 1º-A (PROTEGE) e § 5º do mesmo artigo.
   expected:
     status: answered
     reference_date: "2026-04-01"
-    provisions: ["go:efd-go:item:7", "go:rcte:art:356-O:inc:I"]
-    facts: ["até o último dia do terceiro mês subsequente ao encerramento do mês da apuração"]
-  tags: [efd-go, rcte, varios-dispositivos, linguagem-de-contador]
+    provisions: ["go:efd-go:item:7", "go:rcte:art:356-O:inc:I", "go:rcte:art:356-O:inc:II"]
+    facts:
+      - "até o último dia do terceiro mês subsequente ao encerramento do mês da apuração"
+      - "após o prazo de que trata o inciso I, independentemente de autorização da administração tributária"
+  tags: [efd-go, rcte, varios-dispositivos, linguagem-de-contador, fora-da-fixture]
   source_url: https://appasp.economia.go.gov.br/Legislacao/arquivos/Rcte/RCTE.htm
-  source_quote: I - até o último dia do terceiro mês subsequente ao encerramento do mês da apuração, independentemente de autorização da administração tributária;
+  source_quote: II - após o prazo de que trata o inciso I, independentemente de autorização da administração tributária, no caso em que houver prova inequívoca da ocorrência de erro de fato no preenchimento da escrituração e evidenciada a impossibilidade ou a inconveniência de saneá-la por meio de lançamento corretivo.
   curated_by: claude-opus-5.5 (curadoria assistida por LLM; pendente de revisão do mantenedor)
   reviewed_at: null
 
@@ -575,17 +596,27 @@
   reference_source: periodo_apuracao
   locale: pt-BR
   families: [tabelas-go]
+  # revisão independente (LLM) 2026-11-13: a pergunta pede todos os códigos de crédito outorgado
+  # do feijão goiano, e a Tabela 5.1.1 v151 tem mais três vigentes em 2026-09: GO020052 (desde
+  # 01/01/2021), GO020166 ("Créd. Out PROGOIÁS RURAL no % estabelecido na legislação para o
+  # feijão.", desde 02/09/2021) e GO090050 ("Crédito outorgado do momento da entrada
+  # correspondente à aquisição de arroz ou feijão produzidos no Estado de Goiás", desde
+  # 01/11/2017). Entraram os três; a citação nova é a do GO020052, e as outras duas estão aqui,
+  # conferidas no TXT da tabela.
   expected:
     status: answered
     reference_date: "2026-09-01"
     provisions:
       - "go:tabelas-go:tab:5-1-1:cod:GO020183"
       - "go:tabelas-go:tab:5-1-1:cod:GO020156"
+      - "go:tabelas-go:tab:5-1-1:cod:GO020052"
+      - "go:tabelas-go:tab:5-1-1:cod:GO020166"
+      - "go:tabelas-go:tab:5-1-1:cod:GO090050"
     validity: { from: "2026-06-25", to: null }
-    facts: ["GO020183", "80%"]
+    facts: ["GO020183", "80%", "GO020156", "GO020052", "GO020166", "GO090050"]
   tags: [tabelas-go, varios-dispositivos, fora-da-fixture]
   source_url: https://www.sped.fazenda.gov.br/spedtabelas/WsConsulta/obterTabela.ashx?idTabela=37&versao=151
-  source_quote: Crédito Outorgado no percentual de 80% sobre o ICMS nas op. com feijão produzidos no Estado de Goiás.
+  source_quote: Cr. out. ao remetente, em % estabelec. na legisl., na oper. Interest. c/ feijão ind. no Estado de GO que não tenha sido submetido a qq processo de industrialização fora dele.
   curated_by: claude-opus-5.5 (curadoria assistida por LLM; pendente de revisão do mantenedor)
   reviewed_at: null
 
@@ -613,15 +644,18 @@
   reference_source: periodo_apuracao
   locale: pt-BR
   families: [tabelas-go]
+  # revisão independente (LLM) 2026-11-13: a Tabela 5.2 v51 tem dois códigos com a mesma
+  # descrição, vigentes desde 01/11/2023: GO000116 (Art. 11, LX, a, Anexo IX) e GO000162 (Art. 11,
+  # LX, b). A pergunta não separa as alíneas; o GO000162 entrou, com a citação dele.
   expected:
     status: answered
     reference_date: "2025-02-01"
-    provisions: ["go:tabelas-go:tab:5-2:cod:GO000116"]
+    provisions: ["go:tabelas-go:tab:5-2:cod:GO000116", "go:tabelas-go:tab:5-2:cod:GO000162"]
     validity: { from: "2023-11-01", to: null }
-    facts: ["GO000116"]
-  tags: [tabelas-go, fora-da-fixture]
+    facts: ["GO000116", "GO000162"]
+  tags: [tabelas-go, varios-dispositivos, fora-da-fixture]
   source_url: https://www.sped.fazenda.gov.br/spedtabelas/WsConsulta/obterTabela.ashx?idTabela=38&versao=51
-  source_quote: Contribuição ao PROTEGE – Crédito outorgado para a empresa industrial produtora de grupos geradores de energia elétrica, beneficiária do PRODUZIR.
+  source_quote: Contribuição ao PROTEGE - Crédito outorgado para a empresa industrial produtora de grupos geradores de energia elétrica, beneficiária do PRODUZIR. Art. 11, LX, b, Anexo IX do RCTE.
   curated_by: claude-opus-5.5 (curadoria assistida por LLM; pendente de revisão do mantenedor)
   reviewed_at: null
 
@@ -757,6 +791,9 @@
   reference_source: periodo_apuracao
   locale: pt-BR
   families: [efd-reinf]
+  # revisão independente (LLM) 2026-11-13, DÚVIDA (sem mudança): no R-2020 o valor retido aparece
+  # por tipo de serviço (infoTpServ/vlrRetencao) e no total por tomador (ideTomador/vlrTotalRetPrinc,
+  # "Valor da retencao principal das notas fiscais de servico"). Decidir se o total entra no esperado.
   expected:
     status: answered
     reference_date: "2024-10-01"
