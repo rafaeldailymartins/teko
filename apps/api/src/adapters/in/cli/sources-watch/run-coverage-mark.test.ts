@@ -176,6 +176,33 @@ describe('runCoverageMark', () => {
     ])
   })
 
+  it('descreve erros que não são Error nem trazem SQLSTATE textual', async () => {
+    const file = await writeReport(
+      JSON.stringify({ ...REPORT, changes: [], errors: [], unverifiedFamilies: [] }),
+    )
+    const lines: string[] = []
+    const code = await runCoverageMark(
+      {
+        targets: [
+          { name: 'teko-prod', repository: failing('boom') },
+          {
+            name: 'teko-staging',
+            repository: failing(pgError('timeout', 42 as unknown as string)),
+          },
+          { name: 'teko-ci', repository: failing(null) },
+        ],
+        log: (line) => lines.push(line),
+      },
+      ['--discovered', file],
+    )
+    expect(code).toBe(1)
+    expect(lines).toEqual([
+      'teko-prod: erro: boom',
+      'teko-staging: erro: timeout',
+      'teko-ci: erro: ',
+    ])
+  })
+
   it('recusa argumentos inválidos e arquivo ausente ou inválido', async () => {
     const lines: string[] = []
     const deps = { targets: [], log: (line: string) => lines.push(line) }
