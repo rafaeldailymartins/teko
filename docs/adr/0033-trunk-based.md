@@ -62,8 +62,8 @@ Opção escolhida: **trunk-based**.
 - **Saem:** o check `gitflow-guard`, os rulesets separados de `main` e `develop`, as branches
   `release/*` e `hotfix/*` (e as exceções delas no `branch-names`), o back-merge, o job `finish`
   disparado por push em `main` e o git-flow-next local.
-- **Ficam:** `ci-gate`, `pr-title`, `dco`, `Analyze (*)` (o `Analyze (actions)` sai quando o
-  mantenedor tirá-lo do ruleset, ADR 0032), `required_signatures`, `non_fast_forward`,
+- **Ficam:** `ci-gate`, `pr-title`, `dco`, `Analyze (*)` (o `Analyze (actions)` saiu em
+  2026-11-13, ADR 0032), `required_signatures`, `non_fast_forward`,
   `deletion`, `code_scanning` e `required_review_thread_resolution`.
 - O `strict` dos checks exigidos (branch do PR atualizado com o tronco) **não** fica: o mantenedor
   o desligou em 2026-11-12, por recomendação da revisão de arquitetura.

@@ -106,8 +106,7 @@ lista de escopos de commit fica num só lugar, lido pelo `pr-title`; não há ho
 | Artefato de deploy  | `scripts/pack-vercel-output.ts`: tarball determinístico sem `.vercel/.env*` nem `project.json`, gitleaks nele                                   | todo deploy                            | bloqueia                                                    |
 | Scorecard           | `scorecard-action` + bestpractices.dev                                                                                                          | push em `main`, semanal                | ≥ 7 (v0.1.0), ≥ 8 (v0.2.0)                                  |
 
-O CodeQL de `actions` sai quando o mantenedor tirar o check `Analyze (actions)` do ruleset (zizmor
-e actionlint cobrem os workflows). O ZAP API scan fica para depois da v0.1.0.
+O CodeQL não analisa `actions` desde 2026-11-13: zizmor e actionlint cobrem os workflows. O ZAP API scan fica para depois da v0.1.0.
 
 **Regras do Semgrep:** nenhum `route.ts` ou Server Action; nenhum `sql.raw(` com entrada não
 literal; nenhum `dangerouslySetInnerHTML` nem `rehype-raw`; `process.env` só em `config/env.ts`;
