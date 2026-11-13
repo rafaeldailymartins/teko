@@ -46,9 +46,10 @@ describe('loadOverrides', () => {
     expect(() => loadOverrides(twice)).toThrow(DuplicateOverrideError)
   })
 
-  it('o exemplo versionado em corpus/overrides é válido', () => {
+  it('os overrides versionados em corpus/overrides e o exemplo são válidos', () => {
     const dir = repoPath('corpus', 'overrides')
-    expect(loadOverrides(dir).size).toBe(0)
+    // rcte.yaml e cte.yaml (triagem de 2026-11-13); o `_exemplo.yaml` fica de fora.
+    expect(loadOverrides(dir).size).toBe(28)
     const copy = mkdtempSync(join(tmpdir(), 'teko-overrides-'))
     const example = repoPath('corpus', 'overrides', '_exemplo.yaml')
     writeFileSync(join(copy, 'exemplo.yaml'), readFileSync(example, 'utf8'))

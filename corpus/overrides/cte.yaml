@@ -1,0 +1,98 @@
+# Resoluções das NotaVigncia do CTE que o parser deixa em revisão (triagem de 2026-11-13,
+# docs/evals/triagem-notas-pending-2026-11-13.md). CTE.htm "ATUALIZADO ATÉ A LEI Nº 24.608, DE
+# 06.11.26". Cada `reason` cita o trecho literal das notas do próprio HTML.
+
+- stable_key: go:cte:art:37:inc:I:ali:u
+  note_hash: 26d51e8cfd26d78b1e1e508197437361c22168f489319578ea25fc8a244c3e56
+  action: approve
+  reason: >-
+    Vale a abertura do ato, desde 2023-01-19: "REVOGADA A ALÍNEA "U" DO INCISO I DO ART. 37 PELO
+    ART. 7º DA LEI Nº 21.789, DE 19.01.23 - vigência: 19.01.23", com a redação anterior até a
+    véspera ("NOTA: Redação com vigência de 02.01.14 a 18.01.23"). A nota "NOTA: Redação com
+    vigência a partir de 16.09.96." vem depois do inciso II e é dele.
+  reviewed_by: claude
+  reviewed_at: 2026-11-13
+
+- stable_key: go:cte:art:60:inc:I:ali:c
+  note_hash: b75035102f6aa761385a42075f0aabcb3ef457cf95db81476b947189f45a3ff6
+  action: reject
+  reason: >-
+    A alínea não chegou a vigorar: foi acrescida e revogada com a mesma data ("ACRESCIDA A ALÍNEA
+    "C" AO INCISO I DO ART. 60 PELO ART. 1º DA LEI Nº 21.762, DE 29.12.22 - vigência: 01.05.23" e
+    "REVOGADA A ALÍNEA "C" DO INCISO I DO ART. 60 PELO ART. 4º DA LEI Nº 22.285, DE 26.09.23 -
+    vigência: 01.05.23"). O período da nota "Notas: Redação com vigência de 31.03.23 a 30.04.23 ."
+    é anterior ao próprio acréscimo.
+  reviewed_by: claude
+  reviewed_at: 2026-11-13
+
+- stable_key: go:cte:art:62
+  note_hash: c0972b031c76adda76c7e6f1e5c62a12a982acfc8bc46c1feb15388dcb1883ac
+  action: approve
+  reason: >-
+    Vale a abertura do ato, desde 1997-01-01: "CONFERIDA NOVA REDAÇÃO AO ART. 62 PELO ART. 1º DA
+    LEI Nº 12.972, DE 27.12.96 - vigência: 01.01.97". O início da nota "NOTA: Redação com vigência a
+    partir de 16.09.96, de acordo como art. 5º da Lei nº 12.972/96." é anterior à reestruturação
+    do CTE em 1997-01-01, onde o recorte do parser começa de qualquer forma (ADR 0011).
+  reviewed_by: claude
+  reviewed_at: 2026-11-13
+
+- stable_key: go:cte:art:71:par:12:inc:VIII:ali:c
+  note_hash: 68c24acd92ba2a8b21b6fba396287d0dd456b97211e259ec5e5a5be6ba794110
+  action: approve
+  reason: >-
+    Vale a abertura do ato, [2006-01-01, 2011-12-29): "CONFERIDA NOVA REDAÇÃO À ALÍNEA "C" DO
+    INCISO ViII DO ART. 71 PELO ART. 1º DA LEI Nº 15.505, DE 29.12.05 - vigência: 01.01.06", com a
+    anterior até a véspera ("NOTA: Redação com vigência de 29.12.03 a 31.12.05"). O início da nota
+    "NOTA: Redação com vigência de 31.12.05 a 28.12.11." erra por um dia; o fim confere com a
+    revogação ("vigência: 29.12.11").
+  reviewed_by: claude
+  reviewed_at: 2026-11-13
+
+- stable_key: go:cte:art:71:par:12:inc:XII:ali:d:item:1
+  note_hash: 4222cc86ee78374580b25928284664cc5c2a191c55a64d9a90433201a54d7428
+  action: approve
+  reason: >-
+    O intervalo lido, [2001-12-27, 2006-01-01), é o da nota logo depois do texto ("NOTA: Redação
+    com vigência de 27.12.01 a 31.12.05.") e confere com a revogação ("REVOGADO O ITEM 1 DA ALÍNEA
+    "D" DO INCISO XII DO ART. 71 PELO ART. 4º DA LEI Nº 15.505, DE 29.12.05 - vigência: 01.01.06").
+    A nota órfã "NOTA: Redação com vigência de 01.01.06 a 27.12.06." é do "1. revogado;", publicado
+    depois dela.
+  reviewed_by: claude
+  reviewed_at: 2026-11-13
+
+- stable_key: go:cte:art:71:par:12:inc:XII:ali:d:item:1
+  note_hash: c39d58a03aa54c1c2560e8294bcea41b9deac09b73d890772eb6461960f57234
+  action: set_interval
+  valid_during: { from: 2006-01-01, to: 2006-12-28 }
+  reason: >-
+    O "1. revogado;" vale da revogação ("REVOGADO O ITEM 1 … - vigência: 01.01.06") até a nova
+    redação da alínea ("CONFERIDA NOVA REDAÇÃO À ALÍNEA "D" DO INCISO XII DO ART. 71 PELO ART. 1º DA
+    LEI Nº 15.921, DE 28.12.06 - vigência: 28.12.06"), como diz a nota publicada antes do texto
+    ("NOTA: Redação com vigência de 01.01.06 a 27.12.06."). A nota "27.12.01 a 31.12.05" que o
+    parser ligou a ele é a do item 2.
+  reviewed_by: claude
+  reviewed_at: 2026-11-13
+
+- stable_key: go:cte:art:92:inc:III
+  note_hash: 52742bf12b5642fce319b33ca22abdb4667510e8bd1fbce7ab72c0ff4de8719f
+  action: set_interval
+  valid_during: { from: 1997-01-01, to: 2001-01-01 }
+  reason: >-
+    A redação "(táxi), dotado ou não de taxímetro, destinados ao transporte de pessoas, limitada a
+    isenção a 1 (um) veículo" vale "NOTA: Redação com vigência de 01.01.97 a 31.12.00.", com a
+    abertura do ato ("CONFERIDA NOVA REDAÇÃO AO INCISO III DO ART. 92 PELO ART. 1º DA LEI Nº
+    12.972, DE 27.12.96 - vigência: 01.01.97."). O ato e a nota vêm antes do texto, em classe de
+    texto, e o parser fechou a redação com a nota do inciso IV ("01.03.92 a 31.12.95").
+  reviewed_by: claude
+  reviewed_at: 2026-11-13
+
+- stable_key: go:cte:art:95:par:1
+  note_hash: f0c7d47830c11d0eba10990d82fadc958dceb1fc625284e1e1937c9284ded670
+  action: approve
+  reason: >-
+    O intervalo lido, [1999-01-26, 2001-01-01), é o do acréscimo ("ACRESCIDO O § 1º AO ART. 95 PELO
+    ART. 3º DA LEI Nº 13.446, DE 20.01.99 - vigência: 26.01.99.") e da nota "NOTA: Redação com
+    vigência de 26.01.99 a 31.12.00.". A segunda nota igual, que o parser trata como órfã, é do §
+    2º, cujo ato de acréscimo vem em classe de texto.
+  reviewed_by: claude
+  reviewed_at: 2026-11-13
