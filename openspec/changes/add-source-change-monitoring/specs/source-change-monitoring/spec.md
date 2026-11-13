@@ -63,6 +63,11 @@ data do run em `America/Sao_Paulo`.
 - **WHEN** nenhuma fonte mudou e todas as páginas foram verificadas em 2026-11-11
 - **THEN** cada banco recebe um único `UPDATE` e toda família com `verified_at` anterior passa a 2026-11-11
 
+#### Scenario: Banco ainda sem o schema corpus
+
+- **WHEN** o banco de produção ainda não recebeu a primeira promoção do corpus e o `UPDATE` falha com SQLSTATE `42P01` ou `3F000`
+- **THEN** o `mark-coverage` registra um aviso para esse banco, marca os demais e não reprova o job; qualquer outro erro reprova o job com a causa do Postgres no log
+
 ### Requirement: Lacuna a partir da data de efeito
 
 Com mudança detectada numa família, o `mark-coverage` MUST acrescentar `[effectiveFrom, ∞)` a
