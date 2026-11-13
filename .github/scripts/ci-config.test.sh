@@ -184,6 +184,10 @@ check "ingest e source-watch com BLOB_STORE github-releases" \
   yq_true '.env.BLOB_STORE == "github-releases"' "$watch"
 check "ingest: escrita nos releases só no load e no corpus-eval-history" \
   yq_true '[.jobs | to_entries[] | select(.value.permissions.contents == "write") | .key] | sort | join(",") == "corpus-eval-history,load"' "$ingest"
+# Com o BLOB_STORE github-releases do workflow, todo passo que monta a configuração da API
+# (evals e registro do corpus-eval) precisa do GITHUB_TOKEN, mesmo só lendo (run 43360531268).
+check "ingest: os passos do corpus-eval que leem a configuração recebem o GITHUB_TOKEN" \
+  yq_true '[.jobs."corpus-eval".steps[] | select(.run // "" | test("eval:retrieval|corpus-eval-record\\.ts build")) | .env.GITHUB_TOKEN == "${{ github.token }}"] | (length == 2 and all)' "$ingest"
 check "ingest: o corpus-eval-history nunca roda o código de um PR e baixa o registro do corpus-eval" \
   bash -c "yq -r '.jobs.\"corpus-eval-history\".if' '$ingest' | grep -Fq \"inputs.ref == ''\" && yq -e '.jobs.\"corpus-eval-history\".needs == \"corpus-eval\" and ([.jobs.\"corpus-eval-history\".steps[] | select(.uses // \"\" | test(\"^actions/checkout@\")) | .with.ref // \"\"] | join(\"\")) == \"\"' '$ingest' >/dev/null"
 check "ingest: GITHUB_TOKEN do job nos passos que leem ou gravam artefatos" \
@@ -272,6 +276,12 @@ check "ingest: falha cedo sem NEON_STAGING_PROJECT_ID ou com BLOB_STORE desconhe
   bash -c "yq -r '.jobs.discover.steps[].run // \"\"' '$ingest' | grep -q NEON_STAGING_PROJECT_ID && yq -r '.jobs.discover.steps[].run // \"\"' '$ingest' | grep -q 'BLOB_STORE .* desconhecido'"
 
 # --- F3: source-watch.yml -------------------------------------------------------------------------
+check "source-watch: harden-runner em block, como primeiro step, em todo job com steps" \
+  yq_true '[.jobs[] | select(has("steps")) | .steps[0].uses | test("^step-security/harden-runner@")] | all' "$watch"
+check "source-watch: egress-policy block com allowed-endpoints em todo job com steps" \
+  yq_true '[.jobs[] | select(has("steps")) | .steps[0].with | (."egress-policy" == "block" and (."allowed-endpoints" // "" | length) > 0)] | all' "$watch"
+check "source-watch: Neon só no egress do mark-coverage" \
+  yq_true '[.jobs | to_entries[] | select(.value.steps[0].with."allowed-endpoints" // "" | test("neon\\.tech")) | .key] | join(",") == "mark-coverage"' "$watch"
 check "source-watch: cron diário 0 9 * * *" \
   yq_true '.on.schedule[0].cron == "0 9 * * *"' "$watch"
 check "source-watch: detect no staging e mark-coverage no corpus-watch" \

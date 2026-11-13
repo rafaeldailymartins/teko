@@ -5,14 +5,14 @@ no [roteiro](roadmap.md); o desenho, em [`architecture/`](architecture/README.md
 
 ## Resumo
 
-| Fase                                    | Situação                                                  |
-| --------------------------------------- | --------------------------------------------------------- |
-| F0 contas e governança                  | concluída, menos o primeiro PR do Dependabot              |
-| F1 esqueleto, gates e spikes            | concluída em 2026-11-11                                   |
-| F2 domínio de vigência, schema e busca  | concluída em 2026-11-11                                   |
-| F3 ingestão C1 e C2, embeddings e watch | concluída em 2026-11-12, com pendências do `source-watch` |
-| Revisão antes da F4                     | em andamento (pacotes A a E, 2026-11-12)                  |
-| F4 em diante                            | a F4 começa quando o mantenedor decidir                   |
+| Fase                                    | Situação                                     |
+| --------------------------------------- | -------------------------------------------- |
+| F0 contas e governança                  | concluída, menos o primeiro PR do Dependabot |
+| F1 esqueleto, gates e spikes            | concluída em 2026-11-11                      |
+| F2 domínio de vigência, schema e busca  | concluída em 2026-11-11                      |
+| F3 ingestão C1 e C2, embeddings e watch | fechada em 2026-11-13                        |
+| Revisão antes da F4                     | em andamento (pacotes A a E, 2026-11-12)     |
+| F4 em diante                            | a F4 começa quando o mantenedor decidir      |
 
 ## F0: contas e governança
 
@@ -82,8 +82,8 @@ Concluída em 2026-11-12. Código entregue em 2026-11-11 (#25); o primeiro run r
 - Mudanças arquivadas: `add-rcte-cte-html-parser`, `add-go-code-tables-ingestion`,
   `add-embedding-pipeline`, `add-docling-pdf-extraction`, `add-sped-guides-ingestion`,
   `add-parser-revision`, `add-reranker`, `fix-hybrid-search-provision-dedup` e
-  `add-http-pinned-guides`. Ficam abertas `add-source-change-monitoring` (primeiro `source-watch`
-  agendado) e `fix-safe-fetcher-retries` (#46).
+  `add-http-pinned-guides`; em 2026-11-13, `add-source-change-monitoring` e
+  `fix-safe-fetcher-retries` (#46).
 - ADRs 0011, 0025 (reconciliação por janela, aceita pelo mantenedor em 2026-11-12), 0026, 0027 e
   0028 (exceção http com pin), todas accepted.
 - Medido nos arquivos oficiais: 95,8% das `NotaVigncia` do RCTE e 96,6% das do CTE, o resto
@@ -111,12 +111,14 @@ Lições do primeiro run, já no código:
   lock fecha os anteriores;
 - o `ci-gate` aceita `mutation` e `perf` pulados (PR que só muda `corpus/`).
 
-Pendências:
+**Source-watch** (2026-11-13): o cron `0 9 * * *` não disparou nesse dia (o GitHub descartou o
+run agendado), e o run manual 43462349735 no `develop` foi verde: 0 mudança e 0 erro nas 9
+páginas; `verified_at=2026-11-13` no staging pelo `teko_watch`, e a produção com o aviso esperado
+de banco sem o schema `corpus` até a primeira promoção. O harden-runner dos três jobs passou para
+`block`, com os hosts observados nesse run. O evento ao Sentry quando houver mudança fica para a
+F6, que traz o DSN (TODO no workflow).
 
-- primeiro `source-watch` agendado (`verified_at` diário; depois passar o harden-runner dele para
-  `block`) e arquivar `add-source-change-monitoring`;
-- arquivar `fix-safe-fetcher-retries` depois do `source-watch` (os ingests de 2026-11-12 já rodaram
-  sem queda por erro de rede).
+Sem pendências: a F3 está fechada.
 
 ## Revisão antes da F4 (2026-11-12)
 

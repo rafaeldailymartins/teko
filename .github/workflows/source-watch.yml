@@ -56,9 +56,28 @@ jobs:
       - name: Harden runner
         uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
         with:
-          # audit nas duas primeiras semanas (padrão do repositório); os hosts observados viram a
-          # allowlist em `block`, como a do ingest.yml.
-          egress-policy: audit
+          # Hosts observados em audit (run 43462349735) mais os que o ingest.yml libera para os
+          # mesmos passos: GitHub (checkout e releases; uploads.github.com porque grava), Actions,
+          # npm e as páginas do corpus/watch.yaml (www.goias.gov.br pelo redirecionamento).
+          egress-policy: block
+          allowed-endpoints: >
+            github.com:443
+            api.github.com:443
+            codeload.github.com:443
+            objects.githubusercontent.com:443
+            raw.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+            uploads.github.com:443
+            results-receiver.actions.githubusercontent.com:443
+            *.actions.githubusercontent.com:443
+            *.blob.core.windows.net:443
+            registry.npmjs.org:443
+            nodejs.org:443
+            www.gov.br:443
+            www.sped.fazenda.gov.br:443
+            goias.gov.br:443
+            www.goias.gov.br:443
+            appasp.economia.go.gov.br:443
 
       - name: Conferir o backend dos artefatos (BLOB_STORE)
         run: |
@@ -135,7 +154,22 @@ jobs:
       - name: Harden runner
         uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
         with:
-          egress-policy: audit
+          # Observados em audit (run 43462349735) mais os do ingest.yml para os mesmos passos:
+          # checkout, setup, artifact e o Neon. Sem uploads.github.com: o job nunca grava.
+          egress-policy: block
+          allowed-endpoints: >
+            github.com:443
+            api.github.com:443
+            codeload.github.com:443
+            objects.githubusercontent.com:443
+            raw.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+            results-receiver.actions.githubusercontent.com:443
+            *.actions.githubusercontent.com:443
+            *.blob.core.windows.net:443
+            registry.npmjs.org:443
+            nodejs.org:443
+            *.neon.tech:5432
 
       - name: Conferir as URLs do teko_watch (environment corpus-watch)
         env:
@@ -211,7 +245,12 @@ jobs:
       - name: Harden runner
         uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
         with:
-          egress-policy: audit
+          egress-policy: block
+          allowed-endpoints: >
+            github.com:443
+            api.github.com:443
+            results-receiver.actions.githubusercontent.com:443
+            *.actions.githubusercontent.com:443
 
       - name: Falhar se alguma página não pôde ser verificada
         env:

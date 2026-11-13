@@ -1,17 +1,17 @@
 {
   "format": 1,
-  "corpusVersion": 11,
+  "corpusVersion": 12,
   "snapshot": {
-    "manifestKey": "snapshots/11/manifest.json",
-    "corpusVersion": 11,
-    "createdAt": "2026-11-12T23:37:57.910Z",
-    "migration": "231d25e59f001c2801e0694816ff591a1777f57cb7935d8a91fd9cfe28642229",
-    "manifestSha256": "442807bbf44e3f9b2695418ae2c7261c95c830345bbc268822fa2ef77067bcc9"
+    "manifestKey": "snapshots/12/manifest.json",
+    "corpusVersion": 12,
+    "createdAt": "2026-11-13T03:50:47.327Z",
+    "migration": "113d9d706398c5dc31cf9c2dc389bdd6d6c08224f9321ae60028b114283649b4",
+    "manifestSha256": "15bf7e422de060f42160666c88e56e63ef0ea0397d57810cfdf274d076ef52b6"
   },
-  "updatedAt": "2026-11-12",
+  "updatedAt": "2026-11-13",
   "sources": {
     "cte/consolidado": {
-      "sha256": "d2a511c0b3c4f86799b9897b3caf7fb4af58009f1bc68c581cc858edf4f17e59",
+      "sha256": "b5280ebd5e13f3b75570197c0000d4a907c4726538af2698d2b88dbc983e848e",
       "versionLabel": "CTE atualizado até a Lei nº 24.608, de 06.11.26",
       "publishedOn": "2026-11-06"
     },
@@ -191,7 +191,7 @@
       "publishedOn": "2023-03-16"
     },
     "rcte/consolidado": {
-      "sha256": "c829bb03ab1d00ec14533c81ce1e7c5931d6e85af01d6fdafac53ea7ffd856ff",
+      "sha256": "6e14352ac3cd4d75ec81897a3083f1e58259dd4ef1eea8008168de01dbcab318",
       "versionLabel": "RCTE consolidado até o Decreto nº 10.986, de 16.09.26",
       "publishedOn": "2026-09-16"
     },
@@ -214,6 +214,92 @@
       "sha256": "6baa95f7263b38bfa512750badfaca71db9f5a44d03e6d347d6b37432a9a414d",
       "versionLabel": "Tabela 5.5 (GO), versão 5 de 04/11/2024",
       "publishedOn": "2024-11-04"
+    }
+  },
+  "lineage": {
+    "gitSha": "unknown",
+    "embeddingModel": "@cf/baai/bge-m3",
+    "parserRevisions": {
+      "go-html-state-machine": 1,
+      "docling-guia": 2,
+      "docling-generic": 2,
+      "reinf-xsd": 1,
+      "sped-tabelas": 1
+    },
+    "extractorRevision": 1,
+    "doclingVersion": "2.146.0",
+    "reranker": null
+  },
+  "health": {
+    "cte": {
+      "family": "cte",
+      "provisions": 1163,
+      "chunks": 1400,
+      "pending": 281,
+      "versions": 1681
+    },
+    "guia-pratico-efd-goias": {
+      "family": "efd-go",
+      "provisions": 120,
+      "chunks": 1484,
+      "pending": 0,
+      "versions": 823
+    },
+    "guia-pratico-efd-icms-ipi": {
+      "family": "efd-icms-ipi",
+      "provisions": 2413,
+      "chunks": 6798,
+      "pending": 454,
+      "versions": 7141
+    },
+    "leiautes-efd-reinf": {
+      "family": "efd-reinf",
+      "provisions": 1023,
+      "chunks": 1474,
+      "pending": 0,
+      "versions": 1474
+    },
+    "notas-tecnicas-efd-icms-ipi": {
+      "family": "efd-icms-ipi",
+      "provisions": 243,
+      "chunks": 538,
+      "pending": 0,
+      "versions": 243
+    },
+    "rcte": {
+      "family": "rcte",
+      "provisions": 7040,
+      "chunks": 8422,
+      "pending": 306,
+      "versions": 8728
+    },
+    "tabela-go-5-1-1": {
+      "family": "tabelas-go",
+      "provisions": 645,
+      "chunks": 869,
+      "pending": 0,
+      "versions": 869
+    },
+    "tabela-go-5-2": {
+      "family": "tabelas-go",
+      "provisions": 287,
+      "chunks": 355,
+      "pending": 0,
+      "versions": 355
+    },
+    "tabela-go-5-3": {
+      "family": "tabelas-go",
+      "provisions": 124,
+      "chunks": 143,
+      "pending": 0,
+      "versions": 143
+    },
+    "tabela-go-5-5": {
+      "family": "tabelas-go",
+      "provisions": 14,
+      "chunks": 14,
+      "pending": 0,
+      "versions": 14
     }
   }
 }
