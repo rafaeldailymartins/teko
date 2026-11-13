@@ -25,7 +25,12 @@ pre-commit:
       glob: "{pnpm-lock.yaml,tools/vercel-cli/pnpm-lock.yaml,tools/netlify-cli/pnpm-lock.yaml}"
       run: node scripts/check-lockfile.ts
 
+# A parte por pacote do `pnpm verify` (typecheck, dependency-cruiser, type-coverage e unitários),
+# só nos pacotes afetados desde origin/develop. Lint, OpenSpec e lockfile já passaram no
+# pre-commit; os checks do repositório inteiro (knip, jscpd, sherif) ficam no `pnpm verify` e no CI.
 pre-push:
   commands:
     affected:
-      run: ./node_modules/.bin/turbo run typecheck test:unit --affected
+      env:
+        TURBO_SCM_BASE: origin/develop
+      run: ./node_modules/.bin/turbo run typecheck lint:deps type-coverage test:unit --affected

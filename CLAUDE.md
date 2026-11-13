@@ -144,17 +144,14 @@ Atualize esta seção no PR que fecha cada fase ou spike.
   `main`, merge commit. Não há aprovação obrigatória (mantenedor único): com os 7 checks verdes,
   `gh pr merge <n> --auto --squash` faz o merge.
 
-**Gates locais antes do push** (o pre-push do lefthook roda só typecheck e testes afetados)
+**Gates locais antes do push** (o pre-push do lefthook roda a parte por pacote do `verify` nos
+pacotes afetados)
 
-`pnpm lint`, `pnpm typecheck`, `pnpm knip`, `pnpm lint:deps`, `pnpm lint:fsd`,
-`pnpm exec turbo boundaries`, `pnpm lint:monorepo`, `pnpm dup`, `pnpm type-coverage`,
-`pnpm spec:validate`, `pnpm check-lockfile`, `pnpm test:unit`, `pnpm test:integration`,
-`pnpm test:scripts`, `pnpm build`, `pnpm audit --prod --audit-level low` (e `pnpm audit --audit-level low`
-em `tools/vercel-cli` e `tools/netlify-cli`), `bash .github/scripts/affected.test.sh`,
-`bash .github/scripts/ci-config.test.sh`, `bash .github/scripts/migration-guard.test.sh` e, em
-`tools/ingest`, `uv run --frozen ruff check . && uv run --frozen ruff format --check . && uv run --frozen pyright && uv run --frozen pytest`.
-Workflows novos ou alterados passam pelo actionlint (Docker `rhysd/actionlint`). Mutação: o
-Stryker de cada pacote alterado, com limite de 70.
+`pnpm verify` (camada rápida) sempre; `pnpm verify:full` (soma testes dos scripts, integração,
+build, os `.sh` de CI, o Python de `tools/ingest` e o audit) quando mexer em dependências, banco,
+ingestão ou `.github/`. Workflows novos ou alterados passam pelo actionlint (Docker
+`rhysd/actionlint`). Mutação roda só no noturno; `pnpm test:mutation` local quando mexer no domínio
+(ADR 0032).
 
 **Dependências e segredos**
 
