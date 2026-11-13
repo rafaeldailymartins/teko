@@ -109,6 +109,73 @@ describe('runCoverageMark', () => {
     expect(staging.commands).toHaveLength(1)
   })
 
+  function failing(error: unknown): CoverageWatchRepository {
+    return {
+      markVerified() {
+        return Promise.reject(error)
+      },
+    }
+  }
+
+  function pgError(message: string, code: string): Error {
+    return Object.assign(new Error(message), { code })
+  }
+
+  it('avisa sem reprovar quando o banco ainda não tem o schema corpus', async () => {
+    const file = await writeReport(
+      JSON.stringify({ ...REPORT, changes: [], errors: [], unverifiedFamilies: [] }),
+    )
+    const lines: string[] = []
+    const wrapped = new Error('Failed query: update "corpus"."coverage" set …', {
+      cause: pgError('relation "corpus.coverage" does not exist', '42P01'),
+    })
+    const code = await runCoverageMark(
+      {
+        targets: [
+          { name: 'teko-prod', repository: failing(wrapped) },
+          { name: 'teko-staging', repository: repository() },
+        ],
+        log: (line) => lines.push(line),
+      },
+      ['--discovered', file],
+    )
+    expect(code).toBe(0)
+    expect(lines).toEqual([
+      '::warning title=coverage-mark::teko-prod: sem o schema corpus (banco ainda não migrado), nada a marcar',
+      'teko-staging: verified_at=2026-11-11 em 5 família(s), 0 lacuna(s)',
+    ])
+    expect(
+      await runCoverageMark(
+        {
+          targets: [{ name: 'teko-prod', repository: failing(pgError('x', '3F000')) }],
+          log: () => {},
+        },
+        ['--discovered', file],
+      ),
+    ).toBe(0)
+  })
+
+  it('mostra a causa do erro do pg embrulhado pelo Drizzle', async () => {
+    const file = await writeReport(
+      JSON.stringify({ ...REPORT, changes: [], errors: [], unverifiedFamilies: [] }),
+    )
+    const lines: string[] = []
+    const wrapped = new Error('Failed query: update "corpus"."coverage"', {
+      cause: pgError('permission denied for table coverage', '42501'),
+    })
+    const code = await runCoverageMark(
+      {
+        targets: [{ name: 'teko-prod', repository: failing(wrapped) }],
+        log: (line) => lines.push(line),
+      },
+      ['--discovered', file],
+    )
+    expect(code).toBe(1)
+    expect(lines).toEqual([
+      'teko-prod: erro: Failed query: update "corpus"."coverage" ← causa: permission denied for table coverage [42501]',
+    ])
+  })
+
   it('recusa argumentos inválidos e arquivo ausente ou inválido', async () => {
     const lines: string[] = []
     const deps = { targets: [], log: (line: string) => lines.push(line) }

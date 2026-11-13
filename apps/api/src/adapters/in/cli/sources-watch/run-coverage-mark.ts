@@ -115,9 +115,54 @@ export async function runCoverageMark(
         log(`  lacuna ${gap.family} desde ${gap.from}: ${gap.reason}`)
       }
     } catch (error) {
+      if (isMissingCorpusSchema(error)) {
+        // A produção só recebe o schema `corpus` na primeira promoção (F7); até lá não há o que
+        // marcar. Aviso no resumo do Actions, sem reprovar o job.
+        log(
+          `::warning title=coverage-mark::${target.name}: sem o schema corpus (banco ainda não ` +
+            'migrado), nada a marcar',
+        )
+        continue
+      }
       failed += 1
-      log(`${target.name}: erro: ${error instanceof Error ? error.message : String(error)}`)
+      log(`${target.name}: erro: ${describeError(error)}`)
     }
   }
   return failed === 0 ? 0 : 1
+}
+
+/** SQLSTATE de tabela (`42P01`) ou schema (`3F000`) inexistente, procurado na cadeia de `cause`. */
+const MISSING_SCHEMA_CODES = new Set(['42P01', '3F000'])
+
+function errorChain(error: unknown): unknown[] {
+  const chain: unknown[] = []
+  let current: unknown = error
+  while (current !== undefined && current !== null && chain.length < 5) {
+    chain.push(current)
+    current = current instanceof Error ? current.cause : undefined
+  }
+  return chain
+}
+
+function sqlState(error: unknown): string | undefined {
+  if (typeof error !== 'object' || error === null || !('code' in error)) return undefined
+  return typeof error.code === 'string' ? error.code : undefined
+}
+
+function isMissingCorpusSchema(error: unknown): boolean {
+  return errorChain(error).some((item) => MISSING_SCHEMA_CODES.has(sqlState(item) ?? ''))
+}
+
+/**
+ * Mensagem com a causa: o Drizzle embrulha o erro do `pg` ("Failed query: …") e só a `cause`
+ * diz o motivo (SQLSTATE e texto do Postgres).
+ */
+function describeError(error: unknown): string {
+  return errorChain(error)
+    .map((item) => {
+      const message = item instanceof Error ? item.message : String(item)
+      const code = sqlState(item)
+      return code === undefined ? message : `${message} [${code}]`
+    })
+    .join(' ← causa: ')
 }

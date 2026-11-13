@@ -16,6 +16,7 @@
 - [x] 3.1 `createPgCoverageWatchRepository` (um `UPDATE` sem mudança; transação com lacunas) e grants do `teko_watch` — `test/integration/watch/coverage-watch.test.ts`
 - [x] 3.2 Handlers `runSourcesWatch` e `runCoverageMark` (+ `resolveWatchDatabaseUrls` e validação do `discovered.json`) — `run-sources-watch.test.ts`, `run-coverage-mark.test.ts`
 - [x] 3.3 Fiação no `cli.ts`/`composition-root.ts` (orquestrador: `sources-watch` e `coverage-mark`)
+- [x] 3.4 `coverage-mark` tolera banco sem o schema `corpus` (produção antes da primeira promoção) e mostra a causa do erro do `pg` — run manual 43339854431 falhou em `teko-prod` com "Failed query" sem causa — `run-coverage-mark.test.ts`
 
 ## 4. Workflow
 
