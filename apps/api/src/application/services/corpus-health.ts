@@ -1,3 +1,4 @@
+import { compareCodeUnits } from '#domain/shared/compare-code-units.ts'
 import type { DocumentHealth } from '../ports/corpus-ingestion-repository.ts'
 
 /**
@@ -60,7 +61,7 @@ export function evaluateHealth(
 ): HealthReport {
   const beforeBySlug = new Map((before ?? []).map((document) => [document.slug, document]))
   const afterBySlug = new Map(after.map((document) => [document.slug, document]))
-  const slugs = [...new Set([...beforeBySlug.keys(), ...afterBySlug.keys()])].sort()
+  const slugs = [...new Set([...beforeBySlug.keys(), ...afterBySlug.keys()])].sort(compareCodeUnits)
   const violations: string[] = []
   const documents = slugs.map((slug) => {
     const previous = beforeBySlug.get(slug) ?? null

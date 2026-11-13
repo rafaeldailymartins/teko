@@ -1,5 +1,6 @@
 import { compareIsoDates, type IsoDate } from '@teko/shared/vigencia'
 import { GAP_REASON_MAX } from '#domain/corpus/coverage-gaps.ts'
+import { compareCodeUnits } from '#domain/shared/compare-code-units.ts'
 import type {
   CoverageWatchRepository,
   FamilyGap,
@@ -43,7 +44,8 @@ function truncate(text: string): string {
   return text.length <= GAP_REASON_MAX ? text : `${text.slice(0, GAP_REASON_MAX - 1)}…`
 }
 
-const coversOf = (change: DiscoveredChange): string[] => [...(change.covers ?? [])].sort()
+const coversOf = (change: DiscoveredChange): string[] =>
+  [...(change.covers ?? [])].sort(compareCodeUnits)
 
 /**
  * Uma lacuna por família e conjunto de documentos com mudança, a partir da menor data de efeito
