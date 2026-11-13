@@ -11,7 +11,7 @@ on:
       affected:
         description: >-
           JSON do job `affected` do pr-gate.yml
-          ({web, api, shared, ingest, rag, llm, packages}). Vazio = recalcular aqui.
+          ({web, api, shared, ingest, rag, llm, docs, code, packages}). Vazio = recalcular aqui.
         type: string
         required: false
         default: ""
@@ -55,7 +55,7 @@ jobs:
         env:
           AFFECTED: ${{ inputs.affected }}
         run: |
-          jq -e 'has("packages") and has("ingest")' <<<"$AFFECTED" >/dev/null
+          jq -e 'has("packages") and has("ingest") and has("code")' <<<"$AFFECTED" >/dev/null
           echo "json=$(jq -c . <<<"$AFFECTED")" >>"$GITHUB_OUTPUT"
 
       - name: Checkout (histórico completo)
@@ -78,12 +78,17 @@ jobs:
           BEFORE_SHA: ${{ github.event.before }}
         run: bash .github/scripts/affected.sh
 
+  # Sempre roda (é o job que todo PR exercita). Num PR só de documentação (`code: false`, grupo
+  # `docs` do affected-paths.yml), só o Biome, o lockfile e o OpenSpec; o resto pula (ADR 0032).
   lint:
     name: lint
+    needs: scope
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
       contents: read
+    env:
+      HAS_CODE: ${{ fromJSON(needs.scope.outputs.json).code }}
     steps:
       - name: Harden runner
         uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
@@ -106,42 +111,52 @@ jobs:
         # deploy (lidos pelo Dependabot e pelos jobs de deploy), sem argumentos.
         run: pnpm check-lockfile
 
-      # Confere as assinaturas do registry do que o PR instala. Os advisories (`pnpm audit`) ficam
-      # no audit.yml, fora do PR (ADR 0032).
-      - name: Assinaturas do registry
-        run: pnpm audit signatures
-
-      - name: Consistência do monorepo (sherif)
-        run: pnpm lint:monorepo
-
-      - name: Código e dependências não usados (knip)
-        run: pnpm knip
-
       - name: OpenSpec
         env:
           OPENSPEC_TELEMETRY: "0"
         run: pnpm spec:validate
 
+      # Confere as assinaturas do registry do que o PR instala. Os advisories (`pnpm audit`) ficam
+      # no audit.yml, fora do PR (ADR 0032).
+      - name: Assinaturas do registry
+        if: env.HAS_CODE == 'true'
+        run: pnpm audit signatures
+
+      - name: Consistência do monorepo (sherif)
+        if: env.HAS_CODE == 'true'
+        run: pnpm lint:monorepo
+
+      - name: Código e dependências não usados (knip)
+        if: env.HAS_CODE == 'true'
+        run: pnpm knip
+
       - name: Typecheck dos scripts da raiz
+        if: env.HAS_CODE == 'true'
         run: pnpm typecheck:scripts
 
       # node:test nativo (Node 24): os scripts ficam fora dos pacotes do workspace.
       - name: Testes dos scripts da raiz
+        if: env.HAS_CODE == 'true'
         run: pnpm test:scripts
 
       - name: Duplicação (jscpd, 3%, min-tokens 70)
+        if: env.HAS_CODE == 'true'
         run: pnpm dup
 
       - name: Testes do escopo afetado (affected.sh e grafo do turbo)
+        if: env.HAS_CODE == 'true'
         run: bash .github/scripts/affected.test.sh
 
       - name: Testes da configuração de CI
+        if: env.HAS_CODE == 'true'
         run: bash .github/scripts/ci-config.test.sh
 
       - name: Testes do migration-guard
+        if: env.HAS_CODE == 'true'
         run: bash .github/scripts/migration-guard.test.sh
 
       - name: actionlint
+        if: env.HAS_CODE == 'true'
         env:
           ACTIONLINT_VERSION: 1.7.12
           ACTIONLINT_SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8

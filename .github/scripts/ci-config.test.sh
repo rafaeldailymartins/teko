@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Testes de regressão da configuração de CI: invariantes que já quebraram uma vez e que nenhum
-# linter (actionlint, zizmor) enxerga, porque o YAML continua válido sem elas.
+# linter (actionlint, zizmor) enxerga, porque o YAML continua válido sem elas. É o lugar das
+# checagens de workflow (ci-gate, Sonar, audit, mutação, ingest.yml, source-watch.yml e seus
+# harden-runner); o que o actionlint ou o zizmor já reprovam não se repete aqui (ADR 0032).
 #
 # Uso: bash .github/scripts/ci-config.test.sh (na raiz). Requer yq (mikefarah v4) e jq.
 set -euo pipefail
@@ -43,6 +45,20 @@ check "lint roda os testes do affected.sh" job_runs_match lint 'bash \.github/sc
 check "lint roda este teste" job_runs_match lint 'bash \.github/scripts/ci-config\.test\.sh'
 check "typecheck roda type-coverage no --affected" \
   job_runs_match typecheck 'turbo run .*type-coverage.*--affected'
+
+# --- PR só de docs (ADR 0032): o lint roda Biome, lockfile e OpenSpec, e pula o resto ------------
+lint_docs_only_layer() {
+  # Uma linha por passo com `run`: "<if ou sempre> <primeira linha do run>".
+  local steps always others
+  steps="$(yq -r '.jobs.lint.steps[] | select(has("run")) | (.if // "sempre") + " " + (.run | split("\n") | .[0])' \
+    .github/workflows/ci.yml)" || return 1
+  always="$(sort <<<"$(grep '^sempre ' <<<"$steps")")"
+  others="$(grep -v '^sempre ' <<<"$steps" | grep -v "^env.HAS_CODE == 'true' " || true)"
+  [[ "$always" == $'sempre pnpm check-lockfile\nsempre pnpm lint\nsempre pnpm spec:validate' && -z "$others" ]] &&
+    yq_true '.jobs.lint.env.HAS_CODE == "${{ fromJSON(needs.scope.outputs.json).code }}"' .github/workflows/ci.yml
+}
+check "lint: só Biome, lockfile e OpenSpec rodam sem código; o resto depende de HAS_CODE" lint_docs_only_layer
+check "affected-paths.yml tem o grupo docs" yq_true '.docs | length > 0' .github/affected-paths.yml
 
 # --- pnpm audit fora do PR (ADR 0032): advisory novo não reprova PR sem relação -----------------
 check "ci.yml sem pnpm audit de advisories (só signatures, no lint)" \
@@ -138,24 +154,9 @@ no_unanchored_out_jscpd() {
 check "sonar.exclusions sem **/out/**" no_unanchored_out_sonar
 check ".jscpd.json sem **/out/**" no_unanchored_out_jscpd
 
-# --- Todo workflow: actions fixadas por SHA e checkout sem credenciais persistidas ---------------
-actions_pinned_by_sha() {
-  local bad
-  bad="$(yq -r '.. | select(tag == "!!map" and has("uses")) | .uses' .github/workflows/*.yml .github/actions/*/action.yml |
-    grep -Ev '^(\./|---$)|@[0-9a-f]{40}$' || true)"
-  if [[ -n "$bad" ]]; then
-    echo "     uses sem SHA: ${bad//$'\n'/, }"
-    return 1
-  fi
-}
-checkout_without_credentials() {
-  local bad
-  bad="$(yq -r '.jobs[]?.steps[]? | select(.uses // "" | test("^actions/checkout@")) | .with."persist-credentials" | tostring' \
-    .github/workflows/*.yml | grep -Ev '^(false|---)$' || true)"
-  [[ -z "$bad" ]]
-}
-check "actions fixadas por SHA (exceto as locais)" actions_pinned_by_sha
-check "todo checkout com persist-credentials: false" checkout_without_credentials
+# Actions fixadas por SHA e checkout sem credenciais persistidas não são conferidos aqui: o zizmor
+# do security.yml já reprova os dois (auditorias `unpinned-uses`, que desde a 1.20 exige hash em
+# toda action, e `artipacked`) (ADR 0032).
 
 # --- F3: ingest.yml (plano: Workflows; Environments e segredos) ---------------------------------
 ingest=.github/workflows/ingest.yml

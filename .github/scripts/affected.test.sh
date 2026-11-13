@@ -56,12 +56,14 @@ git commit -qm base
 base_sha="$(git rev-parse HEAD)"
 git update-ref refs/remotes/origin/develop "$base_sha"
 
-all='{"web":true,"api":true,"shared":true,"ingest":true,"rag":true,"llm":true,"packages":true}'
-none='{"web":false,"api":false,"shared":false,"ingest":false,"rag":false,"llm":false,"packages":false}'
-packages_only='{"web":true,"api":true,"shared":true,"ingest":false,"rag":false,"llm":false,"packages":true}'
-ingest_only='{"web":false,"api":false,"shared":false,"ingest":true,"rag":false,"llm":false,"packages":false}'
-api_ingest='{"web":false,"api":true,"shared":false,"ingest":true,"rag":false,"llm":false,"packages":true}'
-api_only='{"web":false,"api":true,"shared":false,"ingest":false,"rag":false,"llm":false,"packages":true}'
+all='{"web":true,"api":true,"shared":true,"ingest":true,"rag":true,"llm":true,"docs":true,"code":true,"packages":true}'
+# Só código fora de qualquer grupo (ex.: um workflow agendado): nenhum gate de pacote, lint inteiro.
+code_only='{"web":false,"api":false,"shared":false,"ingest":false,"rag":false,"llm":false,"docs":false,"code":true,"packages":false}'
+docs_only='{"web":false,"api":false,"shared":false,"ingest":false,"rag":false,"llm":false,"docs":true,"code":false,"packages":false}'
+packages_only='{"web":true,"api":true,"shared":true,"ingest":false,"rag":false,"llm":false,"docs":false,"code":true,"packages":true}'
+ingest_only='{"web":false,"api":false,"shared":false,"ingest":true,"rag":false,"llm":false,"docs":false,"code":true,"packages":false}'
+api_ingest='{"web":false,"api":true,"shared":false,"ingest":true,"rag":false,"llm":false,"docs":false,"code":true,"packages":true}'
+api_only='{"web":false,"api":true,"shared":false,"ingest":false,"rag":false,"llm":false,"docs":false,"code":true,"packages":true}'
 
 failures=0
 cases=0
@@ -154,16 +156,35 @@ expect_scope "domain/corpus: api + ingest" "$api_ingest" push \
 # Controle negativo: outro adapter de entrada da API não é ingestão.
 expect_scope "adapters/in/http: só api" "$api_only" push \
   apps/api/src/adapters/in/http/novo-arquivo.ts
-expect_scope "docs: nada afetado" "$none" push docs/adr/0002-supply-chain-pnpm.md README.md
 expect_scope "pull_request contra origin/develop" "$packages_only" pull_request \
   packages/shared/src/errors/codes.ts
+
+# --- Grupo docs (ADR 0032): PR só de documentação não tem código ---------------------------------
+expect_scope "docs: só docs, sem código" "$docs_only" push \
+  docs/adr/0002-supply-chain-pnpm.md README.md openspec/specs/quality-gates/spec.md \
+  .claude/settings.json
+# Markdown dentro de um pacote: o turbo marca o pacote (o `--affected` das tasks, que excluem
+# **/*.md dos inputs, não seleciona nada), mas não há código para o lint.
+expect_scope "docs dentro do web: web pelo turbo, sem código" \
+  '{"web":true,"api":false,"shared":false,"ingest":false,"rag":false,"llm":false,"docs":true,"code":false,"packages":true}' \
+  push apps/web/NOTAS.md
+expect_scope "docs + um arquivo fora do grupo: tem código" \
+  '{"web":false,"api":false,"shared":false,"ingest":false,"rag":false,"llm":false,"docs":true,"code":true,"packages":false}' \
+  push docs/adr/0002-supply-chain-pnpm.md .editorconfig
+
+# --- Workflows que não definem gates de PR: não marcam tudo --------------------------------------
+for file in .github/workflows/mutation.yml .github/workflows/audit.yml .github/workflows/scorecard.yml \
+  .github/workflows/codeql.yml .github/workflows/pr-hygiene.yml .github/workflows/sonar.yml; do
+  expect_scope "workflow sem gate de PR: ${file}" "$code_only" push "$file"
+done
+expect_scope "ingest.yml: só ingest" "$ingest_only" push .github/workflows/ingest.yml
+expect_scope "source-watch.yml: só ingest" "$ingest_only" push .github/workflows/source-watch.yml
 
 # --- Configuração de CI e da raiz: tudo afetado --------------------------------------------------
 global_files=(
   .github/workflows/ci.yml
   .github/workflows/pr-gate.yml
-  .github/workflows/ingest.yml
-  .github/workflows/source-watch.yml
+  .github/workflows/perf.yml
   .github/actions/setup/action.yml
   .github/scripts/affected.sh
   .github/affected-paths.yml

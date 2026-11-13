@@ -2,14 +2,18 @@
 # Calcula o escopo afetado de um PR ou push para os gates do CI.
 #
 # - web, api, shared: `turbo query affected --packages` (dependentes incluídos pelo turbo).
-# - ingest, rag, llm: `git diff --name-only <base>...HEAD` contra os globs de
+# - ingest, rag, llm, docs: `git diff --name-only <base>...HEAD` contra os globs de
 #   .github/affected-paths.yml (pathspec `:(glob)` do git).
 # - packages: true se qualquer pacote JS foi afetado.
+# - code: true se mudou algum arquivo fora do grupo `docs` (false num PR só de documentação).
 #
-# Mudança na configuração que define ou executa os gates (workflows, a composite de setup, os
-# scripts do CI, este escopo, turbo/pnpm/tsconfig/biome/knip/lefthook da raiz, regras do Semgrep,
-# Sonar, o Vercel CLI isolado) marca tudo como afetado: o turbo não enxerga esses arquivos (ou
-# enxerga só parte deles), e um PR que mexe num gate precisa exercitá-lo antes do merge.
+# Mudança na configuração que define ou executa os gates de PR (ci.yml, pr-gate.yml e perf.yml, a
+# composite de setup, os scripts do CI, este escopo, turbo/pnpm/tsconfig/biome/knip/lefthook da
+# raiz, regras do Semgrep, Sonar, os CLIs isolados) marca tudo como afetado: o turbo não enxerga
+# esses arquivos (ou enxerga só parte deles), e um PR que mexe num gate precisa exercitá-lo antes
+# do merge. Os demais workflows (agendados, de ingestão, de higiene) não marcam nada sozinhos: o
+# lint (actionlint, ci-config.test.sh) roda em todo PR com código, e ingest.yml e source-watch.yml
+# estão no grupo `ingest` (ADR 0032).
 #
 # Sem base comparável (agendamento, dispatch, primeiro push de um branch, base inexistente),
 # tudo é considerado afetado: na dúvida, roda.
@@ -24,7 +28,9 @@ config="${AFFECTED_PATHS_FILE:-.github/affected-paths.yml}"
 # Pathspecs (`:(glob)`, ancorados na raiz) que marcam tudo como afetado. Testados por
 # .github/scripts/affected.test.sh.
 global_pathspecs=(
-  ':(glob).github/workflows/**'
+  ':(glob).github/workflows/ci.yml'
+  ':(glob).github/workflows/pr-gate.yml'
+  ':(glob).github/workflows/perf.yml'
   ':(glob).github/actions/**'
   ':(glob).github/scripts/**'
   ":(glob)${config}"
@@ -41,8 +47,8 @@ global_pathspecs=(
   ':(glob)tools/vercel-cli/**'
   ':(glob)tools/netlify-cli/**'
 )
-path_groups=(ingest rag llm)
-keys=(web api shared ingest rag llm)
+path_groups=(ingest rag llm docs)
+keys=(web api shared ingest rag llm docs code)
 
 declare -A result
 for key in "${keys[@]}"; do
@@ -135,6 +141,16 @@ else
       result[$group]=true
     fi
   done
+
+  # Código: qualquer arquivo alterado fora do grupo `docs`.
+  code_pathspecs=(':(glob)**')
+  while IFS= read -r pattern; do
+    [[ -n "$pattern" ]] && code_pathspecs+=(":(exclude,glob)${pattern}")
+  done <<<"${group_patterns[docs]}"
+  code_changed="$(git diff --name-only "${base}...HEAD" -- "${code_pathspecs[@]}")"
+  if [[ -n "$code_changed" ]]; then
+    result[code]=true
+  fi
 fi
 
 packages=false
@@ -150,8 +166,10 @@ json="$(
     --argjson ingest "${result[ingest]}" \
     --argjson rag "${result[rag]}" \
     --argjson llm "${result[llm]}" \
+    --argjson docs "${result[docs]}" \
+    --argjson code "${result[code]}" \
     --argjson packages "$packages" \
-    '{web: $web, api: $api, shared: $shared, ingest: $ingest, rag: $rag, llm: $llm, packages: $packages}'
+    '{web: $web, api: $api, shared: $shared, ingest: $ingest, rag: $rag, llm: $llm, docs: $docs, code: $code, packages: $packages}'
 )"
 
 output="${GITHUB_OUTPUT:-/dev/stdout}"
