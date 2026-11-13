@@ -7,10 +7,8 @@ catalogMode: strict
 savePrefix: ""
 minimumReleaseAge: 10080 # 7 dias, coerente com o cooldown do Dependabot
 trustPolicy: no-downgrade
-# Exceções pontuais (versão exata), cada uma justificada no ADR 0002:
-# chokidar@4.0.3: publicado em dez/2024 sem provenance (4.0.0/4.0.1/5.0.0 têm); exigido por steiger (^4.0.3).
-trustPolicyExclude:
-  - chokidar@4.0.3
+# Sem trustPolicyExclude no workspace da aplicação: a única exceção (chokidar@4.0.3, do steiger)
+# saiu com o steiger (ADR 0032). Exceções novas são por versão exata e justificadas no ADR 0002.
 blockExoticSubdeps: true
 strictDepBuilds: true
 engineStrict: true
@@ -137,8 +135,6 @@ catalog:
   postcss: 8.5.32
   babel-plugin-react-compiler: 1.0.0
   next-intl: 4.14.9
-  steiger: 0.9.0
-  "@feature-sliced/steiger-plugin": 0.8.2
   # Declarado só para a Netlify usar esta cópia (do lockfile) em vez de baixar uma sem versão fixa;
   # NETLIFY_NEXT_PLUGIN_SKIP desliga a lógica dele (spike F1 (a)).
   "@netlify/plugin-nextjs": 5.16.6

@@ -24,7 +24,6 @@
     "lint:fix": "biome check --write .",
     "format": "biome format --write .",
     "lint:deps": "turbo run lint:deps",
-    "lint:fsd": "turbo run lint:fsd",
     "lint:monorepo": "sherif",
     "knip": "knip && knip --production --include dependencies,unlisted,unresolved,binaries",
     "type-coverage": "turbo run type-coverage",

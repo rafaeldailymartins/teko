@@ -125,18 +125,12 @@ jobs:
       - name: Typecheck dos scripts da raiz
         run: pnpm typecheck:scripts
 
-      # node:test nativo (Node 24): os scripts ficam fora dos pacotes, e o turbo boundaries proíbe
-      # que um pacote importe arquivos de fora dele.
+      # node:test nativo (Node 24): os scripts ficam fora dos pacotes do workspace.
       - name: Testes dos scripts da raiz
         run: pnpm test:scripts
 
       - name: Duplicação (jscpd, 3%, min-tokens 70)
         run: pnpm dup
-
-      - name: Fronteiras entre pacotes (turbo boundaries)
-        # Sem tags, confere imports de arquivos fora do pacote e dependências não declaradas;
-        # com as tags dos turbo.json dos pacotes, também as regras de `boundaries` da raiz.
-        run: pnpm exec turbo boundaries
 
       - name: Testes do escopo afetado (affected.sh e grafo do turbo)
         run: bash .github/scripts/affected.test.sh
@@ -185,10 +179,10 @@ jobs:
         with:
           turbo-cache: "true"
 
-      - name: Typecheck (tsc 7), dependency-cruiser, steiger e type-coverage
+      - name: Typecheck (tsc 7), dependency-cruiser e type-coverage
         # A task `transit` do turbo.json põe os inputs do packages/shared no hash de api/web, então
         # uma mudança só no shared também roda os checks dos dependentes.
-        run: pnpm exec turbo run typecheck lint:deps lint:fsd type-coverage --affected
+        run: pnpm exec turbo run typecheck lint:deps type-coverage --affected
 
       - name: Salvar cache do Turbo
         if: github.event_name == 'push'

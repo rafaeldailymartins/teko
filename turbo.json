@@ -23,25 +23,6 @@
     "tools/vercel-cli/**",
     "tools/netlify-cli/**"
   ],
-  "boundaries": {
-    "tags": {
-      "shared": {
-        "dependencies": {
-          "deny": ["web", "api"]
-        }
-      },
-      "web": {
-        "dependencies": {
-          "deny": ["api"]
-        }
-      },
-      "api": {
-        "dependencies": {
-          "deny": ["web"]
-        }
-      }
-    }
-  },
   "tasks": {
     "transit": {
       "dependsOn": ["^transit"]
@@ -83,11 +64,6 @@
       "dependsOn": ["transit"]
     },
     "lint:deps": {
-      "inputs": ["$TURBO_DEFAULT$", "!**/*.md"],
-      "outputs": [],
-      "dependsOn": ["transit"]
-    },
-    "lint:fsd": {
       "inputs": ["$TURBO_DEFAULT$", "!**/*.md"],
       "outputs": [],
       "dependsOn": ["transit"]

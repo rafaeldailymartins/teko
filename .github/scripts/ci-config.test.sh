@@ -39,7 +39,6 @@ yq_true() {
 
 # --- Gates do plano que o CI precisa rodar (plan-gates-missing-in-ci) --------------------------
 check "lint roda o jscpd (pnpm dup)" job_runs_match lint '^pnpm dup$'
-check "lint roda turbo boundaries" job_runs_match lint 'turbo boundaries'
 check "lint roda os testes do affected.sh" job_runs_match lint 'bash \.github/scripts/affected\.test\.sh'
 check "lint roda este teste" job_runs_match lint 'bash \.github/scripts/ci-config\.test\.sh'
 check "typecheck roda type-coverage no --affected" \

@@ -117,11 +117,11 @@ entrar em `develop` e `main`.
 | Gate                       | Ferramenta                                                                                                                                 |
 | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
 | 🎨 Formatação e lint       | Biome sem warnings, ruff na ingestão Python, actionlint nos workflows                                                                      |
-| 🧩 Arquitetura             | dependency-cruiser (hexagonal), Steiger (FSD), `turbo boundaries`                                                                          |
+| 🧩 Arquitetura             | dependency-cruiser (hexagonal)                                                                                                             |
 | 🧹 Código morto e monorepo | knip, sherif, jscpd                                                                                                                        |
 | 🔤 Tipos                   | `tsc` estrito e type-coverage ≥ 99%; pyright na ingestão                                                                                   |
 | 🧪 Cobertura               | Vitest: ≥ 95% de linhas no domínio e na aplicação da API e no `shared`, ≥ 80% nos adapters e na web                                        |
-| 🧬 Mutação                 | Stryker, score mínimo de 70                                                                                                                |
+| 🧬 Mutação                 | Stryker, score mínimo de 70, toda noite (fora do PR)                                                                                       |
 | 🔎 Recuperação             | retrieval evals (promptfoo) sobre a fixture real: recall@10 ≥ 0,9, MRR ≥ 0,7; vigência, recusa, clarificação e data de referência sem erro |
 | ⚡ Desempenho              | `sql-perf` da busca híbrida sobre 100 mil chunks: sem Seq Scan e mediana abaixo de 150 ms                                                  |
 | 🗃️ Migrações               | `migration-guard`: só expand/contract, migração publicada é imutável                                                                       |

@@ -118,11 +118,11 @@ jobs and is required to merge into `develop` and `main`.
 | Gate                      | Tool                                                                                                                                                 |
 | ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 🎨 Formatting and lint    | Biome with no warnings, ruff in the Python ingestion, actionlint on the workflows                                                                    |
-| 🧩 Architecture           | dependency-cruiser (hexagonal), Steiger (FSD), `turbo boundaries`                                                                                    |
+| 🧩 Architecture           | dependency-cruiser (hexagonal)                                                                                                                       |
 | 🧹 Dead code and monorepo | knip, sherif, jscpd                                                                                                                                  |
 | 🔤 Types                  | strict `tsc` and type-coverage ≥ 99%; pyright in the ingestion                                                                                       |
 | 🧪 Coverage               | Vitest: ≥ 95% of lines in the API's domain and application layers and in `shared`, ≥ 80% in the adapters and the web                                 |
-| 🧬 Mutation               | Stryker, minimum score of 70                                                                                                                         |
+| 🧬 Mutation               | Stryker, minimum score of 70, nightly (outside the PR)                                                                                               |
 | 🔎 Retrieval              | retrieval evals (promptfoo) on the real-text fixture: recall@10 ≥ 0.9, MRR ≥ 0.7; validity, refusal, clarification and reference date with no errors |
 | ⚡ Performance            | `sql-perf` of the hybrid search over 100k chunks: no Seq Scan and a median under 150 ms                                                              |
 | 🗃️ Migrations             | `migration-guard`: expand/contract only, a published migration is immutable                                                                          |
