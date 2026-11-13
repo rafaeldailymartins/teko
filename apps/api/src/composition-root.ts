@@ -7,11 +7,7 @@ import type {
   WatchDatabaseUrl,
 } from '#adapters/in/cli/sources-watch/run-coverage-mark.ts'
 import type { HttpOptions } from '#adapters/in/http/http-options.ts'
-import {
-  createGithubReleasesBlobStore,
-  type GithubReleasesBlobStore,
-} from '#adapters/out/blobs/github-releases-blob-store.ts'
-import { createNetlifyBlobStore } from '#adapters/out/blobs/netlify-blob-store.ts'
+import { createGithubReleasesBlobStore } from '#adapters/out/blobs/github-releases-blob-store.ts'
 import { systemClock } from '#adapters/out/clock/system-clock.ts'
 import { sha256ContentHasher } from '#adapters/out/crypto/sha256-content-hasher.ts'
 import { createWorkersAiEmbeddingAdapter } from '#adapters/out/embeddings/workers-ai/workers-ai-embedding-adapter.ts'
@@ -89,7 +85,7 @@ import {
 import { PUBLISHABLE_REVIEW_STATUSES, ReviewStatus } from '#domain/corpus/family.ts'
 import { type BuildInfo, createBuildInfo } from '#domain/shared/build-info.ts'
 import { buildApp } from './build-app.ts'
-import { BlobStoreBackend, EmbeddingsProvider, type Env, RerankerProvider } from './config/env.ts'
+import { EmbeddingsProvider, type Env, RerankerProvider } from './config/env.ts'
 import {
   createPlatformAdapters,
   platformNetwork,
@@ -205,7 +201,7 @@ export interface IngestionConfig {
 
 /** Peças que vêm de fora (adapters das frentes D e E, ou fakes nos testes). */
 export interface IngestionDeps {
-  /** GitHub Releases ou Netlify Blobs (Actions; ADR 0030), ou o store em memória (testes e local). */
+  /** GitHub Releases (Actions; ADR 0030) ou o store em memória (testes e execução local). */
   readonly blobStore: BlobStore
   readonly clock?: Clock
   /** Substitui os embeddings do env (testes); recebe o medidor para informar o custo. */
@@ -377,52 +373,15 @@ export interface IngestionIo {
   readonly clock: Clock
 }
 
-/** GitHub Releases do repositório, com o `GITHUB_TOKEN` do job (ADR 0030); `null` sem token. */
-function githubReleasesBlobStore(env: Env): GithubReleasesBlobStore | null {
-  return env.GITHUB_TOKEN === undefined || env.GITHUB_REPOSITORY === undefined
-    ? null
-    : createGithubReleasesBlobStore({ repository: env.GITHUB_REPOSITORY, token: env.GITHUB_TOKEN })
-}
-
 /**
- * Netlify Blobs (etapa C1 da ADR 0030: só com `BLOB_STORE=netlify` e no `ingest blobs-migrate`).
- * A etapa C2 apaga esta função, o adapter e as variáveis `NETLIFY_*`.
- */
-function netlifyBlobStore(env: Env): BlobStore | null {
-  return env.NETLIFY_AUTH_TOKEN === undefined || env.NETLIFY_SITE_ID === undefined
-    ? null
-    : createNetlifyBlobStore({ siteID: env.NETLIFY_SITE_ID, token: env.NETLIFY_AUTH_TOKEN })
-}
-
-/**
- * Backend dos artefatos (`BLOB_STORE`, padrão `github-releases`). Sem credenciais do backend (só
- * possível sem `BLOB_STORE` explícito; o `parseEnv` exige as do backend escolhido), o store em
+ * Backend dos artefatos: o GitHub Releases do repositório, com o `GITHUB_TOKEN` do job (ADR 0030).
+ * Sem token (só possível sem `BLOB_STORE`; o `parseEnv` exige o token com ele), o store em
  * memória (execução local).
  */
 export function createBlobStore(env: Env): BlobStore {
-  const store =
-    env.BLOB_STORE === BlobStoreBackend.Netlify
-      ? netlifyBlobStore(env)
-      : githubReleasesBlobStore(env)
-  return store ?? createInMemoryBlobStore()
-}
-
-/**
- * Origem e destino do `ingest blobs-migrate` (etapa C1 da ADR 0030): o Netlify Blobs e o GitHub
- * Releases, os dois obrigatórios. A etapa C2 apaga esta função junto com o comando.
- */
-export function createBlobsMigrationStores(env: Env): {
-  readonly source: BlobStore
-  readonly target: GithubReleasesBlobStore
-} {
-  const source = netlifyBlobStore(env)
-  const target = githubReleasesBlobStore(env)
-  if (source === null || target === null) {
-    throw new Error(
-      'ingest blobs-migrate exige NETLIFY_AUTH_TOKEN, NETLIFY_SITE_ID, GITHUB_TOKEN e GITHUB_REPOSITORY',
-    )
-  }
-  return { source, target }
+  return env.GITHUB_TOKEN === undefined || env.GITHUB_REPOSITORY === undefined
+    ? createInMemoryBlobStore()
+    : createGithubReleasesBlobStore({ repository: env.GITHUB_REPOSITORY, token: env.GITHUB_TOKEN })
 }
 
 /**

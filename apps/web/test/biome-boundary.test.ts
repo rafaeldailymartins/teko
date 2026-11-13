@@ -24,10 +24,9 @@ const PROBES = {
     "import { NextResponse } from 'next/server'",
     "import { drizzle } from 'drizzle-orm/node-postgres'",
     "import { Pool } from 'pg'",
-    "import { getStore } from '@netlify/blobs'",
     "import { betterAuth } from 'better-auth'",
     '',
-    'export const probes = [NextResponse, drizzle, Pool, getStore, betterAuth]',
+    'export const probes = [NextResponse, drizzle, Pool, betterAuth]',
     '',
   ].join('\n'),
   'src/components/img-probe.tsx': [
@@ -89,13 +88,13 @@ afterAll(() => {
 })
 
 describe('apps/web/biome.json', () => {
-  it('barra imports de servidor, banco, Blobs e auth (um diagnóstico por import)', () => {
+  it('barra imports de servidor, banco e auth (um diagnóstico por import)', () => {
     const restricted = diagnostics.filter(
       (diagnostic) =>
         diagnostic.category === 'lint/style/noRestrictedImports' &&
         diagnosticPath(diagnostic).endsWith('server-probe.ts'),
     )
-    expect(restricted).toHaveLength(5)
+    expect(restricted).toHaveLength(4)
   })
 
   it('liga os domínios react e next (noImgElement do domínio next)', () => {

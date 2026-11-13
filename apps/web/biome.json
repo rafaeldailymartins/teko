@@ -27,11 +27,10 @@
                       "drizzle-orm",
                       "drizzle-orm/**",
                       "pg",
-                      "@netlify/blobs",
                       "better-auth",
                       "better-auth/**"
                     ],
-                    "message": "apps/web é só frontend (export estático): sem código de servidor, banco ou Blobs. A lógica fica no Fastify."
+                    "message": "apps/web é só frontend (export estático): sem código de servidor nem banco. A lógica fica no Fastify."
                   }
                 ]
               }
