@@ -45,25 +45,24 @@ check "lint roda este teste" job_runs_match lint 'bash \.github/scripts/ci-confi
 check "typecheck roda type-coverage no --affected" \
   job_runs_match typecheck 'turbo run .*type-coverage.*--affected'
 
-# --- Sonar: o resultado do quality gate entra no ci-gate (GHA-3) -------------------------------
-sonar_args() {
-  yq -r '.jobs.sonar.steps[] | select(.uses // "" | test("sonarqube-scan-action")) | .with.args' \
-    .github/workflows/ci.yml
-}
-check "sonar espera e aplica o quality gate" \
-  bash -c "$(declare -f sonar_args); sonar_args | grep -q 'sonar.qualitygate.wait=true'"
-check "sonar com timeout do quality gate" \
-  bash -c "$(declare -f sonar_args); sonar_args | grep -Eq 'sonar.qualitygate.timeout=[0-9]+'"
+# --- Sonar só informativo (ADR 0032): fora do ci-gate e sem bloquear -----------------------------
+sonar=.github/workflows/sonar.yml
+check "sonar.yml com continue-on-error e sem esperar o quality gate" \
+  bash -c "yq -e '.jobs.sonar.\"continue-on-error\" == true' '$sonar' >/dev/null && ! grep -q 'qualitygate.wait' '$sonar'"
 check "sonar pula sem SONAR_TOKEN (fork/Dependabot sem o segredo)" \
-  bash -c "yq -r '.jobs.sonar.steps[].run // \"\"' .github/workflows/ci.yml | grep -q 'if \[\[ -z \"\${SONAR_TOKEN}\" \]\]'"
+  bash -c "yq -r '.jobs.sonar.steps[].run // \"\"' '$sonar' | grep -q 'if \[\[ -z \"\${SONAR_TOKEN}\" \]\]'"
+check "pr-gate chama o sonar.yml fora dos needs do ci-gate" \
+  yq_true '.jobs.sonar.uses == "./.github/workflows/sonar.yml" and (.jobs."ci-gate".needs | contains(["sonar"]) | not)' .github/workflows/pr-gate.yml
+check "ci.yml chama o sonar.yml só em push para develop" \
+  bash -c "yq -r '.jobs.sonar.if' .github/workflows/ci.yml | grep -Fq \"github.event_name == 'push' && github.ref == 'refs/heads/develop'\""
 # Em push, o Sonar analisa a branch inteira: sem o lcov e o coverage.xml, o new_coverage vai a 0%
-# e o quality gate reprova (sonar-push-without-coverage).
+# (sonar-push-without-coverage). Informativo, mas a medida da branch fica errada.
 check "test roda sempre em push (lcov para o Sonar)" \
   bash -c "yq -r '.jobs.test.if' .github/workflows/ci.yml | grep -q \"github.event_name == 'push' ||\""
 check "python roda sempre em push (coverage.xml para o Sonar)" \
   bash -c "yq -r '.jobs.python.if' .github/workflows/ci.yml | grep -q \"github.event_name == 'push' ||\""
-check "ci-gate depende do workflow ci (que inclui o sonar)" \
-  bash -c "yq -e '.jobs.\"ci-gate\".needs | contains([\"ci\"])' .github/workflows/pr-gate.yml >/dev/null"
+check "Codecov fora do CI" \
+  bash -c "! grep -rqi 'codecov' .github/workflows && [[ ! -e codecov.yml ]]"
 
 # --- ci-gate (ADR 0032): agregador sem `always()`, sem mutação e com só o perf podendo pular ----
 check "ci-gate roda com !cancelled(), não always()" \
