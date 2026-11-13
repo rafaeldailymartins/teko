@@ -1,7 +1,10 @@
 import pg from 'pg'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { createDatabase, type Database } from '#adapters/out/persistence/drizzle/client.ts'
-import { createPgCoverageWatchRepository } from '#adapters/out/persistence/drizzle/repositories/pg-coverage-watch-repository.ts'
+import {
+  createPgCoverageWatchRepository,
+  GapEntriesMigrationPendingError,
+} from '#adapters/out/persistence/drizzle/repositories/pg-coverage-watch-repository.ts'
 import { createTestDatabase, type TestDatabase } from '../../setup/database.ts'
 
 /**
@@ -263,6 +266,40 @@ describe('grants do teko_watch', () => {
       }
     } finally {
       await client.end()
+    }
+  })
+})
+
+describe('banco ainda sem a migração coverage-gap-entries', () => {
+  it('sem lacuna avança o verified_at; com lacuna falha com a causa e não grava nada', async () => {
+    // Simula o staging antes do primeiro `ingest load --migrate` com a migração nova.
+    await owner.query('ALTER TABLE corpus.coverage DROP COLUMN gap_entries')
+    try {
+      const repository = createPgCoverageWatchRepository(watch.db)
+      expect(
+        await repository.markVerified({ verifiedAt: '2026-11-11', excludeFamilies: [], gaps: [] }),
+      ).toEqual({ verifiedRows: 3, gapRows: 0 })
+      await owner.query(`UPDATE corpus.coverage SET verified_at = '2026-11-01'`)
+      const error = await repository
+        .markVerified({
+          verifiedAt: '2026-11-12',
+          excludeFamilies: [],
+          gaps: [
+            { family: 'rcte', from: '2026-11-10', reason: 'Decreto', sources: [], detectedAt },
+          ],
+        })
+        .catch((caught: unknown) => caught)
+      expect(error).toBeInstanceOf(GapEntriesMigrationPendingError)
+      expect(String(error)).toMatch(/migração coverage-gap-entries ainda não rodou/)
+      const after = await owner.query<{ n: number }>(
+        `SELECT count(*)::int AS n FROM corpus.coverage WHERE verified_at = '2026-11-12'`,
+      )
+      expect(after.rows[0]?.n).toBe(0)
+    } finally {
+      await owner.query(
+        `ALTER TABLE corpus.coverage ADD COLUMN gap_entries jsonb DEFAULT '[]' NOT NULL`,
+      )
+      await owner.query('GRANT UPDATE (gap_entries) ON corpus.coverage TO teko_watch')
     }
   })
 })

@@ -45,16 +45,53 @@ async function advanceVerifiedAt(
   return rowCount(result)
 }
 
+/**
+ * Banco ainda sem a migração `coverage-gap-entries` (o staging a recebe no `ingest load
+ * --migrate`, a produção no deploy): sem lacuna, o avanço do `verified_at` funciona igual; com
+ * lacuna, a marcação falha com esta mensagem, e nada da transação é gravado.
+ */
+export class GapEntriesMigrationPendingError extends Error {
+  constructor(cause: unknown) {
+    super(
+      'corpus.coverage sem a coluna gap_entries: a migração coverage-gap-entries ainda não rodou ' +
+        'neste banco (staging: rode o ingest, que aplica --migrate; produção: o deploy)',
+      { cause },
+    )
+    this.name = 'GapEntriesMigrationPendingError'
+  }
+}
+
+function missingGapEntries(error: unknown): boolean {
+  for (let current: unknown = error, depth = 0; current !== undefined && depth < 5; depth += 1) {
+    if (
+      typeof current === 'object' &&
+      current !== null &&
+      'code' in current &&
+      current.code === '42703' &&
+      current instanceof Error &&
+      current.message.includes('gap_entries')
+    ) {
+      return true
+    }
+    current = current instanceof Error ? current.cause : undefined
+  }
+  return false
+}
+
 /** Acrescenta as lacunas de uma família; devolve 1 se a família tem linha de cobertura. */
 async function addGaps(tx: Tx, family: string, gaps: readonly FamilyGap[]): Promise<number> {
-  const current = await tx.execute<{
-    gaps: string
-    gap_reason: string | null
-    gap_entries: unknown
-  }>(
-    sql`SELECT gaps::text AS gaps, gap_reason, gap_entries FROM corpus.coverage
+  const current = await tx
+    .execute<{
+      gaps: string
+      gap_reason: string | null
+      gap_entries: unknown
+    }>(
+      sql`SELECT gaps::text AS gaps, gap_reason, gap_entries FROM corpus.coverage
         WHERE family = ${family} FOR UPDATE`,
-  )
+    )
+    .catch((error: unknown) => {
+      throw missingGapEntries(error) ? new GapEntriesMigrationPendingError(error) : error
+    })
   const row = current.rows[0]
   if (row === undefined) {
     return 0
