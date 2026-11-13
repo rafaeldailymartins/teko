@@ -2,40 +2,28 @@ import { describe, expect, it } from 'vitest'
 import { DEFAULT_TRUST_PROXY, type Env, parseEnv } from './env.ts'
 import {
   createPlatformAdapters,
-  NETLIFY_CLIENT_IP_TRUSTED,
   NODE_BACKGROUND_DRAIN_MS,
   platformNetwork,
   platformShutdown,
   VERCEL_SHUTDOWN,
 } from './platform.ts'
 
-const BASE = { APP_ENV: 'ci', WEB_ORIGIN: 'https://develop--tekoia.netlify.app' } as const
+const BASE = { APP_ENV: 'ci', WEB_ORIGIN: 'https://tekoia-staging.vercel.app' } as const
 const DIRECT = {
-  path: 'direct',
-  signatureValid: false,
   headers: { 'x-real-ip': '203.0.113.7' },
   forwardedIp: '172.30.0.9',
 } as const
 const noop = { onBackgroundFailure: () => {} }
 
 describe('perfil de plataforma', () => {
-  it('confia no x-nf-client-connection-ip só com assinatura válida (spike F1 (c))', () => {
-    expect(NETLIFY_CLIENT_IP_TRUSTED).toBe(true)
-    const env = parseEnv({ ...BASE, RUNTIME_TARGET: 'vercel' })
-    const { clientIp } = createPlatformAdapters(env, noop)
-    const proxied = {
-      path: 'proxied',
-      headers: { 'x-nf-client-connection-ip': '203.0.113.20' },
-      forwardedIp: '35.170.138.45',
-    } as const
-    expect(clientIp.resolve({ ...proxied, signatureValid: true })).toEqual({
-      ip: '203.0.113.20',
-      source: 'netlify_proxy',
-    })
-    expect(clientIp.resolve({ ...proxied, signatureValid: false })).toEqual({
-      ip: null,
-      source: 'none',
-    })
+  it('vercel: o guarda do maxDuration recusa um Env montado sem FUNCTION_MAX_DURATION_S', () => {
+    const env: Env = {
+      ...parseEnv({ ...BASE, RUNTIME_TARGET: 'vercel', FUNCTION_MAX_DURATION_S: '120' }),
+      FUNCTION_MAX_DURATION_S: undefined,
+    }
+    expect(() => createPlatformAdapters(env, noop)).toThrow(
+      'FUNCTION_MAX_DURATION_S ausente com RUNTIME_TARGET=vercel',
+    )
   })
 
   it('node (CI e local): rede do Caddy, X-Request-Id do Caddy, drenagem do env', () => {

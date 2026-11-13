@@ -38,14 +38,9 @@ export {
   QuestionStatus,
   questionIdParamsSchema,
   type Refusal,
-  type ReissueTicketResponse,
   type ResolvedReferenceDate,
   refusalSchema,
-  reissueTicketResponseSchema,
   resolvedReferenceDateSchema,
-  STREAM_TICKET_TTL_SECONDS,
-  type StreamTicket,
-  streamTicketSchema,
 } from './questions.ts'
 export {
   createStreamErrorChunk,

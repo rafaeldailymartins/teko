@@ -17,9 +17,11 @@ const DEV_ENV = { APP_ENV: 'development', WEB_ORIGIN: 'http://localhost:3000' } 
 const PROD_ENV = {
   NODE_ENV: 'production',
   APP_ENV: 'production',
-  WEB_ORIGIN: 'https://tekoia.netlify.app',
+  WEB_ORIGIN: 'https://tekoia.vercel.app',
   RUNTIME_TARGET: 'render',
   TRUST_PROXY: '1',
+  // Ignorada fora da Vercel; presente para os casos que trocam o RUNTIME_TARGET para vercel.
+  FUNCTION_MAX_DURATION_S: '120',
 } as const
 
 function problemsOf(source: Record<string, string | undefined>): readonly string[] {
@@ -46,11 +48,12 @@ describe('parseEnv', () => {
       APP_VERSION: '0.0.0',
       GIT_SHA: 'unknown',
       RUNTIME_TARGET: 'node',
-      FUNCTION_MAX_DURATION_S: HOBBY_MAX_DURATION_S,
+
       SHUTDOWN_GRACE_MS: DEFAULT_SHUTDOWN_GRACE_MS,
       DRAIN_DELAY_MS: DEFAULT_DRAIN_DELAY_MS,
     })
     expect(env.TRUST_PROXY).toBeUndefined()
+    expect(env.FUNCTION_MAX_DURATION_S).toBeUndefined()
     expect(env.VERCEL_REGION).toBeUndefined()
     expect(env.LLM_PROVIDER).toBeUndefined()
   })
@@ -92,10 +95,10 @@ describe('parseEnv', () => {
   })
 
   it.each([
-    'https://tekoia.netlify.app/',
-    'https://tekoia.netlify.app/app',
-    'ftp://tekoia.netlify.app',
-    'tekoia.netlify.app',
+    'https://tekoia.vercel.app/',
+    'https://tekoia.vercel.app/app',
+    'ftp://tekoia.vercel.app',
+    'tekoia.vercel.app',
   ])('rejeita WEB_ORIGIN que não é origem exata: %s', (origin) => {
     expect(problemsOf({ ...DEV_ENV, WEB_ORIGIN: origin }).join('\n')).toMatch(/^WEB_ORIGIN:/m)
   })
@@ -396,10 +399,29 @@ describe('parseEnv', () => {
     )
   })
 
-  it('na Vercel o trustProxy é fixo; no Render, obrigatório', () => {
-    expect(problemsOf({ ...DEV_ENV, RUNTIME_TARGET: 'vercel', TRUST_PROXY: '1' })).toEqual([
-      'TRUST_PROXY: não se aplica com RUNTIME_TARGET=vercel (1 salto, fixo no código)',
+  it('na Vercel exige FUNCTION_MAX_DURATION_S, sem padrão, até o teto do Hobby', () => {
+    expect(problemsOf({ ...DEV_ENV, RUNTIME_TARGET: 'vercel' })).toEqual([
+      'FUNCTION_MAX_DURATION_S: obrigatória com RUNTIME_TARGET=vercel (o maxDuration do .vc-config.json)',
     ])
+    const max = String(HOBBY_MAX_DURATION_S)
+    expect(
+      parseEnv({ ...DEV_ENV, RUNTIME_TARGET: 'vercel', FUNCTION_MAX_DURATION_S: max })
+        .FUNCTION_MAX_DURATION_S,
+    ).toBe(HOBBY_MAX_DURATION_S)
+    expect(
+      parseEnv({ ...DEV_ENV, RUNTIME_TARGET: 'render', TRUST_PROXY: '1' }).FUNCTION_MAX_DURATION_S,
+    ).toBeUndefined()
+  })
+
+  it('na Vercel o trustProxy é fixo; no Render, obrigatório', () => {
+    expect(
+      problemsOf({
+        ...DEV_ENV,
+        RUNTIME_TARGET: 'vercel',
+        TRUST_PROXY: '1',
+        FUNCTION_MAX_DURATION_S: '120',
+      }),
+    ).toEqual(['TRUST_PROXY: não se aplica com RUNTIME_TARGET=vercel (1 salto, fixo no código)'])
     expect(problemsOf({ ...DEV_ENV, RUNTIME_TARGET: 'render' })).toEqual([
       'TRUST_PROXY: obrigatória com RUNTIME_TARGET=render (valor medido no ensaio)',
     ])
@@ -499,7 +521,7 @@ describe('parseEnv', () => {
 
     it('não confere região nem Node fora de staging e produção', () => {
       const env = parseEnv(
-        { ...DEV_ENV, APP_ENV: 'ci', RUNTIME_TARGET: 'vercel' },
+        { ...DEV_ENV, APP_ENV: 'ci', RUNTIME_TARGET: 'vercel', FUNCTION_MAX_DURATION_S: '120' },
         { nodeVersion: 'v26.1.0' },
       )
       expect(env.RUNTIME_TARGET).toBe('vercel')

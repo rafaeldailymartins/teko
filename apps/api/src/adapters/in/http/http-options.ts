@@ -6,8 +6,6 @@ import type { RateLimitStore } from '#app/ports/rate-limit-store.ts'
  * precisa, já validado.
  */
 export interface HttpOptions {
-  /** Origem exata da web (`https://tekoia.netlify.app`); única origem aceita pelo CORS do stream. */
-  readonly webOrigin: string
   /**
    * Proxies confiáveis para `X-Forwarded-*`, por plataforma: 1 salto na Vercel; a rede do Caddy
    * (`172.30.0.0/24`) no CI e local; o valor medido no ensaio no Render.

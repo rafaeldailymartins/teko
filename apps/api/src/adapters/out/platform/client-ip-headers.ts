@@ -1,13 +1,5 @@
 import { isIP } from 'node:net'
-import {
-  type ClientIpInput,
-  type ClientIpResult,
-  ClientIpSource,
-  type RequestHeaders,
-} from '#app/ports/client-ip.ts'
-
-/** Header que a Netlify injeta no proxy `signed` com o IP de quem chamou o site. */
-export const NETLIFY_CLIENT_IP_HEADER = 'x-nf-client-connection-ip'
+import { type ClientIpResult, ClientIpSource, type RequestHeaders } from '#app/ports/client-ip.ts'
 
 export const NO_CLIENT_IP: ClientIpResult = { ip: null, source: ClientIpSource.None }
 
@@ -22,20 +14,4 @@ export function singleIpHeader(headers: RequestHeaders, name: string): string | 
   }
   const trimmed = value.trim()
   return isIP(trimmed) === 0 ? null : trimmed
-}
-
-/**
- * Regra do caminho proxiado, igual em todas as plataformas: `x-nf-client-connection-ip` só com
- * assinatura válida e só se a Netlify comprovadamente sobrescreve o valor do cliente (spike F1
- * (c), refletido em `trustNetlifyClientIp`). Caso contrário, nenhum IP: a chave vira a sessão.
- */
-export function proxiedClientIp(
-  input: ClientIpInput,
-  trustNetlifyClientIp: boolean,
-): ClientIpResult {
-  if (!(trustNetlifyClientIp && input.signatureValid)) {
-    return NO_CLIENT_IP
-  }
-  const ip = singleIpHeader(input.headers, NETLIFY_CLIENT_IP_HEADER)
-  return ip === null ? NO_CLIENT_IP : { ip, source: ClientIpSource.NetlifyProxy }
 }

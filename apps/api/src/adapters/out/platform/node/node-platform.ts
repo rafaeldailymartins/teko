@@ -1,8 +1,8 @@
 import { isIP } from 'node:net'
 import type { BackgroundTaskFailure, BackgroundTasks } from '#app/ports/background-tasks.ts'
-import { type ClientIp, ClientIpSource, ClientPath } from '#app/ports/client-ip.ts'
+import { type ClientIp, ClientIpSource } from '#app/ports/client-ip.ts'
 import type { InvocationDeadline } from '#app/ports/invocation-deadline.ts'
-import { NO_CLIENT_IP, proxiedClientIp } from '../client-ip-headers.ts'
+import { NO_CLIENT_IP } from '../client-ip-headers.ts'
 import { createTrackedBackgroundTasks } from '../tracked-background-tasks.ts'
 
 /**
@@ -17,16 +17,12 @@ export function createNodeBackgroundTasks(
 }
 
 /**
- * No caminho direto, o IP é o que o Fastify calculou (`request.ip`) com o `trustProxy` da
- * plataforma: a rede do Caddy no CI e local, o valor medido no ensaio no Render. No proxiado,
- * vale a regra comum do `x-nf-client-connection-ip`.
+ * O IP é o que o Fastify calculou (`request.ip`) com o `trustProxy` da plataforma: a rede do proxy
+ * da stack de CI e localhost no dev, o valor medido no ensaio no Render.
  */
-export function createNodeClientIp(options: { readonly trustNetlifyClientIp: boolean }): ClientIp {
+export function createNodeClientIp(): ClientIp {
   return {
     resolve(input) {
-      if (input.path === ClientPath.Proxied) {
-        return proxiedClientIp(input, options.trustNetlifyClientIp)
-      }
       return isIP(input.forwardedIp) === 0
         ? NO_CLIENT_IP
         : { ip: input.forwardedIp, source: ClientIpSource.TrustedProxy }

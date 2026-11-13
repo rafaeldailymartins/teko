@@ -36,7 +36,7 @@ const LOG_LEVELS = ['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent'
 export const RuntimeTarget = {
   /** Processo Node comum: `pnpm dev`, stack de CI, Docker local. */
   Node: 'node',
-  /** Vercel Hobby (`teko-api`, `teko-api-staging`), uma Function Fastify em Fluid compute. */
+  /** Vercel Hobby (`tekoia`, `tekoia-staging`), uma Function Fastify em Fluid compute. */
   Vercel: 'vercel',
   /** Plano B: web service do Render Free. */
   Render: 'render',
@@ -112,7 +112,7 @@ const exactOriginSchema = z
   .url({ protocol: /^https?$/, error: 'deve ser uma URL http(s)' })
   .refine((value) => URL.canParse(value) && new URL(value).origin === value, {
     error:
-      'deve ser uma origem exata, sem caminho nem barra final (ex.: https://tekoia.netlify.app)',
+      'deve ser uma origem exata, sem caminho nem barra final (ex.: https://tekoia.vercel.app)',
   })
 
 const trustProxyListSchema = z.array(z.union([z.ipv4(), z.ipv6(), z.cidrv4(), z.cidrv6()])).min(1)
@@ -154,13 +154,12 @@ const envSchema = z
     TRUST_PROXY: trustProxySchema.optional(),
     /** Variável de sistema da Vercel (só em runtime; falta no build com `--prebuilt`). */
     VERCEL_REGION: z.string().trim().min(1).optional(),
-    /** Precisa acompanhar o `maxDuration` efetivo da Function (`vercel.json` ou padrão do Hobby). */
-    FUNCTION_MAX_DURATION_S: z.coerce
-      .number()
-      .int()
-      .min(1)
-      .max(HOBBY_MAX_DURATION_S)
-      .default(HOBBY_MAX_DURATION_S),
+    /**
+     * `maxDuration` da Function (`.vc-config.json` de `scripts/build-vercel-output.ts`, que o teste
+     * do script confere contra `infra/vercel/env.*.json`). Obrigatória com `RUNTIME_TARGET=vercel`
+     * e sem padrão: um padrão (o antigo era 300 s) divergiria em silêncio do `.vc-config.json`.
+     */
+    FUNCTION_MAX_DURATION_S: z.coerce.number().int().min(1).max(HOBBY_MAX_DURATION_S).optional(),
     SHUTDOWN_GRACE_MS: z.coerce
       .number()
       .int()
@@ -172,11 +171,6 @@ const envSchema = z
     EMBEDDINGS_PROVIDER: z.enum(EmbeddingsProvider).optional(),
     /** Reranker da busca (ADR 0027); `workers-ai` usa as mesmas `CF_ACCOUNT_ID` e `CF_AI_TOKEN`. */
     RERANKER_PROVIDER: z.enum(RerankerProvider).default(RerankerProvider.None),
-    /**
-     * Segredo HS256 do proxy assinado da Netlify (`x-nf-sign`), o mesmo valor gravado no site.
-     * Gravado no staging desde o spike F1 (c); quem o usa é o plugin `netlifySignature`, na F4.
-     */
-    NETLIFY_PROXY_JWS_SECRET: z.string().min(32).optional(),
     /**
      * Postgres do runtime (Neon `-pooler`, role `teko_app`). Opcional até a F4, quando as rotas de
      * pergunta passam a exigir o banco; sem ela, o container não monta a busca.
@@ -238,6 +232,12 @@ const envSchema = z
     }
     if (env.RUNTIME_TARGET === RuntimeTarget.Vercel && env.TRUST_PROXY !== undefined) {
       issue('TRUST_PROXY', 'não se aplica com RUNTIME_TARGET=vercel (1 salto, fixo no código)')
+    }
+    if (env.RUNTIME_TARGET === RuntimeTarget.Vercel && env.FUNCTION_MAX_DURATION_S === undefined) {
+      issue(
+        'FUNCTION_MAX_DURATION_S',
+        'obrigatória com RUNTIME_TARGET=vercel (o maxDuration do .vc-config.json)',
+      )
     }
     if (env.RUNTIME_TARGET === RuntimeTarget.Render && env.TRUST_PROXY === undefined) {
       issue('TRUST_PROXY', 'obrigatória com RUNTIME_TARGET=render (valor medido no ensaio)')

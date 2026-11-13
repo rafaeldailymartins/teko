@@ -14,9 +14,6 @@ import {
 /** Limite do texto da pergunta (mesmo valor no prompt e na UI). */
 export const QUESTION_MAX_LENGTH = 1000
 
-/** Validade do ticket de stream (claim `exp`). */
-export const STREAM_TICKET_TTL_SECONDS = 60
-
 // ---------------------------------------------------------------------------------------------
 // POST /api/v1/questions
 
@@ -55,18 +52,6 @@ export const resolvedReferenceDateSchema = z.object({
   alternatives: z.array(isoDateSchema),
 })
 export type ResolvedReferenceDate = z.infer<typeof resolvedReferenceDateSchema>
-
-/**
- * Ticket de uso único para abrir o stream direto na API (`STREAM_ORIGIN`, sem passar pelo proxy da
- * Netlify; `Authorization: Bearer <ticket>`).
- */
-export const streamTicketSchema = z.object({
-  /** URL absoluta de `POST /api/v1/questions/:id/stream` no host de stream. */
-  url: z.url({ protocol: /^https?$/ }),
-  ticket: z.string().min(1),
-  expiresAt: z.iso.datetime({ offset: true }),
-})
-export type StreamTicket = z.infer<typeof streamTicketSchema>
 
 /** Metadados da resposta: payload do chunk `data-meta`. */
 export const answerMetaSchema = z.object({
@@ -134,11 +119,15 @@ export const askQuestionResponseSchema = z
       /** Datas entre as quais o usuário escolhe; a escolha volta com `source: 'clarified'`. */
       candidates: z.array(isoDateSchema).min(2),
     }),
+    /**
+     * A resposta sai em `POST /api/v1/questions/:id/stream`, na mesma origem (ADR 0029): o cookie
+     * de sessão autentica e a API confere o `Origin`; o claim `pending → streaming` garante um
+     * stream só por pergunta. Sem ticket, sem URL absoluta e sem CORS.
+     */
     z.object({
       status: z.literal(QuestionStatus.Accepted),
       questionId: idSchema,
       resolved: resolvedReferenceDateSchema,
-      stream: streamTicketSchema,
     }),
   ])
   .meta({ description: 'Resultado de POST /api/v1/questions' })
@@ -146,14 +135,10 @@ export const askQuestionResponseSchema = z
 export type AskQuestionResponse = z.infer<typeof askQuestionResponseSchema>
 
 // ---------------------------------------------------------------------------------------------
-// POST /api/v1/questions/:id/ticket e /feedback
+// POST /api/v1/questions/:id/stream e /feedback
 
 export const questionIdParamsSchema = z.strictObject({ id: idSchema })
 export type QuestionIdParams = z.infer<typeof questionIdParamsSchema>
-
-/** Reemissão do ticket (pergunta `pending` com menos de 10 min). */
-export const reissueTicketResponseSchema = z.object({ stream: streamTicketSchema })
-export type ReissueTicketResponse = z.infer<typeof reissueTicketResponseSchema>
 
 export const FeedbackRating = {
   Up: 'up',

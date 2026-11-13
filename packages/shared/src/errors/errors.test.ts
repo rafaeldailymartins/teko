@@ -26,8 +26,6 @@ describe('códigos de erro', () => {
       'quota_exceeded',
       'rate_limited',
       'service_paused',
-      'ticket_invalid',
-      'ticket_reused',
       'stream_busy',
       'upstream_unavailable',
       'region_restricted',
@@ -38,8 +36,7 @@ describe('códigos de erro', () => {
 
   it('mapeia status HTTP do plano', () => {
     expect(httpStatusOf(ErrorCode.ValidationError)).toBe(400)
-    expect(httpStatusOf(ErrorCode.TicketInvalid)).toBe(401)
-    expect(httpStatusOf(ErrorCode.TicketReused)).toBe(409)
+    expect(httpStatusOf(ErrorCode.StreamBusy)).toBe(409)
     expect(httpStatusOf(ErrorCode.QuotaExceeded)).toBe(429)
     expect(httpStatusOf(ErrorCode.RateLimited)).toBe(429)
     expect(httpStatusOf(ErrorCode.ServicePaused)).toBe(503)
@@ -51,7 +48,7 @@ describe('códigos de erro', () => {
 
   it('indica quais erros podem ser repetidos', () => {
     expect(isRetryable(ErrorCode.UpstreamUnavailable)).toBe(true)
-    expect(isRetryable(ErrorCode.TicketReused)).toBe(false)
+    expect(isRetryable(ErrorCode.Forbidden)).toBe(false)
     expect(isRetryable(ErrorCode.RateLimited)).toBe(true)
   })
 
@@ -66,15 +63,15 @@ describe('códigos de erro', () => {
 describe('createProblem', () => {
   it('deriva type, title e status do código', () => {
     const problem = createProblem({
-      code: ErrorCode.TicketReused,
+      code: ErrorCode.StreamBusy,
       traceId: '4bf92f3577b34da6a3ce929d0e0e4736',
       instance: '/api/v1/questions/0192/stream',
     })
     expect(problem).toEqual({
-      type: 'tag:teko-api.vercel.app,2026:problems/ticket_reused',
-      title: 'Stream ticket already used',
+      type: 'tag:teko-api.vercel.app,2026:problems/stream_busy',
+      title: 'Another answer is already streaming',
       status: 409,
-      code: 'ticket_reused',
+      code: 'stream_busy',
       traceId: '4bf92f3577b34da6a3ce929d0e0e4736',
       instance: '/api/v1/questions/0192/stream',
     })

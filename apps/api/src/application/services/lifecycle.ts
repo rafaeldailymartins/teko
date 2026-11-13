@@ -3,8 +3,8 @@ import type { Clock } from '../ports/clock.ts'
 
 /**
  * Estado de vida do processo. No SIGTERM o processo entra em drenagem: `/healthz` passa a
- * responder 503 (o proxy da frente para de mandar tráfego) e, a partir da F4, novos tickets de
- * stream também recebem 503 enquanto os streams ativos terminam. Na Vercel, cada deploy é uma
+ * responder 503 (o proxy da frente para de mandar tráfego) e, a partir da F4, novos streams de
+ * resposta também recebem 503 enquanto os ativos terminam. Na Vercel, cada deploy é uma
  * deployment imutável nova, e o SIGTERM só chega no scale-down da instância.
  *
  * A transição é de mão única (`ok` → `draining`): um processo em drenagem nunca volta a receber

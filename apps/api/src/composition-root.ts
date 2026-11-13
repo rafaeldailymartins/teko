@@ -473,7 +473,6 @@ export function createContainer(env: Env, overrides: ContainerOverrides = {}): C
 export function createHttpOptions(env: Env): HttpOptions {
   const network = platformNetwork(env)
   return {
-    webOrigin: env.WEB_ORIGIN,
     trustProxy: network.trustProxy,
     requestIdHeader: network.requestIdHeader,
     eventLoopDelayGuard: network.eventLoopDelayGuard,

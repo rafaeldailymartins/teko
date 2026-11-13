@@ -15,7 +15,7 @@ import { VERCEL_SHUTDOWN } from './config/platform.ts'
 
 const BASE = {
   APP_ENV: 'ci',
-  WEB_ORIGIN: 'https://develop--tekoia.netlify.app',
+  WEB_ORIGIN: 'https://tekoia-staging.vercel.app',
   APP_VERSION: '0.0.0-abc1234',
   GIT_SHA: 'abc1234',
   LOG_LEVEL: 'silent',
@@ -77,7 +77,6 @@ describe('createContainer', () => {
 describe('createHttpOptions', () => {
   it('no CI e local confia só na rede do Caddy, usa o X-Request-Id dele e não liga rate limit', () => {
     expect(createHttpOptions(parseEnv(BASE))).toEqual({
-      webOrigin: 'https://develop--tekoia.netlify.app',
       trustProxy: ['172.30.0.0/24'],
       requestIdHeader: 'x-request-id',
       eventLoopDelayGuard: true,
@@ -90,7 +89,7 @@ describe('createHttpOptions', () => {
       ...BASE,
       APP_ENV: 'production',
       NODE_ENV: 'production',
-      WEB_ORIGIN: 'https://tekoia.netlify.app',
+      WEB_ORIGIN: 'https://tekoia.vercel.app',
       RUNTIME_TARGET: 'render',
       TRUST_PROXY: '1',
     })
@@ -98,7 +97,9 @@ describe('createHttpOptions', () => {
   })
 
   it('na Vercel confia em exatamente 1 salto e usa o x-vercel-id', () => {
-    const options = createHttpOptions(parseEnv({ ...BASE, RUNTIME_TARGET: 'vercel' }))
+    const options = createHttpOptions(
+      parseEnv({ ...BASE, RUNTIME_TARGET: 'vercel', FUNCTION_MAX_DURATION_S: '120' }),
+    )
     expect(options.trustProxy).toBe(1)
     expect(options.requestIdHeader).toBe('x-vercel-id')
     expect(options.eventLoopDelayGuard).toBe(false)
@@ -144,7 +145,9 @@ describe('createRuntime', () => {
   })
 
   it('na Vercel usa o perfil de encerramento de 500 ms', async () => {
-    const { app, shutdown } = await createRuntime(parseEnv({ ...BASE, RUNTIME_TARGET: 'vercel' }))
+    const { app, shutdown } = await createRuntime(
+      parseEnv({ ...BASE, RUNTIME_TARGET: 'vercel', FUNCTION_MAX_DURATION_S: '120' }),
+    )
     expect(shutdown).toEqual(VERCEL_SHUTDOWN)
     await app.close()
   })
@@ -212,6 +215,7 @@ describe('serviços do corpus (F2)', () => {
           ...BASE,
           ...FAKE_EMBEDDINGS,
           RUNTIME_TARGET: runtimeTarget,
+          FUNCTION_MAX_DURATION_S: '120',
           DATABASE_URL: 'postgresql://teko_app:x@127.0.0.1:1/teko',
         }),
         { applicationName: 'teko-test' },

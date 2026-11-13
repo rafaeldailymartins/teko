@@ -22,7 +22,7 @@ describe('fastifyTrustProxy', () => {
 
 describe('buildApp', () => {
   it('registra o rate limit só quando há store compartilhado', async () => {
-    const env = parseEnv({ APP_ENV: 'ci', WEB_ORIGIN: 'https://develop--tekoia.netlify.app' })
+    const env = parseEnv({ APP_ENV: 'ci', WEB_ORIGIN: 'https://tekoia-staging.vercel.app' })
     const app = await buildApp({
       container: createContainer(env),
       http: {

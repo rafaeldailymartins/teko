@@ -36,7 +36,6 @@
     "eval:corpus:record": "node evals/scripts/corpus-eval-record.ts"
   },
   "dependencies": {
-    "@fastify/cors": "catalog:",
     "@fastify/helmet": "catalog:",
     "@fastify/rate-limit": "catalog:",
     "@fastify/sensible": "catalog:",

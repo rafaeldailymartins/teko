@@ -98,7 +98,6 @@ catalog:
   fastify: 5.12.8
   fastify-type-provider-zod: 7.0.0
   "@fastify/helmet": 13.2.0
-  "@fastify/cors": 11.4.0
   "@fastify/rate-limit": 11.2.2
   "@fastify/under-pressure": 9.2.1
   "@fastify/sensible": 6.0.7

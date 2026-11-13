@@ -1,13 +1,8 @@
 import { attachDatabasePool, ipAddress, waitUntil } from '@vercel/functions'
 import type { BackgroundTaskFailure, BackgroundTasks } from '#app/ports/background-tasks.ts'
-import {
-  type ClientIp,
-  ClientIpSource,
-  ClientPath,
-  type RequestHeaders,
-} from '#app/ports/client-ip.ts'
+import { type ClientIp, ClientIpSource, type RequestHeaders } from '#app/ports/client-ip.ts'
 import type { InvocationDeadline } from '#app/ports/invocation-deadline.ts'
-import { NO_CLIENT_IP, proxiedClientIp, singleIpHeader } from '../client-ip-headers.ts'
+import { NO_CLIENT_IP, singleIpHeader } from '../client-ip-headers.ts'
 import { createTrackedBackgroundTasks } from '../tracked-background-tasks.ts'
 
 /**
@@ -51,19 +46,13 @@ function headersLike(headers: RequestHeaders): { get(name: string): string | nul
 }
 
 /**
- * - Direto: `x-real-ip` (via `ipAddress`), que a borda da Vercel sobrescreve e nunca repassa do
- *   cliente. É também o motivo de o `trustProxy` ser de exatamente 1 salto.
- * - Proxiado: o IP de rede é o de saída da Netlify; vale a regra comum do
- *   `x-nf-client-connection-ip`.
+ * `x-real-ip` (via `ipAddress`), que a borda da Vercel sobrescreve e nunca repassa do cliente. É
+ * também o motivo de o `trustProxy` ser de exatamente 1 salto. Web e API estão na mesma origem
+ * (ADR 0029): todo navegador chega direto à borda, então o IP vale em todas as rotas.
  */
-export function createVercelClientIp(options: {
-  readonly trustNetlifyClientIp: boolean
-}): ClientIp {
+export function createVercelClientIp(): ClientIp {
   return {
     resolve(input) {
-      if (input.path === ClientPath.Proxied) {
-        return proxiedClientIp(input, options.trustNetlifyClientIp)
-      }
       const ip = ipAddress(headersLike(input.headers))
       return ip === undefined ? NO_CLIENT_IP : { ip, source: ClientIpSource.Platform }
     },
@@ -71,9 +60,10 @@ export function createVercelClientIp(options: {
 }
 
 /**
- * Prazo da invocação = início + `maxDuration` configurado (o `functions[...].maxDuration` do
- * `vercel.json`, ou o padrão do Hobby, 300 s). Substitui o `getDeadline()`, ausente na 3.7.6; o
- * valor configurado precisa acompanhar o `vercel.json` (`FUNCTION_MAX_DURATION_S`).
+ * Prazo da invocação = início + `maxDuration` da Function (o `.vc-config.json` gerado por
+ * `scripts/build-vercel-output.ts`). Substitui o `getDeadline()`, ausente na 3.7.6; o valor vem de
+ * `FUNCTION_MAX_DURATION_S`, obrigatória com `RUNTIME_TARGET=vercel` e conferida contra o
+ * `.vc-config.json` pelo teste do script.
  */
 export function createVercelInvocationDeadline(maxDurationMs: number): InvocationDeadline {
   return {

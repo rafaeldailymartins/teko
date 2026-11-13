@@ -12,9 +12,6 @@ catalogs:
     '@fast-check/vitest':
       specifier: 0.5.0
       version: 0.5.0
-    '@fastify/cors':
-      specifier: 11.4.0
-      version: 11.4.0
     '@fastify/helmet':
       specifier: 13.2.0
       version: 13.2.0
@@ -224,9 +221,6 @@ importers:
 
   apps/api:
     dependencies:
-      '@fastify/cors':
-        specifier: 'catalog:'
-        version: 11.4.0
       '@fastify/helmet':
         specifier: 'catalog:'
         version: 13.2.0
@@ -1169,9 +1163,6 @@ packages:
 
   '@fastify/busboy@3.2.4':
     resolution: {integrity: sha512-lQS8xcXT54rdJb+wlG/Q7SMSdtkZEpLPHooSDUZyyZm9LJD7X1kONPhVoPaHq+dsPtWUGGLIz9gBNhs9qKbylw==}
-
-  '@fastify/cors@11.4.0':
-    resolution: {integrity: sha512-+P4+RIRx5I3rkC1QttZ9gqSJ3AHrsM4PrZF6bpgbElt86n7gOBiHL3J0H3moVSyfc+vvvNto+Ay1LmG7ZQ37pA==}
 
   '@fastify/deepmerge@3.2.4':
     resolution: {integrity: sha512-kc8GQq5gX9RRhw0rov3DMrN8wS8yRlxJRdDzsYwwdBV/wazuVgc/1K7CKL90tlvu3RlHan6Y0R0aE3nJtBz2eQ==}
@@ -7300,11 +7291,6 @@ snapshots:
       fast-uri: 4.2.3
 
   '@fastify/busboy@3.2.4': {}
-
-  '@fastify/cors@11.4.0':
-    dependencies:
-      fastify-plugin: 6.0.1
-      toad-cache: 3.7.4
 
   '@fastify/deepmerge@3.2.4': {}
 

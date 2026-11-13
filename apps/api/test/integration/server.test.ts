@@ -33,8 +33,9 @@ afterAll(async () => {
 describe('server.ts no runtime da Vercel', () => {
   it('termina o import sem abrir porta, entrega o servidor e atende depois do listen real', async () => {
     vi.stubEnv('APP_ENV', 'ci')
-    vi.stubEnv('WEB_ORIGIN', 'https://develop--tekoia.netlify.app')
+    vi.stubEnv('WEB_ORIGIN', 'https://tekoia-staging.vercel.app')
     vi.stubEnv('RUNTIME_TARGET', 'vercel')
+    vi.stubEnv('FUNCTION_MAX_DURATION_S', '120')
     vi.stubEnv('LOG_LEVEL', 'silent')
     vi.stubEnv('GIT_SHA', 'abc1234')
 

@@ -16,7 +16,6 @@ import {
   QUESTION_MAX_LENGTH,
   questionIdParamsSchema,
   type ResolvedReferenceDate,
-  reissueTicketResponseSchema,
   SSE_DONE,
   SSE_HEARTBEAT,
   stableKeySchema,
@@ -142,11 +141,6 @@ describe('POST /api/v1/questions (respostas)', () => {
       status: 'accepted',
       questionId: QUESTION_ID,
       resolved,
-      stream: {
-        url: `https://teko-api.vercel.app/api/v1/questions/${QUESTION_ID}/stream`,
-        ticket: 'eyJhbGciOiJIUzI1NiJ9.e30.sig',
-        expiresAt: '2026-11-10T12:01:00Z',
-      },
     },
     {
       status: 'answered',
@@ -196,12 +190,17 @@ describe('POST /api/v1/questions (respostas)', () => {
     expect(askQuestionResponseSchema.safeParse({ status: 'pending' }).success).toBe(false)
   })
 
-  it('valida ticket reemitido e parâmetros de rota', () => {
-    expect(
-      reissueTicketResponseSchema.safeParse({
-        stream: { url: 'ftp://x/y', ticket: 't', expiresAt: '2026-11-10T12:01:00Z' },
-      }).success,
-    ).toBe(false)
+  it('accepted não traz ticket nem URL de stream (mesma origem, ADR 0029)', () => {
+    const accepted = askQuestionResponseSchema.parse({
+      status: 'accepted',
+      questionId: QUESTION_ID,
+      resolved,
+      stream: { url: 'https://x/y', ticket: 't', expiresAt: '2026-11-10T12:01:00Z' },
+    })
+    expect(accepted).not.toHaveProperty('stream')
+  })
+
+  it('valida parâmetros de rota', () => {
     expect(questionIdParamsSchema.safeParse({ id: QUESTION_ID }).success).toBe(true)
     expect(questionIdParamsSchema.safeParse({ id: '1' }).success).toBe(false)
   })

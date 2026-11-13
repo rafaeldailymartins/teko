@@ -6,7 +6,7 @@ import type { ShutdownProfile } from './config/platform.ts'
 /**
  * Encerramento no SIGTERM, com tetos do perfil de plataforma (`config/platform.ts`):
  *
- * 1. entra em drenagem: `/healthz` passa a responder 503 (e, na F4, novos tickets também);
+ * 1. entra em drenagem: `/healthz` passa a responder 503 (e, na F4, novos streams também);
  * 2. espera `drainDelayMs` para o proxy da frente (Caddy da stack de CI, balanceador do Render)
  *    ver o 503 antes de a porta fechar; na Vercel é 0;
  * 3. `app.close()`: para de aceitar conexões, responde 503 às novas e espera as ativas (na F4,

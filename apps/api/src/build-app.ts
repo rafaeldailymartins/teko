@@ -16,7 +16,6 @@ import {
   registerApiCacheControl,
   registerSecurityHeaders,
 } from '#adapters/in/http/plugins/security-headers.ts'
-import { STREAM_PREFIX, streamScope } from '#adapters/in/http/plugins/stream-cors.ts'
 import { registerProblemHandlers } from '#adapters/in/http/problem/error-handler.ts'
 import { healthRoutes } from '#adapters/in/http/routes/health.ts'
 import type { Container } from '#app/container.ts'
@@ -55,7 +54,8 @@ export function fastifyTrustProxy(trustProxy: HttpOptions['trustProxy']): Fastif
  *  3. `under-pressure`;
  *  4. `helmet` (CSP `default-src 'none'`);
  *  5. hook `/api/*` com `Cache-Control: private, no-store` e `Vary: Cookie`;
- *  6. assinatura do proxy da Netlify (F4);
+ *  6. checagem de `Origin` nos métodos que mudam estado (F4; web e API na mesma origem, sem CORS,
+ *     ADR 0029);
  *  7. rate limit com store compartilhado (só quando há store; ver `HttpOptions.rateLimit`);
  *  8. Better Auth (F4);
  *  9. Swagger + Scalar em `/api/docs` (fora de produção);
@@ -91,7 +91,6 @@ export async function buildApp(deps: BuildAppDeps): Promise<FastifyInstance> {
   }
 
   await app.register(healthRoutes)
-  await app.register(streamScope, { prefix: STREAM_PREFIX, webOrigin: deps.http.webOrigin })
 
   return app
 }
