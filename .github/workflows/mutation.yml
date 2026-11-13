@@ -1,26 +1,18 @@
 # Testes de mutação (StrykerJS 10, vitest-runner + typescript-checker), break 70 em apps/api
 # (domain e application) e packages/shared. Plano: Qualidade > Cobertura, mutação e arquitetura.
 #
-# - PR (chamado pelo pr-gate.yml): `turbo run test:mutation --affected`, em modo incremental: o
-#   relatório incremental de develop (cache) faz o Stryker testar só os mutantes do código mudado.
-# - Nightly e dispatch: todos os pacotes, e o relatório incremental vira o cache da próxima rodada.
+# Fora do PR desde a ADR 0032: era o caminho crítico do `ci-gate` (4 a 7 min) e o score é estável
+# entre commits. Roda:
+# - toda noite, em develop, só se houver commit novo desde o último run verde deste workflow
+#   (o job `changes` compara o SHA); sem commit novo, o `stryker` é pulado;
+# - por dispatch, sempre (para conferir uma mudança no próprio workflow ou na config do Stryker).
 #
-# O cache só é salvo fora de PR, para um PR não envenenar o relatório que os outros reaproveitam.
-# O reporter `dashboard` publica no Stryker Dashboard (badge do README) quando há
-# STRYKER_DASHBOARD_API_KEY; sem ele (fork, Dependabot), o Stryker só avisa e segue.
+# O relatório incremental (cache) faz o Stryker testar só os mutantes do código que mudou desde a
+# rodada anterior. O reporter `dashboard` publica no Stryker Dashboard (badge do README) com o
+# STRYKER_DASHBOARD_API_KEY. Score abaixo de 70 deixa o run vermelho e notifica o mantenedor.
 name: Mutation
 
 on:
-  workflow_call:
-    inputs:
-      affected:
-        description: JSON do job `affected` do pr-gate.yml. Vazio = todos os pacotes.
-        type: string
-        required: false
-        default: ""
-    secrets:
-      STRYKER_DASHBOARD_API_KEY:
-        required: false
   schedule:
     - cron: "17 5 * * *"
   workflow_dispatch:
@@ -28,18 +20,55 @@ on:
 permissions: {}
 
 concurrency:
-  group: mutation-${{ github.event_name }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  group: mutation-${{ github.ref }}
+  cancel-in-progress: false
 
 env:
   TURBO_TELEMETRY_DISABLED: "1"
-  TURBO_SCM_BASE: ${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) || '' }}
 
 jobs:
+  changes:
+    name: changes
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      actions: read # listar os runs anteriores deste workflow
+    outputs:
+      run: ${{ steps.compare.outputs.run }}
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          egress-policy: audit
+
+      - name: Commit novo desde o último run verde?
+        id: compare
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          EVENT_NAME: ${{ github.event_name }}
+          REF_NAME: ${{ github.ref_name }}
+          SHA: ${{ github.sha }}
+        run: |
+          if [[ "$EVENT_NAME" != schedule ]]; then
+            echo "Evento '${EVENT_NAME}': roda sempre."
+            echo "run=true" >>"$GITHUB_OUTPUT"
+            exit 0
+          fi
+          last="$(gh run list --repo "$REPO" --workflow mutation.yml --branch "$REF_NAME" \
+            --status success --limit 1 --json headSha --jq '.[0].headSha // ""')"
+          if [[ "$last" == "$SHA" ]]; then
+            echo "::notice title=mutation::Sem commit novo desde o último run verde (${SHA:0:12}); Stryker pulado."
+            echo "run=false" >>"$GITHUB_OUTPUT"
+          else
+            echo "Último run verde em ${last:-nenhum}; agora ${SHA}."
+            echo "run=true" >>"$GITHUB_OUTPUT"
+          fi
+
   stryker:
     name: stryker
-    # Em PR, só com pacote JS afetado; no nightly e no dispatch, sempre.
-    if: inputs.affected == '' || fromJSON(inputs.affected).packages
+    needs: changes
+    if: needs.changes.outputs.run == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     permissions:
@@ -50,10 +79,9 @@ jobs:
         with:
           egress-policy: audit
 
-      - name: Checkout (histórico completo para o --affected)
+      - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          fetch-depth: 0
           persist-credentials: false
 
       - name: Setup
@@ -69,16 +97,10 @@ jobs:
           restore-keys: |
             stryker-incremental-
 
-      - name: Stryker (pacotes afetados no PR, todos no nightly)
+      - name: Stryker (todos os pacotes)
         env:
           STRYKER_DASHBOARD_API_KEY: ${{ secrets.STRYKER_DASHBOARD_API_KEY }}
-          EVENT_NAME: ${{ github.event_name }}
-        run: |
-          if [[ "$EVENT_NAME" == pull_request ]]; then
-            pnpm exec turbo run test:mutation --affected --concurrency=1
-          else
-            pnpm exec turbo run test:mutation --concurrency=1 --force
-          fi
+        run: pnpm exec turbo run test:mutation --concurrency=1 --force
 
       - name: Guardar o relatório HTML
         if: ${{ !cancelled() }}
@@ -94,8 +116,8 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
-      - name: Salvar relatórios incrementais (só fora de PR)
-        if: ${{ !cancelled() && github.event_name != 'pull_request' }}
+      - name: Salvar relatórios incrementais
+        if: ${{ !cancelled() }}
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |

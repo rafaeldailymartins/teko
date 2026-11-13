@@ -33,6 +33,10 @@ job_runs_match() {
   grep -Eq -- "$2" <<<"$(job_runs "$1")"
 }
 
+yq_true() {
+  yq -e "$1" "$2" >/dev/null 2>&1
+}
+
 # --- Gates do plano que o CI precisa rodar (plan-gates-missing-in-ci) --------------------------
 check "lint roda o jscpd (pnpm dup)" job_runs_match lint '^pnpm dup$'
 check "lint roda turbo boundaries" job_runs_match lint 'turbo boundaries'
@@ -61,11 +65,21 @@ check "python roda sempre em push (coverage.xml para o Sonar)" \
 check "ci-gate depende do workflow ci (que inclui o sonar)" \
   bash -c "yq -e '.jobs.\"ci-gate\".needs | contains([\"ci\"])' .github/workflows/pr-gate.yml >/dev/null"
 
-# --- Gates da F2: mutação, sql-perf, migration-guard e retrieval evals entram no ci-gate --------
-check "ci-gate depende de mutation e perf"   bash -c "yq -e '.jobs.\"ci-gate\".needs | contains([\"mutation\", \"perf\"])' .github/workflows/pr-gate.yml >/dev/null"
-# Só mutation e perf podem pular (workflows só com jobs filtrados por escopo); ci e security, nunca.
-check "ci-gate aceita skip só de mutation e perf" \
-  bash -c "yq -r '.jobs.\"ci-gate\".steps[] | select(.uses // \"\" | test(\"alls-green\")) | .with.\"allowed-skips\"' .github/workflows/pr-gate.yml | jq -e 'sort == [\"mutation\", \"perf\"]' >/dev/null"
+# --- ci-gate (ADR 0032): agregador sem `always()`, sem mutação e com só o perf podendo pular ----
+check "ci-gate roda com !cancelled(), não always()" \
+  yq_true '.jobs."ci-gate".if == "${{ !cancelled() }}"' .github/workflows/pr-gate.yml
+check "ci-gate depende de affected, ci, security e perf" \
+  yq_true '(.jobs."ci-gate".needs | sort | join(",")) == "affected,ci,perf,security"' .github/workflows/pr-gate.yml
+# Só o perf pode pular (workflow só com jobs filtrados por escopo); ci e security, nunca.
+check "ci-gate aceita skip só do perf" \
+  bash -c "yq -r '.jobs.\"ci-gate\".steps[] | select(.uses // \"\" | test(\"alls-green\")) | .with.\"allowed-skips\"' .github/workflows/pr-gate.yml | jq -e '. == [\"perf\"]' >/dev/null"
+# Stryker só no noturno, e só com commit novo desde o último run verde.
+check "mutation.yml fora do PR (só schedule e workflow_dispatch)" \
+  yq_true '(.on | keys | sort | join(",")) == "schedule,workflow_dispatch"' .github/workflows/mutation.yml
+check "mutation.yml pula o stryker sem commit novo" \
+  yq_true '.jobs.stryker.needs == "changes" and .jobs.stryker.if == "needs.changes.outputs.run == '"'"'true'"'"'"' .github/workflows/mutation.yml
+check "nenhum workflow de PR chama o mutation.yml" \
+  bash -c "! grep -q 'workflows/mutation.yml' .github/workflows/pr-gate.yml .github/workflows/ci.yml"
 check "lint roda os testes do migration-guard" job_runs_match lint 'bash .github/scripts/migration-guard.test.sh'
 check "migration-guard roda o script com os labels do PR" job_runs_match migration-guard 'bash .github/scripts/migration-guard.sh'
 check "retrieval-evals aplica o gate do thresholds.json" job_runs_match retrieval-evals 'eval:retrieval:check'
@@ -141,9 +155,6 @@ check "todo checkout com persist-credentials: false" checkout_without_credential
 ingest=.github/workflows/ingest.yml
 watch=.github/workflows/source-watch.yml
 
-yq_true() {
-  yq -e "$1" "$2" >/dev/null 2>&1
-}
 # Texto de um job inteiro (env, steps, with), para procurar segredos e comandos.
 job_text() {
   yq -o=json ".jobs.\"$2\"" "$1"
