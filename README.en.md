@@ -126,7 +126,7 @@ jobs and is required to merge into `develop` and `main`.
 | 🔎 Retrieval              | retrieval evals (promptfoo) on the real-text fixture: recall@10 ≥ 0.9, MRR ≥ 0.7; validity, refusal, clarification and reference date with no errors |
 | ⚡ Performance            | `sql-perf` of the hybrid search over 100k chunks: no Seq Scan and a median under 150 ms                                                              |
 | 🗃️ Migrations             | `migration-guard`: expand/contract only, a published migration is immutable                                                                          |
-| 🔐 Security               | CodeQL, Semgrep, gitleaks, osv-scanner, zizmor, dependency review, pip-audit                                                                         |
+| 🔐 Security               | CodeQL, Semgrep, gitleaks, osv-scanner, zizmor, dependency review                                                                                    |
 | 📦 Supply chain           | pnpm with releases at least 7 days old and provenance                                                                                                |
 | 📐 Specs                  | `openspec validate --all --strict`                                                                                                                   |
 

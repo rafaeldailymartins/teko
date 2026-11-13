@@ -94,7 +94,6 @@ uv run ruff check .
 uv run ruff format --check .
 uv run pyright
 uv run pytest        # cobertura mínima de 85% (branch)
-uv run pip-audit
 ```
 
 Os testes não instalam o Docling: usam dublês com os mesmos caminhos de import

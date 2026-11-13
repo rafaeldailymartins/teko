@@ -125,7 +125,7 @@ entrar em `develop` e `main`.
 | 🔎 Recuperação             | retrieval evals (promptfoo) sobre a fixture real: recall@10 ≥ 0,9, MRR ≥ 0,7; vigência, recusa, clarificação e data de referência sem erro |
 | ⚡ Desempenho              | `sql-perf` da busca híbrida sobre 100 mil chunks: sem Seq Scan e mediana abaixo de 150 ms                                                  |
 | 🗃️ Migrações               | `migration-guard`: só expand/contract, migração publicada é imutável                                                                       |
-| 🔐 Segurança               | CodeQL, Semgrep, gitleaks, osv-scanner, zizmor, dependency review, pip-audit                                                               |
+| 🔐 Segurança               | CodeQL, Semgrep, gitleaks, osv-scanner, zizmor, dependency review                                                                          |
 | 📦 Supply chain            | pnpm com release de pelo menos 7 dias e proveniência                                                                                       |
 | 📐 Specs                   | `openspec validate --all --strict`                                                                                                         |
 

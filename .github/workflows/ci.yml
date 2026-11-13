@@ -525,16 +525,7 @@ jobs:
           if-no-files-found: ignore
           retention-days: 1
 
-      - name: pip-audit (lockfile, inclusive o extra docling)
-        run: |
-          requirements="${RUNNER_TEMP}/ingest-requirements.txt"
-          uv export --frozen --no-dev --no-emit-project --all-extras --format requirements.txt \
-            --output-file "${requirements}.raw" >/dev/null
-          # Wheels do índice CPU do PyTorch têm versão local (torch==X+cpu), que não existe no PyPI e
-          # não pode ser auditada pelo nome. A versão pública é o mesmo release, então é ela que
-          # entra na consulta. O osv-scanner do security.yml audita o uv.lock como está.
-          sed -E 's/^([A-Za-z0-9._-]+==[^ +;]+)\+[A-Za-z0-9.]+/\1/' "${requirements}.raw" >"$requirements"
-          uv run --frozen pip-audit --strict --require-hashes --disable-pip -r "$requirements"
+      # Vulnerabilidades do uv.lock: osv-scanner do security.yml (o pip-audit saiu, ADR 0032).
 
   # SonarQube Cloud em push para develop, só informativo (ADR 0032; em PR quem chama o sonar.yml é
   # o pr-gate.yml). Só develop: o plano gratuito analisa apenas a branch principal do projeto
