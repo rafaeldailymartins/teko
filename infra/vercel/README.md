@@ -1,6 +1,8 @@
-# Vercel: projetos `teko-api` e `teko-api-staging`
+# Vercel: projetos `tekoia` e `tekoia-staging`
 
-A API roda na Vercel Hobby como **uma única Function Fastify** em Fluid compute, na região `gru1`
+Web e API ficam na **mesma origem**, num projeto Vercel por ambiente (ADR 0029): o export estático
+do Next vai para o `static/` do `.vercel/output`, servido pela CDN sem invocar nada, e só `/api/*`
+e `/healthz` chegam a **uma única Function Fastify** em Fluid compute, na região `gru1`
 (São Paulo, AWS sa-east-1, a mesma dos projetos Neon). O código não tem entrypoint específico de
 plataforma: o mesmo `apps/api/src/server.ts` roda na Vercel, no Render (Plano B,
 `infra/planb-render`), na stack de CI e no `pnpm dev`; `RUNTIME_TARGET` escolhe os adapters
@@ -11,8 +13,8 @@ Este diretório guarda o que é versionável da configuração:
 | Arquivo               | Conteúdo                                                                                  |
 | --------------------- | ----------------------------------------------------------------------------------------- |
 | `firewall-rules.json` | As 3 regras custom do WAF por projeto (payloads de `vercel firewall rules add --data`)    |
-| `env.production.json` | Env vars do `teko-api`: valores Config e só os **nomes** das Sensitive                    |
-| `env.staging.json`    | O mesmo para o `teko-api-staging`                                                         |
+| `env.production.json` | Env vars do `tekoia`: valores Config e só os **nomes** das Sensitive                      |
+| `env.staging.json`    | O mesmo para o `tekoia-staging`                                                           |
 | `README.md`           | Este checklist (aplicado na F0, reconferido à mão todo mês no relatório do `ops.yml`, F6) |
 
 A configuração do projeto que vive no repositório fica em `apps/api/vercel.json` e
@@ -20,21 +22,35 @@ A configuração do projeto que vive no repositório fica em `apps/api/vercel.js
 
 ## Projetos
 
-| Projeto            | Ambiente lógico | Domínio de produção                   | Neon           | `WEB_ORIGIN`                          |
-| ------------------ | --------------- | ------------------------------------- | -------------- | ------------------------------------- |
-| `teko-api`         | `production`    | `https://teko-api.vercel.app`         | `teko-prod`    | `https://tekoia.netlify.app`          |
-| `teko-api-staging` | `staging`       | `https://teko-api-staging.vercel.app` | `teko-staging` | `https://develop--tekoia.netlify.app` |
+| Projeto (id)                                          | Ambiente lógico | Domínio canônico (`WEB_ORIGIN`)     | Domínio antigo (308)                  | Neon           |
+| ----------------------------------------------------- | --------------- | ----------------------------------- | ------------------------------------- | -------------- |
+| `tekoia` (`prj_Oe6xdCbPyqiwfNcz1n2KvsCP09as`)         | `production`    | `https://tekoia.vercel.app`         | `https://teko-api.vercel.app`         | `teko-prod`    |
+| `tekoia-staging` (`prj_rgXwv6zcTTb1UPU1qkEMrAWu6hY5`) | `staging`       | `https://tekoia-staging.vercel.app` | `https://teko-api-staging.vercel.app` | `teko-staging` |
 
-- `teko-api` criado em 2026-11-11 com as mesmas configurações do staging, e o nome
-  `teko-api.vercel.app` reservado por um deploy placeholder estático (só `/healthz`, sem a API).
-  Env vars, segredos e o environment `production` do GitHub chegam na F7.
+- Os projetos nasceram como `teko-api` e `teko-api-staging` (F0/F1) e foram renomeados em
+  2026-11-12 (ADR 0029). Os domínios antigos continuam nos projetos e respondem 308 para o
+  canônico do mesmo projeto (rota com `has: host` no `config.json`, `scripts/build-vercel-output.ts`):
+  o cookie de sessão e o `rpID` das passkeys dependem de um host único. `teko.vercel.app` é de
+  terceiros.
 - Os dois ficam no time Hobby pessoal. Staging é um **projeto à parte**, não um Preview: cada
   projeto só recebe deploys `--prod`, e todas as env vars vão no ambiente Production do projeto.
-- Os nomes `*.vercel.app` são atribuídos por ordem de chegada no primeiro deploy (que é sempre de
-  produção). Por isso a F0 faz um deploy placeholder (só `/healthz`) logo depois de criar cada
-  projeto. Se a Vercel atribuir outro nome, o nome real substitui estes em todo lugar: plugin
-  `context-routing`, `NEXT_PUBLIC_STREAM_ORIGIN`, `STREAM_ORIGIN` (env JSON), CSP, smoke,
-  UptimeRobot e READMEs.
+- Postura não comercial (Hobby): o Tekó é gratuito e MIT, sem anúncios, afiliados, patrocínio
+  exibido ou plano pago. Um link de doação é permitido (ADR 0004).
+
+## Mesma origem (ADR 0029): ações manuais do mantenedor
+
+- [ ] Nos dois projetos, apagar as env vars que saíram: Sensitive `NETLIFY_PROXY_JWS_SECRET` e
+  `TICKET_SIGNING_KEY` (se gravadas) e Config `STREAM_ORIGIN`; trocar `WEB_ORIGIN` pelo domínio
+  canônico; gravar `RERANKER_PROVIDER=workers-ai`; manter `FUNCTION_MAX_DURATION_S=120`, agora
+  obrigatória com `RUNTIME_TARGET=vercel`. Exemplo (staging):
+  `vercel env rm NETLIFY_PROXY_JWS_SECRET production --yes`,
+  `vercel env rm WEB_ORIGIN production --yes` e
+  `printf 'https://tekoia-staging.vercel.app' | vercel env add WEB_ORIGIN production`.
+- [ ] Netlify: apagar o site `tekoia` e os segredos/variáveis da Netlify que só serviam ao site
+  (`NETLIFY_PROXY_JWS_SECRET`, `TEKO_API_PROXY_TARGET`). O `NETLIFY_AUTH_TOKEN` e o
+  `NETLIFY_SITE_ID` do environment `staging` do GitHub ficam até a etapa C2 da ADR 0030 (a migração
+  dos artefatos lê o Netlify Blobs do site): só depois dela o site pode ser apagado.
+- [ ] WAF: reaplicar as 3 regras de `firewall-rules.json` (a regra do `x-nf-sign` sai).
 - Postura não comercial (Hobby): o Tekó é gratuito e MIT, sem anúncios, afiliados, patrocínio
   exibido ou plano pago. Um link de doação é permitido (ADR 0004).
 
@@ -67,8 +83,9 @@ Aplicar nos dois projetos, no dashboard (Project Settings), e conferir todo mês
 - [ ] `maxDuration`: 120 s (100 s de stream + 20 s de reserva), com `supportsCancellation: true`,
   declarados no `.vc-config.json` da Function `index` por `scripts/build-vercel-output.ts`. O bloco
   `functions` do `vercel.json` não vale para output pronto. A env Config `FUNCTION_MAX_DURATION_S`
-  acompanha o valor (a API calcula o prazo de cada invocação a partir dela, porque o
-  `@vercel/functions` 3.7.6 não tem `getDeadline`), e o teste do script exige os dois iguais. Sem
+  acompanha o valor e é obrigatória com `RUNTIME_TARGET=vercel`, sem padrão (a API calcula o prazo
+  de cada invocação a partir dela, porque o `@vercel/functions` 3.7.6 não tem `getDeadline`), e o
+  teste do script exige os dois iguais. Sem
   `supportsCancellation`, a Function não percebe a desconexão do cliente (spike F1 (b)).
 
 **Git**
@@ -80,9 +97,9 @@ Aplicar nos dois projetos, no dashboard (Project Settings), e conferir todo mês
 **Deployment Protection** (os dois projetos, inclusive o staging)
 
 - [ ] **Vercel Authentication: Standard Protection** (o padrão). O domínio de produção de cada
-  projeto fica público, porque recebe o proxy da Netlify, o stream direto do navegador e o
-  preflight CORS; as URLs únicas de deployment e os deployments antigos exigem login na Vercel.
-- [ ] **Nunca "All Deployments"**: bloquearia o proxy e o navegador no domínio de produção.
+  projeto fica público, porque serve a web e a API ao navegador; as URLs únicas de deployment e
+  os deployments antigos exigem login na Vercel.
+- [ ] **Nunca "All Deployments"**: bloquearia o navegador no domínio de produção.
 - [ ] **Protection Bypass for Automation:** um segredo por projeto, guardado no environment do
   GitHub como `VERCEL_AUTOMATION_BYPASS_SECRET` e usado só pelo smoke (`vercel curl
       --protection-bypass`) contra a URL única, antes do `promote`. O smoke nunca cria um bypass
@@ -91,12 +108,12 @@ Aplicar nos dois projetos, no dashboard (Project Settings), e conferir todo mês
 
 **Firewall** (`firewall-rules.json`)
 
-- [ ] As 3 regras custom de cada projeto, ativas: (1) negar tudo fora da API, (2) negar
-  `/api/auth/*` e `/api/v1/*` sem `x-nf-sign` (exceto o caminho do stream, que também recebe o
-  preflight `OPTIONS` direto do navegador), (3) rate limit de 10 `POST` por IP em 60 s no stream.
-- [ ] Nenhuma regra com `challenge`; Attack Challenge Mode desligado (quebra o proxy da Netlify;
-  só como último recurso, pelo runbook `vercel-paused.md`).
-- [ ] Aplicação: dashboard ou `vercel firewall rules add --data "$(jq -c '.projects["teko-api"].rules[0]' firewall-rules.json)" --yes`
+- [ ] As 3 regras custom de cada projeto, ativas: (1) negar `/api/*` fora dos prefixos conhecidos
+  (o estático passa), (2) negar métodos diferentes de GET e HEAD fora de `/api/*` e `/healthz`,
+  (3) rate limit de 10 `POST` por IP em 60 s no stream (a única de rate limit do Hobby).
+- [ ] Nenhuma regra com `challenge`; Attack Challenge Mode só como último recurso, pelo runbook
+  `vercel-paused.md` (o navegador resolve o desafio, mas monitores e o smoke não).
+- [ ] Aplicação: dashboard ou `vercel firewall rules add --data "$(jq -c '.projects["tekoia"].rules[0]' firewall-rules.json)" --yes`
   (com o projeto linkado), regra a regra. A automação e o smoke do efeito chegam na F7.
 
 **Time e conta**
@@ -136,18 +153,20 @@ esse projeto com `--frozen-lockfile` e chamam o binário dele. No app, o único 
 `@vercel/functions` 3.7.6 (a última versão com proveniência), confinado a
 `apps/api/src/adapters/out/platform/vercel` pelo dependency-cruiser.
 
-Fluxo do `deploy-api.yml` (`develop` → `teko-api-staging`; release em `main` → `teko-api`), com
+Fluxo do `deploy-api.yml` (`develop` → `tekoia-staging`; release em `main` → `tekoia`), com
 `VERCEL_TOKEN`, `VERCEL_ORG_ID` e `VERCEL_PROJECT_ID` do environment do GitHub. O workflow chega na
 F7. O `spike-api-vercel.yml` da F1 exercitou parte dele no `teko-api-staging` (bundle, tarball
 atestado, deploy `--prebuilt`, smoke e `promote`, sem migrações nem env sync) e saiu do repositório
 em 2026-11-12 (ADR 0032); a referência fica no histórico do git:
 
 1. `pnpm install --frozen-lockfile`, `pnpm audit --prod` e osv-scanner no commit exato;
-2. sem `vercel pull` nem `vercel build` (ADR 0017): `pnpm --filter @teko/api build` (tsdown),
+2. sem `vercel pull` nem `vercel build` (ADR 0017): `pnpm --filter @teko/web build` (export
+   estático em `apps/web/out`), `pnpm --filter @teko/api build` (tsdown),
    `pnpm --filter @teko/api --prod deploy --ignore-scripts --config.node-linker=hoisted
    dist/vercel/api-prod` (dependências de produção, sem links simbólicos);
-3. `node scripts/build-vercel-output.ts`: recria `.vercel/output` (Build Output API v3) com a
-   Function `index`;
+3. `node scripts/build-vercel-output.ts`: recria `.vercel/output` (Build Output API v3) com o
+   export em `static/`, as rotas da mesma origem no `config.json` (ADR 0029) e a Function `index`
+   (o `server.mjs` e os chunks que ele importa);
 4. `node scripts/pack-vercel-output.ts --env production|staging`: tarball determinístico do
    `.vercel/output` (sem `.vercel/.env*` nem `project.json`), com sha256. `--env` é o único
    argumento; o resto é fixo: env vars de `infra/vercel/env.<env>.json`, build no primeiro de
@@ -186,6 +205,9 @@ O builder zero-config do Fastify não é usado (ADR 0017): no spike F1 (b) ele c
   `apps/api/test/integration/server.test.ts` reproduz esse protocolo).
 
 ## Pendências que dependem de tokens (spikes F1 (b) e (c))
+
+Registro histórico dos spikes. O proxy da Netlify, o `x-nf-sign` e o ticket do stream saíram com a
+ADR 0029; os nomes `teko-api*` abaixo são os de antes da renomeação.
 
 O `spike-api-vercel.yml` (removido em 2026-11-12, ADR 0032) rodava no environment `staging` do GitHub. Itens marcados têm resultado
 registrado; o resto continua aberto:
