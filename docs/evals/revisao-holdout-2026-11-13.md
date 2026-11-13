@@ -131,7 +131,18 @@ por erro do esperado. O padrão dominante é o chunk de inciso, alínea, item ou
 texto do dispositivo-pai: o título entra no embedding, mas não no texto que o braço lexical e o
 reranker veem.
 
-## Achados para o mantenedor (DÚVIDA e decisões pendentes)
+## Decisões do mantenedor (2026-11-13)
+
+- O mantenedor revisou os 53 casos; o `reviewed_at` de todos é 2026-11-13.
+- **Item 1 (`hold-rcte-difal-uso-consumo`): opção (a).** O esperado ganhou o art. 4º, § 1º, II, o
+  art. 12, IV e o art. 65, III, com `source_quote` novo (art. 65, III). A pergunta não mudou.
+- **Item 2 (`hold-reinf-r2020-retencao-sofrida`): o `vlrTotalRetPrinc` entra no esperado** ao lado do
+  `vlrRetencao` (os dois são obrigatórios no R-2020), com `source_quote` novo.
+- **Item 3 (nota "sem efeitos" no RCTE):** em correção no parser, junto com o título do "CAPÍTULO
+  IV-A" (branch `fix/parser-rcte-notas-e-capitulo-iv-a`).
+- **Item 4 (granularidade nas listas de produtos):** fica como regra a fixar na F4, sem mudar casos.
+
+## Achados para o mantenedor (DÚVIDA e decisões pendentes, decididos acima)
 
 1. **hold-rcte-difal-uso-consumo.** A pergunta ("como fica o ICMS devido a Goiás nessa entrada?")
    tem resposta em vários dispositivos. Decidir: (a) incluir no esperado o art. 65, III (cálculo do
