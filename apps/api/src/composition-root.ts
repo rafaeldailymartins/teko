@@ -66,6 +66,7 @@ import {
 import { createFinishIngestionRun, createStartIngestionRun } from '#app/use-cases/ingestion-run.ts'
 import { createInspectCorpus } from '#app/use-cases/inspect-corpus.ts'
 import { createPromoteSnapshot } from '#app/use-cases/promote-snapshot.ts'
+import { createPruneEmbeddingCache } from '#app/use-cases/prune-embedding-cache.ts'
 import { createRefreshCoverage } from '#app/use-cases/refresh-coverage.ts'
 import {
   createResolveReferenceDate,
@@ -274,6 +275,12 @@ export function createIngestionContainer(
       }),
       refreshCoverage: createRefreshCoverage({ repository }),
       inspectCorpus: createInspectCorpus({ repository }),
+      pruneEmbeddingCache: createPruneEmbeddingCache({
+        repository,
+        cache,
+        hasher: sha256ContentHasher,
+        embeddingModel: embeddings.model,
+      }),
       exportSnapshot: createExportSnapshot(snapshotDeps),
       promoteSnapshot: createPromoteSnapshot(snapshotDeps),
     },

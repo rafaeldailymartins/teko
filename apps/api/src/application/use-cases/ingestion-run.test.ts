@@ -102,7 +102,8 @@ describe('StartIngestionRun / FinishIngestionRun', () => {
         dbBytes: 4096,
       },
     ])
-    expect(run.index).toEqual(['ensure'])
+    // B6: sem --bulk, a abertura garante o HNSW (um --bulk anterior pode ter caído no meio).
+    expect(run.index).toEqual(['ensure', 'ensure'])
   })
 
   it('--bulk só no staging: derruba o HNSW no início', async () => {
@@ -149,6 +150,9 @@ describe('RefreshCoverage', () => {
           { slug: 'rcte', family: 'rcte', provisions: 1, chunks: 2, pending: 0, versions: 1 },
         ]),
       openReviewQueue: () => Promise.resolve([{ family: 'rcte', reason: 'x', open: 1 }]),
+      openChunkTexts: () => {
+        throw new Error('não usado')
+      },
     }
     const refresh = createRefreshCoverage({ repository })
     expect(await refresh({ runId: 'r', verifiedAt: '2026-11-10', families: ['rcte'] })).toEqual({

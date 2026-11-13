@@ -34,6 +34,8 @@ interface ColumnSpec {
   readonly name: string
   /** Tipo na tabela temporária e no `jsonb_to_recordset`. */
   readonly type: string
+  /** Expressão da exportação (alias `t`), no lugar da coluna. */
+  readonly exportAs?: string
 }
 
 interface TableSpec {
@@ -156,7 +158,11 @@ const TABLES: Readonly<Record<SnapshotTable, TableSpec>> = {
       col('modality'),
       col('review_status'),
       col('corpus_version', 'integer'),
-      col('embedding', 'halfvec(1024)'),
+      // Só o vetor de chunk aberto viaja (a busca nunca lê conhecimento fechado).
+      {
+        ...col('embedding', 'halfvec(1024)'),
+        exportAs: 'CASE WHEN upper_inf(t.knowledge) THEN t.embedding::text END',
+      },
       col('embedding_model'),
     ],
     filter: `EXISTS (SELECT 1 FROM corpus.provision_versions pv WHERE pv.id = t.provision_version_id AND pv.${PUBLISHABLE} AND ${exportedProvision('pv.provision_id')})`,
@@ -196,9 +202,14 @@ const AS_TEXT = new Set(['uuid', 'date', 'daterange', 'datemultirange', 'halfvec
 
 function selectList(spec: TableSpec): string {
   return spec.columns
-    .map((column) =>
-      AS_TEXT.has(column.type) ? `t.${column.name}::text AS ${column.name}` : `t.${column.name}`,
-    )
+    .map((column) => {
+      if (column.exportAs !== undefined) {
+        return `${column.exportAs} AS ${column.name}`
+      }
+      return AS_TEXT.has(column.type)
+        ? `t.${column.name}::text AS ${column.name}`
+        : `t.${column.name}`
+    })
     .join(', ')
 }
 
@@ -356,8 +367,10 @@ function mergeStatements(): readonly string[] {
        SELECT s.id AS snap_id, coalesce(c.id, s.id) AS id
        FROM snap_chunks s LEFT JOIN corpus.chunks c
          ON c.provision_version_id = s.provision_version_id AND c.ordinal = s.ordinal`,
+    // Chunk fechado perde o vetor (a busca só lê conhecimento aberto; o snapshot também não o leva).
     `UPDATE corpus.chunks
-       SET knowledge = daterange(lower(knowledge), greatest($1::date, lower(knowledge) + 1))
+       SET knowledge = daterange(lower(knowledge), greatest($1::date, lower(knowledge) + 1)),
+         embedding = NULL
        WHERE upper_inf(knowledge) AND id NOT IN (SELECT id FROM map_chunks)`,
     `INSERT INTO corpus.chunks (${columnNames(t.chunks)})
        SELECT m.id, ${columnNames(t.chunks, 's.').replace('s.id, ', '')}

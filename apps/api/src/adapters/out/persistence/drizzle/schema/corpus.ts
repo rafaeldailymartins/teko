@@ -226,10 +226,13 @@ export const chunks = corpus.table(
   },
   (t) => [
     unique('chunks_provision_version_ordinal').on(t.provisionVersionId, t.ordinal),
-    index('chunks_tsv_gin').using('gin', t.tsv),
+    // Parciais: a busca só lê conhecimento aberto (`upper_inf(c.knowledge)` no mesmo WHERE), e o
+    // vetor de um chunk fechado é apagado (embedding NULL). Os vetores são ~70% do banco.
+    index('chunks_tsv_gin').using('gin', t.tsv).where(sql`upper_inf(${t.knowledge})`),
     index('chunks_embedding_hnsw')
       .using('hnsw', t.embedding.op('halfvec_cosine_ops'))
-      .with({ m: 16, ef_construction: 128 }),
+      .with({ m: 16, ef_construction: 128 })
+      .where(sql`upper_inf(${t.knowledge})`),
     index('chunks_family_valid_during_gist').using('gist', t.family, t.validDuring),
     check(
       'chunks_valid_during',

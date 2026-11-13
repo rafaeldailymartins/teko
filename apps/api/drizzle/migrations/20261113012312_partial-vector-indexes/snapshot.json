@@ -1,0 +1,71 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "9001b939-12b8-4d5a-98e8-c06d62b247c8",
+  "prevIds": [
+    "b639237d-a81d-4066-ae96-0ff280a7684f"
+  ],
+  "footprints": [
+    {
+      "statementType": "recreate_index",
+      "statementTarget": [
+        "index",
+        "corpus",
+        "chunks",
+        "chunks_tsv_gin"
+      ],
+      "writes": [
+        "s|idx|corpus.chunks_tsv_gin",
+        "n|idx|corpus.chunks_tsv_gin",
+        "e|idx|corpus.chunks_tsv_gin",
+        "n|rel|corpus.chunks_tsv_gin"
+      ],
+      "reads": [
+        "n|tbl|corpus.chunks",
+        "n|sch|corpus",
+        "n|col|corpus.chunks.tsv"
+      ],
+      "sharedWrites": [],
+      "sqlHash": "2994cfe090197cdb"
+    },
+    {
+      "statementType": "recreate_index",
+      "statementTarget": [
+        "index",
+        "corpus",
+        "chunks",
+        "chunks_embedding_hnsw"
+      ],
+      "writes": [
+        "s|idx|corpus.chunks_embedding_hnsw",
+        "n|idx|corpus.chunks_embedding_hnsw",
+        "e|idx|corpus.chunks_embedding_hnsw",
+        "n|rel|corpus.chunks_embedding_hnsw"
+      ],
+      "reads": [
+        "n|tbl|corpus.chunks",
+        "n|sch|corpus",
+        "n|col|corpus.chunks.embedding"
+      ],
+      "sharedWrites": [],
+      "sqlHash": "e0ac4c57e85a00ae"
+    }
+  ],
+  "deltas": [
+    {
+      "op": "alter",
+      "key": "indexes\u0000[\"corpus\",\"chunks_tsv_gin\"]",
+      "set": {
+        "where": "upper_inf(\"knowledge\")"
+      }
+    },
+    {
+      "op": "alter",
+      "key": "indexes\u0000[\"corpus\",\"chunks_embedding_hnsw\"]",
+      "set": {
+        "where": "upper_inf(\"knowledge\")"
+      }
+    }
+  ]
+}

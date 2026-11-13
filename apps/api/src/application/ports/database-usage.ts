@@ -3,7 +3,7 @@
  * - `DatabaseUsage`: tamanho do banco (`pg_database_size`), para a guarda de 800 MB (o limite do
  *   Neon Free é 1 GB, e o staging deve ficar em ≤ 400 MB);
  * - `VectorIndexMaintenance`: `--bulk` (só staging) derruba o HNSW antes da carga e o recria no
- *   fim, com `maintenance_work_mem='512MB'`;
+ *   fim, com `maintenance_work_mem='256MB'`;
  * - `ComputeUsageMeter`: CU-segundos acumulados do projeto Neon no período de cobrança (API v2,
  *   `GET /projects/{id}`, `compute_time_seconds`). Opcional: sem credenciais, `null`.
  */

@@ -99,7 +99,7 @@ describe('PgSnapshotRepository', () => {
     expect(all[0]).toBe('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY')
     expect(all.at(-1)).toBe('COMMIT')
     expect(all.find((text) => text.startsWith('DECLARE snap_cursor_chunks'))).toMatch(
-      /t\.embedding::text AS embedding/,
+      /CASE WHEN upper_inf\(t\.knowledge\) THEN t\.embedding::text END AS embedding/,
     )
     expect(released()).toBe(1)
   })

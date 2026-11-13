@@ -7,7 +7,7 @@ import type { DrizzleDb } from '../client.ts'
  * - tamanho por `pg_database_size(current_database())` (o que o Neon conta contra o limite);
  * - HNSW de `corpus.chunks` (`chunks_embedding_hnsw`, `m=16`, `ef_construction=128`, como no schema)
  *   derrubado e recriado pelo `--bulk`. A recriação roda numa transação com
- *   `SET LOCAL maintenance_work_mem = '512MB'` (o `SET` de sessão não passa pelo pooler, e a
+ *   `SET LOCAL maintenance_work_mem = '256MB'` (a compute do Neon tem ~1 GB; o `SET` de sessão não passa pelo pooler, e a
  *   ingestão usa a URL direta, mas o `LOCAL` não vaza para outras transações da conexão).
  */
 
@@ -31,10 +31,11 @@ export function createPgVectorIndexMaintenance(db: DrizzleDb): VectorIndexMainte
     },
     async ensureVectorIndex() {
       await db.transaction(async (tx) => {
-        await tx.execute(sql`SET LOCAL maintenance_work_mem = '512MB'`)
+        await tx.execute(sql`SET LOCAL maintenance_work_mem = '256MB'`)
         await tx.execute(
           sql.raw(`CREATE INDEX IF NOT EXISTS ${HNSW_INDEX} ON corpus.chunks
-            USING hnsw (embedding halfvec_cosine_ops) WITH (m = 16, ef_construction = 128)`),
+            USING hnsw (embedding halfvec_cosine_ops) WITH (m = 16, ef_construction = 128)
+            WHERE upper_inf(knowledge)`),
         )
       })
     },

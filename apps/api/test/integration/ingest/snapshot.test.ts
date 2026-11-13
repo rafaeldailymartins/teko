@@ -89,7 +89,7 @@ describe('exportação', () => {
   it('grava um .jsonl.zst por tabela, na ordem de FK, e o manifesto por último', () => {
     expect(manifestKey).toBe('snapshots/1/manifest.json')
     expect(manifest.corpusVersion).toBe(1)
-    expect(manifest.migration.name).toMatch(/coverage-gap-entries/)
+    expect(manifest.migration.name).toMatch(/partial-vector-indexes/)
     expect(blobs.keys(BlobStoreName.CorpusSnapshots)).toEqual(
       [...manifest.tables.map((table) => table.key), manifestKey].sort(),
     )

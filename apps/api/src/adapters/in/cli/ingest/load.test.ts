@@ -130,6 +130,7 @@ interface Recorder {
   readonly exports: number[]
   started: { bulk?: boolean | undefined; target: string } | null
   coverageCalls: number
+  pruned: number
 }
 
 const NO_CHURN = {
@@ -165,6 +166,7 @@ function useCases(
     exports: [],
     started: null,
     coverageCalls: 0,
+    pruned: 0,
   }
   const corpusVersion = options.corpusVersion ?? 7
   return {
@@ -198,6 +200,10 @@ function useCases(
           ...NO_CHURN,
         }
         return Promise.resolve(result)
+      },
+      pruneEmbeddingCache: () => {
+        recorder.pruned += 1
+        return Promise.resolve({ removed: 3, kept: 10 })
       },
       inspectCorpus: {
         documentHealth: () => Promise.resolve(options.health ?? HEALTH),
@@ -332,7 +338,10 @@ describe('ingest load', () => {
       reviewItems: 0,
       corpusVersion: 7,
       lockChanged: true,
+      // Plano com todas as famílias: poda o embedding_cache.
+      cachePruned: { removed: 3, kept: 10 },
     })
+    expect(recorder.pruned).toBe(1)
     const lock = readCorpusLock(lockFile)
     expect(lock.corpusVersion).toBe(7)
     expect(lock.snapshot).toMatchObject({
@@ -429,8 +438,9 @@ describe('ingest load', () => {
       ['efd-reinf/leiautes/2.1.2', 'Error: XSD inválido'],
     ])
     expect(recorder.finished[0]?.status).toBe('failed')
-    // Run que falhou não vira versão do corpus.
+    // Run que falhou não vira versão do corpus nem poda o cache.
     expect(recorder.coverageCalls).toBe(0)
+    expect(recorder.pruned).toBe(0)
   })
 
   it('o disjuntor de mudança em massa reprova o item com as métricas no relatório', async () => {
@@ -479,6 +489,13 @@ describe('ingest load', () => {
     expect(third.recorder.ingested.every((command) => command.acceptChurn === true)).toBe(true)
     expect(readCorpusLock(lockFile).health?.['rcte']?.chunks).toBe(150)
     expect(third.recorder.finished[0]?.report).toMatchObject({ acceptChurn: true })
+  })
+
+  it('plano de uma família só não poda o embedding_cache', async () => {
+    writeFileSync(planFile, JSON.stringify({ ...plan(), families: ['rcte'] }))
+    const { useCases: cases, recorder } = useCases()
+    expect(await load(deps(cases).value)).toBe(0)
+    expect(recorder.pruned).toBe(0)
   })
 
   it('imprime uma linha por item', async () => {

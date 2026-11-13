@@ -14,6 +14,7 @@ import type { IngestDocumentVersion } from './use-cases/ingest-document-version.
 import type { FinishIngestionRun, StartIngestionRun } from './use-cases/ingestion-run.ts'
 import type { InspectCorpus } from './use-cases/inspect-corpus.ts'
 import type { PromoteSnapshot } from './use-cases/promote-snapshot.ts'
+import type { PruneEmbeddingCache } from './use-cases/prune-embedding-cache.ts'
 import type { RefreshCoverage } from './use-cases/refresh-coverage.ts'
 import type { ResolveReferenceDate } from './use-cases/resolve-reference-date.ts'
 import type { RetrieveEvidence } from './use-cases/retrieve-evidence.ts'
@@ -49,6 +50,7 @@ interface IngestionUseCases {
   readonly exportSnapshot: ExportSnapshot
   readonly promoteSnapshot: PromoteSnapshot
   readonly inspectCorpus: InspectCorpus
+  readonly pruneEmbeddingCache: PruneEmbeddingCache
 }
 
 export interface IngestionContainer {

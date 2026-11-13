@@ -41,6 +41,7 @@ function memoryCache(initial: Record<string, number[]> = {}) {
       }
       return Promise.resolve()
     },
+    retainOnly: () => Promise.reject(new Error('não usado')),
   }
   return { cache, store, puts }
 }

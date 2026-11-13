@@ -1,4 +1,5 @@
 import {
+  compareIsoDates,
   containsInterval,
   intervalsEqual,
   mergeIntervals,
@@ -463,6 +464,14 @@ export function createIngestDocumentVersion(
         newChunks(plan).map((chunk) => chunk.embeddingHash),
         deps.embeddingModel,
       )
+      // B4: as redações novas começam no fechamento mais tardio. No reprocessamento da mesma
+      // versão, o conhecimento da antiga começou em `publishedOn` e fecha no dia seguinte; começar
+      // a nova em `publishedOn` deixaria duas redações conhecidas no mesmo dia.
+      const closedOn = await uow.closeKnowledge(plan.close, source.version.publishedOn)
+      const knowledgeFrom =
+        closedOn !== null && compareIsoDates(closedOn, source.version.publishedOn) > 0
+          ? closedOn
+          : source.version.publishedOn
       const rows: NewProvisionVersionRow[] = plan.insert.map((ref) => {
         const { provision, version } = resolve(byKey, ref)
         return {
@@ -470,7 +479,7 @@ export function createIngestDocumentVersion(
           headingPath: provision.parsed.headingPath,
           displayLabel: version.parsed.displayLabel,
           validDuring: version.validDuring,
-          knowledge: { from: source.version.publishedOn, to: null },
+          knowledge: { from: knowledgeFrom, to: null },
           modality: version.modality,
           validityBasis: version.parsed.validityBasis,
           retroactive: version.parsed.retroactive,
@@ -496,8 +505,8 @@ export function createIngestDocumentVersion(
         }
       })
 
-      await uow.closeKnowledge(plan.close, source.version.publishedOn)
       await uow.insertRemainders(plan.remainders)
+      await uow.releaseClosedEmbeddings(plan.close)
       await uow.widen(
         plan.widen.map((entry) => ({ id: entry.existingId, validDuring: entry.validDuring })),
       )

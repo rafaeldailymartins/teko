@@ -16,6 +16,7 @@ import {
 } from '#app/use-cases/ingest-document-version.ts'
 import type { FinishIngestionRun, StartIngestionRun } from '#app/use-cases/ingestion-run.ts'
 import type { InspectCorpus } from '#app/use-cases/inspect-corpus.ts'
+import type { PruneEmbeddingCache } from '#app/use-cases/prune-embedding-cache.ts'
 import type { RefreshCoverage } from '#app/use-cases/refresh-coverage.ts'
 import { applyOverrides, type Override } from '#domain/corpus/overrides.ts'
 import type { ParsedSource } from '#domain/corpus/parsed-source.ts'
@@ -82,6 +83,7 @@ export interface LoadUseCases {
   readonly refreshCoverage: RefreshCoverage
   readonly exportSnapshot: ExportSnapshot
   readonly inspectCorpus: InspectCorpus
+  readonly pruneEmbeddingCache: PruneEmbeddingCache
 }
 
 type IngestDocumentVersionResult = Awaited<ReturnType<IngestDocumentVersion>>
@@ -239,6 +241,8 @@ type LoadReport = {
   reviewQueue?: readonly ReviewQueueCount[]
   /** O run usou `--accept-churn` (disjuntor e gate de saúde liberados). */
   acceptChurn?: boolean
+  /** Poda do `embedding_cache` (run verde com todas as famílias). */
+  cachePruned?: { readonly removed: number; readonly kept: number }
   error?: string
 }
 
@@ -607,6 +611,12 @@ export async function runIngestLoad(
       writeCorpusLock(lockFile, next)
     }
     report.lockChanged = next !== null
+    // Poda do cache só quando o plano cobriu todas as famílias: um run de uma família não pode
+    // apagar o checkpoint de outra que parou no orçamento.
+    const configured = new Set(deps.config.resolved.map((source) => source.family))
+    if ([...configured].every((family) => plan.families.includes(family))) {
+      report.cachePruned = await deps.useCases.pruneEmbeddingCache()
+    }
     return await finish('succeeded', EXIT_OK)
   } catch (error) {
     report.error =

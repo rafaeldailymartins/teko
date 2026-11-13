@@ -171,6 +171,18 @@ describe('reingestão da mesma versão', () => {
     expect(rows[0]).toEqual({ n: 1, rev: 2 })
     expect(await count('provision_versions', 'upper_inf(knowledge)')).toBe(6)
     expect(await count('provision_versions', "text LIKE 'Art. 901. Texto corrigido%'")).toBe(1)
+    // B4: a redação antiga fecha no dia seguinte e a corrigida começa nele (nunca duas
+    // redações conhecidas no mesmo dia); o vetor da fechada sai.
+    const knowledge = await owner.query<{ knowledge: string; embedding: boolean }>(
+      `SELECT pv.knowledge::text AS knowledge, bool_and(c.embedding IS NOT NULL) AS embedding
+       FROM corpus.provision_versions pv JOIN corpus.provisions p ON p.id = pv.provision_id
+       JOIN corpus.chunks c ON c.provision_version_id = pv.id
+       WHERE p.stable_key = 'go:rcte:art:901' GROUP BY pv.id ORDER BY lower(pv.knowledge)`,
+    )
+    expect(knowledge.rows).toEqual([
+      { knowledge: '[2026-01-10,2026-01-11)', embedding: false },
+      { knowledge: '[2026-01-11,)', embedding: true },
+    ])
     // O mesmo arquivo com a revisão antiga (ramo desatualizado) não desfaz a correção.
     const stale = await useCases.ingestDocumentVersion({
       runId: second.runId,
@@ -410,6 +422,10 @@ describe('reconciliação de um consolidado novo', () => {
     expect((await ids('go:rcte:art:904')).map((row) => row.knowledge)).toEqual([
       '[2026-01-10,2026-06-01)',
     ])
+    // Armazenamento: chunk fechado sem vetor; todo chunk aberto com vetor.
+    expect(await count('chunks', 'NOT upper_inf(knowledge) AND embedding IS NOT NULL')).toBe(0)
+    expect(await count('chunks', 'NOT upper_inf(knowledge)')).toBeGreaterThan(0)
+    expect(await count('chunks', 'upper_inf(knowledge) AND embedding IS NULL')).toBe(0)
     // O snapshot anterior passa a valer até a nova consolidação.
     const { rows } = await owner.query<{ valid_during: string }>(
       'SELECT valid_during::text AS valid_during FROM corpus.document_versions WHERE id = $1',
@@ -582,7 +598,8 @@ describe('Guia: janela do período do leiaute', () => {
       {
         valid_during: '[2025-01-01,)',
         knowledge: '[2025-01-10,2026-03-01)',
-        embedded: true,
+        // A fechada perde o vetor, mas só depois de o recorte copiá-lo.
+        embedded: false,
         sources: 2,
       },
       {
@@ -719,5 +736,57 @@ describe('guarda de tamanho', () => {
     )
     expect(rows[0]).toMatchObject({ docs: 1, chunks_new: 6, cu_seconds: null })
     expect(Number(rows[0]?.db_bytes)).toBeGreaterThan(0)
+    // Recriado parcial, como no schema (a migração e o --bulk dão o mesmo índice).
+    const definition = await owner.query<{ indexdef: string }>(
+      `SELECT indexdef FROM pg_indexes WHERE indexname IN ('chunks_embedding_hnsw', 'chunks_tsv_gin')
+       ORDER BY indexname`,
+    )
+    expect(definition.rows.map((row) => row.indexdef)).toEqual([
+      expect.stringMatching(/USING hnsw .*WHERE upper_inf\(knowledge\)$/),
+      expect.stringMatching(/USING gin .*WHERE upper_inf\(knowledge\)$/),
+    ])
+
+    // B6: um --bulk que caiu no meio (sem fechamento) deixa o banco sem HNSW; o run seguinte
+    // sem --bulk o recria já na abertura.
+    await container.useCases.startIngestionRun({ target: 'staging', gitSha: 'k', bulk: true })
+    expect(await indexes()).toBe(0)
+    await container.useCases.startIngestionRun({ target: 'staging', gitSha: 'l' })
+    expect(await indexes()).toBe(1)
+  })
+})
+
+describe('poda do embedding_cache', () => {
+  it('apaga só os vetores que nenhum chunk aberto usa', async () => {
+    const { container } = context()
+    const { useCases } = container
+    const { runId } = await useCases.startIngestionRun({ target: 'staging', gitSha: 'm' })
+    await useCases.ingestDocumentVersion({
+      runId,
+      source: V1,
+      blobRaw: null,
+      blobDocling: null,
+      parserRevision: 1,
+    })
+    // Um texto que saiu do corpus (versão nova sem o art. 904) e um lixo de outro run.
+    await useCases.ingestDocumentVersion({
+      runId,
+      source: rcteSource(
+        'dec-2',
+        '2026-06-01',
+        V1.provisions.filter((provision) => !provision.stableKey.endsWith(':art:904')),
+      ),
+      blobRaw: null,
+      blobDocling: null,
+      parserRevision: 1,
+    })
+    await owner.query(
+      `INSERT INTO corpus.embedding_cache (content_hash, model, embedding)
+       SELECT 'lixo', model, embedding FROM corpus.embedding_cache LIMIT 1`,
+    )
+    expect(await count('embedding_cache')).toBe(7)
+    expect(await useCases.pruneEmbeddingCache()).toEqual({ removed: 2, kept: 5 })
+    expect(await count('embedding_cache')).toBe(5)
+    // Rodar de novo não apaga mais nada, e nada do que está aberto precisa ser reembutido.
+    expect(await useCases.pruneEmbeddingCache()).toEqual({ removed: 0, kept: 5 })
   })
 })

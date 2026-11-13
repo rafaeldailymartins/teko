@@ -235,6 +235,7 @@ function fakeRepository(options: {
   readonly existing?: ExistingDocumentVersion | null
   readonly open?: OpenProvisionVersion[]
   readonly provisionIds?: (keys: string[]) => Map<string, string>
+  readonly closedOn?: string
 }): { repository: CorpusIngestionRepository; recorder: Recorder } {
   const recorder: Recorder = { calls: [], inserted: [], review: [], sources: [] }
   const uow: IngestionUnitOfWork = {
@@ -265,11 +266,15 @@ function fakeRepository(options: {
     lockOpenVersions: () => Promise.resolve(options.open ?? []),
     closeKnowledge: (ids, at) => {
       recorder.calls.push(`close:${ids.join(',')}@${at}`)
-      return Promise.resolve()
+      return Promise.resolve(ids.length === 0 ? null : (options.closedOn ?? at))
     },
     insertRemainders: (rows) => {
       recorder.calls.push(`remainders:${String(rows.length)}`)
       return Promise.resolve(rows.map((_, index) => `r${String(index)}`))
+    },
+    releaseClosedEmbeddings: (ids) => {
+      recorder.calls.push(`release:${ids.join(',')}`)
+      return Promise.resolve()
     },
     widen: (rows) => {
       recorder.calls.push(`widen:${rows.map((row) => row.id).join(',')}`)
@@ -307,6 +312,9 @@ function fakeRepository(options: {
     refreshCoverage: () => Promise.reject(new Error('não usado')),
     documentHealth: () => Promise.reject(new Error('não usado')),
     openReviewQueue: () => Promise.reject(new Error('não usado')),
+    openChunkTexts: () => {
+      throw new Error('não usado')
+    },
   }
   return { repository, recorder }
 }
@@ -319,6 +327,7 @@ function setup(options: {
   readonly embed?: EmbedPendingResult
   readonly cached?: (hash: string) => number[] | undefined
   readonly provisionIds?: (keys: string[]) => Map<string, string>
+  readonly closedOn?: string
 }) {
   const { repository, recorder } = fakeRepository(options)
   const requested: string[] = []
@@ -341,6 +350,7 @@ function setup(options: {
           ),
         ),
       putMany: () => Promise.resolve(),
+      retainOnly: () => Promise.resolve(0),
     },
     embedPending,
     embeddingModel: 'bge',
@@ -379,6 +389,19 @@ describe('IngestDocumentVersion', () => {
       await newer.ingest({ ...command(source([version('Art. 1. Texto.')])), parserRevision: 2 }),
     ).toEqual({ status: 'unchanged', documentVersionId: 'dv0' })
     expect(newer.recorder.calls).toEqual([])
+  })
+
+  it('B4: as redações novas começam no fechamento mais tardio (reprocessamento)', async () => {
+    const { ingest, recorder } = setup({
+      existing: { id: 'dv0', status: 'published', parserRevision: 1 },
+      open: [open('velha', 'go:rcte:art:1', '#Art. 1. Redação velha.', iv('2000-01-01'))],
+      closedOn: '2026-06-02',
+    })
+    await ingest({
+      ...command(source([version('Art. 1. Redação corrigida.', iv('2000-01-01'))])),
+      parserRevision: 2,
+    })
+    expect(recorder.inserted[0]?.knowledge).toEqual(iv('2026-06-02'))
   })
 
   it('sha256 publicado com revisão menor do parser: reprocessa a mesma versão', async () => {
@@ -537,6 +560,7 @@ describe('IngestDocumentVersion', () => {
       'labels:1',
       'close:velha@2026-06-01',
       'remainders:0',
+      'release:velha',
       'widen:',
       'insert:3:rcte:bge',
       'sources:dv',

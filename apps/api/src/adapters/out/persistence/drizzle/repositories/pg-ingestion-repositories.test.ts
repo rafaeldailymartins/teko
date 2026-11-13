@@ -183,7 +183,7 @@ describe('PgDatabaseUsage e VectorIndexMaintenance', () => {
     expect(texts(statements).join('\n')).toMatch(
       /DROP INDEX IF EXISTS corpus.chunks_embedding_hnsw/,
     )
-    expect(texts(statements).join('\n')).toMatch(/SET LOCAL maintenance_work_mem = '512MB'/)
+    expect(texts(statements).join('\n')).toMatch(/SET LOCAL maintenance_work_mem = '256MB'/)
     expect(texts(statements).join('\n')).toMatch(/CREATE INDEX IF NOT EXISTS chunks_embedding_hnsw/)
     expect(await createPgDatabaseUsage(fakeDb().db).sizeBytes()).toBe(0)
   })
@@ -519,7 +519,7 @@ describe('PgCorpusIngestionRepository', () => {
           },
         ]
       }
-      if (text.includes('to_char(dv.created_at')) {
+      if (text.includes('to_char(max(dv.created_at)')) {
         return [{ slug: 'guia-pratico-efd-icms-ipi', created_at: '2026-11-10T00:00:00.000000Z' }]
       }
       if (text.startsWith('insert into "corpus"."corpus_versions"')) {

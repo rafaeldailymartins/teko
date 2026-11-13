@@ -254,16 +254,31 @@ function unitOfWork(tx: Tx): IngestionUnitOfWork {
 
     async closeKnowledge(ids, at) {
       if (ids.length === 0) {
-        return
+        return null
       }
-      await tx.execute(sql`
+      const closed = await tx.execute<{ closed_on: string }>(sql`
         UPDATE corpus.provision_versions
         SET knowledge = daterange(lower(knowledge), greatest(${at}::date, lower(knowledge) + 1))
-        WHERE id = ANY(${uuidArray(ids)}) AND upper_inf(knowledge)`)
+        WHERE id = ANY(${uuidArray(ids)}) AND upper_inf(knowledge)
+        RETURNING upper(knowledge)::text AS closed_on`)
       await tx.execute(sql`
         UPDATE corpus.chunks c SET knowledge = pv.knowledge
         FROM corpus.provision_versions pv
         WHERE c.provision_version_id = pv.id AND pv.id = ANY(${uuidArray(ids)})`)
+      return closed.rows.reduce<string | null>(
+        (latest, row) => (latest === null || row.closed_on > latest ? row.closed_on : latest),
+        null,
+      )
+    },
+
+    async releaseClosedEmbeddings(ids) {
+      if (ids.length === 0) {
+        return
+      }
+      await tx.execute(sql`
+        UPDATE corpus.chunks SET embedding = NULL
+        WHERE provision_version_id = ANY(${uuidArray(ids)}) AND NOT upper_inf(knowledge)
+          AND embedding IS NOT NULL`)
     },
 
     async insertRemainders(rows) {
@@ -629,5 +644,24 @@ export function createPgCorpusIngestionRepository(db: DrizzleDb): CorpusIngestio
         ORDER BY d.family, q.reason`)
       return result.rows.map((row) => ({ family: row.family, reason: row.reason, open: row.open }))
     },
+
+    async *openChunkTexts() {
+      let after = '00000000-0000-0000-0000-000000000000'
+      for (;;) {
+        const result = await db.execute<{ id: string; heading_path: string; content: string }>(sql`
+          SELECT id::text AS id, heading_path, content FROM corpus.chunks
+          WHERE upper_inf(knowledge) AND id > ${after}::uuid
+          ORDER BY id LIMIT ${CHUNK_TEXT_PAGE}`)
+        const last = result.rows.at(-1)
+        if (last === undefined) {
+          return
+        }
+        yield result.rows.map((row) => ({ headingPath: row.heading_path, content: row.content }))
+        after = last.id
+      }
+    },
   }
 }
+
+/** Página da leitura dos textos dos chunks abertos (keyset por ID). */
+const CHUNK_TEXT_PAGE = 2000
