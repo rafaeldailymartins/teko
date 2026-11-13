@@ -450,11 +450,12 @@ function unitOfWork(tx: Tx): IngestionUnitOfWork {
 }
 
 /**
- * Lacunas da família que continuam abertas depois do run: sai só a entrada cujo documento ganhou,
- * neste run, uma versão publicada criada depois da detecção (M1: publicar outro documento da
- * família, ou reprocessar uma versão antiga pela revisão do parser, não resolve a lacuna).
+ * Lacunas da família que continuam abertas: sai só a entrada cujo documento tem uma versão
+ * publicada criada depois da detecção (M1: publicar outro documento da família, ou reprocessar uma
+ * versão antiga pela revisão do parser, não resolve a lacuna). Vale também para a versão publicada
+ * num run anterior que falhou antes do `RefreshCoverage`.
  */
-async function remainingGaps(tx: Tx, family: Family, runId: string) {
+async function remainingGaps(tx: Tx, family: Family) {
   const current = await tx.execute<{
     gaps: string
     gap_reason: string | null
@@ -478,10 +479,10 @@ async function remainingGaps(tx: Tx, family: Family, runId: string) {
   }
   const published = await tx.execute<{ slug: string; created_at: string }>(sql`
     SELECT d.slug,
-      to_char(dv.created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS created_at
+      to_char(max(dv.created_at) AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS created_at
     FROM corpus.document_versions dv JOIN corpus.documents d ON d.id = dv.document_id
-    WHERE dv.ingestion_run_id = ${runId}::uuid AND dv.status = 'published'
-      AND d.family = ${family}`)
+    WHERE dv.status = 'published' AND d.family = ${family}
+    GROUP BY d.slug`)
   return clearResolvedGaps(
     entries,
     published.rows.map((row) => ({ slug: row.slug, createdAt: row.created_at })),
@@ -524,12 +525,17 @@ export function createPgCorpusIngestionRepository(db: DrizzleDb): CorpusIngestio
       db.transaction(async (tx) => {
         const targets =
           families ??
+          // As famílias do run e as que têm chunks ainda sem versão do corpus (um run anterior
+          // que falhou depois de publicar não recalcula a cobertura).
           (
             await tx.execute<{ family: string }>(sql`
               SELECT DISTINCT d.family FROM corpus.document_versions dv
               JOIN corpus.documents d ON d.id = dv.document_id
               WHERE dv.ingestion_run_id = ${runId}::uuid AND dv.status = 'published'
-              ORDER BY d.family`)
+              UNION
+              SELECT DISTINCT c.family FROM corpus.chunks c
+              WHERE c.corpus_version = ${UNVERSIONED_CORPUS}
+              ORDER BY family`)
           ).rows.map((row) => asFamily(row.family))
         if (targets.length === 0) {
           const current = await tx.execute<{ id: number | null }>(
@@ -545,7 +551,7 @@ export function createPgCorpusIngestionRepository(db: DrizzleDb): CorpusIngestio
           throw new CorpusInvariantError('não foi possível abrir a versão do corpus')
         }
         for (const family of targets) {
-          const gaps = gapColumns(await remainingGaps(tx, family, runId))
+          const gaps = gapColumns(await remainingGaps(tx, family))
           await tx.execute(sql`
             INSERT INTO corpus.coverage AS cov (family, jurisdiction, covered, verified_at,
               corpus_version, gaps, gap_reason, gap_entries)
@@ -568,5 +574,60 @@ export function createPgCorpusIngestionRepository(db: DrizzleDb): CorpusIngestio
           .where(eq(chunks.corpusVersion, UNVERSIONED_CORPUS))
         return { corpusVersion: version.id }
       }),
+
+    async documentHealth() {
+      const result = await db.execute<{
+        slug: string
+        family: string
+        provisions: number
+        chunks: number
+        pending: number
+        versions: number
+      }>(sql`
+        WITH versions AS (
+          SELECT d.slug, d.family,
+            count(DISTINCT pv.provision_id)
+              FILTER (WHERE pv.review_status IN ('auto', 'approved'))::int AS provisions,
+            count(*) FILTER (WHERE pv.review_status = 'pending')::int AS pending,
+            count(*)::int AS versions
+          FROM corpus.provision_versions pv
+          JOIN corpus.provisions p ON p.id = pv.provision_id
+          JOIN corpus.documents d ON d.id = p.document_id
+          WHERE upper_inf(pv.knowledge)
+          GROUP BY d.slug, d.family
+        ), open_chunks AS (
+          SELECT d.slug, count(*)::int AS chunks
+          FROM corpus.chunks c
+          JOIN corpus.provision_versions pv ON pv.id = c.provision_version_id
+          JOIN corpus.provisions p ON p.id = pv.provision_id
+          JOIN corpus.documents d ON d.id = p.document_id
+          WHERE upper_inf(c.knowledge) AND c.review_status IN ('auto', 'approved')
+          GROUP BY d.slug
+        )
+        SELECT v.slug, v.family, v.provisions, coalesce(oc.chunks, 0)::int AS chunks,
+          v.pending, v.versions
+        FROM versions v LEFT JOIN open_chunks oc ON oc.slug = v.slug
+        ORDER BY v.slug`)
+      return result.rows.map((row) => ({
+        slug: row.slug,
+        family: row.family,
+        provisions: row.provisions,
+        chunks: row.chunks,
+        pending: row.pending,
+        versions: row.versions,
+      }))
+    },
+
+    async openReviewQueue() {
+      const result = await db.execute<{ family: string; reason: string; open: number }>(sql`
+        SELECT d.family, q.reason, count(*)::int AS open
+        FROM corpus.review_queue q
+        JOIN corpus.provisions p ON p.id = q.provision_id
+        JOIN corpus.documents d ON d.id = p.document_id
+        WHERE q.status = 'open'
+        GROUP BY d.family, q.reason
+        ORDER BY d.family, q.reason`)
+      return result.rows.map((row) => ({ family: row.family, reason: row.reason, open: row.open }))
+    },
   }
 }

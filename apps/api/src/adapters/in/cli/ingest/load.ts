@@ -4,13 +4,18 @@ import { parseArgs } from 'node:util'
 import type { IsoDate } from '@teko/shared/vigencia'
 import { type BlobStore, BlobStoreName } from '#app/ports/blob-store.ts'
 import type { ContentHasher } from '#app/ports/content-hasher.ts'
+import type { ReviewQueueCount } from '#app/ports/corpus-ingestion-repository.ts'
 import { DatabaseSizeLimitError } from '#app/ports/database-usage.ts'
+import type { ChurnMetrics } from '#app/services/churn.ts'
+import { ChurnLimitError } from '#app/services/churn.ts'
+import { evaluateHealth, HEALTH_LIMITS, type HealthReport } from '#app/services/corpus-health.ts'
 import type { ExportSnapshot } from '#app/use-cases/export-snapshot.ts'
 import {
   type IngestDocumentVersion,
   reviewNoteHash,
 } from '#app/use-cases/ingest-document-version.ts'
 import type { FinishIngestionRun, StartIngestionRun } from '#app/use-cases/ingestion-run.ts'
+import type { InspectCorpus } from '#app/use-cases/inspect-corpus.ts'
 import type { RefreshCoverage } from '#app/use-cases/refresh-coverage.ts'
 import { applyOverrides, type Override } from '#domain/corpus/overrides.ts'
 import type { ParsedSource } from '#domain/corpus/parsed-source.ts'
@@ -26,7 +31,13 @@ import {
   isIngestTarget,
   sha256Hex,
 } from './cli-common.ts'
-import { type CorpusLock, nextCorpusLock, readCorpusLock, writeCorpusLock } from './corpus-lock.ts'
+import {
+  type CorpusLock,
+  type LockHealth,
+  nextCorpusLock,
+  readCorpusLock,
+  writeCorpusLock,
+} from './corpus-lock.ts'
 import type { Parser, ParserName } from './parsers/parser.ts'
 import { type Plan, type PlanItem, planSchema } from './plan.ts'
 import type { CorpusConfig, ResolvedSource } from './sources.ts'
@@ -43,18 +54,24 @@ import { readZip } from './zip.ts'
  *    conferido), as partes do Docling (da pasta do `extract` ou, se já estavam lá, do store
  *    `corpus-docling`) e os membros do zip; resolve o descritor, parseia, aplica os overrides,
  *    grava raw e docling no Blobs e chama `ingestDocumentVersion`;
- * 4. orçamento esgotado → para, recalcula a cobertura do que já publicou, fecha o run como
- *    `budget_exhausted` e sai com 75 (o próximo run retoma pelo `embedding_cache`);
- * 5. no fim, `refreshCoverage`; se a versão do corpus mudou, `exportSnapshot` e atualização do
- *    `corpus/corpus.lock.json`; fecha o run com o relatório (também gravado em `--report`).
+ * 4. orçamento esgotado (inclusive a cota diária do Workers AI) → para, recalcula a cobertura do
+ *    que já publicou, fecha o run como `budget_exhausted` e sai com 75 (o próximo run retoma pelo
+ *    `embedding_cache`);
+ * 5. gate de saúde (`evaluateHealth`): o estado publicado por documento contra o `health` do lock;
+ * 6. no fim, `refreshCoverage`; se a versão do corpus mudou, `exportSnapshot` e atualização do
+ *    `corpus/corpus.lock.json` (com o `health` novo); fecha o run com o relatório (também gravado
+ *    em `--report`), com a fila de revisão aberta por família e motivo.
  *
- * Uma fonte que falha (parse, Docling ausente, sha256 divergente) não impede as outras: o run fecha
- * como `failed`, sem snapshot nem lock, e o código de saída é 1.
+ * Uma fonte que falha (parse, Docling ausente, sha256 divergente, disjuntor de mudança em massa)
+ * não impede as outras: o run fecha como `failed`, sem `refreshCoverage`, snapshot nem lock, e o
+ * código de saída é 1. `--accept-churn` libera o disjuntor e o gate (os números ficam no
+ * relatório). Cada item imprime uma linha.
  */
 
 const LOAD_USAGE = [
   'uso: cli ingest load --target staging|production --plan <plan.json> --docling-dir <dir>',
   '       [--bulk] [--migrate] [--report <arquivo>] [--lock <corpus.lock.json>]',
+  '       [--accept-churn] [--max-pending-share <0..1>]',
 ].join('\n')
 
 /** Casos de uso da ingestão que o `load` chama (subconjunto do `IngestionContainer`). */
@@ -64,6 +81,7 @@ export interface LoadUseCases {
   readonly ingestDocumentVersion: IngestDocumentVersion
   readonly refreshCoverage: RefreshCoverage
   readonly exportSnapshot: ExportSnapshot
+  readonly inspectCorpus: InspectCorpus
 }
 
 type IngestDocumentVersionResult = Awaited<ReturnType<IngestDocumentVersion>>
@@ -98,6 +116,21 @@ export interface LoadArgs {
   readonly migrate: boolean
   readonly report: string | null
   readonly lock: string | null
+  /** Libera o disjuntor de mudança em massa e o gate de saúde (os números saem no relatório). */
+  readonly acceptChurn: boolean
+  /** Fração `pending` máxima por família no gate de saúde. */
+  readonly maxPendingShare: number
+}
+
+function parseShare(value: string | undefined): number {
+  if (value === undefined) {
+    return HEALTH_LIMITS.maxPendingShare
+  }
+  const share = Number(value)
+  if (!Number.isFinite(share) || share < 0 || share > 1) {
+    throw new CliUsageError('--max-pending-share precisa ser um número de 0 a 1', LOAD_USAGE)
+  }
+  return share
 }
 
 export function parseLoadArgs(args: readonly string[]): LoadArgs {
@@ -109,6 +142,8 @@ export function parseLoadArgs(args: readonly string[]): LoadArgs {
     migrate?: boolean
     report?: string
     lock?: string
+    'accept-churn'?: boolean
+    'max-pending-share'?: string
   }
   try {
     values = parseArgs({
@@ -121,6 +156,8 @@ export function parseLoadArgs(args: readonly string[]): LoadArgs {
         migrate: { type: 'boolean', default: false },
         report: { type: 'string' },
         lock: { type: 'string' },
+        'accept-churn': { type: 'boolean', default: false },
+        'max-pending-share': { type: 'string' },
       },
       strict: true,
       allowPositionals: false,
@@ -151,6 +188,8 @@ export function parseLoadArgs(args: readonly string[]): LoadArgs {
     migrate,
     report: values.report ?? null,
     lock: values.lock ?? null,
+    acceptChurn: values['accept-churn'] === true,
+    maxPendingShare: parseShare(values['max-pending-share']),
   }
 }
 
@@ -194,6 +233,12 @@ type LoadReport = {
   lockChanged?: boolean
   budgetExhaustedAt?: string
   pendingChunks?: number
+  /** Gate de saúde: estado por documento contra o `health` do lock e os limites ultrapassados. */
+  health?: HealthReport
+  /** Itens abertos da fila de revisão (redações `pending`, fora da busca) por família e motivo. */
+  reviewQueue?: readonly ReviewQueueCount[]
+  /** O run usou `--accept-churn` (disjuntor e gate de saúde liberados). */
+  acceptChurn?: boolean
   error?: string
 }
 
@@ -206,7 +251,13 @@ type ItemOutcome =
       readonly versionLabel: string
       readonly publishedOn: IsoDate
     }
-  | { readonly sourceId: string; readonly sha256: string; readonly error: string }
+  | {
+      readonly sourceId: string
+      readonly sha256: string
+      readonly error: string
+      /** Métricas do disjuntor, quando foi ele que reprovou o item. */
+      readonly churn?: ChurnMetrics
+    }
 
 interface LoadContext {
   readonly deps: IngestLoadDeps
@@ -314,6 +365,7 @@ async function loadItem(
     blobRaw: rawKey,
     blobDocling: docling.blobKeys[0] ?? null,
     parserRevision: context.deps.parserRevisions[item.parser],
+    acceptChurn: context.args.acceptChurn,
   })
   return {
     sourceId: item.sourceId,
@@ -336,6 +388,52 @@ function sumPublished(
     }
   }
   return total
+}
+
+/** Uma linha por item (o `load` passava minutos sem imprimir nada). */
+function itemLine(outcome: ItemOutcome, elapsedMs: number): string {
+  const seconds = `${(elapsedMs / 1000).toFixed(1)} s`
+  if ('error' in outcome) {
+    return `${outcome.sourceId}: erro em ${seconds}: ${outcome.error}`
+  }
+  const { result } = outcome
+  if (result.status === 'published') {
+    const churn =
+      result.churnViolations.length === 0
+        ? ''
+        : ` (aceito com --accept-churn: ${result.churnViolations.join('; ')})`
+    return (
+      `${outcome.sourceId}: published${result.reprocessed ? ' (reprocessada)' : ''} em ${seconds}: ` +
+      `${String(result.provisionVersionsNew)} redações novas, ${String(result.knowledgeClosed)} fechadas, ` +
+      `${String(result.chunksNew)} chunks, ${String(result.reviewItems)} na fila, ` +
+      `${String(result.neurons)} neurons${churn}`
+    )
+  }
+  if (result.status === 'budget_exhausted') {
+    return `${outcome.sourceId}: orçamento esgotado em ${seconds} (${String(result.pendingChunks)} chunks pendentes)`
+  }
+  return `${outcome.sourceId}: unchanged em ${seconds}`
+}
+
+function lockHealthOf(health: HealthReport): Record<string, LockHealth> {
+  return Object.fromEntries(
+    health.documents.flatMap((document) =>
+      document.after === null
+        ? []
+        : [
+            [
+              document.slug,
+              {
+                family: document.after.family,
+                provisions: document.after.provisions,
+                chunks: document.after.chunks,
+                pending: document.after.pending,
+                versions: document.after.versions,
+              },
+            ],
+          ],
+    ),
+  )
 }
 
 export async function runIngestLoad(
@@ -364,6 +462,8 @@ export async function runIngestLoad(
     finished = true
     Object.assign(report, {
       status,
+      acceptChurn: parsed.acceptChurn,
+      reviewQueue: await deps.useCases.inspectCorpus.openReviewQueue(),
       items: outcomes,
       chunksNew: sumPublished(outcomes, 'chunksNew'),
       neurons:
@@ -409,8 +509,10 @@ export async function runIngestLoad(
         })
         continue
       }
+      const started = Date.now()
       try {
         const outcome = await loadItem(context, item, source)
+        deps.print(itemLine(outcome, Date.now() - started))
         if ('result' in outcome && outcome.result.status === 'budget_exhausted') {
           exhausted = outcome.result
           report.budgetExhaustedAt = item.sourceId
@@ -422,11 +524,42 @@ export async function runIngestLoad(
         if (error instanceof DatabaseSizeLimitError) {
           throw error
         }
-        outcomes.push({ sourceId: item.sourceId, sha256: item.sha256, error: errorMessage(error) })
+        const failure = {
+          sourceId: item.sourceId,
+          sha256: item.sha256,
+          error: errorMessage(error),
+          ...(error instanceof ChurnLimitError ? { churn: error.metrics } : {}),
+        }
+        deps.print(itemLine(failure, Date.now() - started))
+        outcomes.push(failure)
       }
     }
-    const failed = outcomes.some((outcome) => 'error' in outcome) || plan.errors.length > 0
-    // Sem `families`, o caso de uso recalcula só as famílias com versão publicada neste run.
+    const lockFile = parsed.lock ?? deps.defaultLockFile
+    const lock: CorpusLock = readCorpusLock(lockFile)
+    let failed = outcomes.some((outcome) => 'error' in outcome) || plan.errors.length > 0
+    // Gate de saúde: só num run completo (o orçamento esgotado deixa o corpus pela metade).
+    let health: HealthReport | null = null
+    if (!failed && exhausted === null) {
+      health = evaluateHealth(
+        lock.health === undefined
+          ? null
+          : Object.entries(lock.health).map(([slug, entry]) => ({ slug, ...entry })),
+        await deps.useCases.inspectCorpus.documentHealth(),
+        { maxDrop: HEALTH_LIMITS.maxDrop, maxPendingShare: parsed.maxPendingShare },
+      )
+      report.health = health
+      for (const violation of health.violations) {
+        deps.print(`gate de saúde: ${violation}`)
+      }
+      failed = health.violations.length > 0 && !parsed.acceptChurn
+    }
+    if (failed) {
+      // Sem RefreshCoverage: o run não vira versão do corpus (os chunks ficam com versão 0 e o
+      // próximo run verde recalcula a cobertura dessas famílias).
+      return await finish('failed', EXIT_FAILURE)
+    }
+    // Sem `families`, o caso de uso recalcula as famílias com versão publicada neste run (e as que
+    // têm chunks ainda sem versão do corpus).
     const { corpusVersion } = await deps.useCases.refreshCoverage({
       runId,
       verifiedAt: deps.today(),
@@ -435,11 +568,6 @@ export async function runIngestLoad(
     if (exhausted !== null) {
       return await finish('budget_exhausted', EXIT_BUDGET_EXHAUSTED)
     }
-    if (failed) {
-      return await finish('failed', EXIT_FAILURE)
-    }
-    const lockFile = parsed.lock ?? deps.defaultLockFile
-    const lock: CorpusLock = readCorpusLock(lockFile)
     let snapshot = null
     if (lock.snapshot?.corpusVersion !== corpusVersion) {
       const exported = await deps.useCases.exportSnapshot({ corpusVersion })
@@ -469,7 +597,12 @@ export async function runIngestLoad(
         }
       }
     }
-    const next = nextCorpusLock(lock, { snapshot, sources, today: deps.today() })
+    const next = nextCorpusLock(lock, {
+      snapshot,
+      sources,
+      today: deps.today(),
+      ...(health === null ? {} : { health: lockHealthOf(health) }),
+    })
     if (next !== null) {
       writeCorpusLock(lockFile, next)
     }

@@ -29,6 +29,12 @@ import {
 } from '../ports/corpus-ingestion-repository.ts'
 import { DatabaseSizeLimitError, type DatabaseUsage } from '../ports/database-usage.ts'
 import type { EmbeddingCache } from '../ports/embedding-cache.ts'
+import {
+  ChurnLimitError,
+  type ChurnMetrics,
+  churnViolations,
+  measureChurn,
+} from '../services/churn.ts'
 import type { EmbedPending } from './embed-pending.ts'
 
 /**
@@ -42,7 +48,10 @@ import type { EmbedPending } from './embed-pending.ts'
  * 2. guarda de tamanho: `pg_database_size` acima do limite aborta o run, e, depois do
  *    planejamento e antes dos embeddings, a projeção `tamanho + chunksNovos × bytesPorChunk`
  *    também (guarda prospectiva);
- * 3. planejamento sem trava (`planReconciliation`) e embeddings só das redações novas, pelo
+ * 3. planejamento sem trava (`planReconciliation`), disjuntor de mudança em massa
+ *    (`measureChurn`: fechar mais de 20% das redações abertas da janela, perder mais de 10% dos
+ *    dispositivos ou dobrar a fração `pending` falha o item, salvo `acceptChurn`), guarda
+ *    prospectiva e embeddings só das redações novas, pelo
  *    `EmbedPending` (o `embedding_cache` é o checkpoint, com commit por lote). Orçamento esgotado →
  *    `budget_exhausted`, sem publicar nada da versão;
  * 4. uma transação: documento, versão `ingesting`, dispositivos, rótulos, reconciliação (refeita
@@ -81,6 +90,8 @@ interface IngestDocumentVersionCommand {
   readonly blobDocling: string | null
   /** Revisão atual do parser da fonte (`PARSER_REVISIONS`, ADR 0026). */
   readonly parserRevision: number
+  /** `--accept-churn`: publica mesmo acima dos limites do disjuntor (as métricas saem no resultado). */
+  readonly acceptChurn?: boolean
 }
 
 type IngestDocumentVersionResult =
@@ -98,6 +109,9 @@ type IngestDocumentVersionResult =
       readonly chunksNew: number
       readonly reviewItems: number
       readonly neurons: number
+      /** Métricas do disjuntor de mudança em massa e os limites que ultrapassou (com `acceptChurn`). */
+      readonly churn: ChurnMetrics
+      readonly churnViolations: readonly string[]
     }
   | {
       readonly status: 'budget_exhausted'
@@ -336,7 +350,7 @@ function parentsFirst(provisions: readonly ParsedProvision[]): ParsedProvision[]
 export function createIngestDocumentVersion(
   deps: IngestDocumentVersionDeps,
 ): IngestDocumentVersion {
-  return async ({ runId, source, blobRaw, blobDocling, parserRevision }) => {
+  return async ({ runId, source, blobRaw, blobDocling, parserRevision, acceptChurn = false }) => {
     const existing = await deps.repository.findDocumentVersion(source.version.sha256)
     const published = existing?.status === DocumentVersionStatus.Published
     if (published && existing.parserRevision >= parserRevision) {
@@ -356,9 +370,23 @@ export function createIngestDocumentVersion(
         window: source.replacementWindow,
       })
 
-    const draft = reconcile(await deps.repository.openVersionsOf(source.document.slug))
+    const existingOpen = await deps.repository.openVersionsOf(source.document.slug)
+    const draft = reconcile(existingOpen)
     const newChunks = (plan: ReconciliationPlan) =>
       plan.insert.flatMap((ref) => resolve(byKey, ref).version.chunks)
+    // Disjuntor de mudança em massa (antes de embutir e de gravar).
+    const churn = measureChurn({
+      existing: existingOpen,
+      window: source.replacementWindow,
+      close: draft.close,
+      remainders: draft.remainders,
+      insert: draft.insert.length,
+      provisions: prepared,
+    })
+    const violations = churnViolations(churn)
+    if (violations.length > 0 && !acceptChurn) {
+      throw new ChurnLimitError(source.document.slug, churn, violations)
+    }
     // Guarda prospectiva: antes de embutir (o cache é commitado fora da transação), o tamanho
     // depois da versão, pelos chunks novos ao tamanho médio medido, não pode passar do limite.
     const chunkCount = newChunks(draft).length
@@ -520,6 +548,13 @@ export function createIngestDocumentVersion(
         reviewItems: queued,
       }
     })
-    return { status: 'published', reprocessed: published, ...counts, neurons: embedded.neurons }
+    return {
+      status: 'published',
+      reprocessed: published,
+      ...counts,
+      neurons: embedded.neurons,
+      churn,
+      churnViolations: violations,
+    }
   }
 }

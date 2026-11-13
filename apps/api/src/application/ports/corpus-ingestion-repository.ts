@@ -178,6 +178,30 @@ export interface CorpusIngestionRepository {
    * nada e devolve a versão atual.
    */
   refreshCoverage(record: RefreshCoverageRecord): Promise<{ readonly corpusVersion: number }>
+  /** Estado publicado por documento, para o gate de saúde do fim do `load`. */
+  documentHealth(): Promise<DocumentHealth[]>
+  /** Itens abertos da fila de revisão por família e motivo (o resumo do `load` mostra). */
+  openReviewQueue(): Promise<ReviewQueueCount[]>
+}
+
+/** Estado publicado de um documento (redações e chunks de conhecimento aberto). */
+export interface DocumentHealth {
+  readonly slug: string
+  readonly family: string
+  /** Dispositivos com redação publicável (`auto`/`approved`). */
+  readonly provisions: number
+  /** Chunks publicáveis. */
+  readonly chunks: number
+  /** Redações `pending`. */
+  readonly pending: number
+  /** Redações de todos os status. */
+  readonly versions: number
+}
+
+export interface ReviewQueueCount {
+  readonly family: string
+  readonly reason: string
+  readonly open: number
 }
 
 /** `corpus_version` dos chunks gravados pela ingestão até o `RefreshCoverage` do fim do run. */

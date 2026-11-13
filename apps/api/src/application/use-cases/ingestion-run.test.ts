@@ -12,6 +12,7 @@ import {
   createStartIngestionRun,
   IngestionRunNotFoundError,
 } from './ingestion-run.ts'
+import { createInspectCorpus } from './inspect-corpus.ts'
 import { createRefreshCoverage } from './refresh-coverage.ts'
 
 const NOW = new Date('2026-11-10T12:00:00-03:00')
@@ -143,6 +144,11 @@ describe('RefreshCoverage', () => {
         records.push(record)
         return Promise.resolve({ corpusVersion: 7 })
       },
+      documentHealth: () =>
+        Promise.resolve([
+          { slug: 'rcte', family: 'rcte', provisions: 1, chunks: 2, pending: 0, versions: 1 },
+        ]),
+      openReviewQueue: () => Promise.resolve([{ family: 'rcte', reason: 'x', open: 1 }]),
     }
     const refresh = createRefreshCoverage({ repository })
     expect(await refresh({ runId: 'r', verifiedAt: '2026-11-10', families: ['rcte'] })).toEqual({
@@ -151,6 +157,9 @@ describe('RefreshCoverage', () => {
     expect(records).toEqual([
       { runId: 'r', verifiedAt: '2026-11-10', families: ['rcte'], notes: 'ingestão r' },
     ])
+    const inspect = createInspectCorpus({ repository })
+    expect(await inspect.documentHealth()).toHaveLength(1)
+    expect(await inspect.openReviewQueue()).toEqual([{ family: 'rcte', reason: 'x', open: 1 }])
   })
 })
 

@@ -12,6 +12,7 @@ import type { GetHealth } from './use-cases/get-health.ts'
 import type { HybridSearch } from './use-cases/hybrid-search.ts'
 import type { IngestDocumentVersion } from './use-cases/ingest-document-version.ts'
 import type { FinishIngestionRun, StartIngestionRun } from './use-cases/ingestion-run.ts'
+import type { InspectCorpus } from './use-cases/inspect-corpus.ts'
 import type { PromoteSnapshot } from './use-cases/promote-snapshot.ts'
 import type { RefreshCoverage } from './use-cases/refresh-coverage.ts'
 import type { ResolveReferenceDate } from './use-cases/resolve-reference-date.ts'
@@ -47,6 +48,7 @@ interface IngestionUseCases {
   readonly refreshCoverage: RefreshCoverage
   readonly exportSnapshot: ExportSnapshot
   readonly promoteSnapshot: PromoteSnapshot
+  readonly inspectCorpus: InspectCorpus
 }
 
 export interface IngestionContainer {

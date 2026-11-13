@@ -313,6 +313,15 @@ describe('anomalias', () => {
     })
     expect(again).toMatchObject({ status: 'published', provisionVersionsNew: 0, reviewItems: 0 })
     expect(await count('review_queue')).toBe(1)
+
+    // O relatório do load mostra a fila por família e motivo e o estado para o gate de saúde.
+    const inspect = container.useCases.inspectCorpus
+    expect(await inspect.openReviewQueue()).toEqual([
+      { family: 'rcte', reason: 'note-unparsed', open: 1 },
+    ])
+    expect(await inspect.documentHealth()).toEqual([
+      { slug: 'rcte', family: 'rcte', provisions: 2, chunks: 3, pending: 1, versions: 4 },
+    ])
   })
 })
 

@@ -10,6 +10,7 @@ import type {
   ReviewItemRow,
 } from '../ports/corpus-ingestion-repository.ts'
 import { DatabaseSizeLimitError } from '../ports/database-usage.ts'
+import { ChurnLimitError } from '../services/churn.ts'
 import type { EmbedPending, EmbedPendingResult } from './embed-pending.ts'
 import {
   createIngestDocumentVersion,
@@ -304,6 +305,8 @@ function fakeRepository(options: {
     openVersionsOf: () => Promise.resolve(options.open ?? []),
     transaction: (work) => work(uow),
     refreshCoverage: () => Promise.reject(new Error('não usado')),
+    documentHealth: () => Promise.reject(new Error('não usado')),
+    openReviewQueue: () => Promise.reject(new Error('não usado')),
   }
   return { repository, recorder }
 }
@@ -431,6 +434,28 @@ describe('IngestDocumentVersion', () => {
     ).resolves.toMatchObject({ status: 'published', provisionVersionsNew: 0 })
   })
 
+  it('disjuntor: mudança em massa falha o item antes de embutir, salvo acceptChurn', async () => {
+    const many = Array.from({ length: 20 }, (_, index) =>
+      open(`pv${String(index)}`, `go:rcte:art:${String(index + 10)}`, '#x', iv('2000-01-01')),
+    )
+    const tripped = setup({ open: many })
+    const error = await tripped
+      .ingest(command(source([version('Art. 1. Texto.')])))
+      .catch((caught: unknown) => caught)
+    expect(error).toBeInstanceOf(ChurnLimitError)
+    expect(error).toMatchObject({ metrics: { openBefore: 20, closed: 20, provisionsLost: 20 } })
+    expect(tripped.requested).toEqual([])
+    expect(tripped.recorder.calls).toEqual([])
+
+    const accepted = setup({ open: many })
+    const result = await accepted.ingest({
+      ...command(source([version('Art. 1. Texto.')])),
+      acceptChurn: true,
+    })
+    expect(result).toMatchObject({ status: 'published', knowledgeClosed: 20 })
+    expect(result.status === 'published' ? result.churnViolations : []).toHaveLength(2)
+  })
+
   it('orçamento esgotado: devolve budget_exhausted sem abrir a transação', async () => {
     const { ingest, recorder } = setup({
       embed: { status: 'budget_exhausted', neurons: 5, embedded: 1, cached: 0, pending: 2 },
@@ -488,6 +513,16 @@ describe('IngestDocumentVersion', () => {
       chunksNew: 3,
       reviewItems: 2,
       neurons: 3,
+      churn: {
+        openBefore: 2,
+        closed: 1,
+        inserted: 3,
+        provisionsBefore: 1,
+        provisionsLost: 0,
+        pendingShareBefore: 0,
+        pendingShareAfter: 0.5,
+      },
+      churnViolations: [],
     })
     expect(requested).toEqual([
       'RCTE > Art. 1\n\nArt. 1. Redação nova.',

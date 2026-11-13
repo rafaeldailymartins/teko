@@ -29,6 +29,17 @@ const lockSnapshotSchema = z.strictObject({
 
 const LOCK_FORMAT = 1
 
+const count = z.int().nonnegative()
+
+/** Estado publicado de cada documento no snapshot do lock: a base do gate de saúde do `load`. */
+const lockHealthSchema = z.strictObject({
+  family: z.string().min(1),
+  provisions: count,
+  chunks: count,
+  pending: count,
+  versions: count,
+})
+
 const corpusLockSchema = z.strictObject({
   format: z.literal(LOCK_FORMAT),
   /** Versão do corpus do snapshot (o `ingest.yml` lê `.corpusVersion`); `null` antes do primeiro. */
@@ -36,10 +47,13 @@ const corpusLockSchema = z.strictObject({
   snapshot: lockSnapshotSchema.nullable(),
   updatedAt: isoDateSchema.nullable(),
   sources: z.record(z.string(), lockSourceSchema),
+  /** Por slug de documento; ausente num lock anterior ao gate (o primeiro run grava a base). */
+  health: z.record(z.string(), lockHealthSchema).optional(),
 })
 export type CorpusLock = z.output<typeof corpusLockSchema>
 type LockSnapshot = z.output<typeof lockSnapshotSchema>
 type LockSource = z.output<typeof lockSourceSchema>
+export type LockHealth = z.output<typeof lockHealthSchema>
 
 export const EMPTY_LOCK: CorpusLock = {
   format: LOCK_FORMAT,
@@ -67,20 +81,29 @@ export function readCorpusLock(file: string): CorpusLock {
   return parsed.data
 }
 
-function sortedSources(sources: Readonly<Record<string, LockSource>>): Record<string, LockSource> {
-  return Object.fromEntries(
-    Object.entries(sources).sort(([a], [b]) => (a < b ? -1 : Number(a > b))),
-  )
+function sortedRecord<T>(record: Readonly<Record<string, T>>): Record<string, T> {
+  return Object.fromEntries(Object.entries(record).sort(([a], [b]) => (a < b ? -1 : Number(a > b))))
 }
 
 export function serializeCorpusLock(lock: CorpusLock): string {
-  return `${JSON.stringify({ ...lock, sources: sortedSources(lock.sources) }, null, 2)}\n`
+  const { health, ...rest } = lock
+  return `${JSON.stringify(
+    {
+      ...rest,
+      sources: sortedRecord(lock.sources),
+      ...(health === undefined ? {} : { health: sortedRecord(health) }),
+    },
+    null,
+    2,
+  )}\n`
 }
 
 export interface LockUpdate {
   readonly snapshot: LockSnapshot | null
   readonly sources: Readonly<Record<string, LockSource>>
   readonly today: string
+  /** Estado publicado no fim do run verde (substitui o anterior). */
+  readonly health?: Readonly<Record<string, LockHealth>>
 }
 
 /**
@@ -89,12 +112,14 @@ export interface LockUpdate {
  */
 export function nextCorpusLock(current: CorpusLock, update: LockUpdate): CorpusLock | null {
   const snapshot = update.snapshot ?? current.snapshot
+  const health = update.health ?? current.health
   const candidate: CorpusLock = {
     format: LOCK_FORMAT,
     corpusVersion: snapshot?.corpusVersion ?? current.corpusVersion,
     snapshot,
     updatedAt: current.updatedAt,
-    sources: sortedSources({ ...current.sources, ...update.sources }),
+    sources: sortedRecord({ ...current.sources, ...update.sources }),
+    ...(health === undefined ? {} : { health: sortedRecord(health) }),
   }
   if (serializeCorpusLock(candidate) === serializeCorpusLock(current)) {
     return null
