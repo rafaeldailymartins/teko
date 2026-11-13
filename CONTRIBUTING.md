@@ -224,8 +224,8 @@ Two root scripts run the gates locally (they call `pnpm` again, so `pnpm` must b
 | `pnpm lint:monorepo`    | workspace consistency (sherif)                                                    |
 | `pnpm lint:deps`        | architecture boundaries (dependency-cruiser)                                      |
 | `pnpm spec:validate`    | OpenSpec strict validation                                                        |
-| `pnpm check-lockfile`   | single-document lockfiles (root, `tools/vercel-cli`, `tools/netlify-cli`)         |
-| `pnpm verify:audit`     | known vulnerabilities in the root (production) and in both deploy CLIs            |
+| `pnpm check-lockfile`   | single-document lockfiles (root and `tools/vercel-cli`)                           |
+| `pnpm verify:audit`     | known vulnerabilities in the root (production) and in the deploy CLI              |
 | `pnpm verify:python`    | `tools/ingest`: ruff (lint and format), pyright and pytest with `uv --frozen`     |
 | `pnpm verify:ci`        | the three CI shell suites below (need `bash`, `jq` and `yq`)                      |
 | `pnpm test:mutation`    | Stryker in `apps/api` and `packages/shared`, break at 70 (nightly in CI, not PRs) |
@@ -269,7 +269,7 @@ A PR that changes the PR gates or root configuration (`.github/workflows/ci.yml`
 `.github/workflows/pr-gate.yml`, `.github/workflows/perf.yml`, `.github/actions`,
 `.github/scripts`, `.github/affected-paths.yml`, `turbo.json`, `package.json`,
 `pnpm-workspace.yaml`, `pnpm-lock.yaml`, `tsconfig*.json`, `biome.json`, `knip.json`,
-`lefthook.yml`, `.semgrep/`, `sonar-project.properties`, `tools/vercel-cli/`, `tools/netlify-cli/`)
+`lefthook.yml`, `.semgrep/`, `sonar-project.properties`, `tools/vercel-cli/`)
 runs every job, not just the affected ones. Other workflows (scheduled, hygiene, ingestion) do not:
 the `lint` job runs actionlint and `ci-config.test.sh` on every PR with code, and `ingest.yml` and
 `source-watch.yml` belong to the `ingest` group.

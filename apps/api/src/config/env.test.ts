@@ -17,9 +17,11 @@ const DEV_ENV = { APP_ENV: 'development', WEB_ORIGIN: 'http://localhost:3000' } 
 const PROD_ENV = {
   NODE_ENV: 'production',
   APP_ENV: 'production',
-  WEB_ORIGIN: 'https://tekoia.netlify.app',
+  WEB_ORIGIN: 'https://tekoia.vercel.app',
   RUNTIME_TARGET: 'render',
   TRUST_PROXY: '1',
+  // Ignorada fora da Vercel; presente para os casos que trocam o RUNTIME_TARGET para vercel.
+  FUNCTION_MAX_DURATION_S: '120',
 } as const
 
 function problemsOf(source: Record<string, string | undefined>): readonly string[] {
@@ -46,11 +48,12 @@ describe('parseEnv', () => {
       APP_VERSION: '0.0.0',
       GIT_SHA: 'unknown',
       RUNTIME_TARGET: 'node',
-      FUNCTION_MAX_DURATION_S: HOBBY_MAX_DURATION_S,
+
       SHUTDOWN_GRACE_MS: DEFAULT_SHUTDOWN_GRACE_MS,
       DRAIN_DELAY_MS: DEFAULT_DRAIN_DELAY_MS,
     })
     expect(env.TRUST_PROXY).toBeUndefined()
+    expect(env.FUNCTION_MAX_DURATION_S).toBeUndefined()
     expect(env.VERCEL_REGION).toBeUndefined()
     expect(env.LLM_PROVIDER).toBeUndefined()
   })
@@ -92,10 +95,10 @@ describe('parseEnv', () => {
   })
 
   it.each([
-    'https://tekoia.netlify.app/',
-    'https://tekoia.netlify.app/app',
-    'ftp://tekoia.netlify.app',
-    'tekoia.netlify.app',
+    'https://tekoia.vercel.app/',
+    'https://tekoia.vercel.app/app',
+    'ftp://tekoia.vercel.app',
+    'tekoia.vercel.app',
   ])('rejeita WEB_ORIGIN que não é origem exata: %s', (origin) => {
     expect(problemsOf({ ...DEV_ENV, WEB_ORIGIN: origin }).join('\n')).toMatch(/^WEB_ORIGIN:/m)
   })
@@ -246,6 +249,7 @@ describe('parseEnv', () => {
     const SITE_ID = '0b7c1a2e-3f4d-4e5a-9b6c-7d8e9f0a1b2c'
     const TOKEN = 'nfp_token-de-teste-com-mais-de-20'
     const NEON_KEY = 'napi_chave-de-teste-com-mais-de-20'
+    const GH_TOKEN = 'ghs_token-de-teste-com-mais-de-20'
 
     it('aplica os padrões do orçamento e da guarda de tamanho', () => {
       const env = parseEnv(DEV_ENV)
@@ -310,13 +314,63 @@ describe('parseEnv', () => {
         ...PROD_ENV,
         NETLIFY_AUTH_TOKEN: TOKEN,
         NETLIFY_SITE_ID: SITE_ID,
+        GITHUB_TOKEN: GH_TOKEN,
+        GITHUB_REPOSITORY: 'dono/repo',
         NEON_API_KEY_STAGING: NEON_KEY,
         NEON_STAGING_PROJECT_ID: 'p1',
       })
       expect(problems).toEqual([
         'NETLIFY_AUTH_TOKEN: proibida com RUNTIME_TARGET=render (só a CLI de ingestão usa)',
+        'GITHUB_TOKEN: proibida com RUNTIME_TARGET=render (só a CLI de ingestão usa)',
         'NEON_API_KEY_STAGING: proibida com RUNTIME_TARGET=render (só a CLI de ingestão usa)',
       ])
+    })
+
+    describe('BLOB_STORE (ADR 0030)', () => {
+      it('sem valor, aceita a ausência de credenciais (store em memória na execução local)', () => {
+        expect(parseEnv(DEV_ENV).BLOB_STORE).toBeUndefined()
+      })
+
+      it('github-releases exige GITHUB_TOKEN; o token exige GITHUB_REPOSITORY', () => {
+        expect(problemsOf({ ...DEV_ENV, BLOB_STORE: 'github-releases' })).toEqual([
+          'GITHUB_TOKEN: obrigatória com BLOB_STORE=github-releases',
+        ])
+        expect(problemsOf({ ...DEV_ENV, GITHUB_TOKEN: GH_TOKEN })).toEqual([
+          'GITHUB_REPOSITORY: obrigatória com GITHUB_TOKEN (owner/repo dos releases)',
+        ])
+        expect(
+          parseEnv({
+            ...DEV_ENV,
+            BLOB_STORE: 'github-releases',
+            GITHUB_TOKEN: GH_TOKEN,
+            GITHUB_REPOSITORY: 'dono/repo',
+          }),
+        ).toMatchObject({ BLOB_STORE: 'github-releases', GITHUB_REPOSITORY: 'dono/repo' })
+      })
+
+      it('netlify exige o PAT e o site', () => {
+        expect(problemsOf({ ...DEV_ENV, BLOB_STORE: 'netlify' })).toEqual([
+          'BLOB_STORE: netlify exige NETLIFY_AUTH_TOKEN e NETLIFY_SITE_ID',
+        ])
+        expect(
+          parseEnv({
+            ...DEV_ENV,
+            BLOB_STORE: 'netlify',
+            NETLIFY_AUTH_TOKEN: TOKEN,
+            NETLIFY_SITE_ID: SITE_ID,
+          }).BLOB_STORE,
+        ).toBe('netlify')
+      })
+
+      it.each([
+        ['BLOB_STORE', 's3'],
+        ['GITHUB_REPOSITORY', 'sem-barra'],
+        ['GITHUB_TOKEN', 'curto'],
+      ])('rejeita %s=%j', (key, value) => {
+        expect(problemsOf({ ...DEV_ENV, [key]: value }).join('\n')).toMatch(
+          new RegExp(`^${key}:`, 'm'),
+        )
+      })
     })
   })
 
@@ -396,10 +450,29 @@ describe('parseEnv', () => {
     )
   })
 
-  it('na Vercel o trustProxy é fixo; no Render, obrigatório', () => {
-    expect(problemsOf({ ...DEV_ENV, RUNTIME_TARGET: 'vercel', TRUST_PROXY: '1' })).toEqual([
-      'TRUST_PROXY: não se aplica com RUNTIME_TARGET=vercel (1 salto, fixo no código)',
+  it('na Vercel exige FUNCTION_MAX_DURATION_S, sem padrão, até o teto do Hobby', () => {
+    expect(problemsOf({ ...DEV_ENV, RUNTIME_TARGET: 'vercel' })).toEqual([
+      'FUNCTION_MAX_DURATION_S: obrigatória com RUNTIME_TARGET=vercel (o maxDuration do .vc-config.json)',
     ])
+    const max = String(HOBBY_MAX_DURATION_S)
+    expect(
+      parseEnv({ ...DEV_ENV, RUNTIME_TARGET: 'vercel', FUNCTION_MAX_DURATION_S: max })
+        .FUNCTION_MAX_DURATION_S,
+    ).toBe(HOBBY_MAX_DURATION_S)
+    expect(
+      parseEnv({ ...DEV_ENV, RUNTIME_TARGET: 'render', TRUST_PROXY: '1' }).FUNCTION_MAX_DURATION_S,
+    ).toBeUndefined()
+  })
+
+  it('na Vercel o trustProxy é fixo; no Render, obrigatório', () => {
+    expect(
+      problemsOf({
+        ...DEV_ENV,
+        RUNTIME_TARGET: 'vercel',
+        TRUST_PROXY: '1',
+        FUNCTION_MAX_DURATION_S: '120',
+      }),
+    ).toEqual(['TRUST_PROXY: não se aplica com RUNTIME_TARGET=vercel (1 salto, fixo no código)'])
     expect(problemsOf({ ...DEV_ENV, RUNTIME_TARGET: 'render' })).toEqual([
       'TRUST_PROXY: obrigatória com RUNTIME_TARGET=render (valor medido no ensaio)',
     ])
@@ -499,7 +572,7 @@ describe('parseEnv', () => {
 
     it('não confere região nem Node fora de staging e produção', () => {
       const env = parseEnv(
-        { ...DEV_ENV, APP_ENV: 'ci', RUNTIME_TARGET: 'vercel' },
+        { ...DEV_ENV, APP_ENV: 'ci', RUNTIME_TARGET: 'vercel', FUNCTION_MAX_DURATION_S: '120' },
         { nodeVersion: 'v26.1.0' },
       )
       expect(env.RUNTIME_TARGET).toBe('vercel')

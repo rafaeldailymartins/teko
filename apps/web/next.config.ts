@@ -4,27 +4,21 @@ import createNextIntlPlugin from 'next-intl/plugin'
 /**
  * Next.js em export estático puro (`output: 'export'`): o build gera só HTML, CSS, JS e fontes em
  * `out/`, sem functions nem edge. Proxy, route handlers, Server Actions, `rewrites()` em produção e
- * `next/image` otimizado ficam de fora por construção.
+ * `next/image` otimizado ficam de fora por construção. Em produção o `out/` vai para o `static/`
+ * do mesmo projeto Vercel da API (`scripts/build-vercel-output.ts`, ADR 0029): a web chama a API
+ * na mesma origem (`/api/*`), sem proxy nem CORS.
  *
- * Em `next dev` não há export: o `rewrites()` leva `/api/*` ao Caddy de dev (:8787), que injeta o
- * `x-nf-sign` como o proxy assinado da Netlify (ver infra/local/Caddyfile).
+ * Em `next dev` não há export: o `rewrites()` leva `/api/*` à API local (`pnpm --filter @teko/api
+ * dev`, :4000), e o navegador continua vendo uma origem só (:3000), como em produção.
  */
 
 const isDev = process.env.NODE_ENV === 'development'
 
-/**
- * Variáveis que nunca podem vazar para o bundle, nem por valor nem por nome em `NEXT_PUBLIC_*`.
- * O `NETLIFY_PROXY_JWS_SECRET` é variável comum no plano Free da Netlify (sem escopo nem valor
- * secreto) e chega ao ambiente do build; o proxy assinado o lê, o bundle nunca.
- */
-const SERVER_ONLY_SECRETS = [
-  'GEMINI_API_KEY',
-  'OPENAI_API_KEY',
-  'NETLIFY_PROXY_JWS_SECRET',
-] as const
+/** API local do `pnpm dev` (mesma porta padrão de `PORT` em `apps/api/src/config/env.ts`). */
+const DEV_API_ORIGIN = 'http://localhost:4000'
 
-/** Contextos de deploy da Netlify em que o stream precisa de origem própria (ver netlify.toml). */
-const DEPLOY_CONTEXTS_REQUIRING_STREAM_ORIGIN = new Set(['production', 'develop'])
+/** Variáveis que nunca podem vazar para o bundle, nem por valor nem por nome em `NEXT_PUBLIC_*`. */
+const SERVER_ONLY_SECRETS = ['GEMINI_API_KEY', 'GROQ_API_KEY', 'OPENAI_API_KEY'] as const
 
 function assertPublicEnvIsSafe(env: NodeJS.ProcessEnv): void {
   const publicEntries = Object.entries(env).filter(([name]) => name.startsWith('NEXT_PUBLIC_'))
@@ -38,43 +32,15 @@ function assertPublicEnvIsSafe(env: NodeJS.ProcessEnv): void {
   }
 }
 
-function assertStreamOrigin(env: NodeJS.ProcessEnv): void {
-  const { NEXT_PUBLIC_STREAM_ORIGIN: origin, CONTEXT: context } = env
-  if (!origin) {
-    if (context && DEPLOY_CONTEXTS_REQUIRING_STREAM_ORIGIN.has(context)) {
-      throw new Error(`NEXT_PUBLIC_STREAM_ORIGIN vazio no contexto "${context}"; build abortado.`)
-    }
-    return
-  }
-  const url = URL.parse(origin)
-  if (!url || !['https:', 'http:'].includes(url.protocol) || url.origin !== origin) {
-    throw new Error(`NEXT_PUBLIC_STREAM_ORIGIN deve ser uma origem (sem caminho): "${origin}".`)
-  }
-}
-
-/**
- * Nos builds da Netlify (`CONTEXT` definido), registra o contexto e a origem do stream que entram
- * no bundle; os dois são públicos (vêm do `netlify.toml`). Os workflows de deploy conferem esta
- * linha para provar que o env do contexto foi aplicado.
- */
-function logDeployContext(env: NodeJS.ProcessEnv): void {
-  const { CONTEXT: context, NEXT_PUBLIC_STREAM_ORIGIN: origin } = env
-  if (context) {
-    console.info(`[teko] contexto Netlify=${context} NEXT_PUBLIC_STREAM_ORIGIN=${origin ?? ''}`)
-  }
-}
-
 assertPublicEnvIsSafe(process.env)
-assertStreamOrigin(process.env)
-logDeployContext(process.env)
 
-const withNextIntl = createNextIntlPlugin('./src/shared/i18n/request.ts')
+const withNextIntl = createNextIntlPlugin('./src/lib/i18n/request.ts')
 
 const nextConfig: NextConfig = {
   ...(isDev
     ? {
         rewrites: async () => [
-          { source: '/api/:path*', destination: 'http://localhost:8787/api/:path*' },
+          { source: '/api/:path*', destination: `${DEV_API_ORIGIN}/api/:path*` },
         ],
       }
     : { output: 'export' }),

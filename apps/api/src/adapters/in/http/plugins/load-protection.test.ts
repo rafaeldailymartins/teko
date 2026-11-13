@@ -38,7 +38,7 @@ function fixedClientIp(ip: string | null): ClientIp & { readonly inputs: ClientI
 
 async function appWith(store: RateLimitStore, clientIp: ClientIp): Promise<FastifyInstance> {
   const base = createContainer(
-    parseEnv({ APP_ENV: 'ci', WEB_ORIGIN: 'https://develop--tekoia.netlify.app' }),
+    parseEnv({ APP_ENV: 'ci', WEB_ORIGIN: 'https://tekoia-staging.vercel.app' }),
   )
   const app = Fastify()
   registerProblemHandlers(app)
@@ -78,7 +78,7 @@ describe('registerRateLimit', () => {
     await app.close()
   })
 
-  it('usa o groupId como namespace e a porta ClientIp no caminho direto', async () => {
+  it('usa o groupId como namespace e a porta ClientIp', async () => {
     const store = new FakeStore()
     const clientIp = fixedClientIp('2001:db8::1')
     const app = await appWith(store, clientIp)
@@ -88,8 +88,6 @@ describe('registerRateLimit', () => {
     // O plugin acrescenta o groupId à chave; o namespace só separa rotas agrupadas das demais.
     expect(store.keys).toEqual(['group|ip:2001:db8::1mutations'])
     expect(clientIp.inputs[0]).toMatchObject({
-      path: 'direct',
-      signatureValid: false,
       forwardedIp: '127.0.0.1',
       headers: { 'x-real-ip': '198.51.100.1' },
     })

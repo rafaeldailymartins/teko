@@ -4,7 +4,6 @@ import rateLimit, {
 } from '@fastify/rate-limit'
 import underPressure from '@fastify/under-pressure'
 import type { FastifyInstance, FastifyRequest } from 'fastify'
-import { ClientPath } from '#app/ports/client-ip.ts'
 import type { RateLimitStore } from '#app/ports/rate-limit-store.ts'
 import { MAX_EVENT_LOOP_DELAY_MS, type RateLimitOptions } from '../http-options.ts'
 
@@ -89,14 +88,12 @@ function rateLimitStoreCtor(port: RateLimitStore): FastifyRateLimitStoreCtor {
 }
 
 /**
- * Chave do limite na F1: o IP do caminho direto, resolvido pela porta `ClientIp` da plataforma.
- * A F4 acrescenta o caminho proxiado (assinatura `x-nf-sign`) e a sessão (`user_id` ou sessão
- * anônima do Better Auth) como chave preferencial.
+ * Chave do limite na F1: o IP do cliente, resolvido pela porta `ClientIp` da plataforma (web e API
+ * na mesma origem, ADR 0029: o IP vale em todas as rotas). A F4 acrescenta a sessão (`user_id` ou
+ * sessão anônima do Better Auth) como chave preferencial.
  */
 function rateLimitKey(request: FastifyRequest): string {
   const { ip } = request.server.container.clientIp.resolve({
-    path: ClientPath.Direct,
-    signatureValid: false,
     headers: request.headers,
     forwardedIp: request.ip,
   })

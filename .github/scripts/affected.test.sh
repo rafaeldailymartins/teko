@@ -215,7 +215,6 @@ global_files=(
   .semgrep/teko.yml
   sonar-project.properties
   tools/vercel-cli/package.json
-  tools/netlify-cli/package.json
 )
 for file in "${global_files[@]}"; do
   expect_scope "global: ${file}" "$all" push "$file"

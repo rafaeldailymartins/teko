@@ -55,8 +55,6 @@
     "quota_exceeded": "The daily question limit has been reached.",
     "rate_limited": "Too many requests in a short time. Wait a moment and try again.",
     "service_paused": "The service is temporarily paused.",
-    "ticket_invalid": "The answer connection expired. Please try again.",
-    "ticket_reused": "This answer is already open in another connection.",
     "stream_busy": "An answer is already in progress. Wait for it or stop it.",
     "upstream_unavailable": "The AI provider is unavailable right now. Please try again later.",
     "region_restricted": "Tekó is not available in your region.",

@@ -7,13 +7,11 @@ import {
 } from './node-platform.ts'
 
 describe('createNodeClientIp', () => {
-  const clientIp = createNodeClientIp({ trustNetlifyClientIp: false })
+  const clientIp = createNodeClientIp()
 
-  it('no caminho direto usa o IP calculado com o trustProxy', () => {
+  it('usa o IP calculado com o trustProxy, nunca um header do cliente', () => {
     expect(
       clientIp.resolve({
-        path: 'direct',
-        signatureValid: false,
         headers: { 'x-real-ip': '1.1.1.1' },
         forwardedIp: '203.0.113.7',
       }),
@@ -21,21 +19,7 @@ describe('createNodeClientIp', () => {
   })
 
   it('descarta um forwardedIp que não é IP', () => {
-    expect(
-      clientIp.resolve({ path: 'direct', signatureValid: false, headers: {}, forwardedIp: '' }),
-    ).toEqual({ ip: null, source: 'none' })
-  })
-
-  it('no caminho proxiado segue a regra do header da Netlify', () => {
-    const trusting = createNodeClientIp({ trustNetlifyClientIp: true })
-    const input = {
-      path: 'proxied',
-      signatureValid: true,
-      headers: { 'x-nf-client-connection-ip': '203.0.113.9' },
-      forwardedIp: '172.30.0.2',
-    } as const
-    expect(trusting.resolve(input)).toEqual({ ip: '203.0.113.9', source: 'netlify_proxy' })
-    expect(clientIp.resolve(input)).toEqual({ ip: null, source: 'none' })
+    expect(clientIp.resolve({ headers: {}, forwardedIp: '' })).toEqual({ ip: null, source: 'none' })
   })
 })
 

@@ -50,7 +50,6 @@ describe('logger', () => {
           headers: {
             authorization: 'Bearer t',
             cookie: 'sid=1',
-            'x-nf-sign': 'jws',
             accept: '*/*',
           },
         },
@@ -65,7 +64,6 @@ describe('logger', () => {
         headers: {
           authorization: REDACTED,
           cookie: REDACTED,
-          'x-nf-sign': REDACTED,
           accept: '*/*',
         },
       },

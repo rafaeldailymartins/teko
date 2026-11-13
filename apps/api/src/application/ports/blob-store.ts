@@ -1,8 +1,8 @@
 /**
- * Artefatos da ingestão no Netlify Blobs (`@netlify/blobs`, `siteID` + PAT, região `us-east-2`,
- * consistência forte). Nunca guarda dado de usuário: só fontes baixadas, saídas do Docling, estado
- * do watch, snapshots do corpus e artefatos de eval. Adapters: Netlify (Actions) e em memória
- * (testes e execução local sem `NETLIFY_AUTH_TOKEN`).
+ * Artefatos da ingestão (ADR 0030). Nunca guarda dado de usuário: só fontes baixadas, saídas do
+ * Docling, estado do watch, snapshots do corpus e artefatos de eval. Adapters: GitHub Releases do
+ * repositório (padrão, `BLOB_STORE=github-releases`), Netlify Blobs (só até a etapa C2 e na
+ * migração) e em memória (testes e execução local sem credenciais).
  *
  * Chaves dos artefatos de fonte: `{family}/{docSlug}/{versionLabel}/{sha256}.{pdf|htm|txt|json}`.
  */

@@ -2,7 +2,7 @@
   "name": "@teko/web",
   "version": "0.0.0",
   "private": true,
-  "description": "Frontend do Tekó: Next.js em export estático",
+  "description": "Frontend do Tekó: Next.js em export estático, servido pela Vercel na mesma origem da API",
   "license": "MIT",
   "type": "module",
   "scripts": {
@@ -20,7 +20,6 @@
     "react-dom": "catalog:"
   },
   "devDependencies": {
-    "@netlify/plugin-nextjs": "catalog:",
     "@tailwindcss/postcss": "catalog:",
     "@types/node": "catalog:",
     "@types/react": "catalog:",

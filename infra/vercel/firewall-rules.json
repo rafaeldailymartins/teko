@@ -4,18 +4,18 @@
     "Cada item de 'rules' é o payload aceito por `vercel firewall rules add --data '<json>' --yes`",
     "(Vercel CLI >= 65.11.0, em tools/vercel-cli) e pela API REST de firewall (PATCH",
     "/v1/security/firewall/config, action 'rules.insert'). A aplicação é feita na F7; o smoke confere",
-    "o efeito. Nenhuma regra usa 'challenge' nem casa com caminhos proxiados: o proxy da Netlify é",
-    "servidor a servidor e não resolve desafio. Rate limit por IP nunca vale para caminhos proxiados.",
-    "Regra 2: além do POST do stream, o preflight OPTIONS do mesmo caminho também chega direto do",
-    "navegador sem x-nf-sign; por isso a exceção é pelo caminho, sem condição de método.",
-    "Regra 1 (só no staging) libera também /api/docs (Swagger + Scalar)."
+    "o efeito. Nenhuma regra usa 'challenge'. Web e API na mesma origem (ADR 0029): todo navegador",
+    "chega direto à borda, então o IP de cada requisição é o do cliente e o rate limit por IP vale.",
+    "Regra 1: o estático passa (a CDN serve sem invocar a Function); em /api/* só os prefixos",
+    "conhecidos (no staging, também /api/docs). Regra 2: o estático só aceita GET e HEAD. Regra 3:",
+    "a única de rate limit do Hobby, no stream; as demais rotas usam o rate limit da aplicação."
   ],
   "projects": {
-    "teko-api": {
+    "tekoia": {
       "rules": [
         {
-          "name": "deny-non-api",
-          "description": "Nega tudo fora de /healthz, /api/healthz, /api/auth/* e /api/v1/* (sem invocar a Function).",
+          "name": "deny-unknown-api",
+          "description": "Nega /api/* fora de /api/healthz, /api/auth/* e /api/v1/* (sem invocar a Function). O estático passa.",
           "active": true,
           "conditionGroup": [
             {
@@ -23,7 +23,12 @@
                 {
                   "type": "path",
                   "op": "re",
-                  "value": "^/(?:healthz|api/healthz|api/auth/.*|api/v1/.*)$",
+                  "value": "^/api(?:/|$)"
+                },
+                {
+                  "type": "path",
+                  "op": "re",
+                  "value": "^/api/(?:healthz|auth/.*|v1/.*)$",
                   "neg": true
                 }
               ]
@@ -39,18 +44,22 @@
           }
         },
         {
-          "name": "deny-unsigned-proxied",
-          "description": "Nega /api/auth/* e /api/v1/* sem x-nf-sign, exceto o caminho do stream (direto, Bearer ticket).",
+          "name": "deny-unsafe-static",
+          "description": "Nega métodos diferentes de GET e HEAD fora de /api/* e /healthz: o estático só é lido.",
           "active": true,
           "conditionGroup": [
             {
               "conditions": [
-                { "type": "path", "op": "re", "value": "^/api/(?:auth|v1)/" },
-                { "type": "header", "key": "x-nf-sign", "op": "nex" },
+                {
+                  "type": "method",
+                  "op": "inc",
+                  "value": ["GET", "HEAD"],
+                  "neg": true
+                },
                 {
                   "type": "path",
                   "op": "re",
-                  "value": "^/api/v1/questions/[^/]+/stream$",
+                  "value": "^/(?:api(?:/|$)|healthz$)",
                   "neg": true
                 }
               ]
@@ -72,8 +81,16 @@
           "conditionGroup": [
             {
               "conditions": [
-                { "type": "method", "op": "eq", "value": "POST" },
-                { "type": "path", "op": "re", "value": "^/api/v1/questions/[^/]+/stream$" }
+                {
+                  "type": "method",
+                  "op": "eq",
+                  "value": "POST"
+                },
+                {
+                  "type": "path",
+                  "op": "re",
+                  "value": "^/api/v1/questions/[^/]+/stream$"
+                }
               ]
             }
           ],
@@ -94,11 +111,11 @@
         }
       ]
     },
-    "teko-api-staging": {
+    "tekoia-staging": {
       "rules": [
         {
-          "name": "deny-non-api",
-          "description": "Nega tudo fora de /healthz, /api/healthz, /api/auth/*, /api/v1/* e /api/docs* (sem invocar a Function).",
+          "name": "deny-unknown-api",
+          "description": "Nega /api/* fora de /api/healthz, /api/auth/*, /api/v1/* e /api/docs* (sem invocar a Function). O estático passa.",
           "active": true,
           "conditionGroup": [
             {
@@ -106,7 +123,12 @@
                 {
                   "type": "path",
                   "op": "re",
-                  "value": "^/(?:healthz|api/healthz|api/auth/.*|api/v1/.*|api/docs(?:/.*)?)$",
+                  "value": "^/api(?:/|$)"
+                },
+                {
+                  "type": "path",
+                  "op": "re",
+                  "value": "^/api/(?:healthz|auth/.*|v1/.*|docs(?:/.*)?)$",
                   "neg": true
                 }
               ]
@@ -122,18 +144,22 @@
           }
         },
         {
-          "name": "deny-unsigned-proxied",
-          "description": "Nega /api/auth/* e /api/v1/* sem x-nf-sign, exceto o caminho do stream (direto, Bearer ticket).",
+          "name": "deny-unsafe-static",
+          "description": "Nega métodos diferentes de GET e HEAD fora de /api/* e /healthz: o estático só é lido.",
           "active": true,
           "conditionGroup": [
             {
               "conditions": [
-                { "type": "path", "op": "re", "value": "^/api/(?:auth|v1)/" },
-                { "type": "header", "key": "x-nf-sign", "op": "nex" },
+                {
+                  "type": "method",
+                  "op": "inc",
+                  "value": ["GET", "HEAD"],
+                  "neg": true
+                },
                 {
                   "type": "path",
                   "op": "re",
-                  "value": "^/api/v1/questions/[^/]+/stream$",
+                  "value": "^/(?:api(?:/|$)|healthz$)",
                   "neg": true
                 }
               ]
@@ -155,8 +181,16 @@
           "conditionGroup": [
             {
               "conditions": [
-                { "type": "method", "op": "eq", "value": "POST" },
-                { "type": "path", "op": "re", "value": "^/api/v1/questions/[^/]+/stream$" }
+                {
+                  "type": "method",
+                  "op": "eq",
+                  "value": "POST"
+                },
+                {
+                  "type": "path",
+                  "op": "re",
+                  "value": "^/api/v1/questions/[^/]+/stream$"
+                }
               ]
             }
           ],

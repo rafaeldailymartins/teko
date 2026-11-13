@@ -409,3 +409,10 @@ Ficam registrados como estão, sem medição adicional na F1:
   isso (spike (a)).
 - **Pior caso de cold start + resume do Neon** dentro do corte de 26 s do proxy não foi medido
   na F2 e fica para o DoD da F7 (spikes (c) e (d)); as medidas separadas cabem com folga.
+
+## Revisão (2026-11-12): spikes (a) e (c) superados ([ADR 0029](0029-web-e-api-na-mesma-origem.md))
+
+A web saiu da Netlify e passou ao `static/` do mesmo projeto Vercel da API. O site `tekoia`, o
+proxy assinado (`x-nf-sign`), o `NETLIFY_CLIENT_IP_TRUSTED`, o corte de 26 s e o `/pt-br/` em
+minúsculas deixam de existir no desenho; os resultados acima ficam como registro histórico. O
+achado do `supportsCancellation` (spike (b)) e o do pooler do Neon (spike (d)) continuam valendo.

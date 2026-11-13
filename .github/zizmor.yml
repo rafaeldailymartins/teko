@@ -9,6 +9,7 @@ rules:
   self-repository:
     ignore:
       - audit.yml
+      - blobs-migrate.yml
       - ci.yml
       - ingest.yml
       - mutation.yml

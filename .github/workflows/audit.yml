@@ -53,11 +53,6 @@ jobs:
         working-directory: tools/vercel-cli
         run: pnpm audit --audit-level low
 
-      # Idem para o Netlify CLI, que roda nos deploys da web com o NETLIFY_AUTH_TOKEN.
-      - name: Vulnerabilidades no Netlify CLI isolado (tools/netlify-cli)
-        working-directory: tools/netlify-cli
-        run: pnpm audit --audit-level low
-
   # osv-scanner sobre o pnpm-lock.yaml e o uv.lock (é a única auditoria do Python: o pip-audit
   # saiu). Saiu do security.yml para fora do PR pelo mesmo motivo do `pnpm audit` (ADR 0032).
   osv-scanner:

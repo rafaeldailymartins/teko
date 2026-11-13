@@ -20,7 +20,7 @@ const REPO_ROOT = join(WEB_DIR, '..', '..')
 const BIOME_BIN = createRequire(join(REPO_ROOT, 'package.json')).resolve('@biomejs/biome/bin/biome')
 
 const PROBES = {
-  'src/shared/lib/server-probe.ts': [
+  'src/lib/server-probe.ts': [
     "import { NextResponse } from 'next/server'",
     "import { drizzle } from 'drizzle-orm/node-postgres'",
     "import { Pool } from 'pg'",
@@ -30,7 +30,7 @@ const PROBES = {
     'export const probes = [NextResponse, drizzle, Pool, getStore, betterAuth]',
     '',
   ].join('\n'),
-  'src/shared/ui/img-probe.tsx': [
+  'src/components/img-probe.tsx': [
     'export function ImgProbe() {',
     '  return <img src="/probe.png" alt="sonda" />',
     '}',

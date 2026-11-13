@@ -1,7 +1,7 @@
 # Stack de desenvolvimento local do Tekó.
 #
 #   pnpm dev:secrets                                              # gera infra/local/.env (fora do git)
-#   docker compose -f infra/local/compose.yaml up -d --wait       # Postgres (pgvector) + proxy :8787
+#   docker compose -f infra/local/compose.yaml up -d --wait       # Postgres (pgvector)
 #   docker compose -f infra/local/compose.yaml --profile langfuse up -d --wait   # + Langfuse :3100
 #
 # Todas as portas ficam presas a 127.0.0.1. Imagens fixadas por digest (tag mantida para leitura).
@@ -33,30 +33,6 @@ services:
       timeout: 3s
       retries: 10
       start_period: 10s
-
-  dev-proxy:
-    <<: *hardening
-    image: caddy:2.11.9-alpine@sha256:0bbb055bda6793c999bde78b1b5ce3e89f829fb031af2cf50056ea1246559fee
-    environment:
-      DEV_STATIC_JWS: ${DEV_STATIC_JWS:?rode `pnpm dev:secrets` antes de subir a stack}
-    ports:
-      - 127.0.0.1:8787:8787
-    extra_hosts:
-      # A API roda no host (`pnpm dev`); no Linux, host.docker.internal precisa deste mapeamento.
-      - host.docker.internal:host-gateway
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
-    read_only: true
-    tmpfs:
-      - /config
-      - /data
-    cap_drop:
-      - ALL
-    healthcheck:
-      test: [CMD, wget, --quiet, --tries=1, --spider, http://127.0.0.1:8787/_proxy/healthz]
-      interval: 5s
-      timeout: 3s
-      retries: 5
 
   # ---------------------------------------------------------------------------------------------
   # Profile "langfuse": Langfuse self-hosted só para dev local (staging e produção usam o

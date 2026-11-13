@@ -37,9 +37,6 @@ htmlcov/
 *.pem
 *.key
 
-# Netlify
-.netlify/
-
 # Vercel (vercel pull/build)
 .vercel/
 

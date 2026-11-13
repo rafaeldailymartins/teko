@@ -1,10 +1,12 @@
-# Plano B da API (Render Free), descrito como Blueprint. Fica PARADO: só é ativado pelo runbook
+# Plano B do Tekó (Render Free): web e API, descrito como Blueprint. Fica PARADO: só é ativado pelo runbook
 # docs/runbooks/vercel-paused.md (pausa de 30 dias do Hobby, conta Vercel encerrada ou mudança dos
 # termos do Hobby) e no ensaio a cada release minor. Só a produção tem Plano B.
 #
 # - Mesmo entrypoint de sempre: apps/api/src/server.ts, empacotado pelo tsdown em
 #   apps/api/dist/server.mjs, com RUNTIME_TARGET=render (BackgroundTasks só acompanha a promise;
 #   trustProxy do valor medido no ensaio).
+# - Web e API na mesma origem (ADR 0029): o mesmo serviço serve o export do Next (apps/web/out,
+#   WEB_STATIC_DIR) com a política das rotas da Vercel (apps/api/src/adapters/in/http/static-site).
 # - Sem rootDir: o build precisa de packages/shared e do pnpm-lock.yaml da raiz.
 # - Auto-deploy desligado; deploy só por deploy hook com ?ref=<sha da tag do release>.
 # - Nenhuma forma de pagamento no workspace: ao fim das horas ou da banda o Render suspende em vez
@@ -25,8 +27,8 @@ services:
     # lefthook, inútil aqui). NODE_ENV=production fica só no start: no build, o pnpm precisa das
     # devDependencies (tsdown).
     buildCommand: >-
-      corepack pnpm install --frozen-lockfile --ignore-scripts --filter "@teko/api..." &&
-      corepack pnpm --filter @teko/api build
+      corepack pnpm install --frozen-lockfile --ignore-scripts --filter "@teko/api..." --filter "@teko/web..." &&
+      corepack pnpm --filter @teko/api build && corepack pnpm --filter @teko/web build
     startCommand: NODE_ENV=production node apps/api/dist/server.mjs
     # Nunca toca o banco. O UptimeRobot passa a pingar este caminho a cada 5 min durante o corte.
     healthCheckPath: /healthz
@@ -42,11 +44,14 @@ services:
         value: production
       - key: RUNTIME_TARGET
         value: render
+      # A própria origem do serviço (web e API juntas); host real atribuído pelo Render.
       - key: WEB_ORIGIN
-        value: https://tekoia.netlify.app
-      # Host real atribuído pelo Render; trocar aqui se for outro.
-      - key: STREAM_ORIGIN
         value: https://teko-api-planb.onrender.com
+      # Export do web servido pela API (relativo ao diretório de trabalho, a raiz do repositório).
+      - key: WEB_STATIC_DIR
+        value: apps/web/out
+      - key: RERANKER_PROVIDER
+        value: workers-ai
       - key: LOG_LEVEL
         value: info
       - key: EMBEDDINGS_PROVIDER
@@ -80,10 +85,6 @@ services:
       - key: CF_ACCOUNT_ID
         sync: false
       - key: CF_AI_TOKEN
-        sync: false
-      - key: NETLIFY_PROXY_JWS_SECRET
-        sync: false
-      - key: TICKET_SIGNING_KEY
         sync: false
       - key: BETTER_AUTH_SECRET
         sync: false

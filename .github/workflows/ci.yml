@@ -106,9 +106,9 @@ jobs:
       - name: Biome
         run: pnpm lint
 
-      - name: Lockfiles em documento único (raiz, tools/vercel-cli e tools/netlify-cli)
-        # O script verifica uma lista fixa: o lockfile da raiz e os dos projetos isolados dos CLIs de
-        # deploy (lidos pelo Dependabot e pelos jobs de deploy), sem argumentos.
+      - name: Lockfiles em documento único (raiz e tools/vercel-cli)
+        # O script verifica uma lista fixa: o lockfile da raiz e o do projeto isolado do CLI de
+        # deploy (lido pelo Dependabot e pelos jobs de deploy), sem argumentos.
         run: pnpm check-lockfile
 
       - name: OpenSpec
@@ -464,12 +464,6 @@ jobs:
           fail=0
           if [[ ! -f out/index.html ]]; then
             echo "::error title=static-export::apps/web/out/index.html não existe: o build não gerou export estático (output: 'export')."
-            fail=1
-          fi
-          functions="$(find . -path ./node_modules -prune -o -type d \( -path '*/.netlify/functions*' -o -path '*/.netlify/edge-functions*' \) -print)"
-          if [[ -n "$functions" ]]; then
-            echo "::error title=static-export::O build gerou functions da Netlify:"
-            echo "$functions"
             fail=1
           fi
           manifest=.next/server/middleware-manifest.json

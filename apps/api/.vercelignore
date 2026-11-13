@@ -1,4 +1,4 @@
-# Arquivos de apps/api (Root Directory dos projetos teko-api e teko-api-staging) que nunca vão
+# Arquivos de apps/api (Root Directory dos projetos tekoia e tekoia-staging) que nunca vão
 # para a Vercel. Os deploys são `vercel deploy --prebuilt` a partir do Actions: com --prebuilt, um
 # arquivo de Function que case com esta lista também é excluído do upload, então nada que a
 # Function importa em runtime (src/**, package.json, node_modules) pode aparecer aqui.

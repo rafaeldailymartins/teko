@@ -9,8 +9,7 @@ import type { FastifyInstance } from 'fastify'
  * A origem depende da plataforma (`HttpOptions.requestIdHeader`): `x-vercel-id`, que a borda da
  * Vercel gera; `x-request-id`, que o Caddy da stack de CI e do proxy local sobrescreve com um UUID
  * próprio; ou nenhuma (sempre um UUID). Mesmo vindo da borda, o valor é validado: fora do formato
- * esperado, gera-se um UUID novo, para que nada arbitrário vá parar nos logs. O `x-nf-request-id`
- * da Netlify só passa a valer com a assinatura do proxy (F4).
+ * esperado, gera-se um UUID novo, para que nada arbitrário vá parar nos logs.
  */
 export const REQUEST_ID_HEADER = 'x-request-id'
 

@@ -1,3 +1,4 @@
+import { resolve as resolvePath } from 'node:path'
 import { AppEnv } from '@teko/shared/contracts'
 import type { FastifyBaseLogger, FastifyInstance } from 'fastify'
 import type { FixtureCorpusReader } from '#adapters/in/cli/eval-fixture/eval-fixture.ts'
@@ -6,6 +7,10 @@ import type {
   WatchDatabaseUrl,
 } from '#adapters/in/cli/sources-watch/run-coverage-mark.ts'
 import type { HttpOptions } from '#adapters/in/http/http-options.ts'
+import {
+  createGithubReleasesBlobStore,
+  type GithubReleasesBlobStore,
+} from '#adapters/out/blobs/github-releases-blob-store.ts'
 import { createNetlifyBlobStore } from '#adapters/out/blobs/netlify-blob-store.ts'
 import { systemClock } from '#adapters/out/clock/system-clock.ts'
 import { sha256ContentHasher } from '#adapters/out/crypto/sha256-content-hasher.ts'
@@ -84,7 +89,7 @@ import {
 import { PUBLISHABLE_REVIEW_STATUSES, ReviewStatus } from '#domain/corpus/family.ts'
 import { type BuildInfo, createBuildInfo } from '#domain/shared/build-info.ts'
 import { buildApp } from './build-app.ts'
-import { EmbeddingsProvider, type Env, RerankerProvider } from './config/env.ts'
+import { BlobStoreBackend, EmbeddingsProvider, type Env, RerankerProvider } from './config/env.ts'
 import {
   createPlatformAdapters,
   platformNetwork,
@@ -200,7 +205,7 @@ export interface IngestionConfig {
 
 /** Peças que vêm de fora (adapters das frentes D e E, ou fakes nos testes). */
 export interface IngestionDeps {
-  /** Netlify Blobs (Actions) ou o store em memória (testes e execução local). */
+  /** GitHub Releases ou Netlify Blobs (Actions; ADR 0030), ou o store em memória (testes e local). */
   readonly blobStore: BlobStore
   readonly clock?: Clock
   /** Substitui os embeddings do env (testes); recebe o medidor para informar o custo. */
@@ -372,23 +377,66 @@ export interface IngestionIo {
   readonly clock: Clock
 }
 
+/** GitHub Releases do repositório, com o `GITHUB_TOKEN` do job (ADR 0030); `null` sem token. */
+function githubReleasesBlobStore(env: Env): GithubReleasesBlobStore | null {
+  return env.GITHUB_TOKEN === undefined || env.GITHUB_REPOSITORY === undefined
+    ? null
+    : createGithubReleasesBlobStore({ repository: env.GITHUB_REPOSITORY, token: env.GITHUB_TOKEN })
+}
+
 /**
- * `SafeFetcher` com a allowlist das fontes e a exceção http das fontes fixadas (ADR 0028), o Netlify
- * Blobs (com `NETLIFY_AUTH_TOKEN` e `NETLIFY_SITE_ID`; o `parseEnv` exige as duas juntas) ou o store
- * em memória (execução local) e o hash de conteúdo.
+ * Netlify Blobs (etapa C1 da ADR 0030: só com `BLOB_STORE=netlify` e no `ingest blobs-migrate`).
+ * A etapa C2 apaga esta função, o adapter e as variáveis `NETLIFY_*`.
+ */
+function netlifyBlobStore(env: Env): BlobStore | null {
+  return env.NETLIFY_AUTH_TOKEN === undefined || env.NETLIFY_SITE_ID === undefined
+    ? null
+    : createNetlifyBlobStore({ siteID: env.NETLIFY_SITE_ID, token: env.NETLIFY_AUTH_TOKEN })
+}
+
+/**
+ * Backend dos artefatos (`BLOB_STORE`, padrão `github-releases`). Sem credenciais do backend (só
+ * possível sem `BLOB_STORE` explícito; o `parseEnv` exige as do backend escolhido), o store em
+ * memória (execução local).
+ */
+export function createBlobStore(env: Env): BlobStore {
+  const store =
+    env.BLOB_STORE === BlobStoreBackend.Netlify
+      ? netlifyBlobStore(env)
+      : githubReleasesBlobStore(env)
+  return store ?? createInMemoryBlobStore()
+}
+
+/**
+ * Origem e destino do `ingest blobs-migrate` (etapa C1 da ADR 0030): o Netlify Blobs e o GitHub
+ * Releases, os dois obrigatórios. A etapa C2 apaga esta função junto com o comando.
+ */
+export function createBlobsMigrationStores(env: Env): {
+  readonly source: BlobStore
+  readonly target: GithubReleasesBlobStore
+} {
+  const source = netlifyBlobStore(env)
+  const target = githubReleasesBlobStore(env)
+  if (source === null || target === null) {
+    throw new Error(
+      'ingest blobs-migrate exige NETLIFY_AUTH_TOKEN, NETLIFY_SITE_ID, GITHUB_TOKEN e GITHUB_REPOSITORY',
+    )
+  }
+  return { source, target }
+}
+
+/**
+ * `SafeFetcher` com a allowlist das fontes e a exceção http das fontes fixadas (ADR 0028), o
+ * `BlobStore` de `createBlobStore` e o hash de conteúdo.
  */
 export function createIngestionIo(
   env: Env,
   allowedHosts: readonly string[],
   httpHosts: readonly string[] = [],
 ): IngestionIo {
-  const blobs =
-    env.NETLIFY_AUTH_TOKEN !== undefined && env.NETLIFY_SITE_ID !== undefined
-      ? createNetlifyBlobStore({ siteID: env.NETLIFY_SITE_ID, token: env.NETLIFY_AUTH_TOKEN })
-      : createInMemoryBlobStore()
   return {
     fetcher: createSafeFetcher({ allowedHosts, httpHosts }),
-    blobs,
+    blobs: createBlobStore(env),
     hasher: sha256ContentHasher,
     clock: systemClock,
   }
@@ -491,11 +539,14 @@ export function createContainer(env: Env, overrides: ContainerOverrides = {}): C
 export function createHttpOptions(env: Env): HttpOptions {
   const network = platformNetwork(env)
   return {
-    webOrigin: env.WEB_ORIGIN,
     trustProxy: network.trustProxy,
     requestIdHeader: network.requestIdHeader,
     eventLoopDelayGuard: network.eventLoopDelayGuard,
     docs: env.APP_ENV !== AppEnv.Production,
+    // Plano B (Render): o export do web na mesma origem; relativo ao diretório de trabalho.
+    ...(env.WEB_STATIC_DIR === undefined
+      ? {}
+      : { staticSite: { root: resolvePath(env.WEB_STATIC_DIR) } }),
     // Sem `rateLimit`: o `PgRateLimitStore` (tabela `app.rate_limits`) chega com o schema, e
     // nenhuma rota da F1 abre transação. Memória local não serve com várias instâncias.
   }

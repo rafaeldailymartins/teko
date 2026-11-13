@@ -6,8 +6,6 @@ import type { RateLimitStore } from '#app/ports/rate-limit-store.ts'
  * precisa, já validado.
  */
 export interface HttpOptions {
-  /** Origem exata da web (`https://tekoia.netlify.app`); única origem aceita pelo CORS do stream. */
-  readonly webOrigin: string
   /**
    * Proxies confiáveis para `X-Forwarded-*`, por plataforma: 1 salto na Vercel; a rede do Caddy
    * (`172.30.0.0/24`) no CI e local; o valor medido no ensaio no Render.
@@ -25,6 +23,11 @@ export interface HttpOptions {
   readonly eventLoopDelayGuard: boolean
   /** Swagger + Scalar em `/api/docs` (nunca em produção). */
   readonly docs: boolean
+  /**
+   * Export estático do web servido na mesma origem (só no Plano B, Render; ADR 0029). Ausente = a
+   * plataforma serve o estático (CDN da Vercel) ou não há web (CI, dev com `next dev`).
+   */
+  readonly staticSite?: { readonly root: string }
   /**
    * Rate limit de aplicação com store compartilhado (Postgres). Ausente = não registrado: a F1 não
    * tem store nem rotas transacionais, e memória local não limita nada com várias instâncias.

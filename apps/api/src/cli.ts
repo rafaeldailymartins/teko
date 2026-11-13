@@ -1,6 +1,7 @@
 import { fileURLToPath } from 'node:url'
 import { parseArgs } from 'node:util'
 import { isoDateInTimeZone } from '@teko/shared/vigencia'
+import { runBlobsMigrate } from '#adapters/in/cli/blobs-migrate/run-blobs-migrate.ts'
 import {
   type EvalFixtureDeps,
   runEvalFixtureExport,
@@ -24,6 +25,7 @@ import type { IngestionContainer } from '#app/container.ts'
 import type { BlobStore } from '#app/ports/blob-store.ts'
 import { compareCodeUnits } from '#domain/shared/compare-code-units.ts'
 import {
+  createBlobsMigrationStores,
   createCoverageMarkTargets,
   createFixtureCorpusReader,
   createFixtureSeeder,
@@ -40,6 +42,8 @@ import { type Env, EnvValidationError, loadCliEnv, loadWatchEnv } from './config
  * - `seed-fixtures [--dir test/fixtures/corpus] [--migrate] [--replace]`: grava a fixture única
  *   no banco de `DATABASE_URL` (URL do owner);
  * - `ingest discover …` e `ingest load …` (F3): ver `adapters/in/cli/ingest/{discover,load}.ts`;
+ * - `ingest blobs-migrate [--store <nome>]... [--dry-run]` (etapa C1 da ADR 0030): copia os
+ *   artefatos do Netlify Blobs para o GitHub Releases (`adapters/in/cli/blobs-migrate`);
  * - `snapshot export|promote …` (F3): ver `adapters/in/cli/snapshot/snapshot.ts`;
  * - `eval-fixture export --from staging --out <dir>` (F3): regenera a fixture a partir do staging;
  * - `sources-watch [--config <watch.yaml>] [--out <dir>] [--dry-run]` (F3, job `detect`): GETs
@@ -67,6 +71,7 @@ const USAGE = [
   'uso: cli seed-fixtures [--dir <dir>] [--migrate] [--replace]',
   '     cli ingest discover --target staging|production --out <dir> [--family <f>]',
   '     cli ingest load --target staging|production --plan <plan.json> --docling-dir <dir> [--bulk] [--migrate] [--report <arquivo>]',
+  '     cli ingest blobs-migrate [--store <nome>]... [--dry-run]',
   '     cli snapshot export [--corpus-version <n>] | snapshot promote (--manifest <chave> | --corpus-version <n>)',
   '     cli eval-fixture export --from staging --out <dir> [--fixture <dir>]',
 ].join('\n')
@@ -134,8 +139,17 @@ async function runSeedFixtures(args: readonly string[]): Promise<number> {
   }
 }
 
+/** Etapa C1 da ADR 0030: Netlify Blobs → GitHub Releases. A etapa C2 apaga esta função. */
+async function runIngestBlobsMigrate(args: readonly string[]): Promise<number> {
+  const { source, target } = createBlobsMigrationStores(loadCliEnv())
+  return runBlobsMigrate({ source, target, print }, args)
+}
+
 async function runIngest(args: readonly string[]): Promise<number> {
   const [subcommand, ...rest] = args
+  if (subcommand === 'blobs-migrate') {
+    return runIngestBlobsMigrate(rest)
+  }
   // O uso vem antes de qualquer leitura do corpus/ ou do ambiente.
   if (subcommand !== 'discover' && subcommand !== 'load') {
     console.error(USAGE)

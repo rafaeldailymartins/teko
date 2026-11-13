@@ -28,7 +28,7 @@ data de efeito até a ingestão alcançar a mudança. É a mudança `add-source-
 - Handlers `runSourcesWatch` e `runCoverageMark` (dependências por parâmetro; a fiação no
   `cli.ts` fica com o orquestrador).
 - `.github/workflows/source-watch.yml`: cron `0 9 * * *` + dispatch; `detect` (environment
-  `staging`, Blobs e GETs, sem banco) dispara o `ingest.yml` quando muda uma fonte `live`;
+  `staging`, BlobStore e GETs, sem banco) dispara o `ingest.yml` quando muda uma fonte `live`;
   `mark-coverage` (environment `corpus-watch`, só as URLs do `teko_watch`); `watch-errors` deixa o
   run vermelho se alguma página não foi verificada.
 - Fora de escopo: evento ao Sentry (F6, sem DSN ainda), métrica `teko_coverage_verified_age_days`

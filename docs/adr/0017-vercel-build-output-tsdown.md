@@ -134,3 +134,13 @@ declarar `supportsCancellation: true` e `maxDuration: 120` (100 s de stream + 20
 - Bom: Function menor, um arquivo só.
 - Ruim: o `@scalar/fastify-api-reference` lê arquivos do próprio pacote em runtime, e outras
   dependências podem fazer o mesmo; o bundle quebraria em produção sem aviso no build.
+
+## Revisão (2026-11-12): estático e rotas próprias no `config.json` ([ADR 0029](0029-web-e-api-na-mesma-origem.md))
+
+O `.vercel/output` passa a levar o `apps/web/out` em `static/`, e o `config.json` deixa de mandar
+tudo para a Function: as rotas (escritas à mão, sem `@vercel/routing-utils`) levam só `/api/*` e
+`/healthz` à Function `index`, e o resto é servido pela CDN, com headers de segurança, redirect da
+raiz por `Accept-Language`, `trailingSlash`, 404 por locale e 308 dos domínios antigos. A Function
+leva o `server.mjs` e os chunks que ele importa (o tsdown gera chunks compartilhados com o
+`cli.mjs`). O `FUNCTION_MAX_DURATION_S` deixou de ter padrão e é obrigatório com
+`RUNTIME_TARGET=vercel`.
