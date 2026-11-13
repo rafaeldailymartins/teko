@@ -144,9 +144,11 @@ function unitOfWork(tx: Tx): IngestionUnitOfWork {
       blobRaw,
       blobDocling,
       parserRevision,
+      contentFingerprint,
     }) {
       const values = {
         parserRevision,
+        contentFingerprint,
         documentId,
         versionLabel: version.versionLabel,
         publishedOn: version.publishedOn,
@@ -530,6 +532,17 @@ export function createPgCorpusIngestionRepository(db: DrizzleDb): CorpusIngestio
         throw new CorpusInvariantError(`status de versão desconhecido: ${row.status}`)
       }
       return { id: row.id, status, parserRevision: row.parserRevision }
+    },
+
+    async findPublishedByFingerprint(slug, fingerprint) {
+      const result = await db.execute<{ id: string; parser_revision: number }>(sql`
+        SELECT dv.id::text AS id, dv.parser_revision FROM corpus.document_versions dv
+        JOIN corpus.documents d ON d.id = dv.document_id
+        WHERE d.slug = ${slug} AND dv.status = 'published'
+          AND dv.content_fingerprint = ${fingerprint}
+        ORDER BY dv.created_at DESC LIMIT 1`)
+      const row = result.rows[0]
+      return row === undefined ? null : { id: row.id, parserRevision: row.parser_revision }
     },
 
     openVersionsOf: (slug) => openVersions(db, sql`d.slug = ${slug}`, false),

@@ -139,6 +139,7 @@ describe('RefreshCoverage', () => {
     const records: unknown[] = []
     const repository: CorpusIngestionRepository = {
       findDocumentVersion: () => Promise.resolve(null),
+      findPublishedByFingerprint: () => Promise.resolve(null),
       openVersionsOf: () => Promise.resolve([]),
       transaction: () => Promise.reject(new Error('não usado')),
       refreshCoverage: (record) => {

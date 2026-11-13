@@ -224,6 +224,22 @@ describe('reingestão da mesma versão', () => {
     expect(spy.calls).toEqual([])
     expect(await count('provision_versions')).toBe(6)
     expect(await count('chunk_sources')).toBe(12)
+
+    // A5: a mesma página regravada (sha256 novo, mesmo rótulo e conteúdo) não vira versão.
+    const before = await snapshotCounts()
+    const rewritten = {
+      ...redownload,
+      version: { ...redownload.version, sha256: 'f'.repeat(64) },
+    }
+    const again = await container.useCases.ingestDocumentVersion({
+      runId,
+      source: rewritten,
+      blobRaw: null,
+      blobDocling: null,
+      parserRevision: 1,
+    })
+    expect(again).toMatchObject({ status: 'unchanged', reason: 'fingerprint' })
+    expect(await snapshotCounts()).toEqual(before)
   })
 })
 

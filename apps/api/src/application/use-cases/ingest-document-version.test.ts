@@ -13,6 +13,7 @@ import { DatabaseSizeLimitError } from '../ports/database-usage.ts'
 import { ChurnLimitError } from '../services/churn.ts'
 import type { EmbedPending, EmbedPendingResult } from './embed-pending.ts'
 import {
+  contentFingerprint,
   createIngestDocumentVersion,
   planReconciliation,
   ReconciliationError,
@@ -236,6 +237,7 @@ function fakeRepository(options: {
   readonly open?: OpenProvisionVersion[]
   readonly provisionIds?: (keys: string[]) => Map<string, string>
   readonly closedOn?: string
+  readonly sameFingerprint?: { id: string; parserRevision: number }
 }): { repository: CorpusIngestionRepository; recorder: Recorder } {
   const recorder: Recorder = { calls: [], inserted: [], review: [], sources: [] }
   const uow: IngestionUnitOfWork = {
@@ -307,6 +309,7 @@ function fakeRepository(options: {
   }
   const repository: CorpusIngestionRepository = {
     findDocumentVersion: () => Promise.resolve(options.existing ?? null),
+    findPublishedByFingerprint: () => Promise.resolve(options.sameFingerprint ?? null),
     openVersionsOf: () => Promise.resolve(options.open ?? []),
     transaction: (work) => work(uow),
     refreshCoverage: () => Promise.reject(new Error('não usado')),
@@ -328,6 +331,7 @@ function setup(options: {
   readonly cached?: (hash: string) => number[] | undefined
   readonly provisionIds?: (keys: string[]) => Map<string, string>
   readonly closedOn?: string
+  readonly sameFingerprint?: { id: string; parserRevision: number }
 }) {
   const { repository, recorder } = fakeRepository(options)
   const requested: string[] = []
@@ -421,6 +425,52 @@ describe('IngestDocumentVersion', () => {
     })
     expect(requested).toEqual(['RCTE > Art. 1\n\nArt. 1. Redação corrigida.'])
     expect(recorder.calls).toContain('version:raw:rev2')
+  })
+
+  it('A5: sha256 novo com o mesmo resultado parseado volta unchanged, sem gravar nem o raw', async () => {
+    const parsed = source([version('Art. 1. Texto.')])
+    const fingerprint = contentFingerprint(parsed, hasher)
+    // Outro arquivo (sha256) e outras estatísticas do parser não mudam a impressão digital.
+    expect(
+      contentFingerprint(
+        {
+          ...parsed,
+          version: { ...parsed.version, sha256: 'b'.repeat(64) },
+          stats: { notesTotal: 9, notesParsed: 9, notesToReview: 0 },
+        },
+        hasher,
+      ),
+    ).toBe(fingerprint)
+    expect(contentFingerprint(source([version('Art. 1. Outro texto.')]), hasher)).not.toBe(
+      fingerprint,
+    )
+
+    const writes: string[] = []
+    const same = setup({ sameFingerprint: { id: 'dv-antiga', parserRevision: 1 } })
+    expect(
+      await same.ingest({
+        ...command(parsed),
+        beforeWrite: () => {
+          writes.push('raw')
+          return Promise.resolve()
+        },
+      }),
+    ).toEqual({ status: 'unchanged', documentVersionId: 'dv-antiga', reason: 'fingerprint' })
+    expect(writes).toEqual([])
+    expect(same.recorder.calls).toEqual([])
+
+    // Com revisão do parser mais nova, reprocessa (e grava o raw antes da transação).
+    const newer = setup({ sameFingerprint: { id: 'dv-antiga', parserRevision: 1 } })
+    await newer.ingest({
+      ...command(parsed),
+      parserRevision: 2,
+      beforeWrite: () => {
+        writes.push(`raw antes de ${String(newer.recorder.calls.length)} chamadas`)
+        return Promise.resolve()
+      },
+    })
+    expect(writes).toEqual(['raw antes de 0 chamadas'])
+    expect(newer.recorder.calls[1]).toBe('version:raw:rev2')
   })
 
   it('aborta acima da guarda de tamanho', async () => {

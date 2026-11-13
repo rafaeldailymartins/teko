@@ -97,6 +97,8 @@ export interface IngestionUnitOfWork {
     readonly blobRaw: string | null
     readonly blobDocling: string | null
     readonly parserRevision: number
+    /** `contentFingerprint` do resultado parseado (A5). */
+    readonly contentFingerprint: string
   }): Promise<string>
   /**
    * Fecha em `from` o `valid_during` das outras versões do documento ainda em aberto que começam
@@ -174,6 +176,11 @@ interface RefreshCoverageRecord {
 
 export interface CorpusIngestionRepository {
   findDocumentVersion(sha256: string): Promise<ExistingDocumentVersion | null>
+  /** A versão publicada mais recente do documento com essa impressão digital, ou `null`. */
+  findPublishedByFingerprint(
+    slug: string,
+    fingerprint: string,
+  ): Promise<{ readonly id: string; readonly parserRevision: number } | null>
   /** Leitura sem trava, para planejar os embeddings antes da transação. */
   openVersionsOf(slug: string): Promise<OpenProvisionVersion[]>
   transaction<T>(work: (uow: IngestionUnitOfWork) => Promise<T>): Promise<T>

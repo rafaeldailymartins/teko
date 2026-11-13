@@ -362,11 +362,14 @@ async function loadItem(
     reviewNoteHash(context.deps.hasher, flag),
   )
   const rawKey = rawBlobKey({ ...preliminary, version: versionSegment(item, parsed) }, item.format)
-  const existing = await context.deps.blobs.list(BlobStoreName.CorpusRaw, rawKey)
-  if (!existing.includes(rawKey)) {
-    await context.deps.blobs.set(BlobStoreName.CorpusRaw, rawKey, bytes)
-  }
   const result = await context.deps.useCases.ingestDocumentVersion({
+    // O raw só vai para o store quando a versão vai para o banco (não para um `unchanged`).
+    beforeWrite: async () => {
+      const existing = await context.deps.blobs.list(BlobStoreName.CorpusRaw, rawKey)
+      if (!existing.includes(rawKey)) {
+        await context.deps.blobs.set(BlobStoreName.CorpusRaw, rawKey, bytes)
+      }
+    },
     runId: context.runId,
     source: resolved,
     blobRaw: rawKey,
@@ -397,6 +400,10 @@ function sumPublished(
   return total
 }
 
+function isFingerprintUnchanged(result: IngestDocumentVersionResult): boolean {
+  return result.status === 'unchanged' && result.reason === 'fingerprint'
+}
+
 /** Uma linha por item (o `load` passava minutos sem imprimir nada). */
 function itemLine(outcome: ItemOutcome, elapsedMs: number): string {
   const seconds = `${(elapsedMs / 1000).toFixed(1)} s`
@@ -419,7 +426,8 @@ function itemLine(outcome: ItemOutcome, elapsedMs: number): string {
   if (result.status === 'budget_exhausted') {
     return `${outcome.sourceId}: orçamento esgotado em ${seconds} (${String(result.pendingChunks)} chunks pendentes)`
   }
-  return `${outcome.sourceId}: unchanged em ${seconds}`
+  const why = isFingerprintUnchanged(result) ? ' (sha256 novo, mesmo conteúdo)' : ''
+  return `${outcome.sourceId}: unchanged${why} em ${seconds}`
 }
 
 function lockHealthOf(health: HealthReport): Record<string, LockHealth> {
@@ -602,7 +610,8 @@ export async function runIngestLoad(
     const sources: Record<string, { sha256: string; versionLabel: string; publishedOn: IsoDate }> =
       {}
     for (const outcome of outcomes) {
-      if ('result' in outcome) {
+      // Um sha256 novo com o mesmo conteúdo (fingerprint) não entra no banco nem no lock.
+      if ('result' in outcome && !isFingerprintUnchanged(outcome.result)) {
         sources[outcome.sourceId] = {
           sha256: outcome.sha256,
           versionLabel: outcome.versionLabel,

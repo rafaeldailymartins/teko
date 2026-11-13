@@ -19,6 +19,7 @@ describe('PruneEmbeddingCache', () => {
     ]
     const repository: CorpusIngestionRepository = {
       findDocumentVersion: fail,
+      findPublishedByFingerprint: fail,
       openVersionsOf: fail,
       transaction: fail,
       refreshCoverage: fail,

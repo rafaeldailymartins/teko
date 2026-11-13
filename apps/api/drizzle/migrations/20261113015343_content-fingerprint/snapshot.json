@@ -1,0 +1,47 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "9692056a-1d5c-49aa-9481-a0d36e7eaa4b",
+  "prevIds": [
+    "9001b939-12b8-4d5a-98e8-c06d62b247c8"
+  ],
+  "footprints": [
+    {
+      "statementType": "add_column",
+      "statementTarget": [
+        "column",
+        "corpus",
+        "document_versions",
+        "content_fingerprint"
+      ],
+      "writes": [
+        "s|col|corpus.document_versions.content_fingerprint",
+        "n|col|corpus.document_versions.content_fingerprint",
+        "e|col|corpus.document_versions.content_fingerprint"
+      ],
+      "reads": [
+        "n|tbl|corpus.document_versions",
+        "n|sch|corpus"
+      ]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "corpus",
+        "table": "document_versions",
+        "name": "content_fingerprint",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    }
+  ]
+}

@@ -209,7 +209,9 @@ function useCases(
           neurons: 10,
           ...NO_CHURN,
         }
-        return Promise.resolve(result)
+        // Como o caso de uso: o raw vai para o store só quando a versão vai para o banco.
+        const write = result.status === 'published' ? command.beforeWrite : undefined
+        return (write?.() ?? Promise.resolve()).then(() => result)
       },
       pruneEmbeddingCache: () => {
         recorder.pruned += 1
@@ -508,6 +510,17 @@ describe('ingest load', () => {
     // O snapshot do lock vigente (7) fica protegido da retenção (rollback).
     expect(third.recorder.exportCommands[0]?.protect).toEqual([7])
     expect(third.recorder.finished[0]?.report).toMatchObject({ acceptChurn: true })
+  })
+
+  it('A5: sha256 novo com o mesmo conteúdo não grava raw nem entra no lock', async () => {
+    const { useCases: cases } = useCases({
+      ingest: () => ({ status: 'unchanged', documentVersionId: 'dv', reason: 'fingerprint' }),
+    })
+    const { value, lines } = deps(cases)
+    expect(await load(value)).toBe(0)
+    expect(blobs.keys(BlobStoreName.CorpusRaw)).toEqual([])
+    expect(readCorpusLock(lockFile).sources).toEqual({})
+    expect(lines[0]).toMatch(/unchanged \(sha256 novo, mesmo conteúdo\)/)
   })
 
   it('plano de uma família só não poda o embedding_cache', async () => {

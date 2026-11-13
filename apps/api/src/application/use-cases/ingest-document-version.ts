@@ -45,7 +45,9 @@ import type { EmbedPending } from './embed-pending.ts'
  *
  * 1. sha256 já publicado com revisão do parser igual ou maior → `unchanged`, sem tocar o banco nem
  *    a porta de embeddings; com revisão menor, a mesma versão de documento é reprocessada pelos
- *    passos seguintes (ADR 0026);
+ *    passos seguintes (ADR 0026). Outro sha256 com a mesma impressão digital do resultado parseado
+ *    (`contentFingerprint`) de uma versão publicada do documento também volta `unchanged` (fonte
+ *    `live` regravada sem mudar: sem versão nova, sem `chunk_sources` nem raw novos);
  * 2. guarda de tamanho: `pg_database_size` acima do limite aborta o run, e, depois do
  *    planejamento e antes dos embeddings, a projeção `tamanho + chunksNovos × bytesPorChunk`
  *    também (guarda prospectiva);
@@ -93,10 +95,23 @@ interface IngestDocumentVersionCommand {
   readonly parserRevision: number
   /** `--accept-churn`: publica mesmo acima dos limites do disjuntor (as métricas saem no resultado). */
   readonly acceptChurn?: boolean
+  /**
+   * Chamado logo antes de gravar (depois das checagens de `unchanged`): o `load` grava o arquivo no
+   * store `corpus-raw` aqui, para não guardar o raw de uma versão que não entra no banco.
+   */
+  readonly beforeWrite?: () => Promise<void>
 }
 
 type IngestDocumentVersionResult =
-  | { readonly status: 'unchanged'; readonly documentVersionId: string }
+  | {
+      readonly status: 'unchanged'
+      readonly documentVersionId: string
+      /**
+       * `fingerprint`: outro sha256 (fonte `live` regravada) com o resultado parseado igual ao de
+       * uma versão já publicada (A5); ausente = mesmo sha256.
+       */
+      readonly reason?: 'fingerprint'
+    }
   | {
       readonly status: 'published'
       readonly documentVersionId: string
@@ -302,6 +317,23 @@ interface PreparedProvision {
   readonly versions: readonly PreparedVersion[]
 }
 
+/**
+ * Impressão digital do resultado parseado: tudo o que vai para o banco (documento, metadados e
+ * janela da versão, dispositivos, rótulos, redações e anotações), sem o sha256 do arquivo e sem as
+ * estatísticas do parser. O parser é determinístico, então a mesma saída dá o mesmo JSON.
+ */
+export function contentFingerprint(source: ParsedSource, hasher: ContentHasher): string {
+  const { sha256: _sha256, ...version } = source.version
+  return hasher.hash(
+    JSON.stringify({
+      document: source.document,
+      version,
+      replacementWindow: source.replacementWindow,
+      provisions: source.provisions,
+    }),
+  )
+}
+
 function prepare(source: ParsedSource, hasher: ContentHasher): PreparedProvision[] {
   return source.provisions.map((provision) => ({
     parsed: provision,
@@ -351,11 +383,29 @@ function parentsFirst(provisions: readonly ParsedProvision[]): ParsedProvision[]
 export function createIngestDocumentVersion(
   deps: IngestDocumentVersionDeps,
 ): IngestDocumentVersion {
-  return async ({ runId, source, blobRaw, blobDocling, parserRevision, acceptChurn = false }) => {
+  return async ({
+    runId,
+    source,
+    blobRaw,
+    blobDocling,
+    parserRevision,
+    acceptChurn = false,
+    beforeWrite,
+  }) => {
     const existing = await deps.repository.findDocumentVersion(source.version.sha256)
     const published = existing?.status === DocumentVersionStatus.Published
     if (published && existing.parserRevision >= parserRevision) {
       return { status: 'unchanged', documentVersionId: existing.id }
+    }
+    const fingerprint = contentFingerprint(source, deps.hasher)
+    if (!published) {
+      const same = await deps.repository.findPublishedByFingerprint(
+        source.document.slug,
+        fingerprint,
+      )
+      if (same !== null && same.parserRevision >= parserRevision) {
+        return { status: 'unchanged', documentVersionId: same.id, reason: 'fingerprint' }
+      }
     }
     const size = await deps.databaseUsage.sizeBytes()
     if (size > deps.maxDatabaseBytes) {
@@ -415,6 +465,7 @@ export function createIngestDocumentVersion(
       }
     }
 
+    await beforeWrite?.()
     const counts = await deps.repository.transaction(async (uow) => {
       const documentId = await uow.upsertDocument({
         ...source.document,
@@ -427,6 +478,7 @@ export function createIngestDocumentVersion(
         blobRaw,
         blobDocling,
         parserRevision,
+        contentFingerprint: fingerprint,
       })
       await uow.closePreviousDocumentVersions(
         documentId,

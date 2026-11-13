@@ -101,6 +101,12 @@ export const documentVersions = corpus.table(
      * menor que a atual é reprocessado no próximo run (ADR 0026); 1 para o que já estava gravado.
      */
     parserRevision: integer().notNull().default(1),
+    /**
+     * Impressão digital do resultado parseado (dispositivos, hashes, vigências e metadados da
+     * versão). Uma fonte `live` regravada com outro sha256 e o mesmo conteúdo dá a mesma impressão:
+     * volta `unchanged`, sem versão nova (A5). Nula nas versões anteriores a ela.
+     */
+    contentFingerprint: text(),
     ingestionRunId: uuid().references(() => ingestionRuns.id),
     createdAt: createdAt(),
   },
