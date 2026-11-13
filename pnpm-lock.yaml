@@ -36,9 +36,6 @@ catalogs:
     '@netlify/blobs':
       specifier: 11.1.7
       version: 11.1.7
-    '@netlify/plugin-nextjs':
-      specifier: 5.16.6
-      version: 5.16.6
     '@scalar/fastify-api-reference':
       specifier: 1.76.4
       version: 1.76.4
@@ -358,9 +355,6 @@ importers:
         specifier: 'catalog:'
         version: 19.3.1(react@19.3.1)
     devDependencies:
-      '@netlify/plugin-nextjs':
-        specifier: 'catalog:'
-        version: 5.16.6
       '@tailwindcss/postcss':
         specifier: 'catalog:'
         version: 4.3.4
@@ -1526,10 +1520,6 @@ packages:
   '@netlify/otel@7.0.6':
     resolution: {integrity: sha512-PUE0NwWiXU2xh64WNb2y5cFFjkn3CvMH5ReL1zL8M9cue3BmEpqpCb1VPdsnrMtZdatjqmGDND8ACmGdrR/THg==}
     engines: {node: '>=22.12.0'}
-
-  '@netlify/plugin-nextjs@5.16.6':
-    resolution: {integrity: sha512-BXy5WhogsaQOKz+C+KMlWrQupdGkV1a6TmJ6RLF6RwUMz6Oi419RejMD8yB8ttBKqImQDkOE4MmNLx3uEEKxPw==}
-    engines: {node: '>=18.0.0'}
 
   '@netlify/runtime-utils@3.0.0':
     resolution: {integrity: sha512-OHo40+V3QZkR+UrDjqhN+LekrAby/dSSJxsvyYs9i88E/mSl3goB/ysoL+VYROm190egxmQyRYlHK7vL4GeHBQ==}
@@ -7725,8 +7715,6 @@ snapshots:
       '@opentelemetry/sdk-trace-node': 2.12.0(@opentelemetry/api@1.9.1)
     transitivePeerDependencies:
       - supports-color
-
-  '@netlify/plugin-nextjs@5.16.6': {}
 
   '@netlify/runtime-utils@3.0.0': {}
 

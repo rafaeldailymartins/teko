@@ -122,6 +122,7 @@ catalog:
 
   # Ingestão (F3)
   htmlparser2: 12.0.0 # máquina de estados do RCTE/CTE e XSD da REINF (xmlMode)
+  # Só até a etapa C2 da ADR 0030 (o adapter Netlify e a migração para o GitHub Releases saem).
   "@netlify/blobs": 11.1.7 # 11.1.8 e 11.1.9 ainda dentro da janela de 7 dias em 2026-11-11
 
   # Web
@@ -135,6 +136,3 @@ catalog:
   postcss: 8.5.32
   babel-plugin-react-compiler: 1.0.0
   next-intl: 4.14.9
-  # Declarado só para a Netlify usar esta cópia (do lockfile) em vez de baixar uma sem versão fixa;
-  # NETLIFY_NEXT_PLUGIN_SKIP desliga a lógica dele (spike F1 (a)).
-  "@netlify/plugin-nextjs": 5.16.6

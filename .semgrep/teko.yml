@@ -20,12 +20,11 @@ rules:
   - id: teko-web-no-route-handlers
     message: >-
       Route Handler ou rota da API do Pages Router em apps/web. O front é export estático (0
-      functions na Netlify): a API é o Fastify na Vercel, alcançado pelo proxy assinado /api/*.
+      functions do Next): a API é o Fastify na Function da Vercel, na mesma origem (/api/*).
     severity: ERROR
     languages: [javascript, typescript]
-    # Qualquer `export` num arquivo `route.*` (App Router) ou em apps/web/pages/** (Pages Router,
-    # que lá só existe para guardar o README que impede o Next de tratar src/pages como rotas).
-    # Sem export, o arquivo não registra handler nem página.
+    # Qualquer `export` num arquivo `route.*` (App Router) ou em apps/web/{,src/}pages/** (Pages
+    # Router, que o web não usa). Sem export, o arquivo não registra handler nem página.
     pattern-regex: '(?m)^[ \t]*export\b'
     paths:
       include:
@@ -38,6 +37,11 @@ rules:
         - /apps/web/pages/**/*.js
         - /apps/web/pages/**/*.jsx
         - /apps/web/pages/**/*.mdx
+        - /apps/web/src/pages/**/*.ts
+        - /apps/web/src/pages/**/*.tsx
+        - /apps/web/src/pages/**/*.js
+        - /apps/web/src/pages/**/*.jsx
+        - /apps/web/src/pages/**/*.mdx
         - /.semgrep/teko.ts
       exclude:
         - node_modules
@@ -159,7 +163,7 @@ rules:
     message: >-
       process.env lido fora dos módulos de configuração. Na API, leia o env só em
       apps/api/src/config/env.ts (validado) ou apps/api/src/config/platform.ts (RUNTIME_TARGET) e
-      injete o valor; no web, só em apps/web/src/shared/config/env.ts (NEXT_PUBLIC_* literais,
+      injete o valor; no web, só em apps/web/src/lib/env.ts (NEXT_PUBLIC_* literais,
       inlined no build) e nos arquivos de config do Next/ferramentas.
     severity: ERROR
     languages: [javascript, typescript]
@@ -210,7 +214,7 @@ rules:
         # Os módulos de configuração autorizados.
         - /apps/api/src/config/env.ts
         - /apps/api/src/config/platform.ts
-        - /apps/web/src/shared/config/env.ts
+        - /apps/web/src/lib/env.ts
         # Arquivos de config na raiz de cada pacote (next.config.ts, vitest/tsdown/drizzle/
         # sentry configs): rodam no build ou nas ferramentas, nunca no runtime da app.
         - /apps/*/*.config.ts
@@ -219,8 +223,6 @@ rules:
         - /apps/*/*.config.mjs
         - /apps/*/*.config.cjs
         - /packages/*/*.config.ts
-        # Plugin de build da Netlify (roda no build do site, lê CONTEXT e TEKO_API_PROXY_TARGET).
-        - /apps/web/netlify/plugins
         # Scripts de build/CI de cada app (postbuild-headers, route-budgets) e testes, que não
         # entram no bundle de runtime.
         - /apps/*/scripts
