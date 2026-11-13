@@ -23,11 +23,13 @@ export const PARSERS: Readonly<Record<ParserName, Parser>> = {
  * publicadas com revisão menor. Refatoração sem efeito na saída não sobe.
  *
  * - `docling-guia` 2: título do bloco junto ao do registro 0000 e linhas fundidas pelo TableFormer.
+ * - `docling-generic` 2: tabela com uma linha por parágrafo e as células com o cabeçalho da coluna
+ *   (`Cabeçalho: valor; …`), em vez de achatada num parágrafo só (A8).
  */
 export const PARSER_REVISIONS: Readonly<Record<ParserName, number>> = {
   [ParserName.GoHtmlStateMachine]: 1,
   [ParserName.DoclingGuia]: 2,
-  [ParserName.DoclingGeneric]: 1,
+  [ParserName.DoclingGeneric]: 2,
   [ParserName.ReinfXsd]: 1,
   [ParserName.SpedTabelas]: 1,
 }
