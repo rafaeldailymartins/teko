@@ -101,9 +101,14 @@ SHALL sair com código 1 se alguma fonte falhar, depois de gravar o plano com os
 
 `cli ingest load --target staging|production --plan <plan.json> --docling-dir <dir>` MUST aceitar
 `--migrate` e `--bulk` só no staging e carregar as versões de cada documento em ordem de
-`published_on` (parse, overrides, Blobs, `ingestDocumentVersion`); no fim SHALL recalcular a
+`published_on`, com uma linha por item; no fim SHALL passar pelo gate de saúde, recalcular a
 cobertura, exportar o snapshot se a versão do corpus mudou, atualizar o `corpus.lock.json` só se o
 conteúdo mudou e gravar o relatório (`--report`).
+
+#### Scenario: Fila de revisão no relatório
+
+- **WHEN** o run deixa redações `pending` na fila
+- **THEN** o relatório traz os itens abertos por família e motivo
 
 #### Scenario: Segunda execução sem mudança
 
@@ -117,9 +122,10 @@ conteúdo mudou e gravar o relatório (`--report`).
 
 ### Requirement: Códigos de saída do load
 
-O `load` MUST sair com 75 quando o orçamento de neurons acabar (run `budget_exhausted`, sem
-snapshot) e com 1 quando alguma fonte falhar (run `failed`, sem snapshot nem lock), sem que a
-falha de uma fonte impeça as demais.
+O `load` MUST sair com 75 quando o orçamento de neurons ou a cota diária do provedor acabar (run
+`budget_exhausted`, sem snapshot) e com 1 quando alguma fonte falhar ou o gate de saúde reprovar
+(run `failed`, sem cobertura recalculada, snapshot nem lock), sem que a falha de uma fonte impeça as
+demais.
 
 #### Scenario: Orçamento esgotado
 
