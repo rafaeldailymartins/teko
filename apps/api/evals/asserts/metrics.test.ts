@@ -10,6 +10,7 @@ import {
   reciprocalRank,
   referenceDateCorrect,
   refusalCorrect,
+  unanswerableHandled,
   validityCorrect,
 } from './metrics.ts'
 
@@ -151,6 +152,22 @@ describe('métricas de recuperação', () => {
     ).toBe(1)
     expect(clarificationCorrect(ambiguous, output({ outcome: 'evidence' })).score).toBe(0)
     expect(clarificationCorrect(answered, output()).score).toBeNull()
+  })
+
+  it('sem resposta: a busca não recusa por cobertura nem pede clarificação', () => {
+    const unanswerable = golden({ status: 'unanswerable', reference_date: '2006-05-01' })
+    expect(unanswerableHandled(unanswerable, output({ hits: [hit(P5)] })).score).toBe(1)
+    expect(
+      unanswerableHandled(unanswerable, output({ outcome: 'refused', reason: 'no_evidence' }))
+        .score,
+    ).toBe(1)
+    expect(
+      unanswerableHandled(unanswerable, output({ outcome: 'refused', reason: 'out_of_coverage' })),
+    ).toEqual({ score: 0, reason: 'obtido refused/out_of_coverage' })
+    expect(
+      unanswerableHandled(unanswerable, output({ outcome: 'needs_clarification' })).score,
+    ).toBe(0)
+    expect(unanswerableHandled(answered, output()).score).toBeNull()
   })
 
   it('data de referência resolvida', () => {

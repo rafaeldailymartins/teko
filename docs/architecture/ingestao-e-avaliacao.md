@@ -19,7 +19,8 @@ para a produção. Os artefatos ficam no GitHub Releases (ADR 0030); a avaliaç�
 Arquivos em `corpus/`: `sources.yaml` (família, URL, sha256, rótulos, datas de efeito, `ocr`),
 `leiaute-periods.yaml` (curado do Ato COTEPE 44/2018), `overrides/*.yaml` (revisão manual, chave
 `(stable_key, note_hash)`, aprovação por PR), `watch.yaml` (páginas monitoradas) e
-`corpus.lock.json` (o snapshot promovível, com linhagem e resultado do eval).
+`corpus.lock.json` (o snapshot promovível, com a linhagem), com o `corpus.eval.json` ao lado (o
+resultado do `corpus-eval` que aprovou aquela `corpus_version`).
 
 Fontes desabilitadas, até curadoria: Guia 3.1.8 (inverteria o conhecimento de 2025, ADR 0028), os
 Guias sem efeitos e os de 2019–2020, NTs da REINF e o XSD de CNPJ alfanumérico.
@@ -172,7 +173,9 @@ sha256:
    `docs/runbooks/rollback-corpus.md`.
 
 **Linhagem** (no `manifest.json` e no `corpus.lock.json`): modelo de embedding, `PARSER_REVISIONS`,
-`EXTRACTOR_REVISION` e versão do Docling, reranker, git sha do run e o resultado do eval.
+`EXTRACTOR_REVISION` e versão do Docling, reranker e git sha do run. O resultado do eval vai no mesmo
+commit do PR do lock, em `corpus/corpus.eval.json` (métricas e intervalos de `dev` e `holdout`, a
+`corpus_version` avaliada, o sha do código e os provedores da busca).
 
 ## Monitoramento de mudanças (`source-watch.yml`)
 
@@ -203,8 +206,19 @@ sha256:
 | `lock-pr`     | `needs: [load, corpus-eval]`, exige sucesso dos dois; abre o PR do lock               |
 | resumo        | tamanho do banco (aviso acima de 400 MB), neurons, fila de `pending`, métricas com IC |
 
-Modo **`eval-only`**: roda só o `corpus-eval` contra o staging, sem reingerir, para PRs que mexem em
-busca, reranker ou SQL (disparo manual ou label `corpus-eval`, só em PR do próprio repositório).
+A branch do PR do lock é `chore/corpus-lock-<run_id>` (o prefixo fecha os PRs de lock anteriores).
+
+Modo **`eval-only`** (`mode: eval-only`): pula discover, extract e load e roda só o `corpus-eval`
+contra o staging, sem reingerir.
+
+- Sem `ref` (dispatch em `develop`): se o eval passar e a `corpus_version` do staging estiver à
+  frente do lock de `develop`, abre o PR do lock com o `corpus.lock.json` do artifact `corpus-lock`
+  do run que exportou essa versão (90 dias de retenção). É o caminho depois de um eval vermelho por
+  causa do golden: corrige-se o golden e roda-se o `eval-only`.
+- Com `ref` (SHA de um PR): para PRs que mexem em busca, reranker, embeddings ou SQL. O rótulo
+  `corpus-eval` num PR do próprio repositório faz o `corpus-eval-label.yml` disparar o `ingest.yml`
+  em `develop` com o SHA do PR; o run não abre PR de lock nem grava histórico.
+
 O harden-runner do `ingest.yml` fica em `block`.
 
 ## Avaliação (RAGOps, ADR 0031)
@@ -213,10 +227,10 @@ O harden-runner do `ingest.yml` fica em `block`.
 
 - **`dev`**: os 50 casos revisados pelo mantenedor em 2026-11-11 (EFD ICMS/IPI 15, REINF 8,
   RCTE/CTE 12, EFD-GO e tabelas 5, recusas 6, ambíguos 4). É onde se ajustam parâmetros.
-- **`holdout`**: 40 a 60 casos novos que **nunca orientam parâmetros**: paráfrase em linguagem de
-  contador, vários com mais de um dispositivo esperado, mais casos em `en`, registros e campos fora
-  da fixture, perguntas sem resposta dentro da cobertura. Curadoria assistida por LLM, pendente de
-  revisão do mantenedor (`curated_by`).
+- **`holdout`** (`holdout.yaml`): 53 casos novos que **nunca orientam parâmetros**: paráfrase em
+  linguagem de contador, 10 com mais de um dispositivo esperado, 10 em `en`, 38 dispositivos fora da
+  fixture, 5 recusas, 2 ambíguos e 4 perguntas sem resposta dentro da cobertura (`unanswerable`).
+  Curadoria assistida por LLM, pendente de revisão do mantenedor (`reviewed_at` nulo).
 - Todo caso tem `source_quote` real, conferida no texto da fonte. **Mudar o esperado de um caso
   exige `source_quote` novo.**
 
@@ -228,10 +242,15 @@ clarificação e data de referência = 1,00, recusa fora da cobertura = 1,00. re
 dispositivos distintos (`stable_key`). Medido na F2: recall@10 0,925, MRR 0,771.
 
 **`corpus-eval`** (corpus real do staging, embeddings e reranker reais): limites próprios para `dev`
-e `holdout`; resumo com intervalo de confiança (Wilson para recall, erro-padrão para MRR); **bloqueia
-o PR do lock**. Partida: recall@10 0,925 e MRR entre 0,66 e 0,68 (trava de regressão ≥ 0,65). A meta
-de MRR ≥ 0,70 da F4 é decidida pelo **holdout**. Métricas gravadas por `corpus_version` no release
-`corpus-eval-history`.
+(`retrieval-corpus`) e `holdout` (`retrieval-holdout`); resumo com intervalo de confiança (Wilson
+nas proporções, erro-padrão no MRR); **bloqueia o PR do lock**. Partida no `dev`: recall@10 0,925 e
+MRR entre 0,66 e 0,68 (trava de regressão ≥ 0,65). No `holdout`, vigência, recusa, clarificação,
+data de referência e `sem_resposta` (casos `unanswerable`) travam em 1,00; recall@10 e MRR ficam
+informativos até a primeira medição, quando o mantenedor fixa o piso. A meta de MRR ≥ 0,70 da F4 é
+decidida pelo **holdout** (seção `metas` do `thresholds.json`). O holdout não roda na fixture do PR
+(as perguntas não têm vetor nela). Registro por `corpus_version` no store `eval-artifacts`
+(`history/corpus-v<NNNNNN>/<run_id>.json`, pela porta `BlobStore`; release `corpus-eval-history`
+com o backend do GitHub Releases), com a comparação com o registro anterior no resumo.
 
 **Geração** (F8, stack de CI com `APP_ENV=ci` e `POST /api/v1/_eval/answer`): asserções
 determinísticas (status, regex de citação, `stable_key`, versão, vigência, data ecoada,

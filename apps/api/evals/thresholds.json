@@ -1,7 +1,8 @@
 {
-  "$comment": "Gates das evals (plano: Avaliação). Média por métrica sobre os casos em que ela se aplica.",
-  "$comment_retrieval": "Retrieval evals do PR, sobre a fixture única (sem segredo): protegem o código da busca a cada mudança.",
-  "$comment_retrieval-corpus": "corpus-eval (ingest.yml), sobre o corpus real do staging: trava contra regressão no nível já medido, que só sobe. MRR 0,65 = cerca de 0,68 medido com o reranker de 40 candidatos (ADR 0027), menos a margem de um caso do golden (0,025) e da variação entre runs. Meta de MRR 0,70 na F4 (reescrita da pergunta). Decisão do mantenedor em 2026-11-12.",
+  "$comment": "Gates das evals (plano: Avaliação; ADR 0031). Média por métrica sobre os casos em que ela se aplica, com intervalo de confiança de 95% no resumo. Limite null = métrica só informativa (não reprova). Metas de fase em `metas`, mostradas ao lado do gate sem reprovar.",
+  "$comment_retrieval": "Retrieval evals do PR, sobre a fixture única (sem segredo), com o conjunto dev do golden: protegem o código da busca a cada mudança.",
+  "$comment_retrieval-corpus": "corpus-eval (ingest.yml), conjunto dev sobre o corpus real do staging: trava contra regressão no nível já medido, que só sobe. MRR 0,65 = cerca de 0,68 medido com o reranker de 40 candidatos (ADR 0027), menos a margem de um caso do golden (0,025) e da variação entre runs. Decisão do mantenedor em 2026-11-12. Bloqueia o PR do lock.",
+  "$comment_retrieval-holdout": "corpus-eval, conjunto holdout sobre o corpus real do staging (ADR 0031): nunca orienta parâmetros. Vigência, recusa, clarificação, data de referência e sem resposta são determinísticas e travam em 1,00, como no dev; recall@10 e MRR ficam informativos até o mantenedor fixar o piso com a primeira medição. A meta de MRR 0,70 da F4 vale aqui (seção metas).",
   "retrieval": {
     "recall@10": 0.9,
     "mrr": 0.7,
@@ -17,5 +18,19 @@
     "recusa": 1,
     "clarificacao": 1,
     "data_referencia": 1
+  },
+  "retrieval-holdout": {
+    "recall@10": null,
+    "mrr": null,
+    "vigencia": 1,
+    "recusa": 1,
+    "clarificacao": 1,
+    "data_referencia": 1,
+    "sem_resposta": 1
+  },
+  "metas": {
+    "retrieval-holdout": {
+      "mrr": 0.7
+    }
   }
 }

@@ -15,10 +15,13 @@ ingest:
   - .github/workflows/ingest.yml
   - .github/workflows/source-watch.yml
 
-# Recuperação (RAG): casos de uso, persistência, evals, fixtures de corpus e o domínio de vigência.
+# Recuperação (RAG): casos de uso, persistência, reranker e embeddings (a ordem e os vetores da
+# busca; ADR 0031), evals, fixtures de corpus e o domínio de vigência.
 rag:
   - apps/api/src/application/**
   - apps/api/src/adapters/out/persistence/**
+  - apps/api/src/adapters/out/reranker/**
+  - apps/api/src/adapters/out/embeddings/**
   - apps/api/evals/**
   - apps/api/test/fixtures/corpus/**
   - packages/shared/src/vigencia/**

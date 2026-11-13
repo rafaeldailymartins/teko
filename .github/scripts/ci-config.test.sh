@@ -204,7 +204,26 @@ check "ingest: corpus-eval com o reranker do Workers AI (ADR 0027)" \
 check "ingest: corpus-eval avalia o corpus real (EVAL_CORPUS=staging)" \
   bash -c "yq -r '.jobs.\"corpus-eval\".steps[].env.EVAL_CORPUS // \"\"' '$ingest' | grep -qx 'staging'"
 check "ingest: corpus-eval com os limites do corpus real (retrieval-corpus), que nunca ficam abaixo da fixture no recall" \
-  bash -c "yq -r '.jobs.\"corpus-eval\".steps[].run // \"\"' '$ingest' | grep -q 'eval:retrieval:check:corpus' && jq -e '.\"retrieval-corpus\".\"recall@10\" >= .retrieval.\"recall@10\" and .\"retrieval-corpus\".vigencia == 1 and .\"retrieval-corpus\".recusa == 1' apps/api/evals/thresholds.json >/dev/null"
+  bash -c "yq -r '.jobs.\"corpus-eval\".steps[].run // \"\"' '$ingest' | grep -q 'corpus-eval-record.ts build' && jq -e '.\"retrieval-corpus\".\"recall@10\" >= .retrieval.\"recall@10\" and .\"retrieval-corpus\".vigencia == 1 and .\"retrieval-corpus\".recusa == 1' apps/api/evals/thresholds.json >/dev/null"
+# RAGOps (ADR 0031): o corpus-eval mede os conjuntos dev e holdout e o lock só vai a PR com ele verde.
+corpus_eval_dev_and_holdout() {
+  local runs
+  runs="$(yq -r '.jobs."corpus-eval".steps[].run // ""' "$ingest")"
+  grep -q 'eval:retrieval$' <<<"$runs" && grep -q 'eval:retrieval:holdout$' <<<"$runs" &&
+    grep -q -- '--holdout reports/retrieval-evals-holdout.json' <<<"$runs"
+}
+check "ingest: corpus-eval roda os conjuntos dev e holdout e grava o registro" corpus_eval_dev_and_holdout
+check "ingest: lock-pr depende do corpus-eval verde e nunca roda para o código de um PR (ref)" \
+  yq_true '(.jobs."lock-pr".needs | contains(["load", "corpus-eval"])) and (.jobs."lock-pr".if | (test("needs\\.corpus-eval\\.result == .success.") and test("inputs\\.ref == ..")))' "$ingest"
+check "ingest: o PR do lock leva o corpus.eval.json" \
+  bash -c "grep -Fq 'path: \"corpus/corpus.eval.json\"' '$ingest'"
+check "ingest: modo eval-only pula o discover (e com ele extract e load)" \
+  yq_true '(.on.workflow_dispatch.inputs.mode.options | join(",")) == "full,eval-only" and .on.workflow_call.inputs.mode.default == "full" and (.jobs.discover.if | test("inputs\\.mode != .eval-only."))' "$ingest"
+check "ingest: o artifact corpus-lock dura 90 dias (eval-only abre o PR do lock a partir dele)" \
+  yq_true '.jobs.load.steps[] | select(.with.name == "corpus-lock") | .with."retention-days" == 90' "$ingest"
+label=.github/workflows/corpus-eval-label.yml
+check "corpus-eval-label: só PR do próprio repositório, dispara o ingest.yml eval-only em develop" \
+  bash -c "yq -e '.jobs.dispatch.if | test(\"head\\\\.repo\\\\.full_name == github\\\\.repository\")' '$label' >/dev/null && grep -Fq 'gh workflow run ingest.yml --repo \"\$REPO\" --ref develop -f mode=eval-only -f ref=\"\$SHA\"' '$label'"
 check "ingest: load com --migrate só no staging" \
   bash -c "grep -Eq 'ingest load --target staging .*--migrate' '$ingest'"
 check "ingest: o tamanho do staging (dbBytes do relatório) sai do load e vai ao resumo, com aviso acima de 400 MB" \
@@ -226,8 +245,8 @@ check "ingest: target de dispatch só aceita staging" \
   yq_true '(.on.workflow_dispatch.inputs.target.options | length) == 1 and .on.workflow_dispatch.inputs.target.options[0] == "staging"' "$ingest"
 check "ingest: PR do lock com o token da App teko-release-bot" \
   yq_true '.jobs."lock-pr".steps[] | select(.uses // "" | test("^actions/create-github-app-token@")) | .with."client-id" == "${{ vars.RELEASE_APP_CLIENT_ID }}"' "$ingest"
-check "ingest: commit do lock com Signed-off-by e branch chore/corpus-lock-<n>" \
-  bash -c "grep -Fq 'Signed-off-by: ' '$ingest' && grep -Fq 'branch=\"chore/corpus-lock-' '$ingest'"
+check "ingest: commit do lock com Signed-off-by e branch chore/corpus-lock-<run_id>" \
+  bash -c "grep -Fq 'Signed-off-by: ' '$ingest' && grep -Fq 'branch=\"chore/corpus-lock-\${RUN_ID}\"' '$ingest' && grep -Fq 'RUN_ID: \${{ github.run_id }}' '$ingest'"
 check "ingest: o PR do lock novo fecha os anteriores da própria App" \
   bash -c "grep -Fq -- '--author \"app/\${APP_SLUG}\"' '$ingest' && grep -Fq 'startswith(\"chore/corpus-lock-\")' '$ingest' && grep -Fq 'gh pr close \"\$old\"' '$ingest'"
 check "ingest: falha cedo sem NETLIFY_SITE_ID ou NEON_STAGING_PROJECT_ID" \

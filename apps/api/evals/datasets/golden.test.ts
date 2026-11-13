@@ -3,8 +3,8 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { loadFixtureDocuments } from '../../src/adapters/in/cli/seed-fixtures/seed-fixtures.ts'
-import generateTests, { metricsFor, toPromptfooTest } from './golden-tests.ts'
-import { loadGolden } from './load-golden.ts'
+import { devTests, holdoutTests, metricsFor, toPromptfooTest } from './golden-tests.ts'
+import { GoldenSplit, goldenPath, loadGolden } from './load-golden.ts'
 import { goldenCaseSchema, goldenDatasetSchema } from './schema.ts'
 
 const base = {
@@ -44,6 +44,10 @@ describe('schema do golden', () => {
     expect(issues({ ...base, expected: { status: 'answered', provisions: ['x:y'] } })).toEqual([
       'stable_key inválida',
     ])
+    expect(issues({ ...base, expected: { status: 'unanswerable' } })).toEqual([])
+    expect(
+      issues({ ...base, expected: { status: 'unanswerable', provisions: ['go:rcte:art:76'] } }),
+    ).toEqual(['unanswerable não tem dispositivo esperado'])
   })
 
   it('ids repetidos no dataset são erro', () => {
@@ -81,6 +85,38 @@ describe('golden versionado', () => {
   })
 })
 
+describe('holdout versionado (ADR 0031)', () => {
+  const dev = loadGolden(goldenPath(GoldenSplit.Dev))
+  const holdout = loadGolden(goldenPath(GoldenSplit.Holdout))
+
+  it('tem de 40 a 60 casos novos, de todos os status, com perguntas em inglês', () => {
+    expect(holdout.length).toBeGreaterThanOrEqual(40)
+    expect(holdout.length).toBeLessThanOrEqual(60)
+    const byStatus = Object.groupBy(holdout, (golden) => golden.expected.status)
+    for (const status of ['answered', 'refused', 'needs_clarification', 'unanswerable']) {
+      expect(byStatus[status as keyof typeof byStatus]?.length ?? 0).toBeGreaterThan(0)
+    }
+    expect(holdout.filter((golden) => golden.locale === 'en').length).toBeGreaterThanOrEqual(5)
+    expect(
+      holdout.filter((golden) => golden.expected.provisions.length > 1).length,
+    ).toBeGreaterThanOrEqual(5)
+  })
+
+  it('não repete id nem pergunta do dev', () => {
+    const ids = new Set(dev.map((golden) => golden.id))
+    const questions = new Set(dev.map((golden) => golden.question.trim().toLowerCase()))
+    expect(holdout.filter((golden) => ids.has(golden.id))).toEqual([])
+    expect(holdout.filter((golden) => questions.has(golden.question.trim().toLowerCase()))).toEqual(
+      [],
+    )
+  })
+
+  it('o gerador do holdout cobre o arquivo inteiro', async () => {
+    const tests = await holdoutTests()
+    expect(tests.map((test) => test.description)).toEqual(holdout.map((golden) => golden.id))
+  })
+})
+
 describe('testes do promptfoo gerados do golden', () => {
   it('cada status recebe só as métricas que se aplicam', () => {
     const answered = goldenCaseSchema.parse(base)
@@ -105,6 +141,14 @@ describe('testes do promptfoo gerados do golden', () => {
         }),
       ),
     ).toEqual(['clarificacao'])
+    expect(
+      metricsFor(
+        goldenCaseSchema.parse({
+          ...base,
+          expected: { status: 'unanswerable', reference_date: '2006-05-01' },
+        }),
+      ),
+    ).toEqual(['sem_resposta', 'data_referencia'])
     expect(toPromptfooTest(goldenCaseSchema.parse({ ...base, pair: 'p' }))).toEqual({
       description: 'caso',
       vars: { question: 'Pergunta?', golden: goldenCaseSchema.parse({ ...base, pair: 'p' }) },
@@ -119,7 +163,7 @@ describe('testes do promptfoo gerados do golden', () => {
   })
 
   it('o gerador padrão cobre o golden inteiro', async () => {
-    const tests = await generateTests()
+    const tests = await devTests()
     expect(tests).toHaveLength(50)
     expect(new Set(tests.map((test) => test.description)).size).toBe(50)
   })

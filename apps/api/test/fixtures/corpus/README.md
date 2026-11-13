@@ -166,3 +166,7 @@ nesses tópicos são só de espaçamento da extração, então cada tópico é u
 Todos os `provisions`, `validity`, `facts` e `source_quote` dos casos respondidos saem do texto
 desta fixture. `candidates` dos ambíguos estão em ordem cronológica. Curadoria assistida, com
 todos os casos revisados pelo mantenedor em 2026-11-11 (`reviewed_at: "2026-11-11"`).
+
+É o conjunto `dev` (ADR 0031). O conjunto `holdout` (`evals/datasets/holdout.yaml`) não usa esta
+fixture: roda só no `corpus-eval`, contra o corpus real do staging, e suas perguntas não entram no
+`embeddings.json.gz`.

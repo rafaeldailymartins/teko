@@ -191,6 +191,21 @@ export function referenceDateCorrect(golden: GoldenCase, output: RetrievalOutput
   return { score: ok ? 1 : 0, reason: `obtida ${String(output.referenceDate)}` }
 }
 
+/**
+ * Pergunta sem resposta dentro da cobertura: a busca não recusa por cobertura nem pede
+ * clarificação (devolve evidência ou `no_evidence`). Dizer que o corpus não responde é papel da
+ * geração (sentinela `INSUFICIENTE`, generation evals da F8).
+ */
+export function unanswerableHandled(golden: GoldenCase, output: RetrievalOutput): MetricResult {
+  if (golden.expected.status !== 'unanswerable') {
+    return notApplicable('caso não é sem resposta')
+  }
+  const ok =
+    output.outcome === 'evidence' ||
+    (output.outcome === 'refused' && output.reason === 'no_evidence')
+  return { score: ok ? 1 : 0, reason: `obtido ${output.outcome}/${String(output.reason)}` }
+}
+
 export const METRICS = {
   'recall@10': recallAtK,
   mrr: reciprocalRank,
@@ -198,6 +213,7 @@ export const METRICS = {
   recusa: refusalCorrect,
   clarificacao: clarificationCorrect,
   data_referencia: referenceDateCorrect,
+  sem_resposta: unanswerableHandled,
 } as const satisfies Record<string, (golden: GoldenCase, output: RetrievalOutput) => MetricResult>
 
 export type MetricName = keyof typeof METRICS

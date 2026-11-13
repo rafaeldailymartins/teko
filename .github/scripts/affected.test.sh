@@ -64,6 +64,9 @@ packages_only='{"web":true,"api":true,"shared":true,"ingest":false,"rag":false,"
 ingest_only='{"web":false,"api":false,"shared":false,"ingest":true,"rag":false,"llm":false,"docs":false,"code":true,"packages":false}'
 api_ingest='{"web":false,"api":true,"shared":false,"ingest":true,"rag":false,"llm":false,"docs":false,"code":true,"packages":true}'
 api_only='{"web":false,"api":true,"shared":false,"ingest":false,"rag":false,"llm":false,"docs":false,"code":true,"packages":true}'
+api_rag='{"web":false,"api":true,"shared":false,"ingest":false,"rag":true,"llm":false,"docs":false,"code":true,"packages":true}'
+# Markdown dentro de corpus/: ingest (corpus/**) e docs (**/*.md); nada fora de docs, então code=false.
+ingest_docs='{"web":false,"api":false,"shared":false,"ingest":true,"rag":false,"llm":false,"docs":true,"code":false,"packages":false}'
 
 failures=0
 cases=0
@@ -156,6 +159,18 @@ expect_scope "domain/corpus: api + ingest" "$api_ingest" push \
 # Controle negativo: outro adapter de entrada da API não é ingestão.
 expect_scope "adapters/in/http: só api" "$api_only" push \
   apps/api/src/adapters/in/http/novo-arquivo.ts
+# Reranker e embeddings mudam a ordem e os vetores da busca: entram no grupo rag (ADR 0031).
+expect_scope "adapters/out/reranker: api + rag" "$api_rag" push \
+  apps/api/src/adapters/out/reranker/workers-ai/novo-arquivo.ts
+expect_scope "adapters/out/embeddings: api + rag" "$api_rag" push \
+  apps/api/src/adapters/out/embeddings/workers-ai/novo-arquivo.ts
+# Grupo docs: docs/**, openspec/** e todo Markdown, em qualquer profundidade.
+expect_scope "docs e README da raiz: só docs" "$docs_only" push \
+  docs/adr/0002-supply-chain-pnpm.md README.md
+expect_scope "openspec: só docs" "$docs_only" push openspec/specs/hybrid-search/spec.md
+expect_scope "Markdown dentro de corpus/: ingest + docs" "$ingest_docs" push corpus/README.md
+expect_scope "corpus sem Markdown: sem docs" "$ingest_only" push corpus/leiaute-periods.yaml
+expect_scope "arquivo da raiz fora de todo grupo: só code" "$code_only" push LICENSE
 expect_scope "pull_request contra origin/develop" "$packages_only" pull_request \
   packages/shared/src/errors/codes.ts
 

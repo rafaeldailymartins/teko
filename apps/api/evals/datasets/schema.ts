@@ -10,19 +10,28 @@ import { FAMILIES } from '#domain/corpus/family.ts'
 import { isStableKey } from '#domain/corpus/provision-id.ts'
 
 /**
- * Schema do dataset golden (`datasets/golden.yaml`). Cada caso é uma pergunta com a data de
- * referência como o cliente a envia (`reference_date` ou `periodo_apuracao`, mais a origem) e o
- * resultado esperado. As retrieval evals usam `expected.status`, `provisions`, `validity` e
- * `candidates`; as generation evals (F8) usam também `doc_version` e `facts`.
+ * Schema dos datasets golden (ADR 0031): `datasets/golden.yaml` (conjunto `dev`, onde se ajusta) e
+ * `datasets/holdout.yaml` (conjunto `holdout`, que nunca orienta parâmetros). Cada caso é uma
+ * pergunta com a data de referência como o cliente a envia (`reference_date` ou
+ * `periodo_apuracao`, mais a origem) e o resultado esperado. As retrieval evals usam
+ * `expected.status`, `provisions`, `validity` e `candidates`; as generation evals (F8) usam também
+ * `doc_version` e `facts`.
  *
- * Mudar o dataset obriga a regenerar a fixture (`pnpm fixtures:embed`), porque as perguntas
- * também têm embedding gravado.
+ * Mudar o esperado de um caso (`expected`) exige um `source_quote` novo, conferido no texto da
+ * fonte: o caso nunca se ajusta ao resultado da busca. Mudar o `dev` obriga a regenerar a fixture
+ * (`pnpm fixtures:embed`), porque as perguntas também têm embedding gravado; o `holdout` roda só no
+ * `corpus-eval`, contra o staging, e fica fora da fixture.
  */
 
 const GoldenStatus = {
   Answered: 'answered',
   Refused: 'refused',
   NeedsClarification: 'needs_clarification',
+  /**
+   * Pergunta dentro da cobertura que o corpus não responde: a busca não pode recusar por cobertura
+   * nem pedir clarificação; a resposta "insuficiente" é medida pelas generation evals (F8).
+   */
+  Unanswerable: 'unanswerable',
 } as const
 
 const stableKeySchema = z.string().refine(isStableKey, { message: 'stable_key inválida' })
@@ -39,7 +48,7 @@ export const goldenCaseSchema = z
     families: z.array(z.enum(FAMILIES)).min(1).optional(),
     expected: z.strictObject({
       status: z.enum(GoldenStatus),
-      /** Data de referência que o `ResolveReferenceDate` deve devolver (answered/refused). */
+      /** Data de referência que o `ResolveReferenceDate` deve devolver (fora dos ambíguos). */
       reference_date: isoDateSchema.optional(),
       refusal_reason: z.literal('out_of_coverage').optional(),
       /** Dispositivos que precisam aparecer no top-10 (recall@10 e MRR). */
@@ -89,6 +98,13 @@ export const goldenCaseSchema = z
         code: 'custom',
         path: ['expected', 'refusal_reason'],
         message: 'refused exige refusal_reason',
+      })
+    }
+    if (status === GoldenStatus.Unanswerable && provisions.length > 0) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['expected', 'provisions'],
+        message: 'unanswerable não tem dispositivo esperado',
       })
     }
     if (status === GoldenStatus.NeedsClarification && candidates === undefined) {
