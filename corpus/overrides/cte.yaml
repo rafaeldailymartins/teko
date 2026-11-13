@@ -10,7 +10,7 @@
     ART. 7º DA LEI Nº 21.789, DE 19.01.23 - vigência: 19.01.23", com a redação anterior até a
     véspera ("NOTA: Redação com vigência de 02.01.14 a 18.01.23"). A nota "NOTA: Redação com
     vigência a partir de 16.09.96." vem depois do inciso II e é dele.
-  reviewed_by: claude
+  reviewed_by: rafaeldailymartins
   reviewed_at: 2026-11-13
 
 - stable_key: go:cte:art:60:inc:I:ali:c
@@ -22,7 +22,7 @@
     "REVOGADA A ALÍNEA "C" DO INCISO I DO ART. 60 PELO ART. 4º DA LEI Nº 22.285, DE 26.09.23 -
     vigência: 01.05.23"). O período da nota "Notas: Redação com vigência de 31.03.23 a 30.04.23 ."
     é anterior ao próprio acréscimo.
-  reviewed_by: claude
+  reviewed_by: rafaeldailymartins
   reviewed_at: 2026-11-13
 
 - stable_key: go:cte:art:62
@@ -33,7 +33,7 @@
     LEI Nº 12.972, DE 27.12.96 - vigência: 01.01.97". O início da nota "NOTA: Redação com vigência a
     partir de 16.09.96, de acordo como art. 5º da Lei nº 12.972/96." é anterior à reestruturação
     do CTE em 1997-01-01, onde o recorte do parser começa de qualquer forma (ADR 0011).
-  reviewed_by: claude
+  reviewed_by: rafaeldailymartins
   reviewed_at: 2026-11-13
 
 - stable_key: go:cte:art:71:par:12:inc:VIII:ali:c
@@ -45,7 +45,7 @@
     anterior até a véspera ("NOTA: Redação com vigência de 29.12.03 a 31.12.05"). O início da nota
     "NOTA: Redação com vigência de 31.12.05 a 28.12.11." erra por um dia; o fim confere com a
     revogação ("vigência: 29.12.11").
-  reviewed_by: claude
+  reviewed_by: rafaeldailymartins
   reviewed_at: 2026-11-13
 
 - stable_key: go:cte:art:71:par:12:inc:XII:ali:d:item:1
@@ -57,7 +57,7 @@
     "D" DO INCISO XII DO ART. 71 PELO ART. 4º DA LEI Nº 15.505, DE 29.12.05 - vigência: 01.01.06").
     A nota órfã "NOTA: Redação com vigência de 01.01.06 a 27.12.06." é do "1. revogado;", publicado
     depois dela.
-  reviewed_by: claude
+  reviewed_by: rafaeldailymartins
   reviewed_at: 2026-11-13
 
 - stable_key: go:cte:art:71:par:12:inc:XII:ali:d:item:1
@@ -70,7 +70,7 @@
     LEI Nº 15.921, DE 28.12.06 - vigência: 28.12.06"), como diz a nota publicada antes do texto
     ("NOTA: Redação com vigência de 01.01.06 a 27.12.06."). A nota "27.12.01 a 31.12.05" que o
     parser ligou a ele é a do item 2.
-  reviewed_by: claude
+  reviewed_by: rafaeldailymartins
   reviewed_at: 2026-11-13
 
 - stable_key: go:cte:art:92:inc:III
@@ -83,7 +83,7 @@
     abertura do ato ("CONFERIDA NOVA REDAÇÃO AO INCISO III DO ART. 92 PELO ART. 1º DA LEI Nº
     12.972, DE 27.12.96 - vigência: 01.01.97."). O ato e a nota vêm antes do texto, em classe de
     texto, e o parser fechou a redação com a nota do inciso IV ("01.03.92 a 31.12.95").
-  reviewed_by: claude
+  reviewed_by: rafaeldailymartins
   reviewed_at: 2026-11-13
 
 - stable_key: go:cte:art:95:par:1
@@ -94,5 +94,5 @@
     ART. 3º DA LEI Nº 13.446, DE 20.01.99 - vigência: 26.01.99.") e da nota "NOTA: Redação com
     vigência de 26.01.99 a 31.12.00.". A segunda nota igual, que o parser trata como órfã, é do §
     2º, cujo ato de acréscimo vem em classe de texto.
-  reviewed_by: claude
+  reviewed_by: rafaeldailymartins
   reviewed_at: 2026-11-13
