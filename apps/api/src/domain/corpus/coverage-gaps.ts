@@ -4,6 +4,7 @@ import {
   mergeIntervals,
   type ValidityInterval,
 } from '@teko/shared/vigencia'
+import { compareCodeUnits } from '#domain/shared/compare-code-units.ts'
 
 /**
  * Lacunas de cobertura por entrada (`corpus.coverage.gap_entries`). Cada mudança detectada pelo
@@ -40,7 +41,7 @@ export interface PublishedDocumentVersion {
   readonly createdAt: string
 }
 
-const sourcesKey = (sources: readonly string[]) => [...sources].sort().join('\n')
+const sourcesKey = (sources: readonly string[]) => [...sources].sort(compareCodeUnits).join('\n')
 
 function instant(value: string): number {
   const time = Date.parse(value)
@@ -77,7 +78,7 @@ export function addGapEntry(
   const index = entries.findIndex((existing) => sourcesKey(existing.sources) === key)
   const current = entries[index]
   if (current === undefined) {
-    return [...entries, { ...entry, sources: [...entry.sources].sort() }]
+    return [...entries, { ...entry, sources: [...entry.sources].sort(compareCodeUnits) }]
   }
   const merged: CoverageGapEntry = {
     sources: current.sources,
@@ -118,7 +119,10 @@ export function mergeGapsForPromotion(
   const newer = target.filter(
     (entry) => entry.detectedAt !== null && instant(entry.detectedAt) > exportedAt,
   )
-  return newer.reduce<CoverageGapEntry[]>(addGapEntry, [...snapshot])
+  return newer.reduce<CoverageGapEntry[]>(
+    (entries, entry) => addGapEntry(entries, entry),
+    [...snapshot],
+  )
 }
 
 export interface GapSummary {
