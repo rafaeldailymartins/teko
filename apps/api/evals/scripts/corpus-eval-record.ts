@@ -12,6 +12,7 @@ import {
   type ThresholdReport,
   type ThresholdsFile,
 } from './check-thresholds.ts'
+import { cliPath } from './cli-path.ts'
 
 /**
  * Registro do `corpus-eval` (ADR 0031): junta os gates do conjunto dev e do holdout num só
@@ -282,8 +283,8 @@ async function runBuild(args: readonly string[], file: ThresholdsFile): Promise<
     return 64
   }
   const reports = {
-    dev: checkSuite(values.dev, SUITES.dev, file),
-    holdout: checkSuite(values.holdout, SUITES.holdout, file),
+    dev: checkSuite(cliPath(values.dev), SUITES.dev, file),
+    holdout: checkSuite(cliPath(values.holdout), SUITES.holdout, file),
   }
   const env = evalEnv()
   let corpusVersion = Number(values['corpus-version'] ?? Number.NaN)
@@ -305,9 +306,9 @@ async function runBuild(args: readonly string[], file: ThresholdsFile): Promise<
     },
     now: new Date(),
   })
-  writeFileSync(values.out, `${JSON.stringify(record, null, 2)}\n`)
+  writeFileSync(cliPath(values.out), `${JSON.stringify(record, null, 2)}\n`)
   if (values['pr-body'] !== undefined) {
-    writeFileSync(values['pr-body'], renderPrBody(record))
+    writeFileSync(cliPath(values['pr-body']), renderPrBody(record))
   }
   writeSummary(renderEvalSummary(record, reports))
   writeOutputs({ corpus_version: String(corpusVersion), pass: String(record.pass) })
@@ -324,7 +325,7 @@ async function runHistory(args: readonly string[]): Promise<number> {
     console.error(USAGE)
     return 64
   }
-  const record = evalRecordSchema.parse(JSON.parse(readFileSync(values.record, 'utf8')))
+  const record = evalRecordSchema.parse(JSON.parse(readFileSync(cliPath(values.record), 'utf8')))
   const { blobs } = createIngestionIo(evalEnv(), [])
   const previous = await recordHistory(blobs, record, values['run-id'])
   writeSummary(renderComparison(previous, record))

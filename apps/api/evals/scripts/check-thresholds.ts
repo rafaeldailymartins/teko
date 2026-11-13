@@ -1,6 +1,7 @@
 import { appendFileSync, readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { z } from 'zod'
+import { cliPath } from './cli-path.ts'
 
 /**
  * Gate das evals: lê o JSON do `promptfoo eval -o <arquivo>`, calcula a média de cada métrica
@@ -252,7 +253,7 @@ function main(argv: readonly string[]): number {
     console.error(`suite desconhecida em thresholds.json: ${suite}`)
     return 64
   }
-  const report = checkSuite(outputPath, suite, file)
+  const report = checkSuite(cliPath(outputPath), suite, file)
   const summary = renderSummary(`Evals (${suite})`, report)
   console.log(summary)
   const stepSummary = process.env['GITHUB_STEP_SUMMARY']
