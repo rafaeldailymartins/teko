@@ -46,10 +46,11 @@ A configuração do projeto que vive no repositório fica em `apps/api/vercel.js
   `vercel env rm NETLIFY_PROXY_JWS_SECRET production --yes`,
   `vercel env rm WEB_ORIGIN production --yes` e
   `printf 'https://tekoia-staging.vercel.app' | vercel env add WEB_ORIGIN production`.
-- [ ] Netlify: apagar o site `tekoia` e os segredos/variáveis da Netlify que só serviam ao site
-  (`NETLIFY_PROXY_JWS_SECRET`, `TEKO_API_PROXY_TARGET`). O `NETLIFY_AUTH_TOKEN` e o
-  `NETLIFY_SITE_ID` do environment `staging` do GitHub ficam até a etapa C2 da ADR 0030 (a migração
-  dos artefatos lê o Netlify Blobs do site): só depois dela o site pode ser apagado.
+- [ ] Netlify: apagar o site `tekoia` e revogar o PAT. A migração dos artefatos terminou em
+  2026-11-13 (etapa C2 da ADR 0030), então também saem o segredo `NETLIFY_AUTH_TOKEN` e a variável
+  `NETLIFY_SITE_ID` do environment `staging` do GitHub:
+  `gh secret delete NETLIFY_AUTH_TOKEN --env staging` e
+  `gh variable delete NETLIFY_SITE_ID --env staging`.
 - [ ] WAF: reaplicar as 3 regras de `firewall-rules.json` (a regra do `x-nf-sign` sai).
 - Postura não comercial (Hobby): o Tekó é gratuito e MIT, sem anúncios, afiliados, patrocínio
   exibido ou plano pago. Um link de doação é permitido (ADR 0004).

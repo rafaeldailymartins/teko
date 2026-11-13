@@ -42,7 +42,7 @@ Onde guardar esses artefatos sem serviço novo, sem custo e com integridade conf
 
 Opção escolhida: **GitHub Releases do próprio repositório**, num adapter novo da porta `BlobStore`
 (`apps/api/src/adapters/out/blobs/github-releases-blob-store.ts`), escolhido por `BLOB_STORE`
-(`github-releases`, o padrão, ou `netlify` até a etapa C2).
+(`github-releases`; o `netlify` existiu só até a etapa C2).
 
 ### Releases e assets
 
@@ -124,3 +124,15 @@ Opção escolhida: **GitHub Releases do próprio repositório**, num adapter nov
   em 2026-11-12, sem alterar nada.
 - Plano congelado, seção "Escrita, Blobs, snapshot e promoção"; o vigente está em
   `docs/architecture/ingestao-e-avaliacao.md`.
+
+## Nota (2026-11-13): migração feita e etapa C2
+
+O `blobs-migrate.yml` copiou os artefatos no run 43355872236: 150 itens (59 raw, 55 do Docling, 33
+de snapshot e 3 do watch; nenhum de eval), sem falha, e o dry-run seguinte deu 150 já iguais. A
+etapa C2 tirou o adapter, o comando e o workflow da migração, o `@netlify/blobs` (com o override do
+OpenTelemetry que ele forçava), as variáveis `NETLIFY_*` e o valor `netlify` do `BLOB_STORE`. O
+`ingest.yml` e o `source-watch.yml` declaram `BLOB_STORE: github-releases` (a CLI exige o
+`GITHUB_TOKEN` em vez de cair no store em memória), com `contents: write` só no `load`, no
+`detect`, no job do `source-watch.yml` que chama o `ingest.yml` e no `corpus-eval-history`, um
+job novo que grava o histórico do `corpus-eval` sem nunca rodar o código de um PR (`ref`): o
+`corpus-eval`, que roda esse código no modo eval-only, ficou só com leitura.

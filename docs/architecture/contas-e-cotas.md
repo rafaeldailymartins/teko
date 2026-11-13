@@ -25,8 +25,9 @@ conferidas pelo `ops.yml` a partir da F6/F7.
 
 **Saíram na revisão de 2026-11-12:** Netlify (web e Blobs, ADRs 0029 e 0030), Codecov (o gate é o
 threshold do Vitest, ADR 0032), Checkly e UptimeRobot (o Synthetic Monitoring do Grafana cobre).
-Depois que o PR de cada pacote entrar e os artefatos forem migrados, o mantenedor revoga os tokens
-(`NETLIFY_AUTH_TOKEN`, `CODECOV_*`, `CHECKLY_*`) e encerra as contas.
+Os artefatos foram migrados para o GitHub Releases em 2026-11-13 (ADR 0030); o mantenedor revoga
+os tokens (`NETLIFY_AUTH_TOKEN` e a variável `NETLIFY_SITE_ID` do environment `staging`,
+`CODECOV_*`, `CHECKLY_*`) e encerra as contas.
 
 ## Vercel Hobby
 
