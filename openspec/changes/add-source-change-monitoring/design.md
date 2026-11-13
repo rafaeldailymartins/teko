@@ -16,7 +16,7 @@ montar as fixtures (recortes mínimos, bytes originais).
 - `verified_at` avança todo dia em prod e no staging, com um único `UPDATE` por banco quando nada
   mudou.
 - Mudança detectada vira lacuna de cobertura no mesmo dia, a partir da data de efeito.
-- O job com a credencial do BlobStore (PAT da Netlify ou `GITHUB_TOKEN` com escrita, ADR 0030)
+- O job com a credencial dos artefatos (`GITHUB_TOKEN` com escrita, ADR 0030)
   nunca vê URL de banco, e vice-versa.
 
 **Non-Goals:**

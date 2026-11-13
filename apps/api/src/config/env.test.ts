@@ -246,8 +246,6 @@ describe('parseEnv', () => {
   })
 
   describe('ingestão (F3)', () => {
-    const SITE_ID = '0b7c1a2e-3f4d-4e5a-9b6c-7d8e9f0a1b2c'
-    const TOKEN = 'nfp_token-de-teste-com-mais-de-20'
     const NEON_KEY = 'napi_chave-de-teste-com-mais-de-20'
     const GH_TOKEN = 'ghs_token-de-teste-com-mais-de-20'
 
@@ -255,22 +253,22 @@ describe('parseEnv', () => {
       const env = parseEnv(DEV_ENV)
       expect(env.EMBED_NEURON_BUDGET).toBe(8000)
       expect(env.INGEST_MAX_DB_BYTES).toBe(800 * 1024 * 1024)
-      expect(env.NETLIFY_AUTH_TOKEN).toBeUndefined()
+      expect(env.GITHUB_TOKEN).toBeUndefined()
       expect(env.NEON_API_KEY_STAGING).toBeUndefined()
     })
 
-    it('aceita Blobs e Neon completos e converte os números', () => {
+    it('aceita o GitHub e o Neon completos e converte os números', () => {
       const env = parseEnv({
         ...DEV_ENV,
-        NETLIFY_AUTH_TOKEN: TOKEN,
-        NETLIFY_SITE_ID: SITE_ID,
+        GITHUB_TOKEN: GH_TOKEN,
+        GITHUB_REPOSITORY: 'dono/repo',
         NEON_API_KEY_STAGING: NEON_KEY,
         NEON_STAGING_PROJECT_ID: 'snowy-sea-123456',
         EMBED_NEURON_BUDGET: '5000',
         INGEST_MAX_DB_BYTES: '1000',
       })
       expect(env).toMatchObject({
-        NETLIFY_SITE_ID: SITE_ID,
+        GITHUB_REPOSITORY: 'dono/repo',
         NEON_STAGING_PROJECT_ID: 'snowy-sea-123456',
         EMBED_NEURON_BUDGET: 5000,
         INGEST_MAX_DB_BYTES: 1000,
@@ -278,27 +276,17 @@ describe('parseEnv', () => {
     })
 
     it('exige os pares juntos, sem citar o valor do segredo', () => {
-      const problems = problemsOf({
-        ...DEV_ENV,
-        NETLIFY_AUTH_TOKEN: TOKEN,
-        NEON_STAGING_PROJECT_ID: 'p1',
-      })
-      expect(problems).toEqual([
-        'NETLIFY_SITE_ID: NETLIFY_AUTH_TOKEN e NETLIFY_SITE_ID vêm juntas (Netlify Blobs da ingestão)',
+      expect(problemsOf({ ...DEV_ENV, NEON_STAGING_PROJECT_ID: 'p1' })).toEqual([
         'NEON_API_KEY_STAGING: NEON_API_KEY_STAGING e NEON_STAGING_PROJECT_ID vêm juntas (medição de CU-h da ingestão)',
       ])
-      expect(problems.join('\n')).not.toContain(TOKEN)
-      expect(
-        problemsOf({ ...DEV_ENV, NETLIFY_SITE_ID: SITE_ID, NEON_API_KEY_STAGING: NEON_KEY }),
-      ).toEqual([
-        'NETLIFY_AUTH_TOKEN: NETLIFY_AUTH_TOKEN e NETLIFY_SITE_ID vêm juntas (Netlify Blobs da ingestão)',
+      const problems = problemsOf({ ...DEV_ENV, NEON_API_KEY_STAGING: NEON_KEY })
+      expect(problems).toEqual([
         'NEON_STAGING_PROJECT_ID: NEON_API_KEY_STAGING e NEON_STAGING_PROJECT_ID vêm juntas (medição de CU-h da ingestão)',
       ])
+      expect(problems.join('\n')).not.toContain(NEON_KEY)
     })
 
     it.each([
-      ['NETLIFY_SITE_ID', 'tekoia'],
-      ['NETLIFY_AUTH_TOKEN', 'curto'],
       ['NEON_STAGING_PROJECT_ID', 'Projeto Inválido'],
       ['EMBED_NEURON_BUDGET', '10001'],
       ['EMBED_NEURON_BUDGET', '-1'],
@@ -312,15 +300,12 @@ describe('parseEnv', () => {
     it('proíbe as credenciais da ingestão na API publicada', () => {
       const problems = problemsOf({
         ...PROD_ENV,
-        NETLIFY_AUTH_TOKEN: TOKEN,
-        NETLIFY_SITE_ID: SITE_ID,
         GITHUB_TOKEN: GH_TOKEN,
         GITHUB_REPOSITORY: 'dono/repo',
         NEON_API_KEY_STAGING: NEON_KEY,
         NEON_STAGING_PROJECT_ID: 'p1',
       })
       expect(problems).toEqual([
-        'NETLIFY_AUTH_TOKEN: proibida com RUNTIME_TARGET=render (só a CLI de ingestão usa)',
         'GITHUB_TOKEN: proibida com RUNTIME_TARGET=render (só a CLI de ingestão usa)',
         'NEON_API_KEY_STAGING: proibida com RUNTIME_TARGET=render (só a CLI de ingestão usa)',
       ])
@@ -348,18 +333,10 @@ describe('parseEnv', () => {
         ).toMatchObject({ BLOB_STORE: 'github-releases', GITHUB_REPOSITORY: 'dono/repo' })
       })
 
-      it('netlify exige o PAT e o site', () => {
-        expect(problemsOf({ ...DEV_ENV, BLOB_STORE: 'netlify' })).toEqual([
-          'BLOB_STORE: netlify exige NETLIFY_AUTH_TOKEN e NETLIFY_SITE_ID',
-        ])
-        expect(
-          parseEnv({
-            ...DEV_ENV,
-            BLOB_STORE: 'netlify',
-            NETLIFY_AUTH_TOKEN: TOKEN,
-            NETLIFY_SITE_ID: SITE_ID,
-          }).BLOB_STORE,
-        ).toBe('netlify')
+      it('netlify não é mais backend (etapa C2 da ADR 0030)', () => {
+        expect(problemsOf({ ...DEV_ENV, BLOB_STORE: 'netlify' }).join('\n')).toMatch(
+          /^BLOB_STORE:/m,
+        )
       })
 
       it.each([

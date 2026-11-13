@@ -154,11 +154,11 @@ A porta `BlobStore` tem o adapter de GitHub Releases (ADR 0030), escolhido por `
   chave com `/` trocado por `__` (as chaves de fonte já trazem o sha256 do conteúdo).
 - Download e upload conferem o `digest` sha256 que o GitHub calcula; gravar o mesmo conteúdo não
   sobe nada.
-- Gravação só com `GITHUB_TOKEN` de `contents: write` nos jobs que gravam; leitura é pública.
-- Migração em duas etapas: C1 traz o adapter, o comando `ingest blobs-migrate` (idempotente, confere
-  o sha256) e o workflow `blobs-migrate.yml`, com o `ingest.yml` e o `source-watch.yml` ainda em
-  `BLOB_STORE: netlify`; C2, depois da migração, troca os dois para `github-releases` e remove o
-  adapter da Netlify, o comando e o workflow.
+- Gravação só com o `GITHUB_TOKEN` do job e `contents: write` nos jobs que gravam (`load` e
+  `corpus-eval-history` no `ingest.yml`; `detect` no `source-watch.yml`); leitura é pública. O
+  histórico do `corpus-eval` tem job próprio, que nunca roda o código de um PR (`ref`).
+- Os artefatos do Netlify Blobs foram migrados em 2026-11-13 (run 43355872236, 150 itens conferidos
+  pelo sha256), e o Netlify Blobs saiu do código e dos workflows (etapa C2 da ADR 0030).
 
 ## Snapshot, promoção e rollback
 

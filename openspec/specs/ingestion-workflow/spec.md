@@ -10,14 +10,12 @@ segredos, com qual saída de rede e como o resultado chega ao repositório.
 ### Requirement: Ingestão só no staging
 
 O `ingest.yml` MUST aceitar só `target=staging` (dispatch e `workflow_call`) e SHALL falhar no
-primeiro job, com a instrução de cadastro, se faltar a variável `NEON_STAGING_PROJECT_ID`, se o
-`BLOB_STORE` declarado no workflow for desconhecido ou se faltar a credencial do backend dele (com
-`netlify`, a variável `NETLIFY_SITE_ID` e o segredo `NETLIFY_AUTH_TOKEN` do environment `staging`;
-com `github-releases`, o `GITHUB_TOKEN` do próprio job).
+primeiro job, com a instrução de cadastro, se faltar a variável `NEON_STAGING_PROJECT_ID` do
+environment `staging` ou se o `BLOB_STORE` declarado no workflow não for `github-releases`.
 
 #### Scenario: Variável ausente
 
-- **WHEN** o `BLOB_STORE` é `netlify` e o environment `staging` não tem `NETLIFY_SITE_ID`
+- **WHEN** o environment `staging` não tem `NEON_STAGING_PROJECT_ID`
 - **THEN** o job `discover` falha antes do checkout com a mensagem que nomeia a variável e o comando `gh variable set`
 
 #### Scenario: Produção pedida
@@ -77,9 +75,8 @@ O commit do PR do lock MUST levar, ao lado do lock, o registro do `corpus-eval`
 ### Requirement: Egress bloqueado
 
 Todo job do `ingest.yml` MUST começar pelo harden-runner em `egress-policy: block`, com allowlist
-por job; com `BLOB_STORE: netlify`, a do `discover` e a do `load` SHALL incluir `api.netlify.com`;
-com `github-releases`, a do `load` SHALL incluir `uploads.github.com` e só o `load` SHALL ter
-`contents: write`.
+por job; só o `load` e o `corpus-eval-history` SHALL ter `contents: write` e `uploads.github.com`
+na allowlist.
 
 #### Scenario: Host fora da lista
 
@@ -143,13 +140,14 @@ resumo com o registro anterior.
 - **WHEN** o `corpus-eval` roda para a corpus_version 12 depois de um registro da 11
 - **THEN** o resumo mostra, por conjunto e métrica, o valor anterior, o atual e a diferença
 
-### Requirement: Workflow de migração dos artefatos
+### Requirement: Histórico do corpus-eval sem código de PR
 
-O `blobs-migrate.yml` MUST rodar só por `workflow_dispatch`, no environment `staging`, com
-`contents: write`, harden-runner em `block` e o grupo de concorrência do `ingest.yml`, e SHALL
-começar em `dry_run` por padrão.
+O histórico do `corpus-eval` (store `eval-artifacts`) MUST ser gravado pelo job
+`corpus-eval-history`, que roda o commit do próprio run, a partir do artifact `corpus-eval`, e
+SHALL ser pulado quando o run avalia o código de um PR (`ref`); o `corpus-eval` MUST ficar só com
+leitura.
 
-#### Scenario: Ingestão durante a migração
+#### Scenario: Eval-only de um PR
 
-- **WHEN** o `ingest.yml` é disparado enquanto o `blobs-migrate.yml` roda
-- **THEN** a ingestão espera a migração terminar
+- **WHEN** o `ingest.yml` roda em `mode: eval-only` com o `ref` de um PR
+- **THEN** o `corpus-eval` avalia o PR sem escrita nos releases e o `corpus-eval-history` não roda

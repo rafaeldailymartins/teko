@@ -126,8 +126,12 @@ de verdade passou a ser este diretório (ADR 0001, adendo de 2026-11-12).
 
 Pendências:
 
-- PRs dos pacotes A, B, B2, C, D e E; depois, a etapa C2 (remoção da Netlify dos artefatos de
-  ingestão) e a revogação dos tokens e contas que saíram (Netlify, Codecov, Checkly, UptimeRobot);
+- PRs dos pacotes A, B, B2, C, D e E entraram. Os artefatos da ingestão foram migrados do Netlify
+  Blobs para o GitHub Releases em 2026-11-13 (run 43355872236 do `blobs-migrate.yml`: 150 itens,
+  59 raw, 55 Docling, 33 de snapshot e 3 do watch, sem falha; o dry-run seguinte deu 150 iguais) e
+  a etapa C2 tirou o Netlify Blobs do código e dos workflows (ADR 0030);
+- revogação dos tokens e contas que saíram: o `NETLIFY_AUTH_TOKEN` e o `NETLIFY_SITE_ID` do
+  environment `staging`, o site `tekoia` e a conta da Netlify; Codecov, Checkly e UptimeRobot;
 - ações manuais do trunk-based (ADR 0033): rulesets, rename de `develop` para `main`,
   environments, Sonar; depois, o PR de seguimento que troca `develop` por `main` no código;
 - remover o check `Analyze (actions)` do ruleset (ADR 0032);

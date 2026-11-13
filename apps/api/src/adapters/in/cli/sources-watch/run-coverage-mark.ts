@@ -8,7 +8,7 @@ import { parseDiscoveredReport } from './discovered-schema.ts'
  * `cli coverage-mark --discovered <discovered.json>` (job `mark-coverage` do `source-watch.yml`,
  * environment `corpus-watch`). Marca a cobertura nos dois bancos com o role `teko_watch`
  * (`NEON_PROD_WATCH_URL` e `NEON_STAGING_WATCH_URL`, ver {@link resolveWatchDatabaseUrls}); nunca
- * recebe a credencial dos artefatos (PAT da Netlify ou GITHUB_TOKEN com escrita).
+ * recebe a credencial dos artefatos (o GITHUB_TOKEN com escrita do job detect).
  *
  * Saída: 0 com todos os bancos marcados; 1 se algum banco falhar (os demais seguem) ou se o
  * `discovered.json` for inválido; 64 com argumentos inválidos.

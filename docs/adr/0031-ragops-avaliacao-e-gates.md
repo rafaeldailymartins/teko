@@ -131,8 +131,9 @@ O `ingest.yml` aceita `mode: eval-only`, que pula discover, extract e load e rod
   nas métricas determinísticas e segura o lock até a correção (com `source_quote` novo).
 - Ruim: o `eval-only` de um PR roda código não mesclado com os segredos do staging. Mitigação: só
   PR do próprio repositório, só quem pode rotular, egress bloqueado, role `teko_app`.
-- Ruim: o histórico depende do backend dos artefatos (hoje o Netlify Blobs; o GitHub Releases pela
-  ADR 0030). A gravação falha sem derrubar o eval.
+- Ruim: o histórico depende do backend dos artefatos (o GitHub Releases, ADR 0030). A gravação
+  fica num job próprio (`corpus-eval-history`, o único do eval com escrita), que nunca roda o
+  código de um PR e não derruba o eval.
 - Neutra: a fixture do PR continua medindo só o dev; os resultados ficaram iguais caso a caso
   (recall@10 0,925, MRR 0,771, demais 1,00).
 

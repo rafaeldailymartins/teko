@@ -23,10 +23,10 @@ import { compareCodeUnits } from '#domain/shared/compare-code-units.ts'
  * - o `trustProxy` nunca é um valor fixo para todas as plataformas: na Vercel é 1 salto, fixo no
  *   código (`TRUST_PROXY` é proibida); no Render vem do ensaio do Plano B (`TRUST_PROXY`
  *   obrigatória); no CI e local, a rede do Caddy (`DEFAULT_TRUST_PROXY`, só em development e ci);
- * - ingestão (F3): `NETLIFY_AUTH_TOKEN` com `NETLIFY_SITE_ID` e `NEON_API_KEY_STAGING` com
- *   `NEON_STAGING_PROJECT_ID` vêm aos pares; `BLOB_STORE` exige as credenciais do backend
- *   escolhido (ADR 0030); e as credenciais da ingestão (inclusive o `GITHUB_TOKEN`) são proibidas
- *   na API publicada (`RUNTIME_TARGET` vercel ou render).
+ * - ingestão (F3): `NEON_API_KEY_STAGING` e `NEON_STAGING_PROJECT_ID` vêm aos pares;
+ *   `BLOB_STORE=github-releases` exige o `GITHUB_TOKEN` (ADR 0030); e as credenciais da ingestão
+ *   (inclusive o `GITHUB_TOKEN`) são proibidas na API publicada (`RUNTIME_TARGET` vercel ou
+ *   render).
  *
  * As mensagens de erro citam só o nome da variável, nunca o valor (pode ser segredo).
  */
@@ -51,12 +51,10 @@ export const EmbeddingsProvider = {
 } as const
 export type EmbeddingsProvider = (typeof EmbeddingsProvider)[keyof typeof EmbeddingsProvider]
 
-/** Backend dos artefatos da ingestão (ADR 0030). `netlify` sai na etapa C2. */
-export const BlobStoreBackend = {
+/** Backend dos artefatos da ingestão (ADR 0030): o GitHub Releases do repositório. */
+const BlobStoreBackend = {
   GithubReleases: 'github-releases',
-  Netlify: 'netlify',
 } as const
-export type BlobStoreBackend = (typeof BlobStoreBackend)[keyof typeof BlobStoreBackend]
 
 /** Reranker da busca (ADR 0027): `none` mantém a ordem do RRF. */
 export const RerankerProvider = {
@@ -205,9 +203,9 @@ const envSchema = z
     MIN_EVIDENCE_RRF: z.coerce.number().min(0).max(1).default(0),
     // --- Ingestão (CLI `ingest`, `snapshot`, `eval-fixture`; só no Actions e localmente) -------
     /**
-     * Onde ficam os artefatos da ingestão (ADR 0030). Sem valor, o GitHub Releases quando há
-     * `GITHUB_TOKEN`, e o store em memória quando não há (execução local). `netlify` só vale até a
-     * etapa C2 (o `ingest blobs-migrate` copia tudo do Netlify Blobs para os releases).
+     * Onde ficam os artefatos da ingestão (ADR 0030). Com `github-releases` (o que os workflows
+     * declaram), o `GITHUB_TOKEN` é obrigatório: um run no Actions nunca cai, sem aviso, no store
+     * em memória. Sem valor, o GitHub Releases quando há token, e a memória quando não há (local).
      */
     BLOB_STORE: z.enum(BlobStoreBackend).optional(),
     /** Token do job (`github.token`), com `contents: write` só nos jobs que gravam artefatos. */
@@ -217,19 +215,6 @@ const envSchema = z
       .string()
       .trim()
       .regex(/^[A-Za-z0-9-]+\/[A-Za-z0-9._-]+$/, { error: 'deve ser owner/repo' })
-      .optional(),
-    /**
-     * PAT da Netlify (segredo do environment `staging`) para o Netlify Blobs; vem junto com
-     * `NETLIFY_SITE_ID`. Só com `BLOB_STORE=netlify` ou no `ingest blobs-migrate` (etapa C1).
-     */
-    NETLIFY_AUTH_TOKEN: z.string().trim().min(20).optional(),
-    /** ID do site `tekoia` (variável do environment `staging`), dono dos stores do Blobs. */
-    NETLIFY_SITE_ID: z
-      .string()
-      .trim()
-      .regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i, {
-        error: 'deve ser o ID (UUID) do site na Netlify',
-      })
       .optional(),
     /** Orçamento diário de neurons da ingestão (Workers AI Free: 10.000/dia na conta; plano: 8.000). */
     EMBED_NEURON_BUDGET: z.coerce.number().int().min(0).max(10_000).default(8000),
@@ -306,18 +291,6 @@ const envSchema = z
         issue('CF_AI_TOKEN', `obrigatória com ${name}=workers-ai`)
       }
     }
-    if ((env.NETLIFY_AUTH_TOKEN === undefined) !== (env.NETLIFY_SITE_ID === undefined)) {
-      issue(
-        env.NETLIFY_AUTH_TOKEN === undefined ? 'NETLIFY_AUTH_TOKEN' : 'NETLIFY_SITE_ID',
-        'NETLIFY_AUTH_TOKEN e NETLIFY_SITE_ID vêm juntas (Netlify Blobs da ingestão)',
-      )
-    }
-    if (
-      env.BLOB_STORE === BlobStoreBackend.Netlify &&
-      (env.NETLIFY_AUTH_TOKEN === undefined || env.NETLIFY_SITE_ID === undefined)
-    ) {
-      issue('BLOB_STORE', 'netlify exige NETLIFY_AUTH_TOKEN e NETLIFY_SITE_ID')
-    }
     if (env.BLOB_STORE === BlobStoreBackend.GithubReleases && env.GITHUB_TOKEN === undefined) {
       issue('GITHUB_TOKEN', 'obrigatória com BLOB_STORE=github-releases')
     }
@@ -336,7 +309,7 @@ const envSchema = z
     ) {
       // A API publicada nunca recebe credenciais da ingestão (artefatos e API do Neon ficam no
       // Actions).
-      for (const name of ['NETLIFY_AUTH_TOKEN', 'GITHUB_TOKEN', 'NEON_API_KEY_STAGING'] as const) {
+      for (const name of ['GITHUB_TOKEN', 'NEON_API_KEY_STAGING'] as const) {
         if (env[name] !== undefined) {
           issue(
             name,

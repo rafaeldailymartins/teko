@@ -18,7 +18,7 @@ XLSX): cada parte grava a própria saída em `<sha256>-p<início>-<fim>/`, e o m
 inteiro. O Node junta as partes na ordem de `page_range`. No `ingest.yml`, cada parte vira um
 item da matriz do job `extract` e um artifact `docling-<sha256>[-p<início>-<fim>]`.
 
-Download, chunking, embeddings, escrita no banco e upload para o Netlify Blobs ficam com o CLI
+Download, chunking, embeddings, escrita no banco e upload para o GitHub Releases (ADR 0030) ficam com o CLI
 do Node (`apps/api/src/adapters/in/cli`). Este job não usa segredos e só acessa a rede para
 baixar os modelos do Docling.
 

@@ -10,8 +10,8 @@ mantém a cobertura (`verified_at`, `gaps`, `gap_reason`) coerente com o que foi
 ### Requirement: GET condicional das páginas monitoradas
 
 O `sources-watch` MUST buscar cada página do `corpus/watch.yaml` pelo SafeFetcher com
-`If-None-Match` e `If-Modified-Since` guardados no `watch-state.json` do store `corpus-manifests` do
-BlobStore (Netlify Blobs até a migração da ADR 0030; depois, os releases `corpus-watch-state-*`), e SHALL
+`If-None-Match` e `If-Modified-Since` guardados no `watch-state.json` do store `corpus-manifests`
+(GitHub Releases, releases `corpus-watch-state-*`, ADR 0030), e SHALL
 manter o estado da página quando a resposta é `304`.
 
 #### Scenario: Página sem mudança
@@ -140,8 +140,8 @@ terminar vermelho depois de marcar as demais famílias.
 
 O role `teko_watch` MUST poder só ler `corpus.coverage` e atualizar `verified_at`, `gaps`,
 `gap_reason` e `gap_entries`; o job `mark-coverage` SHALL rodar no environment `corpus-watch` só com
-`NEON_PROD_WATCH_URL` e `NEON_STAGING_WATCH_URL`, e o job `detect` (com a credencial do BlobStore: o
-PAT da Netlify ou o `GITHUB_TOKEN` com `contents: write`) SHALL não tocar o banco.
+`NEON_PROD_WATCH_URL` e `NEON_STAGING_WATCH_URL`, e o job `detect` (com o `GITHUB_TOKEN` e
+`contents: write`, para os artefatos no GitHub Releases) SHALL não tocar o banco.
 
 #### Scenario: Escrita fora do permitido
 

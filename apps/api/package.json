@@ -42,7 +42,6 @@
     "@fastify/static": "catalog:",
     "@fastify/swagger": "catalog:",
     "@fastify/under-pressure": "catalog:",
-    "@netlify/blobs": "catalog:",
     "@scalar/fastify-api-reference": "catalog:",
     "@teko/shared": "workspace:*",
     "@vercel/functions": "catalog:",
