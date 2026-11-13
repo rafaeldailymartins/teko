@@ -1,5 +1,9 @@
 import { z } from 'zod'
-import { type EmbeddingPort, EmbeddingUnavailableError } from '#app/ports/embedding-port.ts'
+import {
+  type EmbeddingPort,
+  EmbeddingQuotaExceededError,
+  EmbeddingUnavailableError,
+} from '#app/ports/embedding-port.ts'
 
 /**
  * BGE-M3 pelo Workers AI (REST): `POST https://api.cloudflare.com/client/v4/accounts/{id}/ai/run/
@@ -50,6 +54,36 @@ export function workersAiEndpoint(accountId: string, model: string = BGE_M3_MODE
   return url
 }
 
+/** Código interno do Workers AI para "daily free allocation" esgotada (HTTP 429). */
+const DAILY_QUOTA_ERROR_CODE = 3036
+
+const quotaErrorSchema = z.object({
+  errors: z.array(z.object({ code: z.number().optional(), message: z.string().optional() })),
+})
+
+/**
+ * 429 com o código 3036 é a cota diária (zera às 00:00 UTC); o 429 com 3040 ("capacity
+ * temporarily exceeded") é transitório e segue como `EmbeddingUnavailableError`, com retry.
+ */
+async function isDailyQuotaExceeded(response: Response): Promise<boolean> {
+  if (response.status !== 429) {
+    return false
+  }
+  try {
+    const parsed = quotaErrorSchema.safeParse(await response.json())
+    return (
+      parsed.success &&
+      parsed.data.errors.some(
+        (error) =>
+          error.code === DAILY_QUOTA_ERROR_CODE ||
+          (error.message ?? '').includes('daily free allocation'),
+      )
+    )
+  } catch {
+    return false
+  }
+}
+
 function neuronsFrom(header: string | null, body: number | undefined): number | null {
   if (body !== undefined) {
     return body
@@ -83,6 +117,11 @@ export function createWorkersAiEmbeddingAdapter(options: WorkersAiOptions): Embe
         throw new EmbeddingUnavailableError('Workers AI inacessível', { cause: error })
       }
       if (!response.ok) {
+        if (await isDailyQuotaExceeded(response)) {
+          throw new EmbeddingQuotaExceededError(
+            'Workers AI: cota diária de neurons esgotada (HTTP 429, código 3036)',
+          )
+        }
         throw new EmbeddingUnavailableError(`Workers AI respondeu HTTP ${String(response.status)}`)
       }
       const parsed = responseSchema.safeParse(await response.json())
