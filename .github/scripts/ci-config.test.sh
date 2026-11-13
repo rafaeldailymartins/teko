@@ -199,6 +199,8 @@ ingest_blob_store_ok() {
 check "ingest: credenciais e egress do BLOB_STORE (netlify na C1, github-releases na C2)" ingest_blob_store_ok
 check "ingest e source-watch usam o mesmo BLOB_STORE" \
   bash -c "[[ \"\$(yq -r '.env.BLOB_STORE' '$ingest')\" == \"\$(yq -r '.env.BLOB_STORE' '$watch')\" ]]"
+check "ingest: accept_churn e max_pending_share no dispatch e no workflow_call, levados ao load" \
+  bash -c "yq -e '.on.workflow_dispatch.inputs.accept_churn.type == \"boolean\" and .on.workflow_call.inputs.accept_churn.type == \"boolean\" and .on.workflow_dispatch.inputs.max_pending_share.type == \"string\" and .on.workflow_call.inputs.max_pending_share.type == \"string\"' '$ingest' >/dev/null && yq -r '.jobs.load.steps[] | select(.id == \"load\") | .run' '$ingest' | grep -q -- '--accept-churn' && yq -r '.jobs.load.steps[] | select(.id == \"load\") | .run' '$ingest' | grep -q -- '--max-pending-share'"
 check "ingest: allowlist do load inclui Cloudflare e Neon" \
   yq_true '.jobs.load.steps[0].with."allowed-endpoints" | (test("api\\.cloudflare\\.com:443") and test("neon\\.tech:5432"))' "$ingest"
 check "ingest: discover, load e corpus-eval no environment staging" \
