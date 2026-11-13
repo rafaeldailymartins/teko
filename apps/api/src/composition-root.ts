@@ -60,6 +60,7 @@ import { createGetHealth } from '#app/use-cases/get-health.ts'
 import { createHybridSearch } from '#app/use-cases/hybrid-search.ts'
 import {
   createIngestDocumentVersion,
+  DEFAULT_BYTES_PER_CHUNK,
   DEFAULT_MAX_DATABASE_BYTES,
 } from '#app/use-cases/ingest-document-version.ts'
 import { createFinishIngestionRun, createStartIngestionRun } from '#app/use-cases/ingestion-run.ts'
@@ -181,6 +182,8 @@ export interface IngestionConfig {
   readonly embedNeuronBudget?: number
   /** Guarda de tamanho (padrão 800 MB). */
   readonly maxDatabaseBytes?: number
+  /** Bytes por chunk novo na guarda prospectiva (`INGEST_BYTES_PER_CHUNK`). */
+  readonly bytesPerChunk?: number
   /** `NEON_API_KEY_STAGING` e `NEON_STAGING_PROJECT_ID` (opcionais: sem eles, `cu_seconds` nulo). */
   readonly neonApiKey?: string
   readonly neonProjectId?: string
@@ -266,6 +269,7 @@ export function createIngestionContainer(
         hasher: sha256ContentHasher,
         databaseUsage,
         maxDatabaseBytes: config.maxDatabaseBytes ?? DEFAULT_MAX_DATABASE_BYTES,
+        bytesPerChunk: config.bytesPerChunk ?? DEFAULT_BYTES_PER_CHUNK,
       }),
       refreshCoverage: createRefreshCoverage({ repository }),
       exportSnapshot: createExportSnapshot(snapshotDeps),

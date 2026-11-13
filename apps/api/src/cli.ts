@@ -89,6 +89,7 @@ function ingestionContainer(env: Env, blobs: BlobStore, command: string): Ingest
       databaseUrl: requireDatabaseUrl(env, command),
       embedNeuronBudget: env.EMBED_NEURON_BUDGET,
       maxDatabaseBytes: env.INGEST_MAX_DB_BYTES,
+      bytesPerChunk: env.INGEST_BYTES_PER_CHUNK,
       ...(env.NEON_API_KEY_STAGING === undefined ? {} : { neonApiKey: env.NEON_API_KEY_STAGING }),
       ...(env.NEON_STAGING_PROJECT_ID === undefined
         ? {}

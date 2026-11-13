@@ -312,6 +312,7 @@ function setup(options: {
   readonly existing?: ExistingDocumentVersion | null
   readonly open?: OpenProvisionVersion[]
   readonly size?: number
+  readonly bytesPerChunk?: number
   readonly embed?: EmbedPendingResult
   readonly cached?: (hash: string) => number[] | undefined
   readonly provisionIds?: (keys: string[]) => Map<string, string>
@@ -343,6 +344,7 @@ function setup(options: {
     hasher,
     databaseUsage: { sizeBytes: () => Promise.resolve(options.size ?? 10) },
     maxDatabaseBytes: 100,
+    bytesPerChunk: options.bytesPerChunk ?? 1,
   })
   return { ingest, recorder, requested }
 }
@@ -400,6 +402,33 @@ describe('IngestDocumentVersion', () => {
     await expect(ingest(command(source([version('Art. 1. Texto.')])))).rejects.toBeInstanceOf(
       DatabaseSizeLimitError,
     )
+  })
+
+  it('guarda prospectiva: os chunks novos passariam do limite, aborta antes de embutir', async () => {
+    const { ingest, requested, recorder } = setup({ size: 60, bytesPerChunk: 25 })
+    // Duas redações novas, um chunk cada: 60 + 2 × 25 = 110 > 100.
+    const error = await ingest(
+      command(source([version('Art. 1. Texto.'), version('Art. 1. Outro.', iv('2010-01-01'))])),
+    ).catch((caught: unknown) => caught)
+    expect(error).toBeInstanceOf(DatabaseSizeLimitError)
+    expect(error).toMatchObject({
+      sizeBytes: 110,
+      limitBytes: 100,
+      projection: { currentBytes: 60, newChunks: 2, bytesPerChunk: 25 },
+    })
+    expect(String(error)).toMatch(/2 chunks novos/)
+    expect(requested).toEqual([])
+    expect(recorder.calls).toEqual([])
+
+    // Reaproveitar a mesma redação não conta chunk novo.
+    const reuse = setup({
+      size: 99,
+      bytesPerChunk: 25,
+      open: [open('pv', 'go:rcte:art:1', '#Art. 1. Texto.', iv('2000-01-01'))],
+    })
+    await expect(
+      reuse.ingest(command(source([version('Art. 1. Texto.', iv('2000-01-01'))]))),
+    ).resolves.toMatchObject({ status: 'published', provisionVersionsNew: 0 })
   })
 
   it('orçamento esgotado: devolve budget_exhausted sem abrir a transação', async () => {

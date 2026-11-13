@@ -39,7 +39,9 @@ import type { EmbedPending } from './embed-pending.ts'
  * 1. sha256 já publicado com revisão do parser igual ou maior → `unchanged`, sem tocar o banco nem
  *    a porta de embeddings; com revisão menor, a mesma versão de documento é reprocessada pelos
  *    passos seguintes (ADR 0026);
- * 2. guarda de tamanho (`pg_database_size` acima do limite aborta o run);
+ * 2. guarda de tamanho: `pg_database_size` acima do limite aborta o run, e, depois do
+ *    planejamento e antes dos embeddings, a projeção `tamanho + chunksNovos × bytesPorChunk`
+ *    também (guarda prospectiva);
  * 3. planejamento sem trava (`planReconciliation`) e embeddings só das redações novas, pelo
  *    `EmbedPending` (o `embedding_cache` é o checkpoint, com commit por lote). Orçamento esgotado →
  *    `budget_exhausted`, sem publicar nada da versão;
@@ -63,6 +65,12 @@ import type { EmbedPending } from './embed-pending.ts'
 
 /** Guarda de tamanho do plano: 800 MB (o limite do Neon Free é 1 GB). */
 export const DEFAULT_MAX_DATABASE_BYTES = 800 * 1024 * 1024
+
+/**
+ * Bytes por chunk novo na guarda prospectiva: `pg_database_size` dividido pelos chunks do staging
+ * medido em 2026-11-12 (≈ 10,6 KB, com vetor, texto, tsvector, fontes e índices).
+ */
+export const DEFAULT_BYTES_PER_CHUNK = 10_854
 
 interface IngestDocumentVersionCommand {
   readonly runId: string
@@ -111,6 +119,8 @@ export interface IngestDocumentVersionDeps {
   readonly hasher: ContentHasher
   readonly databaseUsage: DatabaseUsage
   readonly maxDatabaseBytes: number
+  /** Bytes por chunk novo na guarda prospectiva ({@link DEFAULT_BYTES_PER_CHUNK}). */
+  readonly bytesPerChunk: number
 }
 
 export class ReconciliationError extends Error {
@@ -349,6 +359,17 @@ export function createIngestDocumentVersion(
     const draft = reconcile(await deps.repository.openVersionsOf(source.document.slug))
     const newChunks = (plan: ReconciliationPlan) =>
       plan.insert.flatMap((ref) => resolve(byKey, ref).version.chunks)
+    // Guarda prospectiva: antes de embutir (o cache é commitado fora da transação), o tamanho
+    // depois da versão, pelos chunks novos ao tamanho médio medido, não pode passar do limite.
+    const chunkCount = newChunks(draft).length
+    const projected = size + chunkCount * deps.bytesPerChunk
+    if (projected > deps.maxDatabaseBytes) {
+      throw new DatabaseSizeLimitError(projected, deps.maxDatabaseBytes, {
+        currentBytes: size,
+        newChunks: chunkCount,
+        bytesPerChunk: deps.bytesPerChunk,
+      })
+    }
     const embedded = await deps.embedPending({
       runId,
       texts: newChunks(draft).map((chunk) => ({

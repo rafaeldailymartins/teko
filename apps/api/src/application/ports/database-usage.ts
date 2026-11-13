@@ -24,16 +24,29 @@ export interface ComputeUsageMeter {
   computeSeconds(): Promise<number | null>
 }
 
+/** Projeção da guarda prospectiva: os chunks novos da versão, ao tamanho médio medido. */
+interface SizeProjection {
+  readonly currentBytes: number
+  readonly newChunks: number
+  readonly bytesPerChunk: number
+}
+
 export class DatabaseSizeLimitError extends Error {
   readonly sizeBytes: number
   readonly limitBytes: number
+  readonly projection: SizeProjection | null
 
-  constructor(sizeBytes: number, limitBytes: number) {
+  constructor(sizeBytes: number, limitBytes: number, projection: SizeProjection | null = null) {
     super(
-      `banco com ${String(sizeBytes)} bytes, acima do limite de ${String(limitBytes)} bytes: ingestão abortada`,
+      projection === null
+        ? `banco com ${String(sizeBytes)} bytes, acima do limite de ${String(limitBytes)} bytes: ingestão abortada`
+        : `banco com ${String(projection.currentBytes)} bytes + ${String(projection.newChunks)} chunks novos × ` +
+            `${String(projection.bytesPerChunk)} bytes = ${String(sizeBytes)} bytes, acima do limite de ` +
+            `${String(limitBytes)} bytes: ingestão abortada antes dos embeddings`,
     )
     this.name = 'DatabaseSizeLimitError'
     this.sizeBytes = sizeBytes
     this.limitBytes = limitBytes
+    this.projection = projection
   }
 }
