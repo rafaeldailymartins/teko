@@ -1,17 +1,17 @@
 {
   "format": 1,
-  "corpusVersion": 12,
+  "corpusVersion": 13,
   "snapshot": {
-    "manifestKey": "snapshots/12/manifest.json",
-    "corpusVersion": 12,
-    "createdAt": "2026-11-13T03:50:47.327Z",
+    "manifestKey": "snapshots/13/manifest.json",
+    "corpusVersion": 13,
+    "createdAt": "2026-11-13T18:11:28.015Z",
     "migration": "113d9d706398c5dc31cf9c2dc389bdd6d6c08224f9321ae60028b114283649b4",
-    "manifestSha256": "15bf7e422de060f42160666c88e56e63ef0ea0397d57810cfdf274d076ef52b6"
+    "manifestSha256": "0d20f4d6bf15ee6729c3b3e5d7e63b6576fba51d58cf354c99e0b55d8d87501f"
   },
   "updatedAt": "2026-11-13",
   "sources": {
     "cte/consolidado": {
-      "sha256": "b5280ebd5e13f3b75570197c0000d4a907c4726538af2698d2b88dbc983e848e",
+      "sha256": "d6b92c53f7757bf6d1e492663dbf6fa51c7937c55b4e0979ca52b3edf10c7fde",
       "versionLabel": "CTE atualizado até a Lei nº 24.608, de 06.11.26",
       "publishedOn": "2026-11-06"
     },
@@ -191,7 +191,7 @@
       "publishedOn": "2023-03-16"
     },
     "rcte/consolidado": {
-      "sha256": "6e14352ac3cd4d75ec81897a3083f1e58259dd4ef1eea8008168de01dbcab318",
+      "sha256": "4b0268d693929d2f1719945c928a8ad1cdb56d6366fba37b4e3a4a8624c54bc1",
       "versionLabel": "RCTE consolidado até o Decreto nº 10.986, de 16.09.26",
       "publishedOn": "2026-09-16"
     },
@@ -220,7 +220,7 @@
     "gitSha": "unknown",
     "embeddingModel": "@cf/baai/bge-m3",
     "parserRevisions": {
-      "go-html-state-machine": 1,
+      "go-html-state-machine": 2,
       "docling-guia": 2,
       "docling-generic": 2,
       "reinf-xsd": 1,
@@ -233,9 +233,9 @@
   "health": {
     "cte": {
       "family": "cte",
-      "provisions": 1163,
-      "chunks": 1400,
-      "pending": 281,
+      "provisions": 1165,
+      "chunks": 1403,
+      "pending": 278,
       "versions": 1681
     },
     "guia-pratico-efd-goias": {
@@ -269,8 +269,8 @@
     "rcte": {
       "family": "rcte",
       "provisions": 7040,
-      "chunks": 8422,
-      "pending": 306,
+      "chunks": 8425,
+      "pending": 303,
       "versions": 8728
     },
     "tabela-go-5-1-1": {
