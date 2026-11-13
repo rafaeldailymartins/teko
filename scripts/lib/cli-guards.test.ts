@@ -17,7 +17,7 @@ import { CliGuardError, compareCodeUnits, findOnSafePath, resolveInsideRoot } fr
 /**
  * Guardas dos scripts da raiz (`scripts/*.ts`). Roda com o test runner nativo do Node 24
  * (`pnpm test:scripts` = `node --test`), sem pacote nem dependência: os scripts ficam fora dos três
- * pacotes do workspace, e o `turbo boundaries` proíbe que um pacote importe arquivos de fora dele.
+ * pacotes do workspace, e um pacote não importa arquivos de fora dele.
  * Cobre os helpers de `cli-guards.ts` e, de ponta a ponta, que os scripts não aceitam caminho
  * nem executável na linha de comando: `check-lockfile` não aceita argumento algum e
  * `pack-vercel-output` aceita só `--env production|staging`.

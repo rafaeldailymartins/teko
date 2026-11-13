@@ -36,7 +36,7 @@ docs, mensagens), no estilo do que já existe: frases diretas, sem jargão desne
   prefixo permitido: `feature/`, `fix/`, `chore/`, `docs/`, `refactor/`, `perf/`, `test/`, `ci/` ou
   `build/`.
 - Commits com `git commit -s` (DCO; a assinatura SSH já está configurada). Conventional Commits,
-  com escopo da lista única (`commitlint.config.mjs`). `Co-Authored-By` antes do `Signed-off-by`.
+  com escopo da lista única (`.github/commit-types.json`). `Signed-off-by` e depois `Co-Authored-By`.
 - **Para atualizar a branch de um PR, use `gh pr update-branch`; nunca faça merge local sem
   `--signoff`:** o `dco` só isenta o merge commit do `web-flow`.
 - O PR usa o template; o título vira a mensagem do squash. Com os checks verdes,
@@ -47,8 +47,10 @@ docs, mensagens), no estilo do que já existe: frases diretas, sem jargão desne
 - `pnpm verify`: camada rápida (lint, typecheck, knip, `lint:deps`, `lint:monorepo`, dup,
   type-coverage, `spec:validate`, `check-lockfile`, `test:unit`). O pre-push roda a versão afetada.
 - `pnpm verify:full` antes de PR que toca integração, ingestão, build ou CI: soma integração
-  (Testcontainers, Docker ligado), `test:scripts`, build, Python e os testes de shell do CI.
-- Enquanto os scripts `verify` não existirem, rode a lista equivalente do `CONTRIBUTING.md`.
+  (Testcontainers, Docker ligado), `test:scripts`, build, os testes de shell do CI
+  (`verify:ci`), o Python (`verify:python`) e o audit (`verify:audit`). Os dois chamam `pnpm` de
+  novo, então ele precisa estar no PATH (`corepack enable` ou um atalho).
+- Mutação só roda à noite no CI; ao mexer no domínio, rode `pnpm test:mutation` localmente.
 - Workflows novos ou alterados: actionlint (Docker `rhysd/actionlint`) e
   `bash .github/scripts/ci-config.test.sh` (precisa de `jq` e `yq`).
 - Em `tools/ingest`: `uv run --frozen ruff check . && uv run --frozen ruff format --check . && uv run --frozen pyright && uv run --frozen pytest`.

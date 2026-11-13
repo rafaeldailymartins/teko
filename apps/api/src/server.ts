@@ -1,6 +1,6 @@
 import closeWithGrace from 'close-with-grace'
 import type { FastifyInstance } from 'fastify'
-import { createRuntime, type Runtime } from './composition-root.ts'
+import type { Runtime } from './composition-root.ts'
 import { EnvValidationError, loadEnv } from './config/env.ts'
 import { createGracefulShutdown } from './graceful-shutdown.ts'
 
@@ -48,6 +48,10 @@ function serve({ app, container, shutdown }: Runtime, address: ListenAddress): v
 
 try {
   const env = loadEnv()
+  // Import dinâmico do resto da app (plano, `server.ts`): a partir da F6, o SDK do OTel
+  // (`instrumentation.ts`) e o do Sentry sobem aqui, antes de qualquer módulo instrumentado
+  // (Fastify, `pg`) ser carregado. Até lá, só o env (e o `zod`) é carregado antes.
+  const { createRuntime } = await import('./composition-root.ts')
   const runtime = await createRuntime(env)
   await runtime.app.ready()
   serve(runtime, { host: env.HOST, port: env.PORT })

@@ -31,10 +31,49 @@ export interface Database {
   close(): Promise<void>
 }
 
-/** Conexão nova a cada erro de reconexão após o scale-to-zero do Neon (57P01, ECONNRESET). */
-const DEFAULT_MAX_CONNECTIONS = 5
+/**
+ * Padrões do plano (regras de CU-h, item 3): `{max: 3, idleTimeoutMillis: 5_000,
+ * connectionTimeoutMillis: 8_000}` por instância. Os timeouts de consulta ficam no role.
+ */
+export const DEFAULT_MAX_CONNECTIONS = 3
 const DEFAULT_IDLE_TIMEOUT_MS = 5000
-const CONNECTION_TIMEOUT_MS = 10_000
+const CONNECTION_TIMEOUT_MS = 8000
+
+/**
+ * Erros de conexão transitórios: `57P01` (`admin_shutdown`, o Neon encerrou a conexão ao suspender
+ * o compute) e `ECONNRESET` (o socket caiu). Procurados também no `cause`, porque o Drizzle embrulha
+ * o erro do `pg`.
+ */
+const TRANSIENT_CONNECTION_CODES: ReadonlySet<string> = new Set(['57P01', 'ECONNRESET'])
+
+export function isTransientConnectionError(error: unknown): boolean {
+  let current: unknown = error
+  for (let depth = 0; depth < 5 && current instanceof Error; depth += 1) {
+    const code: unknown = (current as { code?: unknown }).code
+    if (typeof code === 'string' && TRANSIENT_CONNECTION_CODES.has(code)) {
+      return true
+    }
+    current = current.cause
+  }
+  return false
+}
+
+/**
+ * Retry único de uma leitura idempotente (plano, regras de CU-h, item 4): se a primeira tentativa
+ * cair por erro de conexão transitório (a conexão do pool morreu com o scale-to-zero do Neon), a
+ * leitura roda de novo, inteira, numa conexão nova. Só para leituras sem efeito: uma escrita ou uma
+ * transação já confirmada pela metade nunca passa por aqui.
+ */
+export async function retryTransientRead<T>(read: () => Promise<T>): Promise<T> {
+  try {
+    return await read()
+  } catch (error) {
+    if (!isTransientConnectionError(error)) {
+      throw error
+    }
+    return read()
+  }
+}
 
 export function createDatabase(options: DatabaseOptions): Database {
   const pool = new pg.Pool({
@@ -44,8 +83,8 @@ export function createDatabase(options: DatabaseOptions): Database {
     connectionTimeoutMillis: CONNECTION_TIMEOUT_MS,
     application_name: options.applicationName,
   })
-  // Um erro numa conexão ociosa (ex.: compute do Neon suspenso) não pode derrubar o processo; a
-  // próxima query abre outra conexão.
+  // Um erro numa conexão ociosa (ex.: compute do Neon suspenso) não pode derrubar o processo: o
+  // pool descarta a conexão, e a próxima query abre outra (com o `retryTransientRead` nas leituras).
   pool.on('error', () => {})
   const db = drizzle({ client: pool })
   let closed: Promise<void> | undefined

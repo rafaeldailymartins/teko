@@ -28,7 +28,7 @@ import { loadGolden } from '../datasets/load-golden.ts'
  * mais usados. Precisa de `CF_ACCOUNT_ID` e `CF_AI_TOKEN` (escopo Workers AI), que nunca entram no
  * repositório; o custo (neurons) sai no fim.
  *
- * O texto embutido é exatamente o que o `WriteCorpus` embute (`embeddingText(heading_path,
+ * O texto embutido é exatamente o que a ingestão (e o seed) embute (`embeddingText(heading_path,
  * content)`) e o que a busca embute (a pergunta): qualquer mudança no chunker, nos títulos ou no
  * golden pede uma nova rodada.
  */

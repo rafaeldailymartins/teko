@@ -95,39 +95,8 @@ jobs:
           advanced-security: false
           annotations: true
 
-  osv-scanner:
-    name: osv-scanner
-    runs-on: ubuntu-24.04
-    timeout-minutes: 10
-    permissions:
-      contents: read
-    steps:
-      - name: Harden runner
-        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
-        with:
-          egress-policy: audit
-
-      - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-
-      - name: Listar lockfiles
-        id: lockfiles
-        run: |
-          {
-            echo 'args<<OSV_ARGS'
-            echo '--lockfile=pnpm-lock.yaml'
-            if [[ -f tools/ingest/uv.lock ]]; then
-              echo '--lockfile=tools/ingest/uv.lock'
-            fi
-            echo 'OSV_ARGS'
-          } >>"$GITHUB_OUTPUT"
-
-      - name: osv-scanner (pnpm-lock.yaml e uv.lock)
-        uses: google/osv-scanner-action/osv-scanner-action@b1d267aea5211fa648d9d442fa64b90dbdcbdd36 # v2.7.0
-        with:
-          scan-args: ${{ steps.lockfiles.outputs.args }}
+  # O osv-scanner (vulnerabilidades conhecidas nos lockfiles) fica no audit.yml, fora do PR, como o
+  # `pnpm audit` (ADR 0032). No PR, o dependency-review olha só as dependências que o PR introduz.
 
   semgrep:
     name: semgrep

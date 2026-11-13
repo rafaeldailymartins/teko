@@ -205,8 +205,10 @@ direta (o staging também pelo `ingest load --migrate`). Sempre expand/contract:
   citada vem sempre do chunk.
 - **`ResolveReferenceDate`:** precedência escolha explícita → data única do texto → `default`
   (mês anterior). O PA `AAAA-MM` resolve para o dia 1; `periodBoundaryInside=true` quando alguma
-  evidência relevante tem vigência que se sobrepõe ao mês sem contê-lo inteiro
-  (`valid_during && daterange(PA)`), e a UI avisa. Conflito entre texto e escolha explícita, ou
+  evidência tem vigência que começa ou termina dentro do mês ou, se nenhuma tem, quando alguma
+  redação da unidade de topo das evidências e das chaves citadas (artigo, registro, evento,
+  tabela) cruza o mês com fronteira dentro dele (`valid_during && daterange(PA)`, consulta só
+  nesse caso), e a UI avisa. Conflito entre texto e escolha explícita, ou
   datas conflitantes no texto, dão `needs_clarification`. "Hoje" em `America/Sao_Paulo`.
 - **`CheckCoverage`:** cobertura efetiva = `covered * datemultirange(daterange(NULL,
   verified_at + 1))` menos `gaps` (ADR 0009). Data fora → `refused/out_of_coverage` sem LLM;

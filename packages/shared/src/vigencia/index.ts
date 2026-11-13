@@ -1,10 +1,7 @@
 export {
-  type CoveragePartition,
   effectiveCoverage,
-  type FamilyCoverageInput,
   findCoveringInterval,
   isDateCovered,
-  partitionFamiliesByCoverage,
   subtractIntervals,
 } from './coverage.ts'
 export {
@@ -70,6 +67,5 @@ export {
   lastIncludedDay,
   mergeIntervals,
   overlaps,
-  singleDayInterval,
   type ValidityInterval,
 } from './validity-interval.ts'

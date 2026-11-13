@@ -11,17 +11,10 @@ on:
       affected:
         description: >-
           JSON do job `affected` do pr-gate.yml
-          ({web, api, shared, ingest, rag, llm, packages}). Vazio = recalcular aqui.
+          ({web, api, shared, ingest, rag, llm, docs, code, packages}). Vazio = recalcular aqui.
         type: string
         required: false
         default: ""
-    secrets:
-      SONAR_TOKEN:
-        description: >-
-          Token da SonarQube Cloud. Em PR do Dependabot vem dos segredos do Dependabot (o mantenedor
-          cadastra o mesmo SONAR_TOKEN lá). Ausente em PR de fork: o job `sonar` termina verde sem
-          analisar.
-        required: false
   push:
     branches: [develop, main]
 
@@ -62,7 +55,7 @@ jobs:
         env:
           AFFECTED: ${{ inputs.affected }}
         run: |
-          jq -e 'has("packages") and has("ingest")' <<<"$AFFECTED" >/dev/null
+          jq -e 'has("packages") and has("ingest") and has("code")' <<<"$AFFECTED" >/dev/null
           echo "json=$(jq -c . <<<"$AFFECTED")" >>"$GITHUB_OUTPUT"
 
       - name: Checkout (histórico completo)
@@ -85,12 +78,17 @@ jobs:
           BEFORE_SHA: ${{ github.event.before }}
         run: bash .github/scripts/affected.sh
 
+  # Sempre roda (é o job que todo PR exercita). Num PR só de documentação (`code: false`, grupo
+  # `docs` do affected-paths.yml), só o Biome, o lockfile e o OpenSpec; o resto pula (ADR 0032).
   lint:
     name: lint
+    needs: scope
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
       contents: read
+    env:
+      HAS_CODE: ${{ fromJSON(needs.scope.outputs.json).code }}
     steps:
       - name: Harden runner
         uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
@@ -113,43 +111,52 @@ jobs:
         # deploy (lidos pelo Dependabot e pelos jobs de deploy), sem argumentos.
         run: pnpm check-lockfile
 
-      - name: Consistência do monorepo (sherif)
-        run: pnpm lint:monorepo
-
-      - name: Código e dependências não usados (knip)
-        run: pnpm knip
-
       - name: OpenSpec
         env:
           OPENSPEC_TELEMETRY: "0"
         run: pnpm spec:validate
 
+      # Confere as assinaturas do registry do que o PR instala. Os advisories (`pnpm audit`) ficam
+      # no audit.yml, fora do PR (ADR 0032).
+      - name: Assinaturas do registry
+        if: env.HAS_CODE == 'true'
+        run: pnpm audit signatures
+
+      - name: Consistência do monorepo (sherif)
+        if: env.HAS_CODE == 'true'
+        run: pnpm lint:monorepo
+
+      - name: Código e dependências não usados (knip)
+        if: env.HAS_CODE == 'true'
+        run: pnpm knip
+
       - name: Typecheck dos scripts da raiz
+        if: env.HAS_CODE == 'true'
         run: pnpm typecheck:scripts
 
-      # node:test nativo (Node 24): os scripts ficam fora dos pacotes, e o turbo boundaries proíbe
-      # que um pacote importe arquivos de fora dele.
+      # node:test nativo (Node 24): os scripts ficam fora dos pacotes do workspace.
       - name: Testes dos scripts da raiz
+        if: env.HAS_CODE == 'true'
         run: pnpm test:scripts
 
       - name: Duplicação (jscpd, 3%, min-tokens 70)
+        if: env.HAS_CODE == 'true'
         run: pnpm dup
 
-      - name: Fronteiras entre pacotes (turbo boundaries)
-        # Sem tags, confere imports de arquivos fora do pacote e dependências não declaradas;
-        # com as tags dos turbo.json dos pacotes, também as regras de `boundaries` da raiz.
-        run: pnpm exec turbo boundaries
-
       - name: Testes do escopo afetado (affected.sh e grafo do turbo)
+        if: env.HAS_CODE == 'true'
         run: bash .github/scripts/affected.test.sh
 
       - name: Testes da configuração de CI
+        if: env.HAS_CODE == 'true'
         run: bash .github/scripts/ci-config.test.sh
 
       - name: Testes do migration-guard
+        if: env.HAS_CODE == 'true'
         run: bash .github/scripts/migration-guard.test.sh
 
       - name: actionlint
+        if: env.HAS_CODE == 'true'
         env:
           ACTIONLINT_VERSION: 1.7.12
           ACTIONLINT_SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
@@ -187,10 +194,10 @@ jobs:
         with:
           turbo-cache: "true"
 
-      - name: Typecheck (tsc 7), dependency-cruiser, steiger e type-coverage
+      - name: Typecheck (tsc 7), dependency-cruiser e type-coverage
         # A task `transit` do turbo.json põe os inputs do packages/shared no hash de api/web, então
         # uma mudança só no shared também roda os checks dos dependentes.
-        run: pnpm exec turbo run typecheck lint:deps lint:fsd type-coverage --affected
+        run: pnpm exec turbo run typecheck lint:deps type-coverage --affected
 
       - name: Salvar cache do Turbo
         if: github.event_name == 'push'
@@ -210,7 +217,6 @@ jobs:
     timeout-minutes: 20
     permissions:
       contents: read
-      id-token: write # Codecov via OIDC, sem token no repositório
     steps:
       - name: Harden runner
         uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
@@ -233,8 +239,8 @@ jobs:
         env:
           EVENT_NAME: ${{ github.event_name }}
         run: |
-          # PR: só os pacotes afetados (a análise de PR do Sonar e o patch do Codecov olham só o
-          # código novo). Push: todos, para o Sonar receber a cobertura completa do branch; os
+          # PR: só os pacotes afetados (a análise de PR do Sonar olha só o código novo). Push:
+          # todos, para o Sonar receber a cobertura completa do branch; os
           # pacotes sem mudança saem do cache do Turbo, que restaura o coverage/ como output.
           if [[ "$EVENT_NAME" == push ]]; then
             pnpm exec turbo run test:unit
@@ -255,16 +261,6 @@ jobs:
           if-no-files-found: ignore
           retention-days: 1
 
-      - name: Enviar cobertura ao Codecov
-        # PRs de fork não recebem token OIDC.
-        if: ${{ !cancelled() && github.event.pull_request.head.repo.fork != true }}
-        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
-        with:
-          use_oidc: true
-          fail_ci_if_error: true
-          handle_no_reports_found: true
-          exclude: node_modules,tools
-
       - name: Salvar cache do Turbo
         if: github.event_name == 'push'
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -282,7 +278,6 @@ jobs:
     timeout-minutes: 20
     permissions:
       contents: read
-      id-token: write # Codecov via OIDC
     steps:
       - name: Harden runner
         uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
@@ -319,17 +314,6 @@ jobs:
           path: apps/api/coverage-integration/lcov.info
           if-no-files-found: ignore
           retention-days: 1
-
-      - name: Enviar cobertura da integração ao Codecov
-        if: ${{ !cancelled() && github.event.pull_request.head.repo.fork != true }}
-        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
-        with:
-          use_oidc: true
-          fail_ci_if_error: true
-          handle_no_reports_found: true
-          disable_search: true
-          files: apps/api/coverage-integration/lcov.info
-          flags: api-integration
 
       - name: Salvar cache do Turbo
         if: github.event_name == 'push'
@@ -503,43 +487,6 @@ jobs:
           path: .turbo/cache
           key: ${{ steps.setup.outputs.turbo-cache-key }}
 
-  audit:
-    name: audit
-    runs-on: ubuntu-24.04
-    timeout-minutes: 10
-    permissions:
-      contents: read
-    steps:
-      - name: Harden runner
-        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
-        with:
-          egress-policy: audit
-
-      - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-
-      - name: Setup
-        uses: ./.github/actions/setup
-
-      - name: Vulnerabilidades em dependências de produção
-        run: pnpm audit --prod --audit-level low
-
-      - name: Assinaturas do registry
-        run: pnpm audit signatures
-
-      # O Vercel CLI roda nos deploys com o VERCEL_TOKEN: a árvore inteira dele (devDependency do
-      # projeto isolado) também precisa estar livre de vulnerabilidades conhecidas.
-      - name: Vulnerabilidades no Vercel CLI isolado (tools/vercel-cli)
-        working-directory: tools/vercel-cli
-        run: pnpm audit --audit-level low
-
-      # Idem para o Netlify CLI, que roda nos deploys da web com o NETLIFY_AUTH_TOKEN.
-      - name: Vulnerabilidades no Netlify CLI isolado (tools/netlify-cli)
-        working-directory: tools/netlify-cli
-        run: pnpm audit --audit-level low
-
   python:
     name: python (tools/ingest)
     needs: scope
@@ -549,7 +496,6 @@ jobs:
     timeout-minutes: 20
     permissions:
       contents: read
-      id-token: write # Codecov via OIDC
     defaults:
       run:
         working-directory: tools/ingest
@@ -594,136 +540,24 @@ jobs:
           if-no-files-found: ignore
           retention-days: 1
 
-      - name: pip-audit (lockfile, inclusive o extra docling)
-        run: |
-          requirements="${RUNNER_TEMP}/ingest-requirements.txt"
-          uv export --frozen --no-dev --no-emit-project --all-extras --format requirements.txt \
-            --output-file "${requirements}.raw" >/dev/null
-          # Wheels do índice CPU do PyTorch têm versão local (torch==X+cpu), que não existe no PyPI e
-          # não pode ser auditada pelo nome. A versão pública é o mesmo release, então é ela que
-          # entra na consulta. O osv-scanner do security.yml audita o uv.lock como está.
-          sed -E 's/^([A-Za-z0-9._-]+==[^ +;]+)\+[A-Za-z0-9.]+/\1/' "${requirements}.raw" >"$requirements"
-          uv run --frozen pip-audit --strict --require-hashes --disable-pip -r "$requirements"
+      # Vulnerabilidades do uv.lock: osv-scanner do audit.yml, fora do PR (o pip-audit saiu, ADR 0032).
 
-      - name: Enviar cobertura ao Codecov
-        if: ${{ !cancelled() && github.event.pull_request.head.repo.fork != true }}
-        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
-        with:
-          use_oidc: true
-          fail_ci_if_error: true
-          disable_search: true
-          files: tools/ingest/coverage.xml
-          flags: ingest
-
-  # SonarQube Cloud (análise pelo CI; a automática fica desligada no projeto). O scanner espera o
-  # quality gate (sonar.qualitygate.wait) e falha se ele reprovar, então o resultado do Sonar
-  # chega aos rulesets pelo `ci-gate` do pr-gate.yml. O check "SonarQube Cloud Code Analysis" que o
-  # App da SonarQube Cloud publica NÃO deve ser exigido nos rulesets: ele nunca aparece em PR de
-  # fork (sem segredos) e, sem o SONAR_TOKEN nos segredos do Dependabot, nem nos do Dependabot.
-  # Escopo, exclusões e caminhos de cobertura ficam em sonar-project.properties. Espera test,
-  # integration e python para importar os lcov (unitário e integração) e o coverage.xml.
+  # SonarQube Cloud em push para develop, só informativo (ADR 0032; em PR quem chama o sonar.yml é
+  # o pr-gate.yml). Só develop: o plano gratuito analisa apenas a branch principal do projeto
+  # (configurada lá como `develop`) e PRs; analisar `main` falha com "Organization is not allowed
+  # to access data from non main branches". Espera test, integration e python para importar o lcov
+  # dos unitários e da integração e o coverage.xml; não roda se um deles falhou.
   sonar:
     name: sonar
     needs: [scope, test, integration, python]
-    # Roda também quando test/python foram pulados (escopo sem pacote JS ou sem ingest), para que
-    # todo PR receba o check do Sonar; não roda se um deles falhou ou foi cancelado.
-    # Em push, só em develop: o plano gratuito do SonarQube Cloud analisa apenas a branch principal
-    # do projeto (configurada lá como `develop`) e PRs; analisar `main` falha com "Organization is
-    # not allowed to access data from non main branches".
     if: >-
-      ${{ !cancelled() && needs.scope.result == 'success'
-      && (github.event_name != 'push' || github.ref == 'refs/heads/develop')
+      ${{ !cancelled() && github.event_name == 'push' && github.ref == 'refs/heads/develop'
+      && needs.scope.result == 'success'
       && contains(fromJSON('["success", "skipped"]'), needs.test.result)
       && contains(fromJSON('["success", "skipped"]'), needs.integration.result)
       && contains(fromJSON('["success", "skipped"]'), needs.python.result) }}
-    runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    uses: ./.github/workflows/sonar.yml
     permissions:
       contents: read
-    steps:
-      - name: Harden runner
-        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
-        with:
-          egress-policy: audit
-
-      - name: Conferir token e variáveis do Sonar
-        id: preflight
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_ORGANIZATION: ${{ vars.SONAR_ORGANIZATION }}
-          SONAR_PROJECT_KEY: ${{ vars.SONAR_PROJECT_KEY }}
-        run: |
-          # PRs de fork não recebem segredos; os do Dependabot só recebem os segredos do
-          # Dependabot (SONAR_TOKEN precisa estar cadastrado lá também). Sem token, pula sem falhar.
-          if [[ -z "${SONAR_TOKEN}" ]]; then
-            echo "::notice title=sonar::SONAR_TOKEN indisponível neste evento (fork, ou Dependabot sem o segredo do Dependabot); análise do SonarQube Cloud pulada."
-            echo "run=false" >>"$GITHUB_OUTPUT"
-            exit 0
-          fi
-          if [[ -z "${SONAR_ORGANIZATION}" || -z "${SONAR_PROJECT_KEY}" ]]; then
-            echo "::error title=sonar::Defina as variáveis de repositório SONAR_ORGANIZATION e SONAR_PROJECT_KEY."
-            exit 1
-          fi
-          echo "run=true" >>"$GITHUB_OUTPUT"
-
-      - name: Checkout (histórico completo para blame e código novo)
-        if: steps.preflight.outputs.run == 'true'
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          fetch-depth: 0
-          persist-credentials: false
-
-      - name: Setup
-        # As dependências instaladas dão ao analisador de TypeScript os tipos reais dos pacotes.
-        if: steps.preflight.outputs.run == 'true'
-        uses: ./.github/actions/setup
-
-      - name: Baixar o lcov dos testes unitários
-        if: steps.preflight.outputs.run == 'true' && needs.test.result == 'success'
-        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
-        with:
-          pattern: coverage-lcov
-          path: ${{ github.workspace }}
-          merge-multiple: true
-
-      - name: Baixar o lcov da integração
-        if: steps.preflight.outputs.run == 'true' && needs.integration.result == 'success'
-        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
-        with:
-          pattern: coverage-lcov-integration
-          # Um arquivo só: o artifact guarda o lcov.info sem o diretório, e o destino o recoloca.
-          path: ${{ github.workspace }}/apps/api/coverage-integration
-          merge-multiple: true
-
-      - name: Baixar o coverage.xml do tools/ingest
-        if: steps.preflight.outputs.run == 'true' && needs.python.result == 'success'
-        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
-        with:
-          pattern: coverage-python
-          path: ${{ github.workspace }}/tools/ingest
-          merge-multiple: true
-
-      - name: Caminhos do lcov a partir da raiz do repositório
-        if: steps.preflight.outputs.run == 'true'
-        run: |
-          # O Vitest grava `SF:src/...` relativo ao pacote; o Sonar resolve caminhos relativos
-          # contra a raiz do projeto. Caminhos absolutos ficam como estão.
-          shopt -s nullglob
-          for lcov in apps/*/coverage/lcov.info apps/*/coverage-integration/lcov.info packages/*/coverage/lcov.info; do
-            pkg="${lcov%/coverage*/lcov.info}"
-            sed -i -E "\#^SF:${pkg}/#! s#^SF:([^/])#SF:${pkg}/\1#" "$lcov"
-            echo "${lcov}: $(grep -c '^SF:' "$lcov") arquivo(s)"
-          done
-
-      - name: Análise SonarQube Cloud (falha se o quality gate reprovar)
-        if: steps.preflight.outputs.run == 'true'
-        uses: SonarSource/sonarqube-scan-action@e805d875275f728fac1885b413934be6d7c63f65 # v8.4.1
-        timeout-minutes: 10
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        with:
-          args: >-
-            -Dsonar.organization=${{ vars.SONAR_ORGANIZATION }}
-            -Dsonar.projectKey=${{ vars.SONAR_PROJECT_KEY }}
-            -Dsonar.qualitygate.wait=true
-            -Dsonar.qualitygate.timeout=300
+    secrets:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}

@@ -13,7 +13,6 @@ import {
   lastIncludedDay,
   mergeIntervals,
   overlaps,
-  singleDayInterval,
   type ValidityInterval,
 } from './validity-interval.ts'
 
@@ -34,10 +33,6 @@ describe('createInterval', () => {
     expect(() => createInterval('2021-01-01', '2020-01-01')).toThrow(RangeError)
     expect(() => createInterval('2020-02-30', null)).toThrow(/from/)
     expect(() => createInterval(null, '2020-13-01')).toThrow(/to/)
-  })
-
-  it('cria o intervalo de um único dia', () => {
-    expect(singleDayInterval('2024-02-29')).toEqual({ from: '2024-02-29', to: '2024-03-01' })
   })
 })
 

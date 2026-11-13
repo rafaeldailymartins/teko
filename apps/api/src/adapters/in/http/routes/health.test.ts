@@ -29,7 +29,6 @@ const container: Container = {
       throw new Error('fora do escopo deste teste')
     },
     retrieval: null,
-    writeCorpus: null,
   },
   backgroundTasks: { run: () => {}, pending: () => 0, drain: async () => 0 },
   clientIp: { resolve: () => ({ ip: null, source: 'none' }) },

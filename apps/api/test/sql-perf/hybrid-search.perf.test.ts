@@ -3,7 +3,7 @@ import pg from 'pg'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import {
   ARM_LIMIT,
-  HNSW_SETTINGS,
+  HNSW_SETTINGS_SQL,
   HYBRID_SEARCH_SQL,
   toVectorLiteral,
 } from '#adapters/out/persistence/drizzle/sql/hybrid-search.ts'
@@ -68,7 +68,7 @@ function parameters(seed: number, date: string, families: readonly string[]) {
 async function inTransaction<T>(run: () => Promise<T>, extra: readonly string[] = []): Promise<T> {
   await app.query('BEGIN READ ONLY')
   try {
-    for (const statement of [...HNSW_SETTINGS, ...extra]) {
+    for (const statement of [HNSW_SETTINGS_SQL, ...extra]) {
       await app.query(statement)
     }
     return await run()

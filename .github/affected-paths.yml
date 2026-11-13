@@ -6,7 +6,7 @@
 
 # Ingestão: pipeline Python, corpus versionado (inclui corpus/watch.yaml), o domínio do corpus, os
 # CLIs da API (ingest, sources-watch, snapshot, eval-fixture, seed-fixtures) e os workflows de
-# ingestão e monitoramento (que, como todo workflow, também marcam tudo como afetado).
+# ingestão e monitoramento.
 ingest:
   - tools/ingest/**
   - corpus/**
@@ -31,9 +31,11 @@ llm:
   - apps/api/src/application/prompts/**
   - apps/api/src/adapters/out/llm/**
 
-# Documentação: docs, OpenSpec e todo Markdown. O ci.yml usa o grupo para reconhecer o PR só de
-# documentação (o grupo marca a presença de docs; os demais grupos dizem se houve outra mudança).
+# Documentação: nada aqui é entrada de build, teste ou gate de código. A chave `docs` diz se algum
+# destes arquivos mudou; a chave derivada `code` diz se mudou algum arquivo FORA deles. Um PR só de
+# docs (`code: false`) roda no job `lint` só o Biome, o OpenSpec e o lockfile (ADR 0032).
 docs:
   - docs/**
   - openspec/**
   - "**/*.md"
+  - .claude/**

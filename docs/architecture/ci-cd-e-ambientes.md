@@ -85,7 +85,7 @@ cache do Turbo salvo só em push no tronco.
 | `ci.yml`            | `workflow_call`; push no tronco                    | camada rápida, integração, build e guards, `migration-guard`, Python, retrieval evals (se `rag`/`ingest`), Sonar informativo     |
 | `codeql.yml`        | PR, push no tronco, semanal                        | `Analyze (*)`                                                                                                                    |
 | `pr-hygiene.yml`    | PR                                                 | `pr-title`, `dco`, labeler (`gitflow-guard` sai com o trunk-based)                                                               |
-| `security.yml`      | `workflow_call`; push; agendado                    | Semgrep, gitleaks, zizmor, dependency-review (PR), osv-scanner; `pnpm audit` só fora do PR                                       |
+| `security.yml`      | `workflow_call`; push; agendado                    | Semgrep, gitleaks, zizmor, dependency-review (PR); `pnpm audit` e osv-scanner no `audit.yml`, fora do PR                         |
 | `scorecard.yml`     | push no tronco, semanal                            | `publish_results: true`                                                                                                          |
 | `mutation.yml`      | nightly                                            | Stryker em `apps/api` e `packages/shared`, só se houver commit novo desde o último run verde                                     |
 | `perf.yml`          | `workflow_call` (perfil `pr`); pré-release         | `sql-perf` (gate), bench e autocannon (informativos), k6 `smoke` (PR) e `load` (pré-release)                                     |

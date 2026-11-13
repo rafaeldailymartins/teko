@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import {
   ARM_LIMIT,
-  HNSW_SETTINGS,
+  HNSW_SETTINGS_SQL,
   HYBRID_SEARCH_SQL,
   LEXICAL_ONLY_SQL,
+  PERIOD_VERSIONS_SQL,
   RRF_K,
   toVectorLiteral,
 } from './hybrid-search.ts'
@@ -30,9 +31,26 @@ describe('SQL da busca híbrida', () => {
       expect(sql).toContain('c.valid_during @> $3::date AND upper_inf(c.knowledge)')
       expect(sql).toContain('p.stable_key = ANY($5::text[])')
       expect(sql).toContain('LIMIT $7::int')
+      expect(sql).toContain('lower(c.valid_during)::text AS valid_from')
+      expect(sql).toContain('upper(c.valid_during)::text AS valid_to')
     }
     expect(ARM_LIMIT).toBe(50)
-    expect(HNSW_SETTINGS).toContain('SET LOCAL hnsw.iterative_scan = relaxed_order')
+    // Os três ajustes locais à transação num só SELECT, sem parâmetros (protocolo simples).
+    expect(HNSW_SETTINGS_SQL).toContain("set_config('hnsw.iterative_scan', 'relaxed_order', true)")
+    expect(HNSW_SETTINGS_SQL).toContain("set_config('hnsw.ef_search', '100', true)")
+    expect(HNSW_SETTINGS_SQL).toContain("set_config('hnsw.max_scan_tuples', '20000', true)")
+    expect(placeholders(HNSW_SETTINGS_SQL)).toEqual([])
+  })
+
+  it('vigências do PA: 5 parâmetros, fronteira estrita dentro do mês, mesmos filtros da busca', () => {
+    expect(placeholders(PERIOD_VERSIONS_SQL)).toEqual([1, 2, 3, 4, 5])
+    expect(PERIOD_VERSIONS_SQL).toContain('pv.valid_during && daterange($1::date, $2::date)')
+    expect(PERIOD_VERSIONS_SQL).toContain(
+      '(lower(pv.valid_during) > $1::date OR upper(pv.valid_during) < $2::date)',
+    )
+    expect(PERIOD_VERSIONS_SQL).toContain('upper_inf(pv.knowledge)')
+    expect(PERIOD_VERSIONS_SQL).toContain("p.stable_key LIKE k || ':%'")
+    expect(PERIOD_VERSIONS_SQL).toContain('lower(pv.valid_during)::text AS valid_from')
   })
 
   it('toVectorLiteral gera o literal do halfvec e recusa valores não finitos', () => {

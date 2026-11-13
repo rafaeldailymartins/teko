@@ -82,4 +82,21 @@ describe('createWorkersAiRerankerAdapter', () => {
       ),
     ).rejects.toThrow(/notas para 2 de 2 textos/)
   })
+
+  it('corpo que não é JSON ou conexão encerrada na leitura vira RerankerUnavailableError', async () => {
+    const html = adapter(() => Promise.resolve(new Response('<html>502</html>', { status: 200 })))
+    const htmlError = await html.rerank('q', ['a']).catch((error: unknown) => error)
+    expect(htmlError).toBeInstanceOf(RerankerUnavailableError)
+    expect(htmlError).toMatchObject({ message: expect.stringMatching(/corpo ilegível/) })
+    expect((htmlError as Error).cause).toBeInstanceOf(SyntaxError)
+    const cut = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(new TextEncoder().encode('{"success":tr'))
+        controller.error(new TypeError('terminated'))
+      },
+    })
+    await expect(
+      adapter(() => Promise.resolve(new Response(cut))).rerank('q', ['a']),
+    ).rejects.toBeInstanceOf(RerankerUnavailableError)
+  })
 })

@@ -8,11 +8,11 @@ rules:
   # Remover quando o actionlint aceitar `$/` e migrar os `uses:`.
   self-repository:
     ignore:
+      - audit.yml
       - ci.yml
       - ingest.yml
       - mutation.yml
       - perf.yml
       - pr-gate.yml
+      - sonar.yml
       - source-watch.yml
-      - spike-api-vercel.yml
-      - spike-web-netlify.yml

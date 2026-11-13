@@ -19,11 +19,11 @@ import { createSafeFetcher } from '#adapters/out/http/safe-fetcher.ts'
 import { createNeonComputeUsage } from '#adapters/out/neon/neon-compute-usage.ts'
 import { createDatabase, type Database } from '#adapters/out/persistence/drizzle/client.ts'
 import { runMigrations } from '#adapters/out/persistence/drizzle/migrate.ts'
-import { createPgCorpusWriter } from '#adapters/out/persistence/drizzle/repositories/pg-corpus-writer.ts'
 import { createPgCoverageRepository } from '#adapters/out/persistence/drizzle/repositories/pg-coverage-repository.ts'
 import { createPgCoverageWatchRepository } from '#adapters/out/persistence/drizzle/repositories/pg-coverage-watch-repository.ts'
 import { createPgEmbeddingCache } from '#adapters/out/persistence/drizzle/repositories/pg-embedding-cache.ts'
 import { createPgFixtureCorpusReader } from '#adapters/out/persistence/drizzle/repositories/pg-fixture-corpus-reader.ts'
+import { createPgFixtureCorpusStore } from '#adapters/out/persistence/drizzle/repositories/pg-fixture-corpus-store.ts'
 import { createPgCorpusIngestionRepository } from '#adapters/out/persistence/drizzle/repositories/pg-ingestion-corpus-repository.ts'
 import {
   createPgDatabaseUsage,
@@ -56,6 +56,7 @@ import { createStreamBudget } from '#app/services/stream-budget.ts'
 import { createCheckCoverage } from '#app/use-cases/check-coverage.ts'
 import { createEmbedPending } from '#app/use-cases/embed-pending.ts'
 import { createExportSnapshot } from '#app/use-cases/export-snapshot.ts'
+import { createFindPeriodVersions } from '#app/use-cases/find-period-versions.ts'
 import { createGetHealth } from '#app/use-cases/get-health.ts'
 import { createHybridSearch } from '#app/use-cases/hybrid-search.ts'
 import {
@@ -70,7 +71,10 @@ import {
   type ResolveReferenceDate,
 } from '#app/use-cases/resolve-reference-date.ts'
 import { createRetrieveEvidence } from '#app/use-cases/retrieve-evidence.ts'
-import { createWriteCorpus, type WriteCorpus } from '#app/use-cases/write-corpus.ts'
+import {
+  createSeedFixtureCorpus,
+  type SeedFixtureCorpus,
+} from '#app/use-cases/seed-fixture-corpus.ts'
 import { PUBLISHABLE_REVIEW_STATUSES, ReviewStatus } from '#domain/corpus/family.ts'
 import { type BuildInfo, createBuildInfo } from '#domain/shared/build-info.ts'
 import { buildApp } from './build-app.ts'
@@ -252,47 +256,77 @@ export function createIngestionContainer(
     blobs: deps.blobStore,
     clock,
   }
+  const startIngestionRun = createStartIngestionRun(runDeps)
+  const finishIngestionRun = createFinishIngestionRun(runDeps)
+  const ingestDocumentVersion = createIngestDocumentVersion({
+    repository,
+    cache,
+    embedPending,
+    embeddingModel: embeddings.model,
+    hasher: sha256ContentHasher,
+    databaseUsage,
+    maxDatabaseBytes: config.maxDatabaseBytes ?? DEFAULT_MAX_DATABASE_BYTES,
+  })
+  const refreshCoverage = createRefreshCoverage({ repository })
   return {
     neuronBudget,
     useCases: {
-      startIngestionRun: createStartIngestionRun(runDeps),
-      finishIngestionRun: createFinishIngestionRun(runDeps),
+      startIngestionRun,
+      finishIngestionRun,
       embedPending,
-      ingestDocumentVersion: createIngestDocumentVersion({
-        repository,
-        cache,
-        embedPending,
-        embeddingModel: embeddings.model,
-        hasher: sha256ContentHasher,
-        databaseUsage,
-        maxDatabaseBytes: config.maxDatabaseBytes ?? DEFAULT_MAX_DATABASE_BYTES,
-      }),
-      refreshCoverage: createRefreshCoverage({ repository }),
+      ingestDocumentVersion,
+      refreshCoverage,
       exportSnapshot: createExportSnapshot(snapshotDeps),
       promoteSnapshot: createPromoteSnapshot(snapshotDeps),
+      seedFixtureCorpus: createSeedFixtureCorpus({
+        startIngestionRun,
+        ingestDocumentVersion,
+        refreshCoverage,
+        finishIngestionRun,
+        store: createPgFixtureCorpusStore(database.db),
+      }),
     },
     close: () => database.close(),
   }
 }
 
-interface CorpusServices {
-  readonly retrieval: RetrievalUseCases
-  readonly writeCorpus: WriteCorpus
+/**
+ * Seed da fixture única (`cli seed-fixtures` e testes): o container da ingestão sobre a URL do
+ * owner, com o store de blobs em memória (o seed não grava raw nem Docling).
+ */
+export function createFixtureSeeder(
+  env: Env,
+  ownerUrl: string,
+  overrides: { readonly clock?: Clock } = {},
+): { readonly seedFixtureCorpus: SeedFixtureCorpus; close(): Promise<void> } {
+  const ingestion = createIngestionContainer(
+    env,
+    { databaseUrl: ownerUrl, embedNeuronBudget: env.EMBED_NEURON_BUDGET },
+    {
+      blobStore: createInMemoryBlobStore(),
+      ...(overrides.clock === undefined ? {} : { clock: overrides.clock }),
+    },
+  )
+  return { seedFixtureCorpus: ingestion.useCases.seedFixtureCorpus, close: ingestion.close }
 }
 
-function createCorpusServices(
+function createRetrieval(
   env: Env,
   database: Database,
   embeddings: EmbeddingPort,
   resolveReferenceDate: ResolveReferenceDate,
-): CorpusServices {
+  clock: Clock,
+): RetrievalUseCases {
   const checkCoverage = createCheckCoverage({
     coverageRepository: createPgCoverageRepository(database.db),
+    clock,
   })
+  const searchRepository = createPgSearchRepository(database.pool)
+  const reviewStatuses = reviewStatusesFor(env.APP_ENV)
   const hybridSearch = createHybridSearch({
     embeddings,
-    searchRepository: createPgSearchRepository(database.pool),
-    reviewStatuses: reviewStatusesFor(env.APP_ENV),
+    searchRepository,
+    reviewStatuses,
     embeddingTimeoutMs: QUESTION_EMBEDDING_TIMEOUT_MS,
     limit: SEARCH_LIMIT,
     reranker: createReranker(env),
@@ -300,20 +334,14 @@ function createCorpusServices(
     rerankTimeoutMs: RERANK_TIMEOUT_MS,
   })
   return {
-    retrieval: {
+    checkCoverage,
+    hybridSearch,
+    retrieveEvidence: createRetrieveEvidence({
+      resolveReferenceDate,
       checkCoverage,
       hybridSearch,
-      retrieveEvidence: createRetrieveEvidence({
-        resolveReferenceDate,
-        checkCoverage,
-        hybridSearch,
-        minEvidenceRrf: env.MIN_EVIDENCE_RRF,
-      }),
-    },
-    writeCorpus: createWriteCorpus({
-      writer: createPgCorpusWriter(database.db, { gitSha: env.GIT_SHA }),
-      embeddings,
-      hasher: sha256ContentHasher,
+      findPeriodVersions: createFindPeriodVersions({ searchRepository, reviewStatuses }),
+      minEvidenceRrf: env.MIN_EVIDENCE_RRF,
     }),
   }
 }
@@ -413,7 +441,7 @@ export function createContainer(env: Env, overrides: ContainerOverrides = {}): C
   const resolveReferenceDate = createResolveReferenceDate({ clock })
   const embeddings = createEmbeddings(env)
   let database: Database | null = null
-  let corpus: CorpusServices | null = null
+  let retrieval: RetrievalUseCases | null = null
   if (env.DATABASE_URL !== undefined && embeddings !== null) {
     database = createDatabase({
       url: env.DATABASE_URL,
@@ -421,7 +449,7 @@ export function createContainer(env: Env, overrides: ContainerOverrides = {}): C
       maxConnections: env.DATABASE_MAX_CONNECTIONS,
     })
     platform.attachDatabasePool(database.pool)
-    corpus = createCorpusServices(env, database, embeddings, resolveReferenceDate)
+    retrieval = createRetrieval(env, database, embeddings, resolveReferenceDate, clock)
   }
 
   return {
@@ -434,8 +462,7 @@ export function createContainer(env: Env, overrides: ContainerOverrides = {}): C
     useCases: {
       getHealth: createGetHealth({ buildInfo, appEnv: env.APP_ENV, lifecycle }),
       resolveReferenceDate,
-      retrieval: corpus?.retrieval ?? null,
-      writeCorpus: corpus?.writeCorpus ?? null,
+      retrieval,
     },
     close: async () => {
       await database?.close()
