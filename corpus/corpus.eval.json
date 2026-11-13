@@ -1,9 +1,9 @@
 {
   "format": 1,
-  "corpusVersion": 13,
-  "evaluatedAt": "2026-11-13T18:13:59.374Z",
-  "gitSha": "73da4b45883dd8c48da18d5c64f5482818e6fe87",
-  "runUrl": "https://github.com/rafaeldailymartins/teko/actions/runs/43479286201",
+  "corpusVersion": 14,
+  "evaluatedAt": "2026-11-13T20:08:44.457Z",
+  "gitSha": "f8e4619e0c2f706c4605d3096e25793455493144",
+  "runUrl": "https://github.com/rafaeldailymartins/teko/actions/runs/43497466026",
   "retrieval": {
     "embeddings": "workers-ai",
     "reranker": "workers-ai"
@@ -27,10 +27,10 @@
           "pass": true
         },
         "mrr": {
-          "mean": 0.6789880952380953,
+          "mean": 0.6831547619047619,
           "ci": {
-            "low": 0.5610148301278797,
-            "high": 0.796961360348311
+            "low": 0.5661049376341777,
+            "high": 0.8002045861753461
           },
           "cases": 40,
           "threshold": 0.65,
