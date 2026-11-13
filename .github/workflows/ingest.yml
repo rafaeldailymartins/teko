@@ -28,14 +28,17 @@
 # - corpus-eval: retrieval evals (promptfoo, provider in-process) contra o staging, com embeddings
 #   e reranker reais do Workers AI e o role teko_app, nos conjuntos dev e holdout do golden. O
 #   registro (`corpus.eval.json`, métricas com intervalo de confiança e a corpus_version) vai para
-#   o artifact `corpus-eval` e para o histórico no store eval-artifacts.
+#   o artifact `corpus-eval`.
+# - corpus-eval-history: grava o registro no histórico (store eval-artifacts, GitHub Releases).
+#   Job à parte, o único com escrita nos releases além do load, e nunca com o código de um PR
+#   (`ref`): o eval-only de um PR roda no corpus-eval, que só lê.
 # - lock-pr: só com o corpus-eval verde, abre o PR `chore(ingest): …` com o corpus/corpus.lock.json
 #   e o corpus/corpus.eval.json, com o token da App teko-release-bot (commit pela API GraphQL,
 #   assinado pelo GitHub, com Signed-off-by), branch `chore/corpus-lock-<run_id>`.
 #
-# Artefatos (raw, Docling, snapshots): `BLOB_STORE` abaixo (ADR 0030). Na etapa C1 continua
-# `netlify` (PAT da Netlify); a etapa C2, depois do `blobs-migrate.yml`, troca para
-# `github-releases` e dá `contents: write` ao load (o `ci-config.test.sh` cobra as duas formas).
+# Artefatos (raw, Docling, snapshots, histórico): GitHub Releases do repositório (ADR 0030), com
+# o GITHUB_TOKEN do job; `contents: write` só no load e no corpus-eval-history. A migração da
+# etapa C1 terminou em 2026-11-13 (run 43355872236).
 #
 # Produção nunca é tocada aqui: ela só recebe o corpus pelo `promote` do release.
 name: Ingest
@@ -103,9 +106,6 @@ on:
       RELEASE_APP_PRIVATE_KEY:
         description: Chave privada da App teko-release-bot (segredo do repositório), para o PR do lock.
         required: true
-      NETLIFY_AUTH_TOKEN:
-        description: PAT da Netlify (environment staging), para o Netlify Blobs.
-        required: false
       NEON_STAGING_MIGRATE_URL:
         description: URL direta do owner do teko-staging (environment staging).
         required: false
@@ -133,8 +133,9 @@ concurrency:
 env:
   TURBO_TELEMETRY_DISABLED: "1"
   NEXT_TELEMETRY_DISABLED: "1"
-  # Backend dos artefatos da ingestão (ADR 0030): netlify até a migração para o GitHub Releases.
-  BLOB_STORE: netlify
+  # Artefatos no GitHub Releases (ADR 0030). Explícito para a CLI exigir o GITHUB_TOKEN em vez de
+  # cair, sem aviso, no store em memória.
+  BLOB_STORE: github-releases
 
 jobs:
   discover:
@@ -166,9 +167,6 @@ jobs:
             *.blob.core.windows.net:443
             registry.npmjs.org:443
             nodejs.org:443
-            api.netlify.com:443
-            *.s3.us-east-2.amazonaws.com:443
-            *.s3.dualstack.us-east-2.amazonaws.com:443
             www.gov.br:443
             sped.rfb.gov.br:80
             www.sped.fazenda.gov.br:443
@@ -180,8 +178,6 @@ jobs:
         env:
           TARGET: ${{ inputs.target }}
           FAMILY: ${{ inputs.family }}
-          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
-          NETLIFY_SITE_ID: ${{ vars.NETLIFY_SITE_ID }}
           NEON_STAGING_PROJECT_ID: ${{ vars.NEON_STAGING_PROJECT_ID }}
         run: |
           if [[ "$TARGET" != staging ]]; then
@@ -193,19 +189,11 @@ jobs:
             exit 1
           fi
           missing=()
-          # Credenciais do backend dos artefatos (BLOB_STORE, ADR 0030). O github-releases usa o
-          # GITHUB_TOKEN do próprio job, sem segredo a cadastrar.
-          case "$BLOB_STORE" in
-            netlify)
-              [[ -n "$NETLIFY_AUTH_TOKEN" ]] || missing+=("segredo NETLIFY_AUTH_TOKEN")
-              [[ -n "$NETLIFY_SITE_ID" ]] || missing+=("variável NETLIFY_SITE_ID (id do site tekoia: Site configuration > Site details)")
-              ;;
-            github-releases) ;;
-            *)
-              echo "::error title=ingest::BLOB_STORE '${BLOB_STORE}' desconhecido (github-releases ou netlify)."
-              exit 1
-              ;;
-          esac
+          # Os artefatos vão para o GitHub Releases com o GITHUB_TOKEN do próprio job (ADR 0030).
+          if [[ "$BLOB_STORE" != github-releases ]]; then
+            echo "::error title=ingest::BLOB_STORE '${BLOB_STORE}' desconhecido (só github-releases)."
+            exit 1
+          fi
           [[ -n "$NEON_STAGING_PROJECT_ID" ]] || missing+=("variável NEON_STAGING_PROJECT_ID (medição de CU-h)")
           if (( ${#missing[@]} > 0 )); then
             printf -v list '%s; ' "${missing[@]}"
@@ -228,8 +216,6 @@ jobs:
         env:
           FAMILY: ${{ inputs.family }}
           OUT: ${{ runner.temp }}/ingest
-          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
-          NETLIFY_SITE_ID: ${{ vars.NETLIFY_SITE_ID }}
           # O discover só lê os artefatos: o token de leitura do job basta.
           GITHUB_TOKEN: ${{ github.token }}
         run: |
@@ -455,8 +441,9 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 180
     environment: staging
+    # Grava raw, Docling e snapshots nos releases (ADR 0030).
     permissions:
-      contents: read
+      contents: write
     outputs:
       status: ${{ steps.load.outputs.status }}
       lock_changed: ${{ steps.lock.outputs.changed }}
@@ -480,9 +467,6 @@ jobs:
             *.blob.core.windows.net:443
             registry.npmjs.org:443
             nodejs.org:443
-            api.netlify.com:443
-            *.s3.us-east-2.amazonaws.com:443
-            *.s3.dualstack.us-east-2.amazonaws.com:443
             api.cloudflare.com:443
             console.neon.tech:443
             *.neon.tech:5432
@@ -493,22 +477,16 @@ jobs:
           NEON_API_KEY_STAGING: ${{ secrets.NEON_API_KEY_STAGING }}
           CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
           CF_AI_TOKEN: ${{ secrets.CF_AI_TOKEN }}
-          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
-          NETLIFY_SITE_ID: ${{ vars.NETLIFY_SITE_ID }}
           NEON_STAGING_PROJECT_ID: ${{ vars.NEON_STAGING_PROJECT_ID }}
         run: |
           missing=()
           required=(NEON_STAGING_MIGRATE_URL NEON_API_KEY_STAGING CF_ACCOUNT_ID CF_AI_TOKEN NEON_STAGING_PROJECT_ID)
-          # Credenciais do backend dos artefatos (BLOB_STORE, ADR 0030).
-          if [[ "$BLOB_STORE" == netlify ]]; then
-            required+=(NETLIFY_AUTH_TOKEN NETLIFY_SITE_ID)
-          fi
           for name in "${required[@]}"; do
             [[ -n "${!name}" ]] || missing+=("$name")
           done
           if (( ${#missing[@]} > 0 )); then
             printf -v list '%s, ' "${missing[@]}"
-            echo "::error title=ingest::Faltam no environment 'staging': ${list%, } (NETLIFY_SITE_ID e NEON_STAGING_PROJECT_ID são variáveis; os demais, segredos)."
+            echo "::error title=ingest::Faltam no environment 'staging': ${list%, } (NEON_STAGING_PROJECT_ID é variável; os demais, segredos)."
             exit 1
           fi
           if [[ "$NEON_STAGING_MIGRATE_URL" != postgresql://* && "$NEON_STAGING_MIGRATE_URL" != postgres://* ]]; then
@@ -556,8 +534,6 @@ jobs:
           EMBEDDINGS_PROVIDER: workers-ai
           CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
           CF_AI_TOKEN: ${{ secrets.CF_AI_TOKEN }}
-          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
-          NETLIFY_SITE_ID: ${{ vars.NETLIFY_SITE_ID }}
           GITHUB_TOKEN: ${{ github.token }}
           NEON_API_KEY_STAGING: ${{ secrets.NEON_API_KEY_STAGING }}
           NEON_STAGING_PROJECT_ID: ${{ vars.NEON_STAGING_PROJECT_ID }}
@@ -670,7 +646,6 @@ jobs:
             objects.githubusercontent.com:443
             raw.githubusercontent.com:443
             release-assets.githubusercontent.com:443
-            uploads.github.com:443
             results-receiver.actions.githubusercontent.com:443
             *.actions.githubusercontent.com:443
             *.blob.core.windows.net:443
@@ -678,9 +653,6 @@ jobs:
             nodejs.org:443
             api.cloudflare.com:443
             *.neon.tech:5432
-            api.netlify.com:443
-            *.s3.us-east-2.amazonaws.com:443
-            *.s3.dualstack.us-east-2.amazonaws.com:443
 
       - name: Conferir entradas e segredos do environment staging
         env:
@@ -689,16 +661,12 @@ jobs:
           NEON_STAGING_APP_URL: ${{ secrets.NEON_STAGING_APP_URL }}
           CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
           CF_AI_TOKEN: ${{ secrets.CF_AI_TOKEN }}
-          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
-          NETLIFY_SITE_ID: ${{ vars.NETLIFY_SITE_ID }}
         run: |
           if [[ -n "$REF" && ( "$MODE" != eval-only || ! "$REF" =~ ^[0-9a-f]{40}$ ) ]]; then
             echo "::error title=corpus-eval::ref só vale no modo eval-only e precisa ser um SHA de 40 caracteres hexadecimais."
             exit 1
           fi
           names=(NEON_STAGING_APP_URL CF_ACCOUNT_ID CF_AI_TOKEN)
-          # O histórico (store eval-artifacts) só recebe o eval do código de develop.
-          [[ -z "$REF" ]] && names+=(NETLIFY_AUTH_TOKEN NETLIFY_SITE_ID)
           missing=()
           for name in "${names[@]}"; do
             [[ -n "${!name}" ]] || missing+=("$name")
@@ -759,19 +727,6 @@ jobs:
           --out reports/corpus.eval.json --pr-body reports/corpus-eval-pr.md
           --git-sha "$GIT_SHA" --run-url "$RUN_URL"
 
-      - name: Histórico do corpus-eval (store eval-artifacts)
-        # Também com o gate vermelho: o histórico mostra a regressão. Nunca para o código de um PR.
-        if: ${{ !cancelled() && steps.record.outputs.corpus_version != '' && inputs.ref == '' }}
-        continue-on-error: true
-        working-directory: apps/api
-        env:
-          APP_ENV: ci
-          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
-          NETLIFY_SITE_ID: ${{ vars.NETLIFY_SITE_ID }}
-          GITHUB_TOKEN: ${{ github.token }}
-          RUN_ID: ${{ github.run_id }}
-        run: node evals/scripts/corpus-eval-record.ts history --record reports/corpus.eval.json --run-id "$RUN_ID"
-
       - name: Guardar o resultado das evals
         if: ${{ !cancelled() }}
         continue-on-error: true
@@ -785,6 +740,58 @@ jobs:
             apps/api/reports/corpus-eval-pr.md
           if-no-files-found: ignore
           retention-days: 90
+
+  corpus-eval-history:
+    name: corpus-eval-history
+    needs: corpus-eval
+    # Também com o gate vermelho (o histórico mostra a regressão), nunca para o código de um PR
+    # (`ref`): este job roda o commit do run e é o único, além do load, com escrita nos releases.
+    if: >-
+      ${{ !cancelled() && inputs.ref == '' && needs.corpus-eval.result != 'skipped'
+      && needs.corpus-eval.outputs.corpus_version != '' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          egress-policy: block
+          allowed-endpoints: >
+            github.com:443
+            api.github.com:443
+            uploads.github.com:443
+            codeload.github.com:443
+            objects.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+            results-receiver.actions.githubusercontent.com:443
+            *.actions.githubusercontent.com:443
+            *.blob.core.windows.net:443
+            registry.npmjs.org:443
+            nodejs.org:443
+
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      - name: Baixar o registro do corpus-eval
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: corpus-eval
+          path: apps/api/reports
+
+      - name: Histórico do corpus-eval (store eval-artifacts)
+        working-directory: apps/api
+        env:
+          APP_ENV: ci
+          GITHUB_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ github.run_id }}
+        run: node evals/scripts/corpus-eval-record.ts history --record reports/corpus.eval.json --run-id "$RUN_ID"
 
   lock-pr:
     name: lock-pr
