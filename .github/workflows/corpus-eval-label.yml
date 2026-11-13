@@ -1,0 +1,55 @@
+# corpus-eval de um PR pelo rótulo `corpus-eval` (ADR 0031): para PRs que mexem na busca, no
+# reranker, nos embeddings ou no SQL, mede o código do PR contra o corpus real do staging, sem
+# reingerir. O PR não recebe segredo nenhum: este workflow só dispara o ingest.yml em develop
+# (environment staging, cuja regra de branch não aceita refs/pull/N/merge, ADR 0024) no modo
+# eval-only, com o SHA do PR em `ref`. O run nunca abre PR de lock nem grava histórico.
+#
+# Só PR do próprio repositório (fork não dispara) e só quem pode rotular (triagem ou mais). O
+# rótulo é removido em seguida, para que um novo push possa ser avaliado rotulando de novo.
+name: corpus-eval (rótulo)
+
+on:
+  pull_request:
+    types: [labeled]
+
+permissions: {}
+
+concurrency:
+  group: corpus-eval-label-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  dispatch:
+    name: dispatch
+    if: >-
+      ${{ github.event.label.name == 'corpus-eval'
+      && github.event.pull_request.head.repo.full_name == github.repository }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      # `actions: write` dispara o workflow_dispatch (eventos do GITHUB_TOKEN não criam runs, exceto
+      # workflow_dispatch e repository_dispatch); `pull-requests: write` comenta e tira o rótulo.
+      actions: write
+      pull-requests: write
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          egress-policy: block
+          allowed-endpoints: >
+            github.com:443
+            api.github.com:443
+
+      - name: Disparar o ingest.yml no modo eval-only com o SHA do PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+          SHA: ${{ github.event.pull_request.head.sha }}
+          SERVER_URL: ${{ github.server_url }}
+        run: |
+          set -euo pipefail
+          gh workflow run ingest.yml --repo "$REPO" --ref develop -f mode=eval-only -f ref="$SHA"
+          gh pr edit "$PR" --repo "$REPO" --remove-label corpus-eval
+          gh pr comment "$PR" --repo "$REPO" --body "corpus-eval disparado contra o staging (modo eval-only) para \`${SHA}\`: ${SERVER_URL}/${REPO}/actions/workflows/ingest.yml. O resultado sai no resumo do run (conjuntos dev e holdout, com intervalo de confiança); o run não abre PR de lock nem grava histórico."
+          echo "- ingest.yml (eval-only) disparado para \`${SHA}\` do PR #${PR}" >>"$GITHUB_STEP_SUMMARY"
