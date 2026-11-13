@@ -134,8 +134,8 @@ Pendências:
   Blobs para o GitHub Releases em 2026-11-13 (run 43355872236 do `blobs-migrate.yml`: 150 itens,
   59 raw, 55 Docling, 33 de snapshot e 3 do watch, sem falha; o dry-run seguinte deu 150 iguais) e
   a etapa C2 tirou o Netlify Blobs do código e dos workflows (ADR 0030);
-- revogação dos tokens e contas que saíram: o `NETLIFY_AUTH_TOKEN` e o `NETLIFY_SITE_ID` do
-  environment `staging`, o site `tekoia` e a conta da Netlify; Codecov, Checkly e UptimeRobot;
+- revogação dos tokens e contas que saíram: o site `tekoia`, o PAT e a conta da Netlify (o
+  `NETLIFY_AUTH_TOKEN` e o `NETLIFY_SITE_ID` do environment `staging` saíram em 2026-11-13);
+  Codecov, Checkly e UptimeRobot;
 - trunk-based (ADR 0033): renomear o branch principal no SonarQube Cloud (UI);
-- remover o check `Analyze (actions)` do ruleset (ADR 0032);
-- revisão do mantenedor dos casos do golden `holdout` (curadoria assistida por LLM).
+- revisão do mantenedor dos casos do golden `holdout`: feita em 2026-11-13 (#74).

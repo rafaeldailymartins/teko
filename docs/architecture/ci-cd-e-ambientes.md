@@ -16,8 +16,8 @@
 - **`checks-main`** (alvo `~DEFAULT_BRANCH`, sem bypass): `deletion`, `non_fast_forward`,
   `required_signatures`, PR com squash e resolução de threads, `required_status_checks` sem
   `strict` (desligado em 2026-11-12: o branch do PR não precisa estar atualizado com `main`) com
-  `ci-gate`, `pr-title`, `dco`, `Analyze (javascript-typescript)` e `Analyze (python)`
-  (`Analyze (actions)` até o mantenedor removê-lo, ADR 0032), e `code_scanning` (CodeQL,
+  `ci-gate`, `pr-title`, `dco`, `Analyze (javascript-typescript)` e `Analyze (python)` (o
+  `Analyze (actions)` saiu em 2026-11-13, ADR 0032), e `code_scanning` (CodeQL,
   `high_or_higher`).
 - **`review-main`**: PR obrigatório com **0 aprovações** e sem code owner (mantenedor único; assim
   o auto-merge funciona, inclusive no Dependabot). Com um segundo mantenedor, volta para 1

@@ -286,11 +286,10 @@ call the binaries directly from `./node_modules/.bin` (for example
 `./node_modules/.bin/biome`), so they work even when `pnpm` is not on your PATH; run
 `pnpm install` first so those binaries exist.
 
-On a PR, the `checks-main` ruleset requires six checks: the aggregate `ci-gate` (which waits for
-`affected`, `ci`, `security` and `perf`), the three CodeQL analyses (`Analyze (actions)`,
-`Analyze (javascript-typescript)`, `Analyze (python)`), `pr-title` and `dco`.
-`Analyze (actions)` is redundant with zizmor and actionlint and will leave the ruleset and the
-CodeQL matrix (ADR 0032). SonarQube Cloud does **not** reach the rulesets: the `sonar` job runs
+On a PR, the `checks-main` ruleset requires five checks: the aggregate `ci-gate` (which waits for
+`affected`, `ci`, `security` and `perf`), the two CodeQL analyses
+(`Analyze (javascript-typescript)`, `Analyze (python)`), `pr-title` and `dco`. Workflows are
+checked by zizmor and actionlint, not by CodeQL (ADR 0032). SonarQube Cloud does **not** reach the rulesets: the `sonar` job runs
 after `ci`, outside `ci-gate`, with `continue-on-error`. Do **not** add the SonarQube Cloud App
 check ("SonarQube Cloud Code Analysis") as a required ruleset check: it is never posted on fork PRs
 (no secrets, so the analysis is skipped), which would block them forever.

@@ -29,8 +29,6 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - language: actions
-            sources: ":(glob).github/workflows/*.yml :(glob).github/actions/**/action.yml"
           - language: javascript-typescript
             sources: ":(glob)**/*.ts :(glob)**/*.tsx :(glob)**/*.js :(glob)**/*.mjs :(glob)**/*.cjs"
           - language: python

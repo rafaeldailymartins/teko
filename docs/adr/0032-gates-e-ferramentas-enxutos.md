@@ -85,9 +85,9 @@ Como deixar o PR gate rápido e reprovando só pelo que a mudança causa, sem pe
    `persist-credentials`, que o zizmor já reprova (`unpinned-uses`, que desde a 1.20 exige hash em
    toda action, e `artipacked`). Ficam as invariantes de `ci-gate`, Sonar, audit, mutação,
    `ingest.yml`, `source-watch.yml` e dos harden-runner.
-9. **CodeQL `actions`.** O job `Analyze (actions)` continua por ser check exigido. O zizmor e o
-   actionlint já cobrem os workflows; quando o mantenedor tirar `Analyze (actions)` dos rulesets
-   `checks-develop` e `checks-main`, a linha `actions` sai da matriz do `codeql.yml`.
+9. **CodeQL `actions`.** O zizmor e o actionlint já cobrem os workflows. Em 2026-11-13, com o aval
+   do mantenedor, `Analyze (actions)` saiu dos checks exigidos do ruleset `checks-main` e a linha
+   `actions` saiu da matriz do `codeql.yml`.
 
 ### Tempo esperado do PR gate
 
@@ -143,8 +143,8 @@ seguram o `ci-gate`. O novo caminho crítico, em PR de API, é o `sql-perf`.
 
 ## Ações manuais do mantenedor
 
-- Rulesets `checks-develop` (27001465) e `checks-main` (27001467): quando quiser, tirar
-  `Analyze (actions)` dos checks exigidos; depois, remover `actions` da matriz do `codeql.yml`.
+- ~~Tirar `Analyze (actions)` dos checks exigidos e da matriz do `codeql.yml`~~: feito em
+  2026-11-13 (ruleset `checks-main`, 27001465).
 - Desinstalar o App do Codecov do repositório (não há segredo: o upload era por OIDC).
 - Nenhum segredo novo: o `STRYKER_DASHBOARD_API_KEY` continua no nightly, o `SONAR_TOKEN` (inclusive
   nos segredos do Dependabot) continua no `sonar.yml`.
