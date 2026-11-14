@@ -59,3 +59,19 @@ pergunta em linguagem natural não casa bem com o texto técnico.
   pago ou cota incerta; o Workers AI já está no orçamento.
 - **Ajustes de casos isolados** (contexto da redação anterior nas revogações). Leva o recall ao
   limite, mas quase não mexe no MRR.
+
+## Adendo (2026-11-14): contexto do dispositivo-pai no texto do reranker
+
+O reranker passou a pontuar o `rerankText` de cada candidato: o caminho de títulos, os trechos dos
+dispositivos ancestrais vigentes na data (até 200 caracteres cada e 600 no total, do pai imediato
+para cima, por causa do corte de 512 tokens do modelo) e o conteúdo. A instrução SQL devolve o
+`heading_path` e os ancestrais (cadeia de `parent_id`) só das linhas do resultado, e o prompt da
+resposta leva os mesmos trechos no atributo `contexto` (`answer@1.1.0`). Um inciso curto ("I - 19%")
+só se entende com o caput ("As alíquotas do imposto são:"), e um campo, com o registro.
+
+No `corpus-eval` (run 43601785029), o MRR foi de 0,683 para 0,714 no dev e de 0,475 para 0,654 no
+holdout, com recall@10 de 0,925 e 0,782 e as métricas determinísticas em 1,00. Três variantes
+medidas em seguida (parentes no pool, tradução da pergunta em inglês pelo `m2m100` e contexto do
+pai no braço léxico) não melhoraram os dois conjuntos e foram revertidas; os números estão em
+[`docs/evals/mrr-f4-2026-11-14.md`](../evals/mrr-f4-2026-11-14.md). Os textos mais longos levam o
+custo estimado do reranker para cerca de 5 neurons por pergunta.
