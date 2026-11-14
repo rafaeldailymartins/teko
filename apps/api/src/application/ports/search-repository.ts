@@ -19,6 +19,11 @@ export interface SearchQuery {
   /** Produção: `auto` e `approved`; staging inclui `pending`. */
   readonly reviewStatuses: readonly ReviewStatus[]
   readonly limit: number
+  /**
+   * Parentes (filhos do pai e do próprio dispositivo) dos candidatos do topo, acrescentados depois
+   * dos `limit` primeiros para o reranker (ADR 0027, adendo). 0 sem reranker.
+   */
+  readonly expansion: number
 }
 
 /**

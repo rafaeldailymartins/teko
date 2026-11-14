@@ -3,7 +3,12 @@ import { createDatabase, type Database } from '../../src/adapters/out/persistenc
 import { createPgSearchRepository } from '../../src/adapters/out/persistence/drizzle/repositories/pg-search-repository.ts'
 import type { RetrievalUseCases } from '../../src/application/container.ts'
 import { RetrievalOutcome } from '../../src/application/use-cases/retrieve-evidence.ts'
-import { createContainer, createEmbeddings, reviewStatusesFor } from '../../src/composition-root.ts'
+import {
+  createContainer,
+  createEmbeddings,
+  RERANK_EXPANSION,
+  reviewStatusesFor,
+} from '../../src/composition-root.ts'
 import { type Env, parseEnv } from '../../src/config/env.ts'
 import { FAMILIES } from '../../src/domain/corpus/family.ts'
 import { rerankText } from '../../src/domain/qa/evidence.ts'
@@ -136,6 +141,7 @@ async function candidatePool(
     stableKeys: extractProvisionRefs(golden.question, families),
     reviewStatuses: reviewStatusesFor(env.APP_ENV),
     limit: size,
+    expansion: RERANK_EXPANSION,
   })
   return evidence.map((item) => ({
     stableKey: item.stableKey,

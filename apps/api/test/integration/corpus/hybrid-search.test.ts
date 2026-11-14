@@ -209,6 +209,7 @@ describe('degradação', () => {
           limit: 12,
           reranker: null,
           rerankCandidates: 30,
+          rerankExpansion: 0,
           rerankTimeoutMs: 2000,
         }),
         findPeriodVersions: () => Promise.resolve([]),
@@ -248,6 +249,7 @@ describe('degradação', () => {
         limit: 12,
         reranker: null,
         rerankCandidates: 30,
+        rerankExpansion: 0,
         rerankTimeoutMs: 2000,
       })
       const result = await createRetrieveEvidence({
@@ -320,6 +322,7 @@ describe('fronteira de vigência dentro do PA', () => {
         limit: 12,
         reranker: null,
         rerankCandidates: 40,
+        rerankExpansion: 0,
         rerankTimeoutMs: 3000,
       }),
       findPeriodVersions: createFindPeriodVersions({
@@ -412,5 +415,42 @@ describe('um resultado por dispositivo', () => {
     expect(new Set(keys).size).toBe(keys.length)
     expect(keys.filter((key) => key === 'br:efd-icms-ipi:reg:C100')).toHaveLength(1)
     expect(keys.slice(0, 10)).toContain('br:efd-icms-ipi:reg:C100:campo:06')
+  })
+})
+
+describe('parentes dos candidatos do topo (ADR 0027, adendo)', () => {
+  const query = {
+    text: 'Qual valor mínimo aplicado no GOYAZES ou no PROESPORTE permitia ao Secretário da Fazenda definir prazos diversos de pagamento do ICMS?',
+    embedding: null,
+    referenceDate: '2006-05-01',
+    families: ['rcte'],
+    stableKeys: [],
+    reviewStatuses: PUBLISHABLE_REVIEW_STATUSES,
+    limit: 3,
+  }
+
+  it('vêm depois dos `limit` primeiros, sem voto no RRF, sem repetir e na data', async () => {
+    const repository = createPgSearchRepository(appDatabase.pool)
+    const plain = await repository.search({ ...query, expansion: 0 })
+    const expanded = await repository.search({ ...query, expansion: 10 })
+    expect(plain).toHaveLength(3)
+    expect(expanded.slice(0, 3)).toEqual(plain)
+    const extra = expanded.slice(3)
+    expect(extra.length).toBeGreaterThan(0)
+    expect(extra.length).toBeLessThanOrEqual(10)
+    const keys = expanded.map((item) => item.stableKey)
+    expect(new Set(keys).size).toBe(keys.length)
+    for (const item of extra) {
+      expect(item.rrf).toBe(0)
+      expect([item.lexicalRank, item.semanticRank, item.referenceRank]).toEqual([null, null, null])
+      expect(containsDate(item.validity, '2006-05-01')).toBe(true)
+    }
+    // Cada parente é filho de um dos candidatos do topo ou irmão dele (mesmo pai).
+    const parentOf = (key: string) => key.slice(0, key.lastIndexOf(':', key.lastIndexOf(':') - 1))
+    const anchors = plain.map((item) => item.stableKey)
+    for (const item of extra) {
+      const parent = parentOf(item.stableKey)
+      expect(anchors.some((anchor) => anchor === parent || parentOf(anchor) === parent)).toBe(true)
+    }
   })
 })

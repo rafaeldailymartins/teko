@@ -3,7 +3,7 @@
  *
  * Parâmetros: $1 pergunta redigida, $2 vetor `halfvec(1024)` em texto (só no modo híbrido),
  * $3 data de referência, $4 famílias, $5 `stable_key` citadas, $6 `review_status` permitidos,
- * $7 limite.
+ * $7 limite, $8 parentes acrescentados ao fim (0 sem reranker).
  *
  * - O vetor entra direto no `ORDER BY` do braço semântico, para o planner usar o HNSW, e o filtro de
  *   vigência, família e status fica no mesmo `WHERE`, para o iterative scan
@@ -117,14 +117,51 @@ function fused(withSemantic: boolean): string {
   // Votos somados por versão de dispositivo; o representante é o chunk mais bem colocado.
   return `
 fused AS (
-  SELECT (array_agg(id ORDER BY rnk, src))[1] AS id, sum(1.0 / (${String(RRF_K)} + rnk)) AS rrf,
+  SELECT pv, (array_agg(id ORDER BY rnk, src))[1] AS id, sum(1.0 / (${String(RRF_K)} + rnk)) AS rrf,
     min(rnk) FILTER (WHERE src = 'lex') AS lex_rank,
     min(rnk) FILTER (WHERE src = 'sem') AS sem_rank,
     min(rnk) FILTER (WHERE src = 'ref') AS ref_rank
   FROM (SELECT id, pv, rnk, 'lex' AS src FROM lexical ${semanticUnion}
         UNION ALL SELECT id, pv, rnk, 'ref' FROM exact) u
-  GROUP BY pv)`
+  GROUP BY pv),${EXPANSION}`
 }
+
+/** Candidatos do topo do RRF cujos parentes entram no fim da lista (com reranker). */
+export const EXPANSION_ANCHORS = 5
+
+/**
+ * Parentes dos candidatos mais fortes (ADR 0027, adendo): o dispositivo certo costuma ser irmão
+ * ou filho de um candidato do topo (o inciso do artigo cujo parágrafo veio, o campo do registro
+ * cujo outro campo veio), mas não casa sozinho com a pergunta. `ranked` são os $7 primeiros do
+ * RRF; os filhos do pai e do próprio dispositivo de cada um dos `EXPANSION_ANCHORS` primeiros,
+ * vigentes e publicáveis, que ainda não estão em `ranked`, entram depois deles, até $8, pelo
+ * `ts_rank` contra a pergunta. Sem voto no RRF (`rrf = 0`): só o reranker os reordena.
+ */
+const EXPANSION = `
+ranked AS (
+  SELECT f.*, row_number() OVER (ORDER BY f.rrf DESC, f.id) AS ord
+  FROM fused f ORDER BY f.rrf DESC, f.id LIMIT $7::int),
+anchors AS (
+  SELECT p.id, p.parent_id
+  FROM (SELECT pv FROM ranked ORDER BY ord LIMIT ${String(EXPANSION_ANCHORS)}) r
+  JOIN corpus.provision_versions v ON v.id = r.pv
+  JOIN corpus.provisions p ON p.id = v.provision_id),
+kin AS (
+  SELECT k.id FROM corpus.provisions k
+  WHERE k.parent_id IN (SELECT parent_id FROM anchors UNION SELECT id FROM anchors)),
+expanded AS (
+  SELECT d.pv, d.id, 0::numeric AS rrf, NULL::bigint AS lex_rank, NULL::bigint AS sem_rank,
+    NULL::bigint AS ref_rank, $7::int + row_number() OVER (ORDER BY d.score DESC, d.id) AS ord
+  FROM (SELECT DISTINCT ON (b.provision_version_id) b.id, b.provision_version_id AS pv,
+          ts_rank(b.tsv, t.q, 1 | 32) AS score
+        FROM kin
+        JOIN corpus.provision_versions v ON v.provision_id = kin.id
+        JOIN base b ON b.provision_version_id = v.id
+        CROSS JOIN tsq t
+        WHERE NOT EXISTS (SELECT 1 FROM ranked r WHERE r.pv = b.provision_version_id)
+        ORDER BY b.provision_version_id, b.ordinal) d
+  ORDER BY d.score DESC, d.id LIMIT $8::int),
+results AS (SELECT * FROM ranked UNION ALL SELECT * FROM expanded)`
 
 /** Profundidade máxima da cadeia de ancestrais (artigo > parágrafo > inciso > alínea > item …). */
 const MAX_ANCESTOR_DEPTH = 8
@@ -132,7 +169,7 @@ const MAX_ANCESTOR_DEPTH = 8
 /**
  * Ancestrais de cada resultado: a cadeia de `parent_id` e, de cada ancestral, a redação de
  * conhecimento aberto vigente na data ($3), preferindo um `review_status` permitido ($6), da raiz
- * para o pai imediato. Só para as linhas devolvidas (o `LIMIT` vem antes, no `ranked`).
+ * para o pai imediato. Só para as linhas devolvidas (`results`).
  */
 const ANCESTORS = `
 LEFT JOIN LATERAL (
@@ -154,7 +191,7 @@ SELECT c.id, p.stable_key, c.family, c.content, c.citation_label, c.heading_path
        lower(c.valid_during)::text AS valid_from, upper(c.valid_during)::text AS valid_to,
        dv.version_label, dv.id AS doc_version_id, d.title AS doc_title, d.source_url,
        f.rrf::float8 AS rrf, f.lex_rank, f.sem_rank, f.ref_rank
-FROM (SELECT * FROM fused ORDER BY rrf DESC, id LIMIT $7::int) f
+FROM results f
 JOIN corpus.chunks c ON c.id = f.id
 JOIN corpus.provision_versions pv ON pv.id = c.provision_version_id
 JOIN corpus.provisions p ON p.id = pv.provision_id${ANCESTORS}
@@ -164,8 +201,7 @@ JOIN LATERAL (
   WHERE s.chunk_id = c.id AND dv.status = 'published'
   ORDER BY (dv.valid_during @> $3::date) DESC, dv.published_on DESC LIMIT 1) dv ON true
 JOIN corpus.documents d ON d.id = dv.document_id
-ORDER BY f.rrf DESC, c.id
-LIMIT $7::int`
+ORDER BY f.ord`
 
 export const HYBRID_SEARCH_SQL = `${COMMON_HEAD}${SEMANTIC_ARMS}${exactArm(true)}${fused(true)}${TAIL}`
 

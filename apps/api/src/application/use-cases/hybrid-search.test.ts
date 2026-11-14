@@ -43,6 +43,7 @@ function setup(embed: EmbeddingPort['embed'], timeoutMs = 3000) {
     limit: 12,
     reranker: null,
     rerankCandidates: 30,
+    rerankExpansion: 0,
     rerankTimeoutMs: 2000,
   })
   return { search, queries }
@@ -74,6 +75,7 @@ describe('createHybridSearch', () => {
         stableKeys: ['go:rcte:art:76:par:6', 'go:rcte:art:76'],
         reviewStatuses: ['auto', 'approved'],
         limit: 12,
+        expansion: 0,
       },
     ])
   })
@@ -181,6 +183,7 @@ describe('createHybridSearch com reranker (ADR 0027)', () => {
       limit: options.limit ?? 2,
       reranker: { model: 'fake-reranker', rerank },
       rerankCandidates: 30,
+      rerankExpansion: 7,
       rerankTimeoutMs: 5,
     })
     return { search, queries }
@@ -191,6 +194,7 @@ describe('createHybridSearch com reranker (ADR 0027)', () => {
     const { search, queries } = withReranker(rerank)
     const result = await search(command)
     expect(queries[0]?.limit).toBe(30)
+    expect(queries[0]?.expansion).toBe(7)
     expect(rerank).toHaveBeenCalledWith(
       command.question,
       ['RCTE > Art. 1\nregistro', 'RCTE > Art. 2\nRegistro C100\ncampo', 'RCTE > Art. 3\noutro'],
@@ -244,6 +248,7 @@ describe('createHybridSearch com reranker (ADR 0027)', () => {
       limit: 12,
       reranker: { model: 'fake-reranker', rerank },
       rerankCandidates: 30,
+      rerankExpansion: 0,
       rerankTimeoutMs: 2000,
     })
     await expect(search(command)).resolves.toMatchObject({ reranked: false, evidence: [evidence] })
