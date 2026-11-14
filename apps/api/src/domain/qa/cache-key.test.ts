@@ -7,6 +7,14 @@ describe('normalizeQuestion', () => {
     expect(normalizeQuestion('ﬁm.')).toBe('fim')
     expect(normalizeQuestion('C170 campo 07')).toBe('c170 campo 07')
   })
+
+  it('tira sinais e espaços misturados no fim, e só no fim', () => {
+    expect(normalizeQuestion('Qual a alíquota ? ! ;')).toBe('qual a alíquota')
+    expect(normalizeQuestion('art. 76: qual § ?')).toBe('art. 76: qual §')
+    expect(normalizeQuestion('?!.')).toBe('')
+    const long = `pergunta${' ?'.repeat(50_000)}x`
+    expect(normalizeQuestion(long)).toBe(long)
+  })
 })
 
 describe('cacheKeyMaterial', () => {
@@ -24,6 +32,11 @@ describe('cacheKeyMaterial', () => {
     expect(cacheKeyMaterial(base)).toBe(
       'qual a alíquota|2024-05-01|14|answer@1.0.0+abcd1234|default|pt-BR|cte,rcte',
     )
+    expect(
+      cacheKeyMaterial({ ...base, families: ['tabelas-go', 'efd-icms-ipi', 'efd-go'] }).endsWith(
+        '|efd-go,efd-icms-ipi,tabelas-go',
+      ),
+    ).toBe(true)
   })
 
   it('qualquer parte diferente muda a chave', () => {

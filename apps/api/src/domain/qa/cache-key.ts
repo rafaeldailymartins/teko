@@ -4,12 +4,25 @@
  * chave completa também leva data, `corpus_version`, versão do prompt, família de modelo e idioma.
  */
 export function normalizeQuestion(question: string): string {
-  return question
-    .normalize('NFKC')
-    .toLowerCase()
-    .replaceAll(/\s+/g, ' ')
-    .trim()
-    .replace(/[\s?!.;:]+$/, '')
+  return withoutTrailingPunctuation(
+    question.normalize('NFKC').toLowerCase().replaceAll(/\s+/g, ' ').trim(),
+  )
+}
+
+/** Sinais e espaços que saem do fim da pergunta ("qual a alíquota ? !" → "qual a alíquota"). */
+const TRAILING = new Set([' ', '?', '!', '.', ';', ':'])
+
+/**
+ * Corta do fim os sinais e espaços, num laço linear: a regex `[\s?!.;:]+$` equivalente tinha
+ * backtracking super-linear (SonarQube S8786). No início do texto, `charAt(-1)` é `''` e o laço
+ * para.
+ */
+function withoutTrailingPunctuation(text: string): string {
+  let end = text.length
+  while (TRAILING.has(text.charAt(end - 1))) {
+    end -= 1
+  }
+  return text.slice(0, end)
 }
 
 export interface CacheKeyParts {
@@ -32,6 +45,6 @@ export function cacheKeyMaterial(parts: CacheKeyParts): string {
     parts.promptVersion,
     parts.modelFamily,
     parts.locale,
-    [...parts.families].sort().join(','),
+    [...parts.families].sort((a, b) => a.localeCompare(b, 'en')).join(','),
   ].join('|')
 }

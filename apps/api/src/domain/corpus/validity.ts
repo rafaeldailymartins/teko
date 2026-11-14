@@ -258,7 +258,33 @@ function leadingDate(text: string, pivot: number): { date: IsoDate | null; end: 
   }
 }
 
-const WITHOUT_EFFECT = /^redac\S*\s+(?:d[aoe]s?\s+)?(.+?)\s+sem\s+efeitos?\s+(.*)$/
+/** "Redação d…" no início da nota já dobrada (`foldNote`: espaços simples, sem quebra de linha). */
+const WITHOUT_EFFECT_PREFIX = /^redac\S* (?:d[aoe]s? )?/
+const WITHOUT_EFFECT_MARK = ' sem efeito'
+
+/**
+ * Separa "<rótulo> sem efeito(s) <resto>" no primeiro marcador depois de um rótulo não vazio. Sem
+ * regex com `(.+?)\s+sem` (backtracking super-linear, SonarQube S8786): o texto dobrado tem um
+ * espaço só entre as palavras, e o marcador é procurado com `indexOf`.
+ */
+function splitWithoutEffect(body: string): { label: string; rest: string } | null {
+  const prefix = WITHOUT_EFFECT_PREFIX.exec(body)
+  if (prefix === null) {
+    return null
+  }
+  const tail = body.slice(prefix[0].length)
+  for (let at = tail.indexOf(WITHOUT_EFFECT_MARK, 1); at !== -1; ) {
+    let end = at + WITHOUT_EFFECT_MARK.length
+    if (tail[end] === 's') {
+      end += 1
+    }
+    if (tail[end] === ' ') {
+      return { label: tail.slice(0, at), rest: tail.slice(end + 1) }
+    }
+    at = tail.indexOf(WITHOUT_EFFECT_MARK, at + 1)
+  }
+  return null
+}
 
 /**
  * Lê uma nota "Redação d… <rótulo> sem efeitos a partir de <data>" (ou "desde <data>", ou "de
@@ -266,12 +292,12 @@ const WITHOUT_EFFECT = /^redac\S*\s+(?:d[aoe]s?\s+)?(.+?)\s+sem\s+efeitos?\s+(.*
  */
 export function parseWithoutEffectNote(raw: string, pivot: number): WithoutEffectNote | null {
   const body = foldNote(raw).replace(NOTE_PREFIX, '')
-  const match = WITHOUT_EFFECT.exec(body)
-  if (match === null) {
+  const parts = splitWithoutEffect(body)
+  if (parts === null) {
     return null
   }
-  const label = (match[1] ?? '').replace(/["“”'‘’]/g, '').trim()
-  const rest = match[2] ?? ''
+  const label = parts.label.replace(/["“”'‘’]/g, '').trim()
+  const { rest } = parts
   const opening = /^(a partir de|desde|de)\s+/.exec(rest)
   const first = opening === null ? null : leadingDate(rest.slice(opening[0].length), pivot)
   if (opening === null || first === null || first.date === null) {
@@ -383,10 +409,12 @@ export interface CitedLabel {
  */
 const ACT_CITATION = new RegExp(
   String.raw`(?:\b(?:pel[oa]s?|por(?: forca)?(?: d[oa]s?)?|conforme|nos termos d[oa]s?|de acordo com)\s+` +
-    // `[^\s,]+` (não `\S+?`) e no máximo 6 dispositivos: sem ambiguidade entre as repetições, o
-    // tempo fica linear (SonarQube S8786).
-    String.raw`(?:(?:o |a )?(?:art\.?|artigo|inciso|§|paragrafo|alinea|item)\s*[^\s,]+,?\s+(?:d[oa]s?\s+)?){0,6})?` +
-    String.raw`\b(?:lei complementar|lei|decreto|convenio|ajuste|instrucao normativa|resolucao|protocolo|emenda constitucional|lc)\b[^,;()]*?\d[\d./]*(?:\s*,?\s*de\s+\d[\d.]*)?`,
+    // `[^\s,]+` (não `\S+?`), no máximo 6 dispositivos e a palavra-chave fechada por `(?![a-z.])`
+    // ("art" não reparte "art." nem "artigo"): sem ambiguidade entre as repetições, o tempo fica
+    // linear (SonarQube S8786).
+    String.raw`(?:(?:o |a )?(?:art\.?|artigo|inciso|§|paragrafo|alinea|item)(?![a-z.])\s*[^\s,]+,?\s+(?:d[oa]s?\s+)?){0,6})?` +
+    // Até o primeiro dígito sem `*?` sobre dígitos, e a vírgula da data num grupo só.
+    String.raw`\b(?:lei complementar|lei|decreto|convenio|ajuste|instrucao normativa|resolucao|protocolo|emenda constitucional|lc)\b[^,;()\d]*\d[\d./]*(?:\s*(?:,\s*)?de\s+\d[\d.]*)?`,
   'g',
 )
 
