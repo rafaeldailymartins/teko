@@ -1,12 +1,18 @@
 import { resolve as resolvePath } from 'node:path'
 import { AppEnv, PROVISION_SEARCH_LIMIT } from '@teko/shared/contracts'
 import type { FastifyBaseLogger, FastifyInstance } from 'fastify'
+import {
+  createDevSession,
+  type DevSession,
+  type DevSessionArgs,
+} from '#adapters/in/cli/dev-session/dev-session.ts'
 import type { FixtureCorpusReader } from '#adapters/in/cli/eval-fixture/eval-fixture.ts'
 import type {
   CoverageMarkTarget,
   WatchDatabaseUrl,
 } from '#adapters/in/cli/sources-watch/run-coverage-mark.ts'
 import type { HttpOptions } from '#adapters/in/http/http-options.ts'
+import { createBetterAuthGateway } from '#adapters/out/auth/better-auth.ts'
 import { createGithubReleasesBlobStore } from '#adapters/out/blobs/github-releases-blob-store.ts'
 import { systemClock } from '#adapters/out/clock/system-clock.ts'
 import { sha256ContentHasher } from '#adapters/out/crypto/sha256-content-hasher.ts'
@@ -36,12 +42,14 @@ import { createPgRateLimitStore } from '#adapters/out/persistence/drizzle/reposi
 import { createPgSearchRepository } from '#adapters/out/persistence/drizzle/repositories/pg-search-repository.ts'
 import { snapshotCodec } from '#adapters/out/persistence/drizzle/repositories/pg-snapshot-codec.ts'
 import { createPgSnapshotRepository } from '#adapters/out/persistence/drizzle/repositories/pg-snapshot-repository.ts'
+import { createPgUserRepository } from '#adapters/out/persistence/drizzle/repositories/pg-user-repository.ts'
 import {
   BGE_RERANKER_MODEL,
   createWorkersAiRerankerAdapter,
 } from '#adapters/out/reranker/workers-ai/workers-ai-reranker-adapter.ts'
 import { createLogger } from '#adapters/out/telemetry/logger.ts'
 import type { Container, IngestionContainer, RetrievalUseCases } from '#app/container.ts'
+import type { AuthGateway } from '#app/ports/auth-gateway.ts'
 import type { BackgroundTaskFailure } from '#app/ports/background-tasks.ts'
 import type { BlobStore } from '#app/ports/blob-store.ts'
 import type { Clock } from '#app/ports/clock.ts'
@@ -90,6 +98,7 @@ import {
   createSeedFixtureCorpus,
   type SeedFixtureCorpus,
 } from '#app/use-cases/seed-fixture-corpus.ts'
+import { createUserUseCases, type UserUseCases } from '#app/use-cases/users.ts'
 import { PUBLISHABLE_REVIEW_STATUSES, ReviewStatus } from '#domain/corpus/family.ts'
 import { type BuildInfo, createBuildInfo } from '#domain/shared/build-info.ts'
 import { buildApp } from './build-app.ts'
@@ -417,6 +426,44 @@ export function createIngestionIo(
   }
 }
 
+/** Sessão de 7 dias, a mesma do Better Auth. */
+const DEV_SESSION_TTL_S = 604_800
+
+/**
+ * `cli seed-dev-session`: usuário com onboarding e sessão direto no banco de `DATABASE_URL`, com
+ * o cookie assinado pelo `BETTER_AUTH_SECRET`. Só development e ci.
+ */
+export function createDevSessionSeeder(
+  env: Env,
+  clock: Clock = systemClock,
+): { seed(args: DevSessionArgs): Promise<DevSession>; close(): Promise<void> } {
+  if (env.APP_ENV !== AppEnv.Development && env.APP_ENV !== AppEnv.Ci) {
+    throw new Error(
+      `seed-dev-session só roda com APP_ENV development ou ci (atual: ${env.APP_ENV})`,
+    )
+  }
+  const { DATABASE_URL: url, BETTER_AUTH_SECRET: secret } = env
+  if (url === undefined || secret === undefined) {
+    throw new Error('seed-dev-session exige DATABASE_URL e BETTER_AUTH_SECRET')
+  }
+  const database = createDatabase({ url, applicationName: 'teko-dev-session', maxConnections: 1 })
+  return {
+    seed: (args) =>
+      createDevSession(database.pool, {
+        secret,
+        cookiePrefix: cookiePrefixFor(env.APP_ENV),
+        secure: env.WEB_ORIGIN.startsWith('https://'),
+        email: args.email,
+        name: args.name,
+        termsVersion: env.TERMS_VERSION,
+        countryOfResidence: args.country,
+        now: clock.now(),
+        ttlSeconds: DEV_SESSION_TTL_S,
+      }),
+    close: () => database.close(),
+  }
+}
+
 /** Leitor do corpus no formato da fixture (`cli eval-fixture`), sobre `DATABASE_URL`. */
 export function createFixtureCorpusReader(
   env: Env,
@@ -472,6 +519,27 @@ function buildInfoOf(env: Env): BuildInfo {
   return createBuildInfo({ version: env.APP_VERSION, gitSha: env.GIT_SHA })
 }
 
+/** Prefixo dos cookies: `teko` em produção, `teko-stg` nos demais ambientes. */
+function cookiePrefixFor(appEnv: Env['APP_ENV']): string {
+  return appEnv === AppEnv.Production ? 'teko' : 'teko-stg'
+}
+
+/** Better Auth sobre o banco do runtime; `null` sem `BETTER_AUTH_SECRET`. */
+function createAuth(env: Env, database: Database): AuthGateway | null {
+  if (env.BETTER_AUTH_SECRET === undefined) {
+    return null
+  }
+  const app = (clientId: string | undefined, clientSecret: string | undefined) =>
+    clientId === undefined || clientSecret === undefined ? null : { clientId, clientSecret }
+  return createBetterAuthGateway(database.db, {
+    secret: env.BETTER_AUTH_SECRET,
+    webOrigin: env.WEB_ORIGIN,
+    cookiePrefix: cookiePrefixFor(env.APP_ENV),
+    github: app(env.GITHUB_CLIENT_ID, env.GITHUB_CLIENT_SECRET),
+    google: app(env.GOOGLE_CLIENT_ID, env.GOOGLE_CLIENT_SECRET),
+  })
+}
+
 export function createContainer(env: Env, overrides: ContainerOverrides = {}): Container {
   const clock = overrides.clock ?? systemClock
   const buildInfo = buildInfoOf(env)
@@ -483,6 +551,8 @@ export function createContainer(env: Env, overrides: ContainerOverrides = {}): C
   const embeddings = createEmbeddings(env)
   let database: Database | null = null
   let retrieval: RetrievalUseCases | null = null
+  let users: UserUseCases | null = null
+  let auth: AuthGateway | null = null
   if (env.DATABASE_URL !== undefined && embeddings !== null) {
     database = createDatabase({
       url: env.DATABASE_URL,
@@ -491,12 +561,19 @@ export function createContainer(env: Env, overrides: ContainerOverrides = {}): C
     })
     platform.attachDatabasePool(database.pool)
     retrieval = createRetrieval(env, database, embeddings, resolveReferenceDate, clock)
+    users = createUserUseCases({
+      users: createPgUserRepository(database.db),
+      clock,
+      termsVersion: env.TERMS_VERSION,
+    })
+    auth = createAuth(env, database)
   }
 
   return {
     appEnv: env.APP_ENV,
     buildInfo,
     lifecycle,
+    auth,
     backgroundTasks: platform.backgroundTasks,
     clientIp: platform.clientIp,
     rateLimitStore: database === null ? null : createPgRateLimitStore(database.pool),
@@ -505,6 +582,7 @@ export function createContainer(env: Env, overrides: ContainerOverrides = {}): C
       getHealth: createGetHealth({ buildInfo, appEnv: env.APP_ENV, lifecycle }),
       resolveReferenceDate,
       retrieval,
+      users,
     },
     close: async () => {
       await database?.close()

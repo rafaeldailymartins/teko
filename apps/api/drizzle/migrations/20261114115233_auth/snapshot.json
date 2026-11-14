@@ -1,0 +1,1726 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "44c10011-20a2-433b-95bd-823687043003",
+  "prevIds": [
+    "9692056a-1d5c-49aa-9481-a0d36e7eaa4b"
+  ],
+  "footprints": [
+    {
+      "statementType": "create_schema",
+      "statementTarget": [
+        "schema",
+        "auth"
+      ],
+      "writes": [
+        "s|sch|auth",
+        "n|sch|auth",
+        "e|sch|auth"
+      ]
+    },
+    {
+      "statementType": "create_table",
+      "statementTarget": [
+        "table",
+        "auth",
+        "account"
+      ],
+      "writes": [
+        "s|tbl|auth.account",
+        "n|tbl|auth.account",
+        "e|tbl|auth.account",
+        "n|rel|auth.account",
+        "n|type|auth.account",
+        "n|rel|auth.account_pkey"
+      ],
+      "reads": [
+        "n|sch|auth"
+      ]
+    },
+    {
+      "statementType": "create_table",
+      "statementTarget": [
+        "table",
+        "auth",
+        "passkey"
+      ],
+      "writes": [
+        "s|tbl|auth.passkey",
+        "n|tbl|auth.passkey",
+        "e|tbl|auth.passkey",
+        "n|rel|auth.passkey",
+        "n|type|auth.passkey",
+        "n|rel|auth.passkey_pkey"
+      ],
+      "reads": [
+        "n|sch|auth"
+      ]
+    },
+    {
+      "statementType": "create_table",
+      "statementTarget": [
+        "table",
+        "auth",
+        "rate_limit"
+      ],
+      "writes": [
+        "s|tbl|auth.rate_limit",
+        "n|tbl|auth.rate_limit",
+        "e|tbl|auth.rate_limit",
+        "n|rel|auth.rate_limit",
+        "n|type|auth.rate_limit",
+        "n|rel|auth.rate_limit_pkey",
+        "n|rel|auth.rate_limit_key_key"
+      ],
+      "reads": [
+        "n|sch|auth"
+      ]
+    },
+    {
+      "statementType": "create_table",
+      "statementTarget": [
+        "table",
+        "auth",
+        "session"
+      ],
+      "writes": [
+        "s|tbl|auth.session",
+        "n|tbl|auth.session",
+        "e|tbl|auth.session",
+        "n|rel|auth.session",
+        "n|type|auth.session",
+        "n|rel|auth.session_pkey"
+      ],
+      "reads": [
+        "n|sch|auth"
+      ]
+    },
+    {
+      "statementType": "create_table",
+      "statementTarget": [
+        "table",
+        "auth",
+        "user"
+      ],
+      "writes": [
+        "s|tbl|auth.user",
+        "n|tbl|auth.user",
+        "e|tbl|auth.user",
+        "n|rel|auth.user",
+        "n|type|auth.user",
+        "n|rel|auth.user_pkey"
+      ],
+      "reads": [
+        "n|sch|auth"
+      ]
+    },
+    {
+      "statementType": "create_table",
+      "statementTarget": [
+        "table",
+        "auth",
+        "verification"
+      ],
+      "writes": [
+        "s|tbl|auth.verification",
+        "n|tbl|auth.verification",
+        "e|tbl|auth.verification",
+        "n|rel|auth.verification",
+        "n|type|auth.verification",
+        "n|rel|auth.verification_pkey"
+      ],
+      "reads": [
+        "n|sch|auth"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "auth",
+        "account",
+        "account_user"
+      ],
+      "writes": [
+        "s|idx|auth.account_user",
+        "n|idx|auth.account_user",
+        "e|idx|auth.account_user",
+        "n|rel|auth.account_user"
+      ],
+      "reads": [
+        "n|tbl|auth.account",
+        "n|sch|auth",
+        "n|col|auth.account.user_id"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "auth",
+        "account",
+        "account_provider_account"
+      ],
+      "writes": [
+        "s|idx|auth.account_provider_account",
+        "n|idx|auth.account_provider_account",
+        "e|idx|auth.account_provider_account",
+        "n|rel|auth.account_provider_account"
+      ],
+      "reads": [
+        "n|tbl|auth.account",
+        "n|sch|auth",
+        "n|col|auth.account.provider_id",
+        "n|col|auth.account.account_id"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "auth",
+        "passkey",
+        "passkey_user"
+      ],
+      "writes": [
+        "s|idx|auth.passkey_user",
+        "n|idx|auth.passkey_user",
+        "e|idx|auth.passkey_user",
+        "n|rel|auth.passkey_user"
+      ],
+      "reads": [
+        "n|tbl|auth.passkey",
+        "n|sch|auth",
+        "n|col|auth.passkey.user_id"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "auth",
+        "passkey",
+        "passkey_credential"
+      ],
+      "writes": [
+        "s|idx|auth.passkey_credential",
+        "n|idx|auth.passkey_credential",
+        "e|idx|auth.passkey_credential",
+        "n|rel|auth.passkey_credential"
+      ],
+      "reads": [
+        "n|tbl|auth.passkey",
+        "n|sch|auth",
+        "n|col|auth.passkey.credential_id"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "auth",
+        "session",
+        "session_token"
+      ],
+      "writes": [
+        "s|idx|auth.session_token",
+        "n|idx|auth.session_token",
+        "e|idx|auth.session_token",
+        "n|rel|auth.session_token"
+      ],
+      "reads": [
+        "n|tbl|auth.session",
+        "n|sch|auth",
+        "n|col|auth.session.token"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "auth",
+        "session",
+        "session_user"
+      ],
+      "writes": [
+        "s|idx|auth.session_user",
+        "n|idx|auth.session_user",
+        "e|idx|auth.session_user",
+        "n|rel|auth.session_user"
+      ],
+      "reads": [
+        "n|tbl|auth.session",
+        "n|sch|auth",
+        "n|col|auth.session.user_id"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "auth",
+        "user",
+        "user_email"
+      ],
+      "writes": [
+        "s|idx|auth.user_email",
+        "n|idx|auth.user_email",
+        "e|idx|auth.user_email",
+        "n|rel|auth.user_email"
+      ],
+      "reads": [
+        "n|tbl|auth.user",
+        "n|sch|auth",
+        "n|col|auth.user.email"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "auth",
+        "verification",
+        "verification_identifier"
+      ],
+      "writes": [
+        "s|idx|auth.verification_identifier",
+        "n|idx|auth.verification_identifier",
+        "e|idx|auth.verification_identifier",
+        "n|rel|auth.verification_identifier"
+      ],
+      "reads": [
+        "n|tbl|auth.verification",
+        "n|sch|auth",
+        "n|col|auth.verification.identifier"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": [
+        "table",
+        "app",
+        "feedback"
+      ],
+      "writes": [
+        "s|fk|app.feedback.feedback_user_id_user_id_fkey",
+        "n|fk|app.feedback.feedback_user_id_user_id_fkey",
+        "e|fk|app.feedback.feedback_user_id_user_id_fkey",
+        "n|con|app.feedback.feedback_user_id_user_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|app.feedback",
+        "n|sch|app",
+        "n|tbl|auth.user",
+        "n|sch|auth",
+        "n|col|app.feedback.user_id",
+        "n|col|auth.user.id",
+        "e|uniqueness|auth.user.id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": [
+        "table",
+        "app",
+        "questions"
+      ],
+      "writes": [
+        "s|fk|app.questions.questions_user_id_user_id_fkey",
+        "n|fk|app.questions.questions_user_id_user_id_fkey",
+        "e|fk|app.questions.questions_user_id_user_id_fkey",
+        "n|con|app.questions.questions_user_id_user_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|app.questions",
+        "n|sch|app",
+        "n|tbl|auth.user",
+        "n|sch|auth",
+        "n|col|app.questions.user_id",
+        "n|col|auth.user.id",
+        "e|uniqueness|auth.user.id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": [
+        "table",
+        "auth",
+        "account"
+      ],
+      "writes": [
+        "s|fk|auth.account.account_user_id_user_id_fkey",
+        "n|fk|auth.account.account_user_id_user_id_fkey",
+        "e|fk|auth.account.account_user_id_user_id_fkey",
+        "n|con|auth.account.account_user_id_user_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|auth.account",
+        "n|sch|auth",
+        "n|tbl|auth.user",
+        "n|sch|auth",
+        "n|col|auth.account.user_id",
+        "n|col|auth.user.id",
+        "e|uniqueness|auth.user.id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": [
+        "table",
+        "auth",
+        "passkey"
+      ],
+      "writes": [
+        "s|fk|auth.passkey.passkey_user_id_user_id_fkey",
+        "n|fk|auth.passkey.passkey_user_id_user_id_fkey",
+        "e|fk|auth.passkey.passkey_user_id_user_id_fkey",
+        "n|con|auth.passkey.passkey_user_id_user_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|auth.passkey",
+        "n|sch|auth",
+        "n|tbl|auth.user",
+        "n|sch|auth",
+        "n|col|auth.passkey.user_id",
+        "n|col|auth.user.id",
+        "e|uniqueness|auth.user.id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": [
+        "table",
+        "auth",
+        "session"
+      ],
+      "writes": [
+        "s|fk|auth.session.session_user_id_user_id_fkey",
+        "n|fk|auth.session.session_user_id_user_id_fkey",
+        "e|fk|auth.session.session_user_id_user_id_fkey",
+        "n|con|auth.session.session_user_id_user_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|auth.session",
+        "n|sch|auth",
+        "n|tbl|auth.user",
+        "n|sch|auth",
+        "n|col|auth.session.user_id",
+        "n|col|auth.user.id",
+        "e|uniqueness|auth.user.id"
+      ]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "name": "auth",
+        "entityType": "schemas"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "auth",
+        "name": "account",
+        "isRlsEnabled": false,
+        "entityType": "tables"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "auth",
+        "name": "passkey",
+        "isRlsEnabled": false,
+        "entityType": "tables"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "auth",
+        "name": "rate_limit",
+        "isRlsEnabled": false,
+        "entityType": "tables"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "auth",
+        "name": "session",
+        "isRlsEnabled": false,
+        "entityType": "tables"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "auth",
+        "name": "user",
+        "isRlsEnabled": false,
+        "entityType": "tables"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "auth",
+        "name": "verification",
+        "isRlsEnabled": false,
+        "entityType": "tables"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "auth",
+        "table": "account",
+        "name": "id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "uuidv7()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "auth",
+        "table": "account",
+        "name": "account_id",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "auth",
+        "table": "account",
+        "name": "provider_id",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "auth",
+        "table": "account",
+        "name": "user_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "auth",
+        "table": "account",
+        "name": "access_token",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "auth",
+        "table": "account",
+        "name": "refresh_token",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "auth",
+        "table": "account",
+        "name": "id_token",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "auth",
+        "table": "account",
+        "name": "access_token_expires_at",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "auth",
+        "table": "account",
+        "name": "refresh_token_expires_at",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "auth",
+        "table": "account",
+        "name": "scope",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "auth",
+        "table": "account",
+        "name": "password",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "auth",
+        "table": "account",
+        "name": "created_at",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "now()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "auth",
+        "table": "account",
+        "name": "updated_at",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "now()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "auth",
+        "table": "passkey",
+        "name": "id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "uuidv7()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "auth",
+        "table": "passkey",
+        "name": "name",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "auth",
+        "table": "passkey",
+        "name": "public_key",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "auth",
+        "table": "passkey",
+        "name": "user_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "auth",
+        "table": "passkey",
+        "name": "credential_id",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "auth",
+        "table": "passkey",
+        "name": "counter",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "auth",
+        "table": "passkey",
+        "name": "device_type",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "auth",
+        "table": "passkey",
+        "name": "backed_up",
+        "type": "boolean",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "auth",
+        "table": "passkey",
+        "name": "transports",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "auth",
+        "table": "passkey",
+        "name": "created_at",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "auth",
+        "table": "passkey",
+        "name": "aaguid",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "auth",
+        "table": "rate_limit",
+        "name": "id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "uuidv7()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "auth",
+        "table": "rate_limit",
+        "name": "key",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "auth",
+        "table": "rate_limit",
+        "name": "count",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "auth",
+        "table": "rate_limit",
+        "name": "last_request",
+        "type": "bigint",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "auth",
+        "table": "session",
+        "name": "id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "uuidv7()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "auth",
+        "table": "session",
+        "name": "expires_at",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "auth",
+        "table": "session",
+        "name": "token",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "auth",
+        "table": "session",
+        "name": "created_at",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "now()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "auth",
+        "table": "session",
+        "name": "updated_at",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "now()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "auth",
+        "table": "session",
+        "name": "ip_address",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "auth",
+        "table": "session",
+        "name": "user_agent",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "auth",
+        "table": "session",
+        "name": "user_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "auth",
+        "table": "user",
+        "name": "id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "uuidv7()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "auth",
+        "table": "user",
+        "name": "name",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "auth",
+        "table": "user",
+        "name": "email",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "auth",
+        "table": "user",
+        "name": "email_verified",
+        "type": "boolean",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "false",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "auth",
+        "table": "user",
+        "name": "image",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "auth",
+        "table": "user",
+        "name": "created_at",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "now()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "auth",
+        "table": "user",
+        "name": "updated_at",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "now()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "auth",
+        "table": "user",
+        "name": "is_adult",
+        "type": "boolean",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "false",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "auth",
+        "table": "user",
+        "name": "terms_version",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "auth",
+        "table": "user",
+        "name": "terms_accepted_at",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "auth",
+        "table": "user",
+        "name": "country_of_residence",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "auth",
+        "table": "verification",
+        "name": "id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "uuidv7()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "auth",
+        "table": "verification",
+        "name": "identifier",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "auth",
+        "table": "verification",
+        "name": "value",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "auth",
+        "table": "verification",
+        "name": "expires_at",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "auth",
+        "table": "verification",
+        "name": "created_at",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "now()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "auth",
+        "table": "verification",
+        "name": "updated_at",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "now()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "auth",
+        "table": "account",
+        "name": "account_user",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "user_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": false,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "auth",
+        "table": "account",
+        "name": "account_provider_account",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "provider_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          },
+          {
+            "value": "account_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": true,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "auth",
+        "table": "passkey",
+        "name": "passkey_user",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "user_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": false,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "auth",
+        "table": "passkey",
+        "name": "passkey_credential",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "credential_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": true,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "auth",
+        "table": "session",
+        "name": "session_token",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "token",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": true,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "auth",
+        "table": "session",
+        "name": "session_user",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "user_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": false,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "auth",
+        "table": "user",
+        "name": "user_email",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "email",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": true,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "auth",
+        "table": "verification",
+        "name": "verification_identifier",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "identifier",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": false,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "app",
+        "table": "feedback",
+        "name": "feedback_user_id_user_id_fkey",
+        "nameExplicit": false,
+        "columns": [
+          "user_id"
+        ],
+        "schemaTo": "auth",
+        "tableTo": "user",
+        "columnsTo": [
+          "id"
+        ],
+        "onUpdate": "NO ACTION",
+        "onDelete": "CASCADE",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "app",
+        "table": "questions",
+        "name": "questions_user_id_user_id_fkey",
+        "nameExplicit": false,
+        "columns": [
+          "user_id"
+        ],
+        "schemaTo": "auth",
+        "tableTo": "user",
+        "columnsTo": [
+          "id"
+        ],
+        "onUpdate": "NO ACTION",
+        "onDelete": "CASCADE",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "auth",
+        "table": "account",
+        "name": "account_user_id_user_id_fkey",
+        "nameExplicit": false,
+        "columns": [
+          "user_id"
+        ],
+        "schemaTo": "auth",
+        "tableTo": "user",
+        "columnsTo": [
+          "id"
+        ],
+        "onUpdate": "NO ACTION",
+        "onDelete": "CASCADE",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "auth",
+        "table": "passkey",
+        "name": "passkey_user_id_user_id_fkey",
+        "nameExplicit": false,
+        "columns": [
+          "user_id"
+        ],
+        "schemaTo": "auth",
+        "tableTo": "user",
+        "columnsTo": [
+          "id"
+        ],
+        "onUpdate": "NO ACTION",
+        "onDelete": "CASCADE",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "auth",
+        "table": "session",
+        "name": "session_user_id_user_id_fkey",
+        "nameExplicit": false,
+        "columns": [
+          "user_id"
+        ],
+        "schemaTo": "auth",
+        "tableTo": "user",
+        "columnsTo": [
+          "id"
+        ],
+        "onUpdate": "NO ACTION",
+        "onDelete": "CASCADE",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "auth",
+        "table": "account",
+        "name": "account_pkey",
+        "columns": [
+          "id"
+        ],
+        "nameExplicit": false,
+        "entityType": "pks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "auth",
+        "table": "passkey",
+        "name": "passkey_pkey",
+        "columns": [
+          "id"
+        ],
+        "nameExplicit": false,
+        "entityType": "pks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "auth",
+        "table": "rate_limit",
+        "name": "rate_limit_pkey",
+        "columns": [
+          "id"
+        ],
+        "nameExplicit": false,
+        "entityType": "pks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "auth",
+        "table": "session",
+        "name": "session_pkey",
+        "columns": [
+          "id"
+        ],
+        "nameExplicit": false,
+        "entityType": "pks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "auth",
+        "table": "user",
+        "name": "user_pkey",
+        "columns": [
+          "id"
+        ],
+        "nameExplicit": false,
+        "entityType": "pks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "auth",
+        "table": "verification",
+        "name": "verification_pkey",
+        "columns": [
+          "id"
+        ],
+        "nameExplicit": false,
+        "entityType": "pks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "auth",
+        "table": "rate_limit",
+        "name": "rate_limit_key_key",
+        "nameExplicit": false,
+        "columns": [
+          "key"
+        ],
+        "nullsNotDistinct": false,
+        "entityType": "uniques"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "auth",
+        "table": "user",
+        "name": "user_country_of_residence",
+        "value": "\"country_of_residence\" IS NULL OR \"country_of_residence\" ~ '^[A-Z]{2}$'",
+        "entityType": "checks"
+      }
+    }
+  ]
+}

@@ -28,7 +28,20 @@ describe('tokenize', () => {
   it('gruda o espaço na palavra seguinte e preserva o espaço final', () => {
     expect(tokenize('a  b c ')).toEqual(['a', '  b', ' c', ' '])
     expect(tokenize('')).toEqual([])
+    expect(tokenize('   ')).toEqual(['   '])
+    expect(tokenize('\ta\nb')).toEqual(['\ta', '\nb'])
   })
+
+  test.prop([fc.string({ unit: fc.constantFrom('a', 'b', ' ', '\n', '\t'), maxLength: 60 })])(
+    'concatenar os tokens devolve o texto; só o último token pode ser só espaço',
+    (text) => {
+      const tokens = tokenize(text)
+      expect(tokens.join('')).toBe(text)
+      for (const token of tokens.slice(0, -1)) {
+        expect(token.trim()).not.toBe('')
+      }
+    },
+  )
 })
 
 describe('wordDiff', () => {

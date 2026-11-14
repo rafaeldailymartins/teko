@@ -2,6 +2,7 @@ import { isProblemDetails, problemTypeUri } from '@teko/shared/errors'
 import { ResponseSerializationError, validatorCompiler } from 'fastify-type-provider-zod'
 import { describe, expect, it } from 'vitest'
 import { z } from 'zod'
+import { ApplicationError } from '#app/errors.ts'
 import { instancePathToFieldPath, notFoundProblem, problemFromError } from './problem-mapper.ts'
 
 const context = { traceId: 'req-12345678', instance: '/api/v1/questions' } as const
@@ -48,6 +49,32 @@ describe('instancePathToFieldPath', () => {
 })
 
 describe('problemFromError', () => {
+  it('ApplicationError sai com o código e os dados da aplicação', () => {
+    const onboarding = problemFromError(
+      new ApplicationError({ code: 'onboarding_required' }),
+      context,
+    )
+    expect(onboarding).toMatchObject({
+      code: 'onboarding_required',
+      status: 403,
+      traceId: context.traceId,
+    })
+    const quota = problemFromError(
+      new ApplicationError({
+        code: 'quota_exceeded',
+        meta: { scope: 'user_daily', resetAt: '2026-11-11T03:00:00.000Z' },
+      }),
+      context,
+    )
+    expect(quota).toMatchObject({
+      code: 'quota_exceeded',
+      status: 429,
+      meta: { scope: 'user_daily' },
+    })
+    expect(new ApplicationError({ code: 'stream_busy', detail: 'ocupado' }).message).toBe('ocupado')
+    expect(new ApplicationError({ code: 'stream_busy' }).message).toBe('stream_busy')
+  })
+
   it('converte erros de validação Zod em validation_error com errors[] por campo', () => {
     const schema = z.strictObject({ question: z.string(), families: z.array(z.string()) })
     const error = zodValidationError(schema, { families: [1], extra: true }, 'body')

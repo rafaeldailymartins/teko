@@ -108,6 +108,15 @@ const MIN_SHUTDOWN_GRACE_MS = 30_000
 /** Tempo para o proxy da frente ver o 503 do `/healthz` antes de a porta fechar. */
 export const DEFAULT_DRAIN_DELAY_MS = 5000
 
+/** Versão dos Termos em vigor quando nada é configurado. */
+export const DEFAULT_TERMS_VERSION = '2026-11-14'
+
+/**
+ * Variáveis que o Better Auth lê sozinho do ambiente e que ligariam a telemetria dele (dados do
+ * projeto para um terceiro): proibidas, com qualquer valor.
+ */
+const FORBIDDEN_LIBRARY_ENV = ['BETTER_AUTH_TELEMETRY', 'BETTER_AUTH_TELEMETRY_ENDPOINT'] as const
+
 /** Nomes que redirecionariam um SDK de modelo para outro host. */
 const PROVIDER_BASE_URL_PATTERN =
   /^(?:GOOGLE|GEMINI|GENAI|OPENAI|GROQ|CLOUDFLARE)\w*_(?:BASE_URL|API_BASE)$/
@@ -187,6 +196,22 @@ const envSchema = z
      * pergunta passam a exigir o banco; sem ela, o container não monta a busca.
      */
     DATABASE_URL: postgresUrlSchema.optional(),
+    /**
+     * Segredo do Better Auth (assina cookies de sessão e tokens). Obrigatório em staging e
+     * produção com banco; sem ele (CLI, evals, testes sem sessão), `/api/auth/*` e as rotas que
+     * exigem sessão respondem 503.
+     */
+    BETTER_AUTH_SECRET: z.string().min(32, { error: 'deve ter ao menos 32 caracteres' }).optional(),
+    /** OAuth apps por ambiente (callbacks em `<WEB_ORIGIN>/api/auth/callback/{github,google}`). */
+    GITHUB_CLIENT_ID: z.string().trim().min(1).optional(),
+    GITHUB_CLIENT_SECRET: z.string().trim().min(1).optional(),
+    GOOGLE_CLIENT_ID: z.string().trim().min(1).optional(),
+    GOOGLE_CLIENT_SECRET: z.string().trim().min(1).optional(),
+    /** Versão vigente dos Termos: o onboarding só aceita esta, e uma versão nova pede novo aceite. */
+    TERMS_VERSION: z
+      .string()
+      .regex(/^[0-9A-Za-z.-]{1,32}$/)
+      .default(DEFAULT_TERMS_VERSION),
     /** Conexões do pool por instância (Fluid compute: várias invocações na mesma instância; plano: 3). */
     DATABASE_MAX_CONNECTIONS: z.coerce.number().int().min(1).max(20).default(3),
     /** Fixture de embeddings do fake (`apps/api/test/fixtures/corpus/embeddings.json.gz`). */
@@ -302,6 +327,14 @@ const envSchema = z
     if (env.GITHUB_TOKEN !== undefined && env.GITHUB_REPOSITORY === undefined) {
       issue('GITHUB_REPOSITORY', 'obrigatória com GITHUB_TOKEN (owner/repo dos releases)')
     }
+    for (const [id, secret] of [
+      ['GITHUB_CLIENT_ID', 'GITHUB_CLIENT_SECRET'],
+      ['GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET'],
+    ] as const) {
+      if ((env[id] === undefined) !== (env[secret] === undefined)) {
+        issue(env[id] === undefined ? id : secret, `${id} e ${secret} vêm juntas`)
+      }
+    }
     if ((env.NEON_API_KEY_STAGING === undefined) !== (env.NEON_STAGING_PROJECT_ID === undefined)) {
       issue(
         env.NEON_API_KEY_STAGING === undefined ? 'NEON_API_KEY_STAGING' : 'NEON_STAGING_PROJECT_ID',
@@ -352,6 +385,14 @@ const envSchema = z
     if (env.EMBEDDINGS_PROVIDER === EmbeddingsProvider.Fake) {
       issue('EMBEDDINGS_PROVIDER', `fake é proibido com APP_ENV=${env.APP_ENV}`)
     }
+    if (env.DATABASE_URL !== undefined) {
+      // A API publicada com banco sempre tem login: segredo e os dois OAuth apps.
+      for (const name of ['BETTER_AUTH_SECRET', 'GITHUB_CLIENT_ID', 'GOOGLE_CLIENT_ID'] as const) {
+        if (env[name] === undefined) {
+          issue(name, `obrigatória com APP_ENV=${env.APP_ENV} e DATABASE_URL`)
+        }
+      }
+    }
     if (
       env.RUNTIME_TARGET === RuntimeTarget.Vercel &&
       env.VERCEL_REGION !== VERCEL_FUNCTION_REGION
@@ -380,10 +421,14 @@ export class EnvValidationError extends Error {
 }
 
 function forbiddenBaseUrlProblems(source: Readonly<Record<string, string | undefined>>): string[] {
-  return Object.keys(source)
+  const baseUrls = Object.keys(source)
     .filter((key) => PROVIDER_BASE_URL_PATTERN.test(key) && source[key] !== undefined)
     .sort(compareCodeUnits)
     .map((key) => `${key}: proibida (o host do provedor é fixo no código)`)
+  const library = FORBIDDEN_LIBRARY_ENV.filter((key) => source[key] !== undefined).map(
+    (key) => `${key}: proibida (telemetria do Better Auth fica desligada)`,
+  )
+  return [...baseUrls, ...library]
 }
 
 /** Fatos do processo que entram nas asserções de boot (injetáveis nos testes). */

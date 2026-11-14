@@ -1,7 +1,7 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify'
 
 /**
- * Proteção contra CSRF nas rotas da aplicação (`/api/v1/*`). Web e API estão na mesma origem
+ * Proteção contra CSRF em `/api/*` (aplicação e Better Auth). Web e API estão na mesma origem
  * (ADR 0029), sem CORS: toda mutação legítima vem do próprio front, com `Origin` igual ao domínio
  * do ambiente.
  *
@@ -9,13 +9,14 @@ import type { FastifyInstance, FastifyRequest } from 'fastify'
  *
  * - `Origin` ausente ou diferente de `WEB_ORIGIN` → 403 `forbidden`;
  * - POST, PUT e PATCH sem `content-type: application/json` → 415 (`validation_error`);
- * - query string → 400 `validation_error`: as mutações só leem o corpo e os parâmetros do caminho,
- *   e um parâmetro na URL acaba em log de proxy e no histórico do navegador.
+ * - só em `/api/v1/*`, query string → 400 `validation_error`: as mutações da aplicação só leem o
+ *   corpo e os parâmetros do caminho, e um parâmetro na URL acaba em log de proxy e no histórico.
  *
- * `/api/auth/*` fica de fora: o Better Auth confere o `Origin` contra os `trustedOrigins` dele, e o
- * callback do OAuth chega por GET de outro site.
+ * `/api/auth/*` entra porque o Better Auth só confere o `Origin` quando a requisição traz cookie:
+ * um `sign-in/social` disparado de outro site passaria. O callback do OAuth chega por GET.
  */
-const GUARDED_PREFIX = '/api/v1/'
+const GUARDED_PREFIX = '/api/'
+const APP_PREFIX = '/api/v1/'
 
 const SAFE_METHODS: ReadonlySet<string> = new Set(['GET', 'HEAD', 'OPTIONS'])
 const BODY_METHODS: ReadonlySet<string> = new Set(['POST', 'PUT', 'PATCH'])
@@ -44,7 +45,7 @@ export function registerOriginGuard(app: FastifyInstance, options: OriginGuardOp
     if (BODY_METHODS.has(request.method) && !isJson(request)) {
       throw app.httpErrors.unsupportedMediaType('Content-Type must be application/json')
     }
-    if (request.url.includes('?')) {
+    if (request.url.startsWith(APP_PREFIX) && request.url.includes('?')) {
       throw app.httpErrors.badRequest('Query string is not allowed in mutations')
     }
   })

@@ -6,6 +6,7 @@ import underPressure from '@fastify/under-pressure'
 import type { FastifyInstance, FastifyRequest } from 'fastify'
 import type { RateLimitStore } from '#app/ports/rate-limit-store.ts'
 import { MAX_EVENT_LOOP_DELAY_MS, type RateLimitOptions } from '../http-options.ts'
+import { sessionOf } from './auth.ts'
 
 /**
  * `under-pressure`: com o event loop atrasado mais de 1 s (dimensionado para 1 vCPU por
@@ -88,11 +89,17 @@ function rateLimitStoreCtor(port: RateLimitStore): FastifyRateLimitStoreCtor {
 }
 
 /**
- * Chave do limite na F1: o IP do cliente, resolvido pela porta `ClientIp` da plataforma (web e API
- * na mesma origem, ADR 0029: o IP vale em todas as rotas). A F4 acrescenta a sessão (`user_id` ou
- * sessão anônima do Better Auth) como chave preferencial.
+ * Chave do limite: o `user_id` da sessão, quando há sessão (do cache do cookie, sem ir ao banco);
+ * senão, o IP do cliente pela porta `ClientIp` da plataforma (web e API na mesma origem, ADR 0029).
+ * Uma falha ao ler a sessão cai no IP: o limite nunca derruba a rota.
  */
-function rateLimitKey(request: FastifyRequest): string {
+async function rateLimitKey(request: FastifyRequest): Promise<string> {
+  if (request.server.container.auth !== null) {
+    const session = await sessionOf(request).catch(() => null)
+    if (session !== null) {
+      return `user:${session.user.id}`
+    }
+  }
   const { ip } = request.server.container.clientIp.resolve({
     headers: request.headers,
     forwardedIp: request.ip,

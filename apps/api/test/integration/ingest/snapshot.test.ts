@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs'
+import { readdirSync, readFileSync } from 'node:fs'
 import pg from 'pg'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { createInMemoryBlobStore } from '#adapters/out/fakes/in-memory-blob-store.ts'
@@ -89,7 +89,8 @@ describe('exportação', () => {
   it('grava um .jsonl.zst por tabela, na ordem de FK, e o manifesto por último', () => {
     expect(manifestKey).toBe('snapshots/1/manifest.json')
     expect(manifest.corpusVersion).toBe(1)
-    expect(manifest.migration.name).toMatch(/content-fingerprint/)
+    // A última migração aplicada (a pasta mais recente de drizzle/migrations).
+    expect(manifest.migration.name).toBe(readdirSync('drizzle/migrations').sort().at(-1))
     expect(blobs.keys(BlobStoreName.CorpusSnapshots)).toEqual(
       [...manifest.tables.map((table) => table.key), manifestKey].sort(),
     )

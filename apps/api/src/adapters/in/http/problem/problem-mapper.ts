@@ -9,11 +9,14 @@ import {
   hasZodFastifySchemaValidationErrors,
   ResponseSerializationError,
 } from 'fastify-type-provider-zod'
+import { ApplicationError } from '#app/errors.ts'
 
 /**
  * Converte qualquer erro lançado no ciclo de vida da requisição em Problem Details (RFC 9457).
  *
  * Regras:
+ * - `ApplicationError` → o código e os dados que a aplicação escolheu (`onboarding_required`,
+ *   `quota_exceeded` com `meta`, `stream_busy`...);
  * - validação Zod de entrada → 400 `validation_error` com `errors[]` por campo;
  * - resposta que não bate com o schema → 500 `internal` (bug nosso, nunca do cliente);
  * - erros HTTP 4xx (Fastify, plugins, `@fastify/sensible`) → código pelo status; os demais 4xx
@@ -104,6 +107,10 @@ function clientErrorInit(status: number, traceId: string): ProblemInit {
 
 export function problemFromError(error: unknown, context: ProblemContext): ProblemDetails {
   const { traceId } = context
+
+  if (error instanceof ApplicationError) {
+    return createProblem(withContext({ ...error.problem, traceId }, context))
+  }
 
   if (hasZodFastifySchemaValidationErrors(error)) {
     const errors: FieldError[] = error.validation.map((issue) => ({

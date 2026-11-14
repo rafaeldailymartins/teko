@@ -1,6 +1,7 @@
 import { fileURLToPath } from 'node:url'
 import { parseArgs } from 'node:util'
 import { isoDateInTimeZone } from '@teko/shared/vigencia'
+import { parseDevSessionArgs } from '#adapters/in/cli/dev-session/dev-session.ts'
 import {
   type EvalFixtureDeps,
   runEvalFixtureExport,
@@ -25,6 +26,7 @@ import type { BlobStore } from '#app/ports/blob-store.ts'
 import { compareCodeUnits } from '#domain/shared/compare-code-units.ts'
 import {
   createCoverageMarkTargets,
+  createDevSessionSeeder,
   createFixtureCorpusReader,
   createFixtureSeeder,
   createIngestionContainer,
@@ -46,6 +48,9 @@ import { type Env, EnvValidationError, loadCliEnv, loadWatchEnv } from './config
  *   condicionais e `discovered.json`, sem banco;
  * - `coverage-mark --discovered <discovered.json>` (F3, job `mark-coverage`): só lê
  *   `NEON_PROD_WATCH_URL` e `NEON_STAGING_WATCH_URL` (não passa pelo `loadCliEnv`).
+ *
+ * - `seed-dev-session [--email …] [--name …] [--country BR]` (F4): usuário com onboarding e sessão
+ *   do Better Auth direto no banco, para o login local e o e2e (só development e ci).
  *
  * `maintenance` (F4) entra aqui também.
  *
@@ -69,6 +74,7 @@ const USAGE = [
   '     cli ingest load --target staging|production --plan <plan.json> --docling-dir <dir> [--bulk] [--migrate] [--report <arquivo>]',
   '     cli snapshot export [--corpus-version <n>] | snapshot promote (--manifest <chave> | --corpus-version <n>)',
   '     cli eval-fixture export --from staging --out <dir> [--fixture <dir>]',
+  '     cli seed-dev-session [--email <e-mail>] [--name <nome>] [--country <ISO>]',
 ].join('\n')
 
 /** Saída de uma linha dos subcomandos (JSON que o workflow lê). */
@@ -246,6 +252,24 @@ async function runCoverage(args: readonly string[]): Promise<number> {
   }
 }
 
+async function runSeedDevSession(args: readonly string[]): Promise<number> {
+  const options = parseDevSessionArgs(args)
+  const seeder = createDevSessionSeeder(loadCliEnv())
+  try {
+    const session = await seeder.seed(options)
+    print(
+      JSON.stringify({
+        userId: session.userId,
+        cookie: `${session.cookieName}=${session.cookieValue}`,
+        expiresAt: session.expiresAt.toISOString(),
+      }),
+    )
+    return 0
+  } finally {
+    await seeder.close()
+  }
+}
+
 const COMMANDS: Readonly<Record<string, (args: readonly string[]) => Promise<number>>> = {
   'seed-fixtures': runSeedFixtures,
   ingest: runIngest,
@@ -253,6 +277,7 @@ const COMMANDS: Readonly<Record<string, (args: readonly string[]) => Promise<num
   'eval-fixture': runEvalFixture,
   'sources-watch': runWatch,
   'coverage-mark': runCoverage,
+  'seed-dev-session': runSeedDevSession,
 }
 
 function exitCodeOf(error: unknown): number {

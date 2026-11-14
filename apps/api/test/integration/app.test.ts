@@ -20,12 +20,13 @@ const openApiDocumentSchema = z.object({
   openapi: z.string(),
   paths: z.record(
     z.string(),
-    z.object({
-      get: z.object({
+    z.record(
+      z.string(),
+      z.object({
         operationId: z.string().optional(),
         responses: z.record(z.string(), z.unknown()),
       }),
-    }),
+    ),
   ),
 })
 
@@ -285,14 +286,16 @@ describe('OpenAPI + Scalar', () => {
           '/api/healthz',
           '/healthz',
           '/api/v1/coverage',
+          '/api/v1/me',
+          '/api/v1/me/onboarding',
           '/api/v1/provisions',
           '/api/v1/provisions/{stableKey}/diff',
           '/api/v1/provisions/{stableKey}/timeline',
           ...evalPaths,
         ].sort(),
       )
-      expect(document.paths['/api/healthz']?.get.operationId).toBe('getHealth')
-      expect(Object.keys(document.paths['/healthz']?.get.responses ?? {}).sort()).toEqual([
+      expect(document.paths['/api/healthz']?.['get']?.operationId).toBe('getHealth')
+      expect(Object.keys(document.paths['/healthz']?.['get']?.responses ?? {}).sort()).toEqual([
         '200',
         '503',
       ])

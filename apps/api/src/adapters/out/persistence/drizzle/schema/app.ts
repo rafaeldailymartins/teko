@@ -12,13 +12,15 @@ import {
   timestamp,
   uuid,
 } from 'drizzle-orm/pg-core'
+import { user } from './auth.ts'
 
 /**
  * Schema `app`: estado da aplicação (perguntas, feedback, cache, uso e rate limit). O runtime
  * (`teko_app`) lê e escreve. As rotas que o usam chegam na F4; o schema já nasce canônico para que
  * os grants e o `ALTER DEFAULT PRIVILEGES` valham desde a primeira migração.
  *
- * `user_id` referencia `auth.user` (Better Auth, F4); a FK entra quando o schema `auth` existir.
+ * `user_id` referencia `auth.user` (Better Auth) com `ON DELETE CASCADE`: apagar o usuário
+ * (`DELETE /me`) apaga perguntas e feedback.
  */
 export const app = snakeCase.schema('app')
 
@@ -28,7 +30,9 @@ export const questions = app.table(
   'questions',
   {
     id: uuid().primaryKey().default(sql`uuidv7()`),
-    userId: uuid().notNull(),
+    userId: uuid()
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
     conversationId: uuid().notNull(),
     questionRedacted: text().notNull(),
     locale: text().notNull(),
@@ -78,7 +82,9 @@ export const feedback = app.table(
     questionId: uuid()
       .primaryKey()
       .references(() => questions.id, { onDelete: 'cascade' }),
-    userId: uuid().notNull(),
+    userId: uuid()
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
     rating: text().notNull(),
     reason: text(),
     createdAt: createdAt(),
