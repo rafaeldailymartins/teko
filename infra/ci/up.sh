@@ -9,7 +9,7 @@
 #      $GITHUB_ENV (Actions) ou para infra/ci/.e2e.env (local, fora do git).
 #
 # Uso: bash infra/ci/up.sh (na raiz; Docker e pnpm). Derruba com:
-#   docker compose -f infra/ci/compose.yaml down --volumes
+#   BETTER_AUTH_SECRET=teardown docker compose -f infra/ci/compose.yaml down --volumes
 set -euo pipefail
 
 cd "$(dirname "$0")/../.."

@@ -80,4 +80,7 @@ jobs:
 
       - name: Derrubar a stack
         if: always()
+        # O compose exige o segredo até para derrubar; o valor não importa aqui.
+        env:
+          BETTER_AUTH_SECRET: teardown
         run: docker compose -f infra/ci/compose.yaml down --volumes --timeout 5
