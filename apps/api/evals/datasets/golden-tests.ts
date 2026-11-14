@@ -5,8 +5,8 @@ import type { GoldenCase } from './schema.ts'
 /**
  * Testes do promptfoo gerados a partir do golden: `devTests` é o conjunto `dev`
  * (`tests: file://../datasets/golden-tests.ts:devTests`, fixture do PR e `corpus-eval`) e
- * `holdoutTests` o `holdout` (`tests: file://../datasets/golden-tests.ts:holdoutTests`, só no
- * `corpus-eval`). Sem export default: com ele, o promptfoo procura a função nomeada dentro do
+ * `holdoutTests` o `holdout` e `ajusteTests` o `ajuste` (`tests: file://../datasets/golden-tests.ts:…`,
+ * só no `corpus-eval`). Sem export default: com ele, o promptfoo procura a função nomeada dentro do
  * default e não a acha. Cada caso recebe só os asserts que se aplicam a ele: recall@10, MRR e
  * vigência nos `answered`; recusa nos `refused`; clarificação nos ambíguos; `sem_resposta` nos
  * `unanswerable`; e a data de referência quando o caso a fixa.
@@ -56,4 +56,8 @@ export async function devTests() {
 
 export async function holdoutTests() {
   return loadGolden(goldenPath(GoldenSplit.Holdout)).map(toPromptfooTest)
+}
+
+export async function ajusteTests() {
+  return loadGolden(goldenPath(GoldenSplit.Ajuste)).map(toPromptfooTest)
 }

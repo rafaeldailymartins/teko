@@ -84,3 +84,10 @@ léxico, mas o embedding e o reranker comparam frases. Eles voltam a receber a p
 léxico recebe a pergunta e a consulta (run 43641962158: 0,718 no dev e 0,668 no holdout, contra
 0,714 e 0,654 sem reescrita). O ganho é pequeno, cabe na variação entre runs e não leva à meta de
 0,70; a reescrita continua desligada até o mantenedor decidir se vale a chamada a mais ao LLM.
+
+## Adendo (2026-11-14): eval sem reescrita por padrão
+
+Com as chaves no environment `staging`, a decisão 5 ligava a reescrita em todo `corpus-eval`, e o
+gate passou a medir uma busca diferente da que vai a produção (onde ela está desligada). Agora o
+`corpus-eval` só liga a reescrita com o input `query_rewrite` do `ingest.yml` (desligado por padrão)
+e as chaves; o rótulo `corpus-eval` dos PRs e o `source-watch` medem a busca de produção.

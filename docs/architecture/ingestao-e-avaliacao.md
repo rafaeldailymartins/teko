@@ -227,14 +227,19 @@ O harden-runner do `ingest.yml` fica em `block`.
 
 ## Avaliação (RAGOps, ADR 0031)
 
-**Golden em dois conjuntos** (`apps/api/evals/datasets/`):
+**Golden em três conjuntos** (`apps/api/evals/datasets/`):
 
 - **`dev`**: os 50 casos revisados pelo mantenedor em 2026-11-11 (EFD ICMS/IPI 15, REINF 8,
   RCTE/CTE 12, EFD-GO e tabelas 5, recusas 6, ambíguos 4). É onde se ajustam parâmetros.
 - **`holdout`** (`holdout.yaml`): 53 casos novos que **nunca orientam parâmetros**: paráfrase em
   linguagem de contador, 10 com mais de um dispositivo esperado, 10 em `en`, 38 dispositivos fora da
   fixture, 5 recusas, 2 ambíguos e 4 perguntas sem resposta dentro da cobertura (`unanswerable`).
-  Curadoria assistida por LLM, pendente de revisão do mantenedor (`reviewed_at` nulo).
+  Curadoria assistida por LLM e revisada pelo mantenedor em 2026-11-13; os 13 casos que entraram
+  em 2026-11-14 no lugar dos que saíram estão com a revisão pendente (`reviewed_at` nulo).
+- **`ajuste`** (`ajuste.yaml`, ADR 0031, adendo de 2026-11-14): os 13 casos do holdout que
+  orientaram os ajustes da busca na F4. Orientam parâmetros, como o dev, mas rodam só no
+  `corpus-eval` (quase todos os dispositivos estão fora da fixture), com gate próprio
+  (`retrieval-ajuste`): determinísticas em 1,00, recall@10 e MRR informativos.
 - Todo caso tem `source_quote` real, conferida no texto da fonte. **Mudar o esperado de um caso
   exige `source_quote` novo.**
 

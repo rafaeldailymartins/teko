@@ -15,7 +15,7 @@ import {
 import { cliPath } from './cli-path.ts'
 
 /**
- * Registro do `corpus-eval` (ADR 0031): junta os gates do conjunto dev e do holdout num só
+ * Registro do `corpus-eval` (ADR 0031): junta os gates do dev, do holdout e do ajuste num só
  * resultado, ligado à `corpus_version` avaliada, e guarda o histórico.
  *
  *     node evals/scripts/corpus-eval-record.ts build --dev <dev.json> --holdout <holdout.json> \
@@ -31,8 +31,23 @@ import { cliPath } from './cli-path.ts'
  *   `history/corpus-v<NNNNNN>/<run_id>.json` e compara com o registro anterior no resumo.
  */
 
-const SUITES = { dev: 'retrieval-corpus', holdout: 'retrieval-holdout' } as const
+/**
+ * O `ajuste` (ADR 0031, adendo de 2026-11-14) é opcional: registros anteriores a ele não o têm, e o
+ * histórico continua legível.
+ */
+const SUITES = {
+  dev: 'retrieval-corpus',
+  holdout: 'retrieval-holdout',
+  ajuste: 'retrieval-ajuste',
+} as const
 type SuiteName = keyof typeof SUITES
+const SUITE_ORDER = ['dev', 'holdout', 'ajuste'] as const satisfies readonly SuiteName[]
+
+type SuiteReports = Readonly<{
+  dev: ThresholdReport
+  holdout: ThresholdReport
+  ajuste?: ThresholdReport
+}>
 
 export const EVAL_RECORD_FORMAT = 1
 export const HISTORY_PREFIX = 'history/'
@@ -64,7 +79,11 @@ export const evalRecordSchema = z.strictObject({
   /** Provedores da busca avaliada (linhagem do resultado). */
   retrieval: z.strictObject({ embeddings: z.string(), reranker: z.string() }),
   pass: z.boolean(),
-  suites: z.strictObject({ dev: suiteRecordSchema, holdout: suiteRecordSchema }),
+  suites: z.strictObject({
+    dev: suiteRecordSchema,
+    holdout: suiteRecordSchema,
+    ajuste: suiteRecordSchema.optional(),
+  }),
 })
 export type EvalRecord = z.output<typeof evalRecordSchema>
 
@@ -90,7 +109,7 @@ function suiteRecord(thresholds: string, report: ThresholdReport) {
 }
 
 export interface BuildInput {
-  readonly reports: Readonly<Record<SuiteName, ThresholdReport>>
+  readonly reports: SuiteReports
   readonly corpusVersion: number
   readonly gitSha: string | null
   readonly runUrl: string | null
@@ -107,10 +126,13 @@ export function buildRecord(input: BuildInput): EvalRecord {
     gitSha: input.gitSha,
     runUrl: input.runUrl,
     retrieval: input.retrieval,
-    pass: reports.dev.pass && reports.holdout.pass,
+    pass: reports.dev.pass && reports.holdout.pass && (reports.ajuste?.pass ?? true),
     suites: {
       dev: suiteRecord(SUITES.dev, reports.dev),
       holdout: suiteRecord(SUITES.holdout, reports.holdout),
+      ...(reports.ajuste === undefined
+        ? {}
+        : { ajuste: suiteRecord(SUITES.ajuste, reports.ajuste) }),
     },
   })
 }
@@ -118,31 +140,30 @@ export function buildRecord(input: BuildInput): EvalRecord {
 const SUITE_TITLES: Readonly<Record<SuiteName, string>> = {
   dev: 'Conjunto dev (onde se ajusta)',
   holdout: 'Conjunto holdout (nunca orienta parâmetros)',
+  ajuste: 'Conjunto ajuste (casos que saíram do holdout)',
 }
 
 /**
  * Resumo do corpus-eval: a `corpus_version` avaliada e, por conjunto, a tabela com os casos abaixo
  * de 1 e os erros do provider (o mesmo resumo do `check-thresholds`).
  */
-export function renderEvalSummary(
-  record: EvalRecord,
-  reports: Readonly<Record<SuiteName, ThresholdReport>>,
-): string {
+export function renderEvalSummary(record: EvalRecord, reports: SuiteReports): string {
   const header = `## corpus-eval (corpus_version ${String(record.corpusVersion)}): ${record.pass ? 'aprovado' : 'REPROVADO'}\n\n`
   return (
     header +
-    (['dev', 'holdout'] as const)
-      .map((suite) => renderSummary(SUITE_TITLES[suite], reports[suite]))
-      .join('\n')
+    SUITE_ORDER.flatMap((suite) => {
+      const report = reports[suite]
+      return report === undefined ? [] : [renderSummary(SUITE_TITLES[suite], report)]
+    }).join('\n')
   )
 }
 
 const fmt = (value: number) => value.toFixed(3)
 
-/** Corpo do PR do lock: métricas de dev e holdout e a `corpus_version`. */
+/** Corpo do PR do lock: métricas de cada conjunto e a `corpus_version`. */
 export function renderPrBody(record: EvalRecord): string {
   const rows = (suite: SuiteName) =>
-    Object.entries(record.suites[suite].metrics).map(
+    Object.entries(record.suites[suite]?.metrics ?? {}).map(
       ([metric, m]) =>
         `| ${suite} | ${metric} | ${fmt(m.mean)} | ${fmt(m.ci.low)}–${fmt(m.ci.high)} | ${m.threshold === null ? '—' : m.threshold.toFixed(2)} | ${String(m.cases)} |`,
     )
@@ -151,8 +172,7 @@ export function renderPrBody(record: EvalRecord): string {
     '',
     '| Conjunto | Métrica | Média | IC 95% | Gate | Casos |',
     '|---|---|---|---|---|---|',
-    ...rows('dev'),
-    ...rows('holdout'),
+    ...SUITE_ORDER.flatMap(rows),
     '',
     `Busca avaliada: embeddings \`${record.retrieval.embeddings}\`, reranker \`${record.retrieval.reranker}\`${record.gitSha === null ? '' : `, código em \`${record.gitSha.slice(0, 12)}\``}.`,
     '',
@@ -204,9 +224,9 @@ export function renderComparison(previous: EvalRecord | null, current: EvalRecor
     '| Conjunto | Métrica | Anterior | Atual | Δ |',
     '|---|---|---|---|---|',
   ]
-  for (const suite of ['dev', 'holdout'] as const) {
-    for (const [metric, m] of Object.entries(current.suites[suite].metrics)) {
-      const before = previous.suites[suite].metrics[metric]?.mean
+  for (const suite of SUITE_ORDER) {
+    for (const [metric, m] of Object.entries(current.suites[suite]?.metrics ?? {})) {
+      const before = previous.suites[suite]?.metrics[metric]?.mean
       const delta =
         before === undefined ? '—' : `${m.mean - before >= 0 ? '+' : ''}${fmt(m.mean - before)}`
       lines.push(
@@ -259,7 +279,8 @@ function evalEnv() {
 }
 
 const USAGE = [
-  'uso: corpus-eval-record.ts build --dev <json> --holdout <json> --out <json> [--pr-body <md>]',
+  'uso: corpus-eval-record.ts build --dev <json> --holdout <json> [--ajuste <json>] --out <json>',
+  '       [--pr-body <md>]',
   '       [--corpus-version <n>] [--git-sha <sha>] [--run-url <url>]',
   '     corpus-eval-record.ts history --record <json> --run-id <id>',
 ].join('\n')
@@ -270,6 +291,7 @@ async function runBuild(args: readonly string[], file: ThresholdsFile): Promise<
     options: {
       dev: { type: 'string' },
       holdout: { type: 'string' },
+      ajuste: { type: 'string' },
       out: { type: 'string' },
       'pr-body': { type: 'string' },
       'corpus-version': { type: 'string' },
@@ -282,9 +304,12 @@ async function runBuild(args: readonly string[], file: ThresholdsFile): Promise<
     console.error(USAGE)
     return 64
   }
-  const reports = {
+  const reports: SuiteReports = {
     dev: checkSuite(cliPath(values.dev), SUITES.dev, file),
     holdout: checkSuite(cliPath(values.holdout), SUITES.holdout, file),
+    ...(values.ajuste === undefined
+      ? {}
+      : { ajuste: checkSuite(cliPath(values.ajuste), SUITES.ajuste, file) }),
   }
   const env = evalEnv()
   let corpusVersion = Number(values['corpus-version'] ?? Number.NaN)

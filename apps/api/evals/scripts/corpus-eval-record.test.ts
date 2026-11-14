@@ -103,6 +103,46 @@ describe('registro do corpus-eval', () => {
   })
 })
 
+describe('conjunto ajuste (ADR 0031, adendo de 2026-11-14)', () => {
+  const ajuste = evaluateThresholds(output({ mrr: [0, 0.5], vigencia: [1, 1] }), {
+    mrr: null,
+    vigencia: 1,
+  })
+  const withAjuste = (report = ajuste) =>
+    buildRecord({
+      reports: { dev, holdout, ajuste: report },
+      corpusVersion: 14,
+      gitSha: null,
+      runUrl: null,
+      retrieval: { embeddings: 'workers-ai', reranker: 'workers-ai' },
+      now: new Date('2026-11-14T12:00:00Z'),
+    })
+
+  it('entra no registro, no resumo, no PR e na comparação; reprova se uma determinística falhar', () => {
+    const current = withAjuste()
+    expect(current.pass).toBe(true)
+    expect(current.suites.ajuste?.thresholds).toBe('retrieval-ajuste')
+    expect(current.suites.ajuste?.metrics['mrr']).toMatchObject({ mean: 0.25, threshold: null })
+    expect(renderEvalSummary(current, { dev, holdout, ajuste })).toContain(
+      '### Conjunto ajuste (casos que saíram do holdout): aprovado',
+    )
+    expect(renderPrBody(current)).toContain('| ajuste | mrr | 0.250 |')
+    // O registro anterior não tem o ajuste: a comparação mostra "—" no lugar do anterior.
+    expect(renderComparison(record(12), current)).toContain('| ajuste | mrr | — | 0.250 | — |')
+    const failed = withAjuste(
+      evaluateThresholds(output({ vigencia: [0] }), { mrr: null, vigencia: 1 }),
+    )
+    expect(failed.pass).toBe(false)
+  })
+
+  it('registros sem o ajuste continuam válidos', () => {
+    const old = record(12)
+    expect(old.suites.ajuste).toBeUndefined()
+    expect(evalRecordSchema.parse(JSON.parse(JSON.stringify(old))).suites.ajuste).toBeUndefined()
+    expect(renderPrBody(old)).not.toContain('| ajuste |')
+  })
+})
+
 describe('histórico do corpus-eval', () => {
   it('chave ordena pela corpus_version e pelo run_id', () => {
     expect(historyKey(12, '43287466540')).toBe('history/corpus-v000012/43287466540.json')

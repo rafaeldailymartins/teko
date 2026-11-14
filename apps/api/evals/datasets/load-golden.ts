@@ -6,17 +6,21 @@ import { type GoldenCase, goldenDatasetSchema } from './schema.ts'
 /**
  * Conjuntos do golden (ADR 0031). O `dev` (50 casos) é onde se ajusta busca, reranker e limites; ele
  * roda na fixture do PR e no `corpus-eval`. O `holdout` nunca orienta parâmetros: roda só no
- * `corpus-eval`, contra o corpus real do staging, e decide a meta de MRR da F4.
+ * `corpus-eval`, contra o corpus real do staging, e decide a meta de MRR da F4. O `ajuste` são os casos
+ * do holdout que orientaram ajustes (ADR 0031, adendo de 2026-11-14): orientam como o dev, mas rodam
+ * só no `corpus-eval`, com recall e MRR informativos.
  */
 export const GoldenSplit = {
   Dev: 'dev',
   Holdout: 'holdout',
+  Ajuste: 'ajuste',
 } as const
 export type GoldenSplit = (typeof GoldenSplit)[keyof typeof GoldenSplit]
 
 const SPLIT_FILES: Readonly<Record<GoldenSplit, string>> = {
   dev: 'golden.yaml',
   holdout: 'holdout.yaml',
+  ajuste: 'ajuste.yaml',
 }
 
 /** Caminho versionado de cada conjunto (o CODEOWNERS cobre `apps/api/evals/datasets/`). */

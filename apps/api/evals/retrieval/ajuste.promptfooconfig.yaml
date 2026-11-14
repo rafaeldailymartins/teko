@@ -1,0 +1,23 @@
+# yaml-language-server: $schema=https://promptfoo.dev/config-schema.json
+# Retrieval evals do conjunto ajuste (ADR 0031, adendo de 2026-11-14): os casos do holdout que
+# orientaram ajustes da busca. Rodam só no corpus-eval (ingest.yml), contra o corpus real do
+# staging, com embeddings e reranker reais: os dispositivos estão quase todos fora da fixture, e as
+# perguntas não têm vetor nela. O gate é o `scripts/check-thresholds.ts` (seção retrieval-ajuste).
+#
+#   EVAL_CORPUS=staging pnpm --filter @teko/api eval:retrieval:ajuste
+description: Tekó — retrieval evals (ajuste, corpus real)
+
+prompts:
+  - "{{question}}"
+
+providers:
+  - id: file://../providers/retrieval.ts
+    label: teko-retrieval
+
+tests: file://../datasets/golden-tests.ts:ajusteTests
+
+evaluateOptions:
+  maxConcurrency: 4
+  cache: false
+
+sharing: false

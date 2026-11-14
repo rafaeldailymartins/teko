@@ -76,6 +76,10 @@ on:
         description: eval-only - SHA (40 caracteres) do commit a avaliar, de um PR do próprio repositório; vazio = o código do branch do dispatch
         type: string
         default: ""
+      query_rewrite:
+        description: corpus-eval com a reescrita da pergunta pelo LLM (ADR 0034; exige as chaves no environment staging)
+        type: boolean
+        default: false
   workflow_call:
     inputs:
       target:
@@ -99,6 +103,9 @@ on:
       ref:
         type: string
         default: ""
+      query_rewrite:
+        type: boolean
+        default: false
     # Num workflow chamado, o segredo do environment só chega ao job com `environment: staging` se
     # o chamador o repassar pelo nome (docs do GitHub: "Using inputs and secrets in a reusable
     # workflow"); por isso todos estão declarados aqui. Nunca `secrets: inherit`.
@@ -697,7 +704,7 @@ jobs:
       - name: Setup
         uses: ./.github/actions/setup
 
-      - name: Retrieval evals contra o staging, conjuntos dev e holdout (embeddings e reranker reais, role teko_app)
+      - name: Retrieval evals contra o staging, conjuntos dev, holdout e ajuste (embeddings e reranker reais, role teko_app)
         env:
           APP_ENV: ci
           DATABASE_URL: ${{ secrets.NEON_STAGING_APP_URL }}
@@ -711,8 +718,9 @@ jobs:
           EVAL_POOL_SIZE: "50"
           CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
           CF_AI_TOKEN: ${{ secrets.CF_AI_TOKEN }}
-          # Reescrita da pergunta pelo LLM (ADR 0034): liga só quando o environment staging tem as
-          # chaves; sem elas, o eval mede a busca sem reescrita, como até aqui.
+          # Reescrita da pergunta pelo LLM (ADR 0034): desligada em produção, então o eval mede a
+          # busca sem ela; só liga com o input query_rewrite e as chaves no environment staging.
+          QUERY_REWRITE_INPUT: ${{ inputs.query_rewrite }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           # O BLOB_STORE do workflow (github-releases) exige o token na configuração; aqui ele só
@@ -720,9 +728,9 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
           eval_args=()
-          if [[ -n "$GEMINI_API_KEY" && -n "$GROQ_API_KEY" ]]; then
+          if [[ "$QUERY_REWRITE_INPUT" == true && -n "$GEMINI_API_KEY" && -n "$GROQ_API_KEY" ]]; then
             export LLM_PROVIDER=gemini QUERY_REWRITE_ENABLED=true
-          elif [[ -n "$GROQ_API_KEY" ]]; then
+          elif [[ "$QUERY_REWRITE_INPUT" == true && -n "$GROQ_API_KEY" ]]; then
             export LLM_PROVIDER=groq QUERY_REWRITE_ENABLED=true
           else
             unset GEMINI_API_KEY GROQ_API_KEY
@@ -735,12 +743,14 @@ jobs:
           echo "reescrita da pergunta: ${QUERY_REWRITE_ENABLED:-desligada} (${LLM_PROVIDER:-sem LLM})" >>"$GITHUB_STEP_SUMMARY"
           pnpm --filter @teko/api eval:retrieval "${eval_args[@]}"
           pnpm --filter @teko/api eval:retrieval:holdout "${eval_args[@]}"
+          pnpm --filter @teko/api eval:retrieval:ajuste "${eval_args[@]}"
 
       # Gate do corpus real (ADR 0031): retrieval-corpus no dev (trava contra regressão) e
       # retrieval-holdout no holdout (determinísticas em 1,00; recall e MRR informativos, meta de
-      # MRR da F4), com intervalo de confiança no resumo. O registro liga o resultado à
-      # corpus_version do staging (lida pelo teko_app) e vai ao PR do lock.
-      - name: Gate e registro do corpus-eval (thresholds.json, retrieval-corpus e retrieval-holdout)
+      # MRR da F4) e retrieval-ajuste nos casos que saíram do holdout (as mesmas regras do holdout),
+      # com intervalo de confiança no resumo. O registro liga o resultado à corpus_version do
+      # staging (lida pelo teko_app) e vai ao PR do lock.
+      - name: Gate e registro do corpus-eval (thresholds.json, retrieval-corpus, -holdout e -ajuste)
         id: record
         working-directory: apps/api
         env:
@@ -756,6 +766,7 @@ jobs:
         run: >-
           node evals/scripts/corpus-eval-record.ts build
           --dev reports/retrieval-evals.json --holdout reports/retrieval-evals-holdout.json
+          --ajuste reports/retrieval-evals-ajuste.json
           --out reports/corpus.eval.json --pr-body reports/corpus-eval-pr.md
           --git-sha "$GIT_SHA" --run-url "$RUN_URL"
 
@@ -768,6 +779,7 @@ jobs:
           path: |
             apps/api/reports/retrieval-evals.json
             apps/api/reports/retrieval-evals-holdout.json
+            apps/api/reports/retrieval-evals-ajuste.json
             apps/api/reports/corpus.eval.json
             apps/api/reports/corpus-eval-pr.md
           if-no-files-found: ignore

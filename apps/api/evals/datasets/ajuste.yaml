@@ -1,0 +1,274 @@
+# Conjunto ajuste do golden do Tekó (ADR 0031, adendo de 2026-11-14). Schema em datasets/schema.ts.
+#
+# Os 13 casos do holdout que orientaram os ajustes da busca na F4 (a revisão de
+# docs/evals/revisao-holdout-2026-11-13.md e as rodadas de docs/evals/mrr-f4-2026-11-14.md). Pela
+# ADR 0031, um caso do holdout que orientou ajuste sai do holdout; o holdout recebeu 13 casos novos.
+#
+# Regras do ajuste:
+# - pode orientar parâmetros, como o dev;
+# - roda só no corpus-eval, contra o corpus real do staging: quase todos os dispositivos estão fora
+#   da fixture, e as perguntas não têm vetor nela;
+# - gate próprio (retrieval-ajuste): vigência, recusa, clarificação, data de referência e sem
+#   resposta travadas em 1,00; recall@10 e MRR informativos, para não baixar os gates do dev.
+#
+# Os casos vieram do holdout sem mudança no esperado (id com ajuste- no lugar de hold- e a tag
+# ex-holdout); revisados pelo mantenedor em 2026-11-13.
+
+- id: ajuste-rcte-aliquota-interna-2023
+  question: Qual era a alíquota geral do ICMS nas vendas dentro de Goiás?
+  periodo_apuracao: "2023-08"
+  reference_source: periodo_apuracao
+  locale: pt-BR
+  families: [rcte]
+  expected:
+    status: answered
+    reference_date: "2023-08-01"
+    provisions: ["go:rcte:art:20:inc:I"]
+    validity: { from: "1998-01-01", to: "2024-04-01" }
+    facts: ["17% (dezessete por cento)"]
+  pair: hold-rcte-aliquota-interna
+  tags: [rcte-cte, rcte, vigencia, fora-da-fixture, ex-holdout]
+  source_url: https://appasp.economia.go.gov.br/Legislacao/arquivos/Rcte/RCTE.htm
+  source_quote: I - 17% (dezessete por cento), na operação e prestação internas, observado o disposto no § 1º;
+  curated_by: claude-opus-5.5 (curadoria assistida por LLM; revisada pelo mantenedor)
+  reviewed_at: "2026-11-13"
+
+- id: ajuste-rcte-aliquota-interna-2025
+  question: Qual é a alíquota modal de ICMS para operação interna em Goiás?
+  periodo_apuracao: "2025-03"
+  reference_source: periodo_apuracao
+  locale: pt-BR
+  families: [rcte]
+  expected:
+    status: answered
+    reference_date: "2025-03-01"
+    provisions: ["go:rcte:art:20:inc:I"]
+    validity: { from: "2024-04-01", to: null }
+    facts: ["19% (dezenove por cento)"]
+  pair: hold-rcte-aliquota-interna
+  tags: [rcte-cte, rcte, vigencia, fora-da-fixture, ex-holdout]
+  source_url: https://appasp.economia.go.gov.br/Legislacao/arquivos/Rcte/RCTE.htm
+  source_quote: I - 19% (dezenove por cento), na operação e na prestação internas, observado o disposto no § 1º deste artigo;
+  curated_by: claude-opus-5.5 (curadoria assistida por LLM; revisada pelo mantenedor)
+  reviewed_at: "2026-11-13"
+
+- id: ajuste-aliquota-interna-lei-e-regulamento
+  question: Onde a lei e o regulamento do ICMS de Goiás fixam a alíquota padrão das operações internas?
+  periodo_apuracao: "2025-09"
+  reference_source: periodo_apuracao
+  locale: pt-BR
+  families: [rcte, cte]
+  expected:
+    status: answered
+    reference_date: "2025-09-01"
+    provisions: ["go:rcte:art:20:inc:I", "go:cte:art:27:inc:I"]
+    validity: { from: "2024-04-01", to: null }
+    facts: ["19% (dezenove por cento)"]
+  tags: [rcte-cte, rcte, cte, varios-dispositivos, fora-da-fixture, ex-holdout]
+  source_url: https://appasp.economia.go.gov.br/Legislacao/arquivos/Cte/CTE.htm
+  source_quote: I - 19% (dezenove por cento), nas operações ou nas prestações internas, excetuadas as hipóteses previstas nos incisos II, III, VII e IX;
+  curated_by: claude-opus-5.5 (curadoria assistida por LLM; revisada pelo mantenedor)
+  reviewed_at: "2026-11-13"
+
+- id: ajuste-rcte-etanol-en
+  question: What ICMS rate applies to intrastate sales of ethanol fuel in Goiás?
+  periodo_apuracao: "2024-06"
+  reference_source: periodo_apuracao
+  locale: en
+  families: [rcte]
+  # revisão independente (LLM) 2026-11-13: o esperado dizia 23%, mas a NOTA do próprio inciso
+  # VIII no RCTE tira o efeito dessa redação desde 23/06/2022 (LC 194/2022) e manda aplicar 14,17%
+  # desde 15/07/2022 (EC 123/2022, art. 4º). O parser não lê a nota "sem efeitos a partir de" e
+  # grava o 23% como vigente ([2018-01-01, null) no staging); por isso a vigência esperada saiu do
+  # caso até o mantenedor decidir como o parser trata essa nota. Dispositivo esperado mantido.
+  expected:
+    status: answered
+    reference_date: "2024-06-01"
+    provisions: ["go:rcte:art:20:par:1:inc:VIII"]
+    facts: ["14,17% (quatorze inteiros e dezessete décimos por cento)"]
+  tags: [rcte-cte, rcte, en, fora-da-fixture, ex-holdout]
+  source_url: https://appasp.economia.go.gov.br/Legislacao/arquivos/Rcte/RCTE.htm
+  source_quote: NOTA:Redação do inciso VIII sem efeitos a partir de 23 de junho de 2022 em função da Lei Complementar Federal nº 194, de 2022, sendo que, a partir de 15 de julho de 2022, é aplicada a alíquota de 14,17% (quatorze inteiros e dezessete décimos por cento) em função do disposto no art. 4º da Emenda Constitucional nº 123, de 14 de julho de 2022.
+  curated_by: claude-opus-5.5 (curadoria assistida por LLM; revisada pelo mantenedor)
+  reviewed_at: "2026-11-13"
+
+- id: ajuste-rcte-ovo-aliquota-reduzida
+  question: Ovos vendidos dentro de Goiás pagam ICMS com alíquota menor que a geral?
+  periodo_apuracao: "2025-05"
+  reference_source: periodo_apuracao
+  locale: pt-BR
+  families: [rcte]
+  expected:
+    status: answered
+    reference_date: "2025-05-01"
+    provisions: ["go:rcte:art:20:par:1:inc:II", "go:rcte:art:20:par:1:inc:II:ali:a:item:4"]
+    validity: { from: "1998-01-01", to: null }
+    facts: ["12% (doze por cento)", "4. ovo;"]
+  tags: [rcte-cte, rcte, varios-dispositivos, fora-da-fixture, ex-holdout]
+  source_url: https://appasp.economia.go.gov.br/Legislacao/arquivos/Rcte/RCTE.htm
+  source_quote: "II - 12% (doze por cento):"
+  curated_by: claude-opus-5.5 (curadoria assistida por LLM; revisada pelo mantenedor)
+  reviewed_at: "2026-11-13"
+
+- id: ajuste-rcte-difal-uso-consumo
+  question: Comprei material de uso e consumo de fornecedor de outro estado. Como fica o ICMS devido a Goiás nessa entrada?
+  periodo_apuracao: "2024-09"
+  reference_source: periodo_apuracao
+  locale: pt-BR
+  families: [rcte]
+  # revisão independente (LLM) 2026-11-13, DÚVIDA decidida pelo mantenedor em 2026-11-13 (opção B):
+  # a pergunta é ampla ("como fica o ICMS"), e a resposta completa cita a incidência (art. 4º, § 1º,
+  # II), a alíquota do diferencial (art. 20, § 1º, IV, "a"), a base de cálculo (art. 12, IV) e o
+  # cálculo (art. 65, III). A pergunta não muda; o esperado ganha os três dispositivos.
+  expected:
+    status: answered
+    reference_date: "2024-09-01"
+    provisions:
+      - "go:rcte:art:20:par:1:inc:IV"
+      - "go:rcte:art:20:par:1:inc:IV:ali:a"
+      - "go:rcte:art:4:par:1:inc:II"
+      - "go:rcte:art:12:inc:IV"
+      - "go:rcte:art:65:inc:III"
+    validity: { from: "1998-01-01", to: null }
+    facts:
+      - "diferença entre a alíquota interna utilizada neste Estado e a interestadual"
+      - "valor da operação no Estado de Goiás, acrescido do valor do Imposto sobre Produtos Industrializados"
+  tags: [rcte-cte, rcte, varios-dispositivos, linguagem-de-contador, fora-da-fixture, ex-holdout]
+  source_url: https://appasp.economia.go.gov.br/Legislacao/arquivos/Rcte/RCTE.htm
+  source_quote: relativamente ao diferencial de alíquotas devido pela aquisição de bens ou mercadorias para uso, consumo final ou integração ao ativo imobilizado, o contribuinte deve calcular o montante do imposto devido em cada operação ou prestação
+  curated_by: claude-opus-5.5 (curadoria assistida por LLM; revisada pelo mantenedor)
+  reviewed_at: "2026-11-13"
+
+- id: ajuste-rcte-local-difal-nao-contribuinte
+  question: Numa venda de outro estado para consumidor final em Goiás que não é contribuinte do ICMS, qual é o local da operação para cobrar o diferencial de alíquotas?
+  periodo_apuracao: "2023-10"
+  reference_source: periodo_apuracao
+  locale: pt-BR
+  families: [rcte]
+  expected:
+    status: answered
+    reference_date: "2023-10-01"
+    provisions: ["go:rcte:art:27:inc:XII", "go:rcte:art:27:inc:XII:ali:b"]
+    validity: { from: "2022-04-05", to: null }
+    facts: ["o do estabelecimento do remetente"]
+  tags: [rcte-cte, rcte, varios-dispositivos, fora-da-fixture, ex-holdout]
+  source_url: https://appasp.economia.go.gov.br/Legislacao/arquivos/Rcte/RCTE.htm
+  source_quote: b) o do estabelecimento do remetente, quando o destinatário não for contribuinte do imposto.
+  curated_by: claude-opus-5.5 (curadoria assistida por LLM; revisada pelo mantenedor)
+  reviewed_at: "2026-11-13"
+
+- id: ajuste-cte-cesta-basica-2019
+  question: Arroz e feijão estavam na lista de produtos com ICMS de 12% nas operações internas de Goiás?
+  periodo_apuracao: "2019-06"
+  reference_source: periodo_apuracao
+  locale: pt-BR
+  families: [cte]
+  expected:
+    status: answered
+    reference_date: "2019-06-01"
+    provisions: ["go:cte:art:27:inc:II:ali:a"]
+    validity: { from: "2017-12-29", to: "2021-01-01" }
+    facts: ["a) açúcar; café; farinhas de mandioca"]
+  pair: hold-cte-cesta-basica
+  tags: [rcte-cte, cte, vigencia, fora-da-fixture, ex-holdout]
+  source_url: https://appasp.economia.go.gov.br/Legislacao/arquivos/Cte/CTE.htm
+  source_quote: a) açúcar; café; farinhas de mandioca, de milho e de trigo; fubá; iogurte; macarrão; margarina vegetal; manteiga de leite; milho; óleo vegetal comestível, exceto de oliva; queijo, inclusive requeijão; rapadura; sal iodado e vinagre;
+  curated_by: claude-opus-5.5 (curadoria assistida por LLM; revisada pelo mantenedor)
+  reviewed_at: "2026-11-13"
+
+- id: ajuste-efd-c190-fcp
+  question: O ICMS totalizado por CST, CFOP e alíquota na nota fiscal já inclui o fundo de combate à pobreza?
+  periodo_apuracao: "2026-03"
+  reference_source: periodo_apuracao
+  locale: pt-BR
+  families: [efd-icms-ipi]
+  expected:
+    status: answered
+    reference_date: "2026-03-01"
+    provisions: ["br:efd-icms-ipi:reg:C190:campo:07"]
+    facts: ["incluindo o FCP, quando aplicável"]
+  tags: [efd-icms-ipi, linguagem-de-contador, ex-holdout]
+  source_url: https://www.gov.br/sped/pt-br/assuntos/escrituracoes-digitais/efd-icms-ipi/manuais-e-documentos-tecnicos/guia-pratico-efd-versao-3-2-4.pdf
+  source_quote: Parcela correspondente ao "Valor do ICMS", incluindo o FCP, quando aplicável, referente à combinação de CST_ICMS, CFOP e alíquota do ICMS.
+  curated_by: claude-opus-5.5 (curadoria assistida por LLM; revisada pelo mantenedor)
+  reviewed_at: "2026-11-13"
+
+- id: ajuste-efdgo-retificacao-sem-autorizacao
+  question: Até quando posso corrigir a EFD já entregue em Goiás sem precisar de autorização da Secretaria da Economia?
+  periodo_apuracao: "2026-04"
+  reference_source: periodo_apuracao
+  locale: pt-BR
+  families: [efd-go, rcte]
+  # revisão independente (LLM) 2026-11-13: o esperado parava no inciso I, mas desde 11/11/2022
+  # (Decreto nº 10.164/22) o inciso II do art. 356-O dispensa a autorização também depois desse
+  # prazo, quando houver prova inequívoca de erro de fato; o item 7 do Guia de Goiás registra a
+  # mesma dispensa. Entrou o inciso II (chave conferida no parser), o fato correspondente e a citação
+  # nova. Ressalvas que a resposta gerada deve trazer: § 1º-A (PROTEGE) e § 5º do mesmo artigo.
+  expected:
+    status: answered
+    reference_date: "2026-04-01"
+    provisions: ["go:efd-go:item:7", "go:rcte:art:356-O:inc:I", "go:rcte:art:356-O:inc:II"]
+    facts:
+      - "até o último dia do terceiro mês subsequente ao encerramento do mês da apuração"
+      - "após o prazo de que trata o inciso I, independentemente de autorização da administração tributária"
+  tags: [efd-go, rcte, varios-dispositivos, linguagem-de-contador, fora-da-fixture, ex-holdout]
+  source_url: https://appasp.economia.go.gov.br/Legislacao/arquivos/Rcte/RCTE.htm
+  source_quote: II - após o prazo de que trata o inciso I, independentemente de autorização da administração tributária, no caso em que houver prova inequívoca da ocorrência de erro de fato no preenchimento da escrituração e evidenciada a impossibilidade ou a inconveniência de saneá-la por meio de lançamento corretivo.
+  curated_by: claude-opus-5.5 (curadoria assistida por LLM; revisada pelo mantenedor)
+  reviewed_at: "2026-11-13"
+
+- id: ajuste-reinf-r2020-retencao-sofrida
+  question: Sou prestador de serviço com cessão de mão de obra. Em que campo da Reinf informo o valor que o tomador reteve de contribuição previdenciária?
+  periodo_apuracao: "2024-10"
+  reference_source: periodo_apuracao
+  locale: pt-BR
+  families: [efd-reinf]
+  # revisão independente (LLM) 2026-11-13, DÚVIDA decidida pelo mantenedor em 2026-11-13 (opção B):
+  # o valor retido é informado por tipo de serviço (infoTpServ/vlrRetencao) e no total por tomador
+  # (ideTomador/vlrTotalRetPrinc); os dois são obrigatórios e o total precisa bater com as notas.
+  expected:
+    status: answered
+    reference_date: "2024-10-01"
+    provisions:
+      - "br:efd-reinf:evt:R-2020:grupo:infoTpServ:campo:vlrRetencao"
+      - "br:efd-reinf:evt:R-2020:grupo:ideTomador:campo:vlrTotalRetPrinc"
+    facts: ["vlrRetencao", "vlrTotalRetPrinc"]
+  tags: [efd-reinf, varios-dispositivos, linguagem-de-contador, fora-da-fixture, ex-holdout]
+  source_url: https://www.gov.br/sped/pt-br/assuntos/escrituracoes-digitais/efd-reinf/documento-tecnicos/versao-atual/esquemas-xsd/xsd-eventos
+  source_quote: vlrTotalRetPrinc ideTomador E N 1-1 014 2 Valor da retencao principal das notas fiscais de servico
+  curated_by: claude-opus-5.5 (curadoria assistida por LLM; revisada pelo mantenedor)
+  reviewed_at: "2026-11-13"
+
+- id: ajuste-reinf-r4010-ir-retido-en
+  question: In the EFD-Reinf event for payments to individuals, which field carries the income tax withheld?
+  periodo_apuracao: "2024-11"
+  reference_source: periodo_apuracao
+  locale: en
+  families: [efd-reinf]
+  expected:
+    status: answered
+    reference_date: "2024-11-01"
+    provisions: ["br:efd-reinf:evt:R-4010:grupo:infoPgto:campo:vlrIR"]
+    facts: ["vlrIR"]
+  tags: [efd-reinf, en, fora-da-fixture, ex-holdout]
+  source_url: https://www.gov.br/sped/pt-br/assuntos/escrituracoes-digitais/efd-reinf/documento-tecnicos/versao-atual/esquemas-xsd/xsd-eventos
+  source_quote: vlrIR infoPgto E N 0-1 014 2 Valor da retencao do IR
+  curated_by: claude-opus-5.5 (curadoria assistida por LLM; revisada pelo mantenedor)
+  reviewed_at: "2026-11-13"
+
+- id: ajuste-reinf-r4040-natureza-en
+  question: For payments to unidentified beneficiaries, which field identifies the nature of the income?
+  periodo_apuracao: "2025-06"
+  reference_source: periodo_apuracao
+  locale: en
+  families: [efd-reinf]
+  expected:
+    status: answered
+    reference_date: "2025-06-01"
+    provisions: ["br:efd-reinf:evt:R-4040:grupo:ideNat:campo:natRend"]
+    facts: ["natRend"]
+  tags: [efd-reinf, en, fora-da-fixture, ex-holdout]
+  source_url: https://www.gov.br/sped/pt-br/assuntos/escrituracoes-digitais/efd-reinf/documento-tecnicos/versao-atual/esquemas-xsd/xsd-eventos
+  source_quote: natRend ideNat E C 1-1 005 - Natureza do Rendimento
+  curated_by: claude-opus-5.5 (curadoria assistida por LLM; revisada pelo mantenedor)
+  reviewed_at: "2026-11-13"
