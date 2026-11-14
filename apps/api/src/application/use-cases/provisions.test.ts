@@ -160,11 +160,19 @@ describe('auxiliares', () => {
     const long = 'x'.repeat(EXCERPT_LENGTH + 10)
     expect(excerptOf(long)).toHaveLength(EXCERPT_LENGTH)
     expect(excerptOf(long).endsWith('…')).toBe(true)
+    const exact = 'y'.repeat(EXCERPT_LENGTH)
+    expect(excerptOf(exact)).toBe(exact)
+    // O corte cai num espaço: ele sai antes das reticências.
+    const spaced = `${'z'.repeat(EXCERPT_LENGTH - 2)} ${'w'.repeat(20)}`
+    expect(excerptOf(spaced)).toBe(`${'z'.repeat(EXCERPT_LENGTH - 2)}…`)
   })
 
   it('fieldsOf ignora nulos e serializa o que não é texto', () => {
     expect(fieldsOf(null)).toBeNull()
-    expect(fieldsOf({ a: 'x', b: null, c: undefined, d: ['y'] })).toEqual({ a: 'x', d: '["y"]' })
+    expect(fieldsOf({ a: 'x', b: null, c: undefined, d: ['y'] })).toStrictEqual({
+      a: 'x',
+      d: '["y"]',
+    })
   })
 
   it('versionAt respeita o intervalo semiaberto', () => {
