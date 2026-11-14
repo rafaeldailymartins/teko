@@ -59,3 +59,19 @@ pergunta pelo LLM antes da busca.
   (reranker e adendo do contexto do pai), [ADR 0031](0031-ragops-avaliacao-e-gates.md)
   (`corpus-eval` e holdout).
 - Sem biblioteca nova; a chamada usa a porta `LlmModel` e o AI SDK já fixados na ADR 0007.
+
+## Adendo (2026-11-14): raciocínio mínimo e eval espaçado
+
+A primeira medição (run 43638721503, com as chaves no environment `staging`) não valeu: o MRR do
+dev caiu de 0,714 para 0,611 e o do holdout foi a 0,677, mas por duas falhas do caminho, não da
+ideia.
+
+- **Saída cortada:** o Gemini 3 e o `gpt-oss-120b` raciocinam por padrão, e os tokens de raciocínio
+  contam no teto de 120: vieram consultas como "código de situação do" e "), tax". A reescrita
+  passa a pedir `reasoning: 'minimal'` (o nível portátil do AI SDK 7: `thinkingLevel: minimal` no
+  Gemini, `reasoning_effort: low` no Groq), com teto de 256 tokens. O prompt (`rewrite@1.1.0`)
+  proíbe acrescentar nome de documento, estado ou termo genérico que a pergunta não traz.
+- **Cota por minuto:** com 4 casos em paralelo, o nível gratuito respondeu 429, os breakers
+  abriram e 41 de 46 reescritas do holdout falharam. Com a reescrita ligada, o `corpus-eval` roda um
+  caso por vez, com 2 s entre eles, e o job ganhou 50 min. Em produção vale o mesmo limite: a
+  reescrita só deve ser ligada com a cota medida contra o volume de perguntas.

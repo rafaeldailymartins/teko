@@ -3,6 +3,7 @@ import {
   buildRewritePrompt,
   parseRewrite,
   REWRITE_MAX_OUTPUT_TOKENS,
+  REWRITE_REASONING,
   REWRITE_TEMPERATURE,
 } from '../prompts/rewrite.ts'
 import type { ProviderRouter } from './provider-router.ts'
@@ -41,6 +42,7 @@ export function createQueryRewriter(deps: QueryRewriterDeps): QueryRewriter {
           prompt: prompt.prompt,
           temperature: REWRITE_TEMPERATURE,
           maxOutputTokens: REWRITE_MAX_OUTPUT_TOKENS,
+          reasoning: REWRITE_REASONING,
           signal,
         },
         { zeroDataRetentionOnly: options.zeroDataRetentionOnly },

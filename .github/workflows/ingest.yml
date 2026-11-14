@@ -628,7 +628,9 @@ jobs:
       ${{ !cancelled() && (inputs.mode == 'eval-only'
       || (needs.load.result == 'success' && needs.load.outputs.status == 'published')) }}
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    # 50: com a reescrita da pergunta, o eval vai um caso por vez e espaçado (cota por minuto do
+    # nível gratuito do LLM, ADR 0034).
+    timeout-minutes: 50
     environment: staging
     permissions:
       contents: read
@@ -717,6 +719,7 @@ jobs:
           # lê (o job tem contents: read) e o eval não grava artefato.
           GITHUB_TOKEN: ${{ github.token }}
         run: |
+          eval_args=()
           if [[ -n "$GEMINI_API_KEY" && -n "$GROQ_API_KEY" ]]; then
             export LLM_PROVIDER=gemini QUERY_REWRITE_ENABLED=true
           elif [[ -n "$GROQ_API_KEY" ]]; then
@@ -724,9 +727,14 @@ jobs:
           else
             unset GEMINI_API_KEY GROQ_API_KEY
           fi
+          if [[ "${QUERY_REWRITE_ENABLED:-}" == true ]]; then
+            # Um caso por vez e 2 s entre eles: com 4 em paralelo, a cota por minuto do nível
+            # gratuito estourou, o breaker abriu e 41 de 46 reescritas do holdout falharam.
+            eval_args=(--max-concurrency 1 --delay 2000)
+          fi
           echo "reescrita da pergunta: ${QUERY_REWRITE_ENABLED:-desligada} (${LLM_PROVIDER:-sem LLM})" >>"$GITHUB_STEP_SUMMARY"
-          pnpm --filter @teko/api eval:retrieval
-          pnpm --filter @teko/api eval:retrieval:holdout
+          pnpm --filter @teko/api eval:retrieval "${eval_args[@]}"
+          pnpm --filter @teko/api eval:retrieval:holdout "${eval_args[@]}"
 
       # Gate do corpus real (ADR 0031): retrieval-corpus no dev (trava contra regressão) e
       # retrieval-holdout no holdout (determinísticas em 1,00; recall e MRR informativos, meta de
