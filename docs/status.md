@@ -149,6 +149,9 @@ proveniência) no lugar do `@google/genai` (sem proveniência em nenhuma versão
   cascata e cookies apagados, sessão do banco nas rotas de DSR e na pergunta, `cli maintenance purge`
   (retenção de 90 dias) e o registro de tratamento em [`privacy/ropa.md`](privacy/ropa.md). O
   agendamento semanal fica com o `ops.yml` da F6.
+- `add-ci-stack-e2e` (arquivada em 2026-11-14): stack descartável de CI em `infra/ci/` (Postgres,
+  imagem candidata da API com os limites da Fluid e Caddy na mesma origem), `e2e.yml` com Playwright
+  (Chromium e viewport mobile) e o job `e2e` no `ci-gate`. As jornadas de interface chegam com a F5.
 - Melhora do MRR no corpus real (sem mudança de requisito, sem OpenSpec): o reranker e o prompt
   passaram a ver o contexto do dispositivo-pai (ADR 0027, adendo). `corpus-eval` (run 43601785029):
   MRR de 0,683 para 0,714 no dev e de 0,475 para **0,654** no holdout. Outras três variantes foram

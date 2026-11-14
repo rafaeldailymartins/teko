@@ -10,7 +10,8 @@
     "build": "next build",
     "typecheck": "tsc -p tsconfig.json --incremental false",
     "test:unit": "vitest run --coverage",
-    "type-coverage": "type-coverage --at-least 99 --strict --ignore-catch"
+    "type-coverage": "type-coverage --at-least 99 --strict --ignore-catch",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@teko/shared": "workspace:*",
@@ -20,6 +21,7 @@
     "react-dom": "catalog:"
   },
   "devDependencies": {
+    "@playwright/test": "catalog:",
     "@tailwindcss/postcss": "catalog:",
     "@types/node": "catalog:",
     "@types/react": "catalog:",

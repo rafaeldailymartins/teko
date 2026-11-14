@@ -5,8 +5,8 @@
 # que o cria (ver "CI/CD, Git Flow e ambientes > Workflows" no plano):
 #   - F1: ci.yml, security.yml (este arquivo)
 #   - F2: perf.yml (perfil `pr`: sql-perf). O mutation.yml saiu do PR (ADR 0032): só noturno.
-#   - e2e.yml (se web/api afetados) e evals.yml (perfil `pr`, se llm afetado) entram nas fases
-#     que os criam. Ao adicionar um deles: (1) novo job com `uses:` e `with: { affected: ... }`;
+#   - F4: e2e.yml (stack de CI; o job só roda com web ou api afetados).
+#   - evals.yml (perfil `pr`, se llm afetado) entra na F8. Ao adicionar um deles: (1) novo job com `uses:` e `with: { affected: ... }`;
 #     (2) incluí-lo em `needs` do `ci-gate`; (3) se o job inteiro puder ser pulado por um `if:`,
 #     incluí-lo em `allowed-skips`.
 name: PR gate
@@ -104,12 +104,21 @@ jobs:
       affected: ${{ needs.affected.outputs.json }}
       profile: pr
 
+  e2e:
+    name: e2e
+    needs: affected
+    uses: ./.github/workflows/e2e.yml
+    permissions:
+      contents: read
+    with:
+      affected: ${{ needs.affected.outputs.json }}
+
   ci-gate:
     name: ci-gate
     # `!cancelled()` e não `always()`: um run cancelado (push novo no PR) não deve publicar um
     # `ci-gate` verde ou vermelho por cima do run que o substituiu.
     if: ${{ !cancelled() }}
-    needs: [affected, ci, security, perf]
+    needs: [affected, ci, security, perf, e2e]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions: {}
@@ -124,9 +133,9 @@ jobs:
         with:
           jobs: ${{ toJSON(needs) }}
           # Jobs que podem terminar como `skipped` sem reprovar o gate. Nenhum job deste workflow é
-          # condicional: o filtro por escopo acontece dentro de ci.yml e perf.yml. Mas o perf.yml
-          # só tem jobs filtrados: num PR sem api nem rag afetados (só corpus/ ou docs), todos
-          # pulam e o GitHub reporta o workflow chamado inteiro como `skipped`. Falha continua
-          # sendo `failure`. O ci.yml sempre roda o lint e não entra aqui. Os que vierem com `if:`
-          # aqui (e2e, evals) entram nesta lista.
-          allowed-skips: '["perf"]'
+          # condicional: o filtro por escopo acontece dentro de ci.yml, perf.yml e e2e.yml. Mas o
+          # perf.yml e o e2e.yml só têm jobs filtrados: num PR sem o escopo deles (só corpus/ ou
+          # docs), todos pulam e o GitHub reporta o workflow chamado inteiro como `skipped`. Falha
+          # continua sendo `failure`. O ci.yml sempre roda o lint e não entra aqui. O evals.yml
+          # (F8) entra nesta lista.
+          allowed-skips: '["perf", "e2e"]'

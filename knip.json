@@ -18,7 +18,7 @@
     },
     "apps/web": {
       "entry": ["src/app/**/*.{ts,tsx}!"],
-      "project": ["src/**/*.{ts,tsx}!"]
+      "project": ["src/**/*.{ts,tsx}!", "e2e/**/*.ts"]
     },
     "packages/shared": {
       "entry": ["src/*/index.ts!"],

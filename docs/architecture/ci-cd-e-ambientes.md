@@ -86,7 +86,7 @@ cache do Turbo salvo só em push no tronco.
 | `scorecard.yml`    | push no tronco, semanal                            | `publish_results: true`                                                                                                          |
 | `mutation.yml`     | nightly                                            | Stryker em `apps/api` e `packages/shared`, só se houver commit novo desde o último run verde                                     |
 | `perf.yml`         | `workflow_call` (perfil `pr`); pré-release         | `sql-perf` (gate), bench e autocannon (informativos), k6 `smoke` (PR) e `load` (pré-release)                                     |
-| `e2e.yml`          | `workflow_call` (PR e release); nightly            | stack de CI, Playwright Chromium + mobile, axe (F4/F5)                                                                           |
+| `e2e.yml`          | `workflow_call` (PR, se web ou api); nightly       | stack de CI (`infra/ci/up.sh`), Playwright Chromium + mobile (F4); axe e jornadas de interface (F5)                              |
 | `evals.yml`        | `workflow_call`; nightly; semanal                  | `generation` e `redteam` (environment `evals`, F8)                                                                               |
 | `ingest.yml`       | dispatch; `workflow_call` do `source-watch`        | discover → extract → load → corpus-eval → lock-pr; modo `eval-only` ([ingestão](ingestao-e-avaliacao.md#ingestyml))              |
 | `source-watch.yml` | cron diário                                        | `detect` (environment `staging`) e `mark-coverage` (environment `corpus-watch`)                                                  |
