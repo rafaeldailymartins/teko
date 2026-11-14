@@ -346,6 +346,32 @@ describe('POST /api/v1/questions/:id/stream', () => {
     expect(meta).toMatchObject({ data: { retrievalMode: 'lexical_only', provider: 'fake' } })
   })
 
+  it('com a reescrita ligada (ADR 0034): uma chamada curta antes da busca, sem PII, e a resposta sai', async () => {
+    const { app, spy } = await startApp({ QUERY_REWRITE_ENABLED: 'true' })
+    const { cookie } = await newUser()
+    const question = `${GOYAZES} Meu CPF é ${validCpf()}.`
+    const id = await acceptedId(app, cookie, question)
+    const res = await streamOf(app, cookie, id)
+    expect(res.body.endsWith('data: [DONE]\n\n')).toBe(true)
+    expect(spy.requests).toHaveLength(2)
+    const [rewrite, answer] = spy.requests
+    expect(rewrite?.prompt.startsWith('<pergunta>')).toBe(true)
+    expect(rewrite?.prompt).toContain('[CPF]')
+    expect(rewrite?.temperature).toBe(0)
+    expect(answer?.prompt).toContain('<source id="S1"')
+    expect(containsPii(spy.requests.map((request) => request.prompt).join('\n'))).toBe(false)
+    const detail = questionDetailSchema.parse(
+      (await app.inject({ url: `/api/v1/questions/${id}`, headers: { cookie } })).json(),
+    )
+    expect(detail.status).toBe('answered')
+
+    // Fora da cobertura a recusa vem antes da busca: nem a reescrita chama o LLM.
+    const before = spy.requests.length
+    const refused = await ask(app, cookie, askBody(GOYAZES, { periodoApuracao: '2027-01' }))
+    expect(askQuestionResponseSchema.parse(refused.json())).toMatchObject({ status: 'refused' })
+    expect(spy.requests).toHaveLength(before)
+  })
+
   it('nenhuma PII válida chega ao LLM nem ao banco', async () => {
     const { app, spy } = await startApp()
     const { cookie } = await newUser()

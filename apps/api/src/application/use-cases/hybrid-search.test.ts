@@ -3,6 +3,7 @@ import type { Evidence } from '#domain/qa/evidence.ts'
 import { type EmbeddingPort, EmbeddingUnavailableError } from '../ports/embedding-port.ts'
 import { type RerankerPort, RerankerUnavailableError } from '../ports/reranker-port.ts'
 import type { SearchQuery } from '../ports/search-repository.ts'
+import type { QueryRewriter } from '../services/query-rewriter.ts'
 import { createHybridSearch } from './hybrid-search.ts'
 
 const VECTOR = [0.1, 0.2, 0.3]
@@ -44,6 +45,7 @@ function setup(embed: EmbeddingPort['embed'], timeoutMs = 3000) {
     reranker: null,
     rerankCandidates: 30,
     rerankTimeoutMs: 2000,
+    rewriter: null,
   })
   return { search, queries }
 }
@@ -63,6 +65,7 @@ describe('createHybridSearch', () => {
       evidence: [evidence],
       stableKeys: ['go:rcte:art:76:par:6', 'go:rcte:art:76'],
       reranked: false,
+      rewrittenQuery: null,
     })
     expect(embed).toHaveBeenCalledWith([command.question], { signal: expect.any(AbortSignal) })
     expect(queries).toEqual([
@@ -86,6 +89,7 @@ describe('createHybridSearch', () => {
       evidence: [],
       stableKeys: ['go:rcte:art:76:par:6', 'go:rcte:art:76'],
       reranked: false,
+      rewrittenQuery: null,
     })
     expect(embed).not.toHaveBeenCalled()
     expect(queries).toEqual([])
@@ -182,6 +186,7 @@ describe('createHybridSearch com reranker (ADR 0027)', () => {
       reranker: { model: 'fake-reranker', rerank },
       rerankCandidates: 30,
       rerankTimeoutMs: 5,
+      rewriter: null,
     })
     return { search, queries }
   }
@@ -209,6 +214,7 @@ describe('createHybridSearch com reranker (ADR 0027)', () => {
     const unavailable = withReranker(() => Promise.reject(new RerankerUnavailableError('HTTP 503')))
     await expect(unavailable.search(command)).resolves.toMatchObject({
       reranked: false,
+      rewrittenQuery: null,
       evidence: [pool[0], pool[1]],
     })
     const slow = withReranker(
@@ -217,7 +223,10 @@ describe('createHybridSearch com reranker (ADR 0027)', () => {
           options?.signal?.addEventListener('abort', () => reject(options.signal?.reason))
         }),
     )
-    await expect(slow.search(command)).resolves.toMatchObject({ reranked: false })
+    await expect(slow.search(command)).resolves.toMatchObject({
+      reranked: false,
+      rewrittenQuery: null,
+    })
   })
 
   it('cancelamento do cliente propaga e outros erros do reranker também', async () => {
@@ -245,8 +254,13 @@ describe('createHybridSearch com reranker (ADR 0027)', () => {
       reranker: { model: 'fake-reranker', rerank },
       rerankCandidates: 30,
       rerankTimeoutMs: 2000,
+      rewriter: null,
     })
-    await expect(search(command)).resolves.toMatchObject({ reranked: false, evidence: [evidence] })
+    await expect(search(command)).resolves.toMatchObject({
+      reranked: false,
+      rewrittenQuery: null,
+      evidence: [evidence],
+    })
     expect(rerank).not.toHaveBeenCalled()
   })
 })
@@ -257,5 +271,88 @@ describe('RerankerUnavailableError', () => {
     const error = new RerankerUnavailableError('inacessível', { cause })
     expect(error.name).toBe('RerankerUnavailableError')
     expect(error.cause).toBe(cause)
+  })
+})
+
+describe('createHybridSearch com reescrita (ADR 0034)', () => {
+  function withRewriter(rewriter: QueryRewriter) {
+    const queries: SearchQuery[] = []
+    const embedded: string[] = []
+    const reranked: string[] = []
+    const search = createHybridSearch({
+      embeddings: embeddingsOf((texts) => {
+        embedded.push(...texts)
+        return Promise.resolve([VECTOR])
+      }),
+      searchRepository: {
+        versionsInPeriod: () => Promise.resolve([]),
+        search: (query) => {
+          queries.push(query)
+          return Promise.resolve([evidence, { ...evidence, chunkId: 'c2' }])
+        },
+      },
+      reviewStatuses: ['auto', 'approved'],
+      embeddingTimeoutMs: 3000,
+      limit: 12,
+      reranker: {
+        model: 'fake-reranker',
+        rerank: (query) => {
+          reranked.push(query)
+          return Promise.resolve([0.1, 0.2])
+        },
+      },
+      rerankCandidates: 30,
+      rerankTimeoutMs: 2000,
+      rewriter,
+    })
+    return { search, queries, embedded, reranked }
+  }
+
+  it('léxico com a pergunta e a consulta; embedding e reranker com a consulta; referências das duas', async () => {
+    const rewriter = vi.fn<QueryRewriter>(() =>
+      Promise.resolve('prazo do § 6º do art. 76 do RCTE para o GOYAZES'),
+    )
+    const { search, queries, embedded, reranked } = withRewriter(rewriter)
+    const result = await search({
+      question: 'Qual o prazo do art. 76 para o GOYAZES?',
+      referenceDate: '2006-05-01',
+      families: ['rcte'],
+      zeroDataRetentionOnly: true,
+    })
+    expect(rewriter).toHaveBeenCalledWith('Qual o prazo do art. 76 para o GOYAZES?', {
+      zeroDataRetentionOnly: true,
+    })
+    expect(queries[0]?.text).toBe(
+      'Qual o prazo do art. 76 para o GOYAZES?\nprazo do § 6º do art. 76 do RCTE para o GOYAZES',
+    )
+    expect(embedded).toEqual(['prazo do § 6º do art. 76 do RCTE para o GOYAZES'])
+    expect(reranked).toEqual(['prazo do § 6º do art. 76 do RCTE para o GOYAZES'])
+    expect(result.stableKeys).toEqual(['go:rcte:art:76', 'go:rcte:art:76:par:6'])
+    expect(result.rewrittenQuery).toBe('prazo do § 6º do art. 76 do RCTE para o GOYAZES')
+  })
+
+  it('sem consulta (falha da reescrita): segue com a pergunta, e o sinal chega ao reescritor', async () => {
+    const rewriter = vi.fn<QueryRewriter>(() => Promise.resolve(null))
+    const { search, queries, embedded, reranked } = withRewriter(rewriter)
+    const signal = new AbortController().signal
+    const result = await search({ ...command, signal })
+    expect(rewriter).toHaveBeenCalledWith(command.question, {
+      zeroDataRetentionOnly: false,
+      signal,
+    })
+    expect(queries[0]?.text).toBe(command.question)
+    expect(embedded).toEqual([command.question])
+    expect(reranked).toEqual([command.question])
+    expect(result.rewrittenQuery).toBeNull()
+  })
+
+  it('sem família coberta, nem a reescrita é chamada', async () => {
+    const rewriter = vi.fn<QueryRewriter>()
+    const { search } = withRewriter(rewriter)
+    await expect(search({ ...command, families: [] })).resolves.toMatchObject({
+      evidence: [],
+      rewrittenQuery: null,
+    })
+    expect(rewriter).not.toHaveBeenCalled()
   })
 })

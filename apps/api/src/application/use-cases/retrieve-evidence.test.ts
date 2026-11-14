@@ -53,7 +53,13 @@ function setup(options: {
   const checkCoverage = vi.fn<CheckCoverage>(() => Promise.resolve(options.decision))
   const hybridSearch = vi.fn<HybridSearch>(() =>
     Promise.resolve(
-      options.search ?? { mode: 'hybrid', evidence: [], stableKeys: [], reranked: false },
+      options.search ?? {
+        mode: 'hybrid',
+        evidence: [],
+        stableKeys: [],
+        reranked: false,
+        rewrittenQuery: null,
+      },
     ),
   )
   const findPeriodVersions = vi.fn<FindPeriodVersions>(() =>
@@ -108,7 +114,13 @@ describe('createRetrieveEvidence', () => {
   it('retrieval vazio: recusa no_evidence com o modo da busca', async () => {
     const { retrieve } = setup({
       decision: decision('covered'),
-      search: { mode: 'lexical_only', evidence: [], stableKeys: [], reranked: false },
+      search: {
+        mode: 'lexical_only',
+        evidence: [],
+        stableKeys: [],
+        reranked: false,
+        rewrittenQuery: null,
+      },
     })
     await expect(retrieve(ask)).resolves.toMatchObject({
       outcome: RetrievalOutcome.Refused,
@@ -125,6 +137,7 @@ describe('createRetrieveEvidence', () => {
         evidence: [evidence(0.01, '2020-01-01', null)],
         stableKeys: [],
         reranked: false,
+        rewrittenQuery: null,
       },
       minEvidenceRrf: 0.02,
     })
@@ -141,21 +154,28 @@ describe('createRetrieveEvidence', () => {
         evidence: found,
         stableKeys: ['go:rcte:art:76:par:8'],
         reranked: false,
+        rewrittenQuery: 'prazo de pagamento do art. 76',
       },
     })
-    const result = await retrieve({ ...ask, signal: controller.signal })
+    const result = await retrieve({
+      ...ask,
+      zeroDataRetentionOnly: true,
+      signal: controller.signal,
+    })
     expect(result).toMatchObject({
       outcome: RetrievalOutcome.Evidence,
       mode: 'hybrid',
       evidence: found,
       uncoveredFamilies: ['efd-go'],
       stableKeys: ['go:rcte:art:76:par:8'],
+      rewrittenQuery: 'prazo de pagamento do art. 76',
       reference: { value: '2026-07-01', periodBoundaryInside: true, periodo: '2026-07' },
     })
     expect(hybridSearch).toHaveBeenCalledWith({
       question: ask.questionText,
       referenceDate: '2026-07-01',
       families: ['rcte'],
+      zeroDataRetentionOnly: true,
       signal: controller.signal,
     })
   })
@@ -168,6 +188,7 @@ describe('createRetrieveEvidence', () => {
         evidence: [evidence(0.05, '2026-01-01', '2026-07-15')],
         stableKeys: [],
         reranked: false,
+        rewrittenQuery: null,
       },
     })
     await expect(retrieve(ask)).resolves.toMatchObject({
@@ -184,6 +205,7 @@ describe('createRetrieveEvidence', () => {
         evidence: [evidence(0.05, '2004-11-04', null)],
         stableKeys: ['go:rcte:art:71'],
         reranked: false,
+        rewrittenQuery: null,
       },
       periodVersions: [{ from: '2026-07-29', to: null }],
     })
@@ -205,6 +227,7 @@ describe('createRetrieveEvidence', () => {
         evidence: [evidence(0.05, '2004-11-04', null)],
         stableKeys: [],
         reranked: false,
+        rewrittenQuery: null,
       },
       periodVersions: [{ from: '2026-07-29', to: null }],
     })
@@ -222,6 +245,7 @@ describe('createRetrieveEvidence', () => {
         evidence: [evidence(0.05, '2004-11-04', '2009-11-23')],
         stableKeys: [],
         reranked: false,
+        rewrittenQuery: null,
       },
     })
     const result = await retrieve({ ...ask, input: { periodoApuracao: '2006-05' } })

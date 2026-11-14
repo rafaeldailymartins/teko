@@ -200,6 +200,11 @@ const envSchema = z
     GROQ_MODEL: z.string().trim().min(1).default('openai/gpt-oss-120b'),
     /** Kill switch: acerto do cache continua respondendo; o resto recebe 503 `service_paused`. */
     LLM_KILL_SWITCH: z.stringbool().default(false),
+    /**
+     * Reescrita da pergunta pelo LLM antes da busca (ADR 0034). Desligada até o `corpus-eval` medir
+     * o ganho no holdout; exige `LLM_PROVIDER`.
+     */
+    QUERY_REWRITE_ENABLED: z.stringbool().default(false),
     /** Tetos diários do ambiente (`usage_daily`); os padrões são os da produção. */
     QUOTA_QUESTIONS_GLOBAL_DAILY: z.coerce.number().int().min(0).default(300),
     QUOTA_QUESTIONS_PER_USER_DAILY: z.coerce.number().int().min(0).default(30),
@@ -328,6 +333,9 @@ const envSchema = z
     }
     if (env.LLM_PROVIDER === LlmProvider.Groq && env.GROQ_API_KEY === undefined) {
       issue('GROQ_API_KEY', 'obrigatória com LLM_PROVIDER=groq')
+    }
+    if (env.QUERY_REWRITE_ENABLED && env.LLM_PROVIDER === undefined) {
+      issue('QUERY_REWRITE_ENABLED', 'exige LLM_PROVIDER (a reescrita usa a cadeia de LLM)')
     }
     if (env.DATABASE_URL !== undefined && env.EMBEDDINGS_PROVIDER === undefined) {
       issue('EMBEDDINGS_PROVIDER', 'obrigatória com DATABASE_URL (a busca precisa de embeddings)')

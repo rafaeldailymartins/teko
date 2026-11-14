@@ -81,7 +81,8 @@ import {
   type NeuronMeter,
   type UsageReport,
 } from '#app/services/neuron-budget.ts'
-import { createProviderRouter } from '#app/services/provider-router.ts'
+import { createProviderRouter, type ProviderRouter } from '#app/services/provider-router.ts'
+import { createQueryRewriter } from '#app/services/query-rewriter.ts'
 import type { StreamBudget } from '#app/services/stream-budget.ts'
 import { createStreamBudget } from '#app/services/stream-budget.ts'
 import { createAskQuestion } from '#app/use-cases/ask-question.ts'
@@ -150,6 +151,8 @@ const SEARCH_LIMIT = 12
 const RERANK_CANDIDATES = 40
 /** Teto do reranker antes de manter a ordem do RRF. */
 const RERANK_TIMEOUT_MS = 3000
+/** Teto da reescrita da pergunta antes de seguir com a original (ADR 0034). */
+const REWRITE_TIMEOUT_MS = 4000
 
 /** Reranker do `RERANKER_PROVIDER`, ou `null` (o `parseEnv` já exigiu as credenciais). */
 export function createReranker(env: Env): RerankerPort | null {
@@ -378,6 +381,7 @@ function createRetrieval(
   embeddings: EmbeddingPort,
   resolveReferenceDate: ResolveReferenceDate,
   clock: Clock,
+  router: ProviderRouter | null,
 ): RetrievalUseCases {
   const coverage = createCoverageSource({
     coverageRepository: createPgCoverageRepository(database.db),
@@ -395,6 +399,10 @@ function createRetrieval(
     reranker: createReranker(env),
     rerankCandidates: RERANK_CANDIDATES,
     rerankTimeoutMs: RERANK_TIMEOUT_MS,
+    rewriter:
+      env.QUERY_REWRITE_ENABLED && router !== null
+        ? createQueryRewriter({ router, timeoutMs: REWRITE_TIMEOUT_MS })
+        : null,
   })
   return {
     coverage,
@@ -596,7 +604,8 @@ interface QuestionWiring {
   readonly database: Database
   readonly retrieval: RetrievalUseCases
   readonly resolveReferenceDate: ResolveReferenceDate
-  readonly models: readonly LlmModel[]
+  /** Cadeia de LLM, a mesma da reescrita da pergunta (breakers compartilhados). */
+  readonly router: ProviderRouter | null
   readonly clock: Clock
   readonly lifecycle: Lifecycle
   readonly backgroundTasks: BackgroundTasks
@@ -604,12 +613,11 @@ interface QuestionWiring {
 }
 
 function createQuestions(env: Env, wiring: QuestionWiring): QuestionUseCases | null {
-  if (wiring.models.length === 0) {
+  const { clock, retrieval, router } = wiring
+  if (router === null) {
     return null
   }
-  const { clock, retrieval } = wiring
   const questions = createPgQuestionRepository(wiring.database.pool)
-  const router = createProviderRouter({ models: wiring.models, clock })
   const caps = {
     questionsGlobal: env.QUOTA_QUESTIONS_GLOBAL_DAILY,
     questionsPerUser: env.QUOTA_QUESTIONS_PER_USER_DAILY,
@@ -703,7 +711,9 @@ export function createContainer(env: Env, overrides: ContainerOverrides = {}): C
       maxConnections: env.DATABASE_MAX_CONNECTIONS,
     })
     platform.attachDatabasePool(database.pool)
-    retrieval = createRetrieval(env, database, embeddings, resolveReferenceDate, clock)
+    const models = overrides.llmModels ?? createLlmModels(env)
+    const router = models.length === 0 ? null : createProviderRouter({ models, clock })
+    retrieval = createRetrieval(env, database, embeddings, resolveReferenceDate, clock, router)
     users = createUserUseCases({
       users: createPgUserRepository(database.db),
       clock,
@@ -721,7 +731,7 @@ export function createContainer(env: Env, overrides: ContainerOverrides = {}): C
       database,
       retrieval,
       resolveReferenceDate,
-      models: overrides.llmModels ?? createLlmModels(env),
+      router,
       clock,
       lifecycle,
       backgroundTasks: platform.backgroundTasks,

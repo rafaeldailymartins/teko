@@ -233,6 +233,8 @@ jobs:
       NEON_API_KEY_STAGING: ${{ secrets.NEON_API_KEY_STAGING }}
       CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
       CF_AI_TOKEN: ${{ secrets.CF_AI_TOKEN }}
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
 
   watch-errors:
     name: watch-errors

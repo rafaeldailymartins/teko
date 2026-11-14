@@ -29,6 +29,7 @@ o roteiro, em [`docs/roadmap.md`](../roadmap.md).
 | [0031](0031-ragops-avaliacao-e-gates.md)             | RAGOps: avaliação dev/holdout, gate do corpus-eval, linhagem e rollback              | accepted |
 | [0032](0032-gates-e-ferramentas-enxutos.md)          | Gates e ferramentas de CI enxutos                                                    | accepted |
 | [0033](0033-trunk-based.md)                          | Trunk-based com `main` como tronco, produção por tag `v*` e changelog pelo git-cliff | accepted |
+| [0034](0034-reescrita-da-pergunta.md)                | Reescrita da pergunta pelo LLM antes da busca                                        | accepted |
 
 As ADRs 0029 a 0032 chegam pelos PRs da revisão de 2026-11-12 ([status](../status.md)), um por
 pacote; o link entra quando o arquivo estiver em `main`.

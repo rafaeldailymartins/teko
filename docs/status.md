@@ -157,13 +157,17 @@ proveniência) no lugar do `@google/genai` (sem proveniência em nenhuma versão
   MRR de 0,683 para 0,714 no dev e de 0,475 para **0,654** no holdout. Outras três variantes foram
   medidas e revertidas ([registro](evals/mrr-f4-2026-11-14.md)). ADRs 0006 e 0008 escritas.
 
+- `add-query-rewriting` (arquivada em 2026-11-14): reescrita da pergunta pelo LLM antes da busca
+  (ADR 0034), desligada por padrão (`QUERY_REWRITE_ENABLED`); o `corpus-eval` a liga quando o
+  environment `staging` tem as chaves do LLM e grava a consulta de cada caso no relatório.
+
 Pendente para fechar a F4:
 
-- **MRR ≥ 0,70 no holdout** (está em 0,654). O que falta é a reescrita da pergunta pelo LLM, prevista
-  no roteiro: as falhas restantes são linguagem de contador contra a do texto e pergunta em inglês.
-  Medir exige `GEMINI_API_KEY` (ou `GROQ_API_KEY`) no environment `staging` do GitHub, onde roda
-  o `corpus-eval`. Pela ADR 0031, os casos do holdout que orientaram o ajuste iriam para o dev,
-  com casos novos no lugar; a decisão é do mantenedor.
+- **MRR ≥ 0,70 no holdout** (está em 0,654, sem a reescrita). Falta medir a reescrita: cadastrar
+  `GEMINI_API_KEY` e `GROQ_API_KEY` (ou só a do Groq) no environment `staging` do GitHub e rodar o
+  `ingest.yml` em `eval-only`. Com a meta atingida e sem regressão no dev, ligar
+  `QUERY_REWRITE_ENABLED` em `infra/vercel/env.*.json`. Pela ADR 0031, os casos do holdout que
+  orientaram o ajuste iriam para o dev, com casos novos no lugar; a decisão é do mantenedor.
 
 Pendências do mantenedor (fora do repositório), exigidas pelo deploy da F7:
 
