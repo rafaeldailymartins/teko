@@ -104,9 +104,11 @@ API usa; escrita do corpus fica no container da CLI.
 10. Error handler RFC 9457 (`application/problem+json` com `code` e `traceId`). Recusa não é erro
     HTTP.
 
-**CSRF.** Mutações e o stream exigem `Origin` igual ao domínio do ambiente
-(`https://tekoia.vercel.app` ou `https://tekoia-staging.vercel.app`; localmente, a origem do
-`pnpm dev`) e `content-type: application/json`. Cookies `SameSite=Lax`, `HttpOnly`, `__Secure-`.
+**CSRF.** Mutações em `/api/*` (inclusive `/api/auth/*`) e o stream exigem `Origin` igual ao
+domínio do ambiente (`https://tekoia.vercel.app` ou `https://tekoia-staging.vercel.app`;
+localmente, a origem do `pnpm dev`) e `content-type: application/json`; em `/api/v1/*`, query
+string numa mutação dá 400. O Better Auth só confere a origem quando a requisição traz cookie, por
+isso a guarda vale também nas rotas dele. Cookies `SameSite=Lax`, `HttpOnly`, `__Secure-` em https.
 
 ## Superfície HTTP
 
@@ -148,9 +150,10 @@ betterAuth({
   plugins: [passkey({ rpID: new URL(env.WEB_ORIGIN).hostname, rpName: 'Tekó', origin: env.WEB_ORIGIN })],
   session: { expiresIn: 604800, updateAge: 86400, cookieCache: { enabled: true, maxAge: 300 } },
   user: { additionalFields: { termsAcceptedAt, termsVersion, isAdult, countryOfResidence } },
-  advanced: { useSecureCookies: true, cookiePrefix: env.APP_ENV === 'production' ? 'teko' : 'teko-stg',
-              database: { generateId: 'uuid' }, ipAddress: { ipAddressHeaders: ['x-real-ip'] } },
+  advanced: { useSecureCookies: https, cookiePrefix: env.APP_ENV === 'production' ? 'teko' : 'teko-stg',
+              database: { generateId: 'uuid' }, ipAddress: { ipAddressHeaders: ['x-teko-client-ip'] } },
   rateLimit: { enabled: true, storage: 'database' },                   // várias instâncias Fluid
+  telemetry: { enabled: false },
 })
 ```
 
@@ -166,8 +169,22 @@ betterAuth({
 - Primeiro login por OAuth; a passkey é registrada depois, com sessão ativa. Callbacks em
   `https://tekoia.vercel.app/api/auth/callback/{github,google}` e no equivalente de staging. Sem
   `oAuthProxy` nem previews.
-- O schema `auth.*` é gerado pelo CLI do Better Auth; um teste de integração cobre sign-in e sessão
-  com o adapter `relations-v2`.
+- **IP do cliente:** o handler de `/api/auth/*` grava em `x-teko-client-ip` o IP da porta `ClientIp`
+  (o `x-real-ip` na Vercel) e apaga esse header se vier do cliente; o rate limit do Better Auth
+  conta nele em todas as plataformas.
+- O schema `auth.*` é escrito à mão em `schema/auth.ts` (o CLI do Better Auth exigiria `npx`), com
+  `uuidv7()` como default dos IDs (o rate limit insere sem ID); um teste unitário o confere contra o
+  `getAuthTables` do Better Auth, e a integração cobre sessão, `get-session` pelo adapter
+  `relations-v2`, sign-out e o início do OAuth.
+- **Onboarding:** `POST /api/v1/me/onboarding` grava 18+, a versão vigente dos Termos
+  (`TERMS_VERSION`) e o país; versão diferente da vigente dá `validation_error`, e uma versão nova
+  pede novo aceite. Rotas que exigem onboarding respondem 403 `onboarding_required`; com o cookie
+  ainda dizendo "pendente" (cache de 5 min), relêem a sessão do banco antes de recusar.
+- **Variáveis:** `BETTER_AUTH_SECRET` (≥ 32), `GITHUB_CLIENT_ID`/`GITHUB_CLIENT_SECRET` e
+  `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET`, obrigatórias em staging e produção com banco;
+  `BETTER_AUTH_TELEMETRY*` derrubam o boot.
+- **Login local e e2e:** `pnpm --filter @teko/api seed:dev-session` cria usuário com onboarding e
+  sessão direto no banco e imprime o cookie assinado (só development e ci).
 
 ## Modelo de dados
 

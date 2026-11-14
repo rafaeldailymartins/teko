@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   DEFAULT_DRAIN_DELAY_MS,
   DEFAULT_SHUTDOWN_GRACE_MS,
+  DEFAULT_TERMS_VERSION,
   DEFAULT_TRUST_PROXY,
   EnvValidationError,
   HOBBY_MAX_DURATION_S,
@@ -82,10 +83,64 @@ describe('parseEnv', () => {
     expect(parseEnv(PROD_ENV).APP_ENV).toBe('production')
   })
 
-  it('ignora variáveis que a API ainda não usa (segredos de fases seguintes)', () => {
-    const env = parseEnv({ ...DEV_ENV, BETTER_AUTH_SECRET: 's' })
-    expect(env).not.toHaveProperty('BETTER_AUTH_SECRET')
+  it('ignora variáveis que a API não usa', () => {
+    const env = parseEnv({ ...DEV_ENV, LANGFUSE_SECRET_KEY: 's' })
+    expect(env).not.toHaveProperty('LANGFUSE_SECRET_KEY')
     expect(env.DATABASE_URL).toBeUndefined()
+  })
+
+  describe('Better Auth', () => {
+    const SECRET = 'x'.repeat(32)
+    const DB = {
+      DATABASE_URL: 'postgres://h/db',
+      EMBEDDINGS_PROVIDER: 'workers-ai',
+      CF_ACCOUNT_ID: '0'.repeat(32),
+      CF_AI_TOKEN: 't'.repeat(40),
+    }
+    const OAUTH = {
+      GITHUB_CLIENT_ID: 'gh',
+      GITHUB_CLIENT_SECRET: 'ghs',
+      GOOGLE_CLIENT_ID: 'go',
+      GOOGLE_CLIENT_SECRET: 'gos',
+    }
+
+    it('aceita o segredo e a versão dos Termos, com padrão', () => {
+      const env = parseEnv({ ...DEV_ENV, BETTER_AUTH_SECRET: SECRET })
+      expect(env.BETTER_AUTH_SECRET).toBe(SECRET)
+      expect(env.TERMS_VERSION).toBe(DEFAULT_TERMS_VERSION)
+      expect(problemsOf({ ...DEV_ENV, BETTER_AUTH_SECRET: 'curto' })).toEqual([
+        'BETTER_AUTH_SECRET: deve ter ao menos 32 caracteres',
+      ])
+    })
+
+    it('cada OAuth app vem com id e segredo', () => {
+      expect(problemsOf({ ...DEV_ENV, GITHUB_CLIENT_ID: 'gh' })).toEqual([
+        'GITHUB_CLIENT_SECRET: GITHUB_CLIENT_ID e GITHUB_CLIENT_SECRET vêm juntas',
+      ])
+      expect(problemsOf({ ...DEV_ENV, GOOGLE_CLIENT_SECRET: 'gos' })).toEqual([
+        'GOOGLE_CLIENT_ID: GOOGLE_CLIENT_ID e GOOGLE_CLIENT_SECRET vêm juntas',
+      ])
+    })
+
+    it('produção com banco exige o segredo e os dois OAuth apps', () => {
+      expect(problemsOf({ ...PROD_ENV, ...DB })).toEqual([
+        'BETTER_AUTH_SECRET: obrigatória com APP_ENV=production e DATABASE_URL',
+        'GITHUB_CLIENT_ID: obrigatória com APP_ENV=production e DATABASE_URL',
+        'GOOGLE_CLIENT_ID: obrigatória com APP_ENV=production e DATABASE_URL',
+      ])
+      expect(parseEnv({ ...PROD_ENV, ...DB, ...OAUTH, BETTER_AUTH_SECRET: SECRET }).APP_ENV).toBe(
+        'production',
+      )
+    })
+
+    it.each(['BETTER_AUTH_TELEMETRY', 'BETTER_AUTH_TELEMETRY_ENDPOINT'])(
+      'proíbe %s com qualquer valor',
+      (name) => {
+        expect(problemsOf({ ...DEV_ENV, [name]: '0' })).toEqual([
+          `${name}: proibida (telemetria do Better Auth fica desligada)`,
+        ])
+      },
+    )
   })
 
   it('exige APP_ENV e WEB_ORIGIN', () => {

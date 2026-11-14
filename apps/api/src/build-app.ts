@@ -3,6 +3,7 @@ import { AppEnv } from '@teko/shared/contracts'
 import Fastify, { type FastifyBaseLogger, type FastifyInstance } from 'fastify'
 import { serializerCompiler, validatorCompiler } from 'fastify-type-provider-zod'
 import { BODY_LIMIT_BYTES, type HttpOptions } from '#adapters/in/http/http-options.ts'
+import { registerAuth } from '#adapters/in/http/plugins/auth.ts'
 import { decorateContainer } from '#adapters/in/http/plugins/container.ts'
 import {
   registerRateLimit,
@@ -22,6 +23,7 @@ import { registerProblemHandlers } from '#adapters/in/http/problem/error-handler
 import { coverageRoutes } from '#adapters/in/http/routes/coverage.ts'
 import { evalRoutes } from '#adapters/in/http/routes/eval.ts'
 import { healthRoutes } from '#adapters/in/http/routes/health.ts'
+import { meRoutes } from '#adapters/in/http/routes/me.ts'
 import { provisionRoutes } from '#adapters/in/http/routes/provisions.ts'
 import { registerStaticSite, staticNotFound } from '#adapters/in/http/static-site/static-site.ts'
 import type { Container } from '#app/container.ts'
@@ -96,6 +98,7 @@ export async function buildApp(deps: BuildAppDeps): Promise<FastifyInstance> {
     await registerRateLimit(app, deps.http.rateLimit)
   }
   await app.register(sensible)
+  await registerAuth(app, { webOrigin: deps.http.webOrigin })
 
   if (deps.http.docs) {
     await registerOpenApi(app, { version: deps.container.buildInfo.version })
@@ -103,6 +106,7 @@ export async function buildApp(deps: BuildAppDeps): Promise<FastifyInstance> {
 
   await app.register(healthRoutes)
   await app.register(coverageRoutes)
+  await app.register(meRoutes)
   await app.register(provisionRoutes)
   if (deps.http.evalRoutes) {
     await app.register(evalRoutes)

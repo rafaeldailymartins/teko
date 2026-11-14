@@ -14,7 +14,7 @@ function columnOf(table: PgTable, name: string) {
 }
 
 describe('schema canônico', () => {
-  it('tem as tabelas de corpus e app, com colunas em snake_case', () => {
+  it('tem as tabelas de corpus, app e auth, com colunas em snake_case', () => {
     const names = tables.map((table) => {
       const config = getTableConfig(table)
       return `${String(config.schema)}.${config.name}`
@@ -25,6 +25,12 @@ describe('schema canônico', () => {
       'app.questions',
       'app.rate_limits',
       'app.usage_daily',
+      'auth.account',
+      'auth.passkey',
+      'auth.rate_limit',
+      'auth.session',
+      'auth.user',
+      'auth.verification',
       'corpus.amendments',
       'corpus.chunk_sources',
       'corpus.chunks',
@@ -55,10 +61,12 @@ describe('schema canônico', () => {
     )
     expect(references).toContain('chunks.provision_version_id -> provision_versions')
     expect(references).toContain('provisions.parent_id -> provisions')
+    expect(references).toContain('questions.user_id -> user')
+    expect(references).toContain('session.user_id -> user')
     expect(references).toContain('feedback.question_id -> questions')
     expect(references).toContain('review_queue.provision_version_id -> provision_versions')
     expect(references).toContain('review_queue.document_version_id -> document_versions')
-    expect(references).toHaveLength(16)
+    expect(references).toHaveLength(21)
   })
 
   it('índices HNSW, GIN e GiST da busca e o GIN trigram de stable_key', () => {

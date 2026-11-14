@@ -18,7 +18,14 @@ export {
 } from './common.ts'
 export { type CoverageResponse, coverageResponseSchema } from './coverage.ts'
 export { type HealthResponse, HealthStatus, healthResponseSchema } from './health.ts'
-export { type OnboardingRequest, onboardingRequestSchema } from './onboarding.ts'
+export {
+  countryCodeSchema,
+  type MeResponse,
+  meResponseSchema,
+  type OnboardingRequest,
+  onboardingRequestSchema,
+  termsVersionSchema,
+} from './onboarding.ts'
 export {
   DiffOp,
   type DiffSegment,

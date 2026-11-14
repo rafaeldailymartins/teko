@@ -10,11 +10,38 @@ function rebuild(segments: readonly WordDiffSegment[], side: 'before' | 'after')
     .join('')
 }
 
+/** Maior subsequência comum por programação dinâmica (referência para entradas pequenas). */
+function lcsLength(a: readonly string[], b: readonly string[]): number {
+  const row = new Array<number>(b.length + 1).fill(0)
+  for (const token of a) {
+    let diagonal = 0
+    for (let j = 1; j <= b.length; j += 1) {
+      const above = row[j] ?? 0
+      row[j] = token === b[j - 1] ? diagonal + 1 : Math.max(above, row[j - 1] ?? 0)
+      diagonal = above
+    }
+  }
+  return row[b.length] ?? 0
+}
+
 describe('tokenize', () => {
   it('gruda o espaço na palavra seguinte e preserva o espaço final', () => {
     expect(tokenize('a  b c ')).toEqual(['a', '  b', ' c', ' '])
     expect(tokenize('')).toEqual([])
+    expect(tokenize('   ')).toEqual(['   '])
+    expect(tokenize('\ta\nb')).toEqual(['\ta', '\nb'])
   })
+
+  test.prop([fc.string({ unit: fc.constantFrom('a', 'b', ' ', '\n', '\t'), maxLength: 60 })])(
+    'concatenar os tokens devolve o texto; só o último token pode ser só espaço',
+    (text) => {
+      const tokens = tokenize(text)
+      expect(tokens.join('')).toBe(text)
+      for (const token of tokens.slice(0, -1)) {
+        expect(token.trim()).not.toBe('')
+      }
+    },
+  )
 })
 
 describe('wordDiff', () => {
@@ -62,6 +89,26 @@ describe('wordDiff', () => {
     const segments = wordDiff(before, after)
     expect(rebuild(segments, 'before')).toBe(before)
     expect(rebuild(segments, 'after')).toBe(after)
+  })
+
+  test.prop([words, words])('edita o mínimo de palavras (n + m − 2·LCS)', (left, right) => {
+    const before = left.join(' ')
+    const after = right.join(' ')
+    const edited = wordDiff(before, after)
+      .filter((segment) => segment.op !== 'equal')
+      .reduce((total, segment) => total + tokenize(segment.text).length, 0)
+    const a = tokenize(before)
+    const b = tokenize(after)
+    expect(edited).toBe(a.length + b.length - 2 * lcsLength(a, b))
+  })
+
+  it('com o teto justo para a distância, ainda acha o diff mínimo', () => {
+    expect(wordDiff('a b c', 'a x c', 2)).toEqual([
+      { op: 'equal', text: 'a' },
+      { op: 'delete', text: ' b' },
+      { op: 'insert', text: ' x' },
+      { op: 'equal', text: ' c' },
+    ])
   })
 
   test.prop([words, words])('nunca tem dois segmentos seguidos com a mesma operação', (l, r) => {

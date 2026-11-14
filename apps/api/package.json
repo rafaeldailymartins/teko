@@ -33,9 +33,12 @@
     "eval:retrieval:check:corpus": "node evals/scripts/check-thresholds.ts reports/retrieval-evals.json retrieval-corpus",
     "eval:retrieval:holdout": "promptfoo eval -c evals/retrieval/holdout.promptfooconfig.yaml --no-cache --no-write --no-progress-bar --no-table -o reports/retrieval-evals-holdout.json",
     "eval:retrieval:check:holdout": "node evals/scripts/check-thresholds.ts reports/retrieval-evals-holdout.json retrieval-holdout",
-    "eval:corpus:record": "node evals/scripts/corpus-eval-record.ts"
+    "eval:corpus:record": "node evals/scripts/corpus-eval-record.ts",
+    "seed:dev-session": "node --env-file-if-exists=.env src/cli.ts seed-dev-session"
   },
   "dependencies": {
+    "@better-auth/drizzle-adapter": "catalog:",
+    "@better-auth/passkey": "catalog:",
     "@fastify/helmet": "catalog:",
     "@fastify/rate-limit": "catalog:",
     "@fastify/sensible": "catalog:",
@@ -45,6 +48,7 @@
     "@scalar/fastify-api-reference": "catalog:",
     "@teko/shared": "workspace:*",
     "@vercel/functions": "catalog:",
+    "better-auth": "catalog:",
     "close-with-grace": "catalog:",
     "drizzle-orm": "catalog:",
     "fastify": "catalog:",

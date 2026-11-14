@@ -17,9 +17,32 @@ export interface WordDiffSegment {
 /** Teto padrão de edições do Myers (memória O(D²) no histórico das diagonais). */
 const DEFAULT_MAX_EDITS = 1500
 
-/** Palavras com o espaço que as precede: `"a  b"` → `["a", "  b"]`. */
+const WHITESPACE = /\s/
+
+function isSpace(text: string, index: number): boolean {
+  return WHITESPACE.test(text.charAt(index))
+}
+
+/**
+ * Palavras com o espaço que as precede: `"a  b"` → `["a", "  b"]`; espaço no fim vira um token
+ * próprio. Varredura linear (uma regex com alternativa sobre `\s+` faria backtracking quadrático
+ * em textos com muito espaço).
+ */
 export function tokenize(text: string): string[] {
-  return text.match(/\s*\S+|\s+$/g) ?? []
+  const tokens: string[] = []
+  let start = 0
+  let index = 0
+  while (index < text.length) {
+    while (index < text.length && isSpace(text, index)) {
+      index += 1
+    }
+    while (index < text.length && !isSpace(text, index)) {
+      index += 1
+    }
+    tokens.push(text.slice(start, index))
+    start = index
+  }
+  return tokens
 }
 
 function push(segments: WordDiffSegment[], op: WordDiffOp, text: string): void {

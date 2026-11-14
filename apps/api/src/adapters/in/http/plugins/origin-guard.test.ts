@@ -104,15 +104,28 @@ describe('registerOriginGuard', () => {
     expect(response.json()).toMatchObject({ code: 'validation_error' })
   })
 
-  it('não toca GET nem o Better Auth', async () => {
+  it('não toca GET; no Better Auth exige Origin, mas aceita query string', async () => {
     const app = await build()
     expect((await app.inject({ method: 'GET', url: '/api/v1/things?x=1' })).statusCode).toBe(200)
-    const auth = await app.inject({
+    const foreign = await app.inject({
       method: 'POST',
       url: '/api/auth/sign-in/social',
       headers: { 'content-type': 'application/json' },
       payload: '{}',
     })
-    expect(auth.statusCode).toBe(200)
+    expect(foreign.statusCode).toBe(403)
+    const own = await app.inject({
+      method: 'POST',
+      url: '/api/auth/sign-in/social?disableRedirect=true',
+      headers: JSON_HEADERS,
+      payload: '{}',
+    })
+    expect(own.statusCode).toBe(200)
+  })
+
+  it('fora de /api (estático do Plano B) não age', async () => {
+    const app = await build()
+    app.post('/healthz-like', async () => ({ ok: true }))
+    expect((await app.inject({ method: 'POST', url: '/healthz-like' })).statusCode).toBe(200)
   })
 })

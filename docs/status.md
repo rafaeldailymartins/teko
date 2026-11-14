@@ -134,7 +134,16 @@ proveniência) no lugar do `@google/genai` (sem proveniência em nenhuma versão
 
 - `add-api-foundation` (arquivada em 2026-11-14): guarda de `Origin`, `content-type` e query
   string nas mutações, rate limit em Postgres entre instâncias, `GET /api/v1/coverage`, paleta,
-  linha do tempo e diff de dispositivos, e `GET /api/v1/_eval/search` só com `APP_ENV=ci`.
+  linha do tempo e diff de dispositivos, e `GET /api/v1/_eval/search` só com `APP_ENV=ci` (#85).
+- `add-auth-oauth-passkey` (arquivada em 2026-11-14): Better Auth 1.7.18 com OAuth GitHub e Google,
+  passkey, sessão por cookie, rate limit em banco, schema `auth` (FKs de `app` para `auth.user`),
+  `GET /api/v1/me`, onboarding com `TERMS_VERSION` e `seed:dev-session`. A guarda de `Origin` passou
+  a cobrir `/api/auth/*`.
+
+Pendências do mantenedor (fora do repositório), exigidas pelo deploy da F7: OAuth apps do GitHub e
+do Google de staging e produção (callbacks em `<WEB_ORIGIN>/api/auth/callback/{github,google}`) e
+as env vars Sensitive `BETTER_AUTH_SECRET`, `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`,
+`GOOGLE_CLIENT_ID` e `GOOGLE_CLIENT_SECRET` nos dois projetos da Vercel.
 
 ## Revisão antes da F4 (2026-11-12)
 

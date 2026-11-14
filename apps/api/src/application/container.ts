@@ -1,5 +1,6 @@
 import type { AppEnv } from '@teko/shared/contracts'
 import type { BuildInfo } from '#domain/shared/build-info.ts'
+import type { AuthGateway } from './ports/auth-gateway.ts'
 import type { BackgroundTasks } from './ports/background-tasks.ts'
 import type { ClientIp } from './ports/client-ip.ts'
 import type { RateLimitStore } from './ports/rate-limit-store.ts'
@@ -21,6 +22,7 @@ import type { RefreshCoverage } from './use-cases/refresh-coverage.ts'
 import type { ResolveReferenceDate } from './use-cases/resolve-reference-date.ts'
 import type { RetrieveEvidence } from './use-cases/retrieve-evidence.ts'
 import type { SeedFixtureCorpus } from './use-cases/seed-fixture-corpus.ts'
+import type { UserUseCases } from './use-cases/users.ts'
 
 /** Casos de uso que dependem do Postgres (montados só com `DATABASE_URL`). */
 export interface RetrievalUseCases {
@@ -39,6 +41,8 @@ interface UseCases {
   readonly resolveReferenceDate: ResolveReferenceDate
   /** `null` sem `DATABASE_URL`: as rotas que dependem do corpus respondem 503. */
   readonly retrieval: RetrievalUseCases | null
+  /** Perfil e onboarding; `null` sem banco. */
+  readonly users: UserUseCases | null
 }
 
 /**
@@ -79,6 +83,8 @@ export interface Container {
   readonly appEnv: AppEnv
   readonly buildInfo: BuildInfo
   readonly useCases: UseCases
+  /** Better Auth; `null` sem banco ou sem `BETTER_AUTH_SECRET` (rotas com sessão dão 503). */
+  readonly auth: AuthGateway | null
   readonly lifecycle: Lifecycle
   /** Trabalho pós-resposta (`waitUntil` na Vercel; promise acompanhada fora dela). */
   readonly backgroundTasks: BackgroundTasks
