@@ -76,6 +76,10 @@ on:
         description: eval-only - SHA (40 caracteres) do commit a avaliar, de um PR do próprio repositório; vazio = o código do branch do dispatch
         type: string
         default: ""
+      query_rewrite:
+        description: corpus-eval com a reescrita da pergunta pelo LLM (ADR 0034; exige as chaves no environment staging)
+        type: boolean
+        default: false
   workflow_call:
     inputs:
       target:
@@ -99,6 +103,9 @@ on:
       ref:
         type: string
         default: ""
+      query_rewrite:
+        type: boolean
+        default: false
     # Num workflow chamado, o segredo do environment só chega ao job com `environment: staging` se
     # o chamador o repassar pelo nome (docs do GitHub: "Using inputs and secrets in a reusable
     # workflow"); por isso todos estão declarados aqui. Nunca `secrets: inherit`.
@@ -711,8 +718,9 @@ jobs:
           EVAL_POOL_SIZE: "50"
           CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
           CF_AI_TOKEN: ${{ secrets.CF_AI_TOKEN }}
-          # Reescrita da pergunta pelo LLM (ADR 0034): liga só quando o environment staging tem as
-          # chaves; sem elas, o eval mede a busca sem reescrita, como até aqui.
+          # Reescrita da pergunta pelo LLM (ADR 0034): desligada em produção, então o eval mede a
+          # busca sem ela; só liga com o input query_rewrite e as chaves no environment staging.
+          QUERY_REWRITE_INPUT: ${{ inputs.query_rewrite }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           # O BLOB_STORE do workflow (github-releases) exige o token na configuração; aqui ele só
@@ -720,9 +728,9 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
           eval_args=()
-          if [[ -n "$GEMINI_API_KEY" && -n "$GROQ_API_KEY" ]]; then
+          if [[ "$QUERY_REWRITE_INPUT" == true && -n "$GEMINI_API_KEY" && -n "$GROQ_API_KEY" ]]; then
             export LLM_PROVIDER=gemini QUERY_REWRITE_ENABLED=true
-          elif [[ -n "$GROQ_API_KEY" ]]; then
+          elif [[ "$QUERY_REWRITE_INPUT" == true && -n "$GROQ_API_KEY" ]]; then
             export LLM_PROVIDER=groq QUERY_REWRITE_ENABLED=true
           else
             unset GEMINI_API_KEY GROQ_API_KEY

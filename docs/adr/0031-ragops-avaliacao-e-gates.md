@@ -174,3 +174,8 @@ Decisão do mantenedor em 2026-11-14:
 - **Meta da F4:** o MRR do holdout ficou em 0,654 (0,668 com a reescrita só no léxico, desligada),
   abaixo do 0,70. O mantenedor aceitou o nível medido e fechou a F4; com 42 casos, o intervalo de 95%
   (cerca de 0,54 a 0,79) contém a meta.
+- **Viés dos casos novos:** os 13 dispositivos foram escolhidos entre os que o staging já devolvia
+  nos `corpus-eval` do dia, então tendem a ser mais fáceis. No primeiro run com o holdout novo
+  (43645163025, com a reescrita ainda ligada no eval), o MRR do holdout foi a 0,789 e o recall@10 a
+  0,955: o número não se compara com os 0,654 do holdout anterior. A revisão do mantenedor pode
+  trocar casos fáceis demais.
