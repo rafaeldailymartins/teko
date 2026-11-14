@@ -210,6 +210,8 @@ describe('degradação', () => {
           reranker: null,
           rerankCandidates: 30,
           rerankTimeoutMs: 2000,
+          translator: null,
+          translationTimeoutMs: 2000,
         }),
         findPeriodVersions: () => Promise.resolve([]),
         minEvidenceRrf: 0,
@@ -249,6 +251,8 @@ describe('degradação', () => {
         reranker: null,
         rerankCandidates: 30,
         rerankTimeoutMs: 2000,
+        translator: null,
+        translationTimeoutMs: 2000,
       })
       const result = await createRetrieveEvidence({
         resolveReferenceDate: container.useCases.resolveReferenceDate,
@@ -321,6 +325,8 @@ describe('fronteira de vigência dentro do PA', () => {
         reranker: null,
         rerankCandidates: 40,
         rerankTimeoutMs: 3000,
+        translator: null,
+        translationTimeoutMs: 2000,
       }),
       findPeriodVersions: createFindPeriodVersions({
         searchRepository: repository,

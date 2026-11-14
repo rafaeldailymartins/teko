@@ -70,6 +70,7 @@ export async function retrieve(golden: GoldenCase): Promise<RetrievalOutput> {
     source: golden.reference_source,
     questionText: golden.question,
     families: golden.families ?? [],
+    locale: golden.locale,
   })
   if (result.outcome === RetrievalOutcome.NeedsClarification) {
     return {

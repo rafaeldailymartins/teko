@@ -3,6 +3,7 @@ import type { Evidence } from '#domain/qa/evidence.ts'
 import { type EmbeddingPort, EmbeddingUnavailableError } from '../ports/embedding-port.ts'
 import { type RerankerPort, RerankerUnavailableError } from '../ports/reranker-port.ts'
 import type { SearchQuery } from '../ports/search-repository.ts'
+import { type TranslatorPort, TranslatorUnavailableError } from '../ports/translator-port.ts'
 import { createHybridSearch } from './hybrid-search.ts'
 
 const VECTOR = [0.1, 0.2, 0.3]
@@ -44,6 +45,8 @@ function setup(embed: EmbeddingPort['embed'], timeoutMs = 3000) {
     reranker: null,
     rerankCandidates: 30,
     rerankTimeoutMs: 2000,
+    translator: null,
+    translationTimeoutMs: 2000,
   })
   return { search, queries }
 }
@@ -182,6 +185,8 @@ describe('createHybridSearch com reranker (ADR 0027)', () => {
       reranker: { model: 'fake-reranker', rerank },
       rerankCandidates: 30,
       rerankTimeoutMs: 5,
+      translator: null,
+      translationTimeoutMs: 2000,
     })
     return { search, queries }
   }
@@ -245,6 +250,8 @@ describe('createHybridSearch com reranker (ADR 0027)', () => {
       reranker: { model: 'fake-reranker', rerank },
       rerankCandidates: 30,
       rerankTimeoutMs: 2000,
+      translator: null,
+      translationTimeoutMs: 2000,
     })
     await expect(search(command)).resolves.toMatchObject({ reranked: false, evidence: [evidence] })
     expect(rerank).not.toHaveBeenCalled()
@@ -257,5 +264,101 @@ describe('RerankerUnavailableError', () => {
     const error = new RerankerUnavailableError('inacessível', { cause })
     expect(error.name).toBe('RerankerUnavailableError')
     expect(error.cause).toBe(cause)
+  })
+})
+
+describe('createHybridSearch com tradutor (ADR 0034)', () => {
+  function withTranslator(toPortuguese: TranslatorPort['toPortuguese'], timeoutMs = 2000) {
+    const queries: SearchQuery[] = []
+    const embedded: string[] = []
+    const reranked: string[] = []
+    const search = createHybridSearch({
+      embeddings: embeddingsOf((texts) => {
+        embedded.push(...texts)
+        return Promise.resolve([VECTOR])
+      }),
+      searchRepository: {
+        versionsInPeriod: () => Promise.resolve([]),
+        search: (query) => {
+          queries.push(query)
+          return Promise.resolve([evidence, { ...evidence, chunkId: 'c2' }])
+        },
+      },
+      reviewStatuses: ['auto', 'approved'],
+      embeddingTimeoutMs: 3000,
+      limit: 12,
+      reranker: {
+        model: 'fake-reranker',
+        rerank: (query) => {
+          reranked.push(query)
+          return Promise.resolve([0.1, 0.2])
+        },
+      },
+      rerankCandidates: 30,
+      rerankTimeoutMs: 2000,
+      translator: { model: 'fake-translator', toPortuguese },
+      translationTimeoutMs: timeoutMs,
+    })
+    return { search, queries, embedded, reranked }
+  }
+
+  const english = {
+    question: 'Was § 6 of art. 76 of the RCTE in force in 2006?',
+    referenceDate: '2006-05-01',
+    families: ['rcte'],
+    locale: 'en' as const,
+  }
+
+  it('pergunta em inglês: os braços e o reranker usam a tradução; as referências vêm das duas', async () => {
+    const toPortuguese = vi.fn<TranslatorPort['toPortuguese']>(() =>
+      Promise.resolve('O § 6º do art. 76 do RCTE valia em 2006?'),
+    )
+    const { search, queries, embedded, reranked } = withTranslator(toPortuguese)
+    const result = await search(english)
+    expect(toPortuguese).toHaveBeenCalledWith(english.question, { signal: expect.any(AbortSignal) })
+    expect(queries[0]?.text).toBe('O § 6º do art. 76 do RCTE valia em 2006?')
+    expect(embedded).toEqual(['O § 6º do art. 76 do RCTE valia em 2006?'])
+    expect(reranked).toEqual(['O § 6º do art. 76 do RCTE valia em 2006?'])
+    expect(result.stableKeys).toEqual(['go:rcte:art:76', 'go:rcte:art:76:par:6'])
+  })
+
+  it('pergunta em português (ou sem idioma) não passa pelo tradutor', async () => {
+    const toPortuguese = vi.fn<TranslatorPort['toPortuguese']>()
+    const { search, queries } = withTranslator(toPortuguese)
+    await search({ ...command, locale: 'pt-BR' })
+    await search(command)
+    expect(toPortuguese).not.toHaveBeenCalled()
+    expect(queries.map((query) => query.text)).toEqual([command.question, command.question])
+  })
+
+  it('tradutor indisponível ou acima do teto: segue com a pergunta original', async () => {
+    const unavailable = withTranslator(() =>
+      Promise.reject(new TranslatorUnavailableError('fora do ar')),
+    )
+    await unavailable.search(english)
+    expect(unavailable.queries[0]?.text).toBe(english.question)
+    const slow = withTranslator(
+      (_text, options) =>
+        new Promise((_resolve, reject) => {
+          options?.signal?.addEventListener('abort', () => reject(options.signal?.reason))
+        }),
+      5,
+    )
+    await slow.search(english)
+    expect(slow.queries[0]?.text).toBe(english.question)
+  })
+
+  it('erro inesperado do tradutor propaga; cancelamento do cliente também', async () => {
+    const broken = withTranslator(() => Promise.reject(new Error('bug')))
+    await expect(broken.search(english)).rejects.toThrow('bug')
+    const controller = new AbortController()
+    const cancelled = withTranslator((_text, options) => {
+      controller.abort(new Error('cliente saiu'))
+      return Promise.reject(options?.signal?.reason)
+    })
+    await expect(cancelled.search({ ...english, signal: controller.signal })).rejects.toThrow(
+      'cliente saiu',
+    )
+    expect(cancelled.queries).toEqual([])
   })
 })
