@@ -1,0 +1,6 @@
+# Falsos positivos do gitleaks (fingerprint commit:arquivo:regra:linha), cada um revisado.
+# Segredos de teste do Better Auth no primeiro commit do #86, trocados por valores montados em
+# runtime no commit seguinte (a7cd1f1); nenhum é credencial real.
+e8f905625cee57dc4110dbdb93a7b6aa1ed9e9ef:apps/api/src/adapters/in/cli/dev-session/dev-session.test.ts:generic-api-key:7
+e8f905625cee57dc4110dbdb93a7b6aa1ed9e9ef:apps/api/src/adapters/out/auth/better-auth.test.ts:generic-api-key:7
+e8f905625cee57dc4110dbdb93a7b6aa1ed9e9ef:apps/api/test/integration/http/auth.test.ts:generic-api-key:23
