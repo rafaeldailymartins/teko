@@ -31,6 +31,7 @@ const container: Container = {
     retrieval: null,
     users: null,
     questions: null,
+    privacy: null,
   },
   auth: null,
   backgroundTasks: { run: () => {}, pending: () => 0, drain: async () => 0 },

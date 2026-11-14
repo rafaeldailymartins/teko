@@ -103,9 +103,24 @@ function toSession(result: {
   }
 }
 
+/** Cookies que o Better Auth grava para a sessão (com o prefixo e, em https, `__Secure-`). */
+const SESSION_COOKIES = ['session_token', 'session_data', 'dont_remember'] as const
+
+function clearCookieHeaders(
+  config: Pick<BetterAuthConfig, 'cookiePrefix' | 'webOrigin'>,
+): string[] {
+  const secure = config.webOrigin.startsWith('https://')
+  return SESSION_COOKIES.map(
+    (name) =>
+      `${secure ? '__Secure-' : ''}${config.cookiePrefix}.${name}=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax${secure ? '; Secure' : ''}`,
+  )
+}
+
 export function createBetterAuthGateway(db: DrizzleDb, config: BetterAuthConfig): AuthGateway {
   const auth = betterAuth(createBetterAuthOptions(db, config))
+  const clearing = clearCookieHeaders(config)
   return {
+    clearSessionCookies: () => clearing,
     handle: (request) => auth.handler(request),
     async getSession(headers, options = {}) {
       const result = await auth.api.getSession({

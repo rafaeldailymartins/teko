@@ -287,6 +287,7 @@ describe('OpenAPI + Scalar', () => {
           '/healthz',
           '/api/v1/coverage',
           '/api/v1/me',
+          '/api/v1/me/export',
           '/api/v1/me/onboarding',
           '/api/v1/me/quota',
           '/api/v1/questions',
