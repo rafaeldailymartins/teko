@@ -46,7 +46,7 @@ export function maxRrf(evidence: readonly Evidence[]): number {
 }
 
 /** Trecho de cada ancestral no texto do reranker e o teto somado deles (o pai imediato primeiro). */
-export const ANCESTOR_EXCERPT_CHARS = 200
+const ANCESTOR_EXCERPT_CHARS = 200
 export const ANCESTORS_BUDGET_CHARS = 600
 
 /** Primeiros `limit` caracteres do texto, com espaços colapsados, cortados em fim de palavra. */
