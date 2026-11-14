@@ -139,11 +139,21 @@ proveniência) no lugar do `@google/genai` (sem proveniência em nenhuma versão
   passkey, sessão por cookie, rate limit em banco, schema `auth` (FKs de `app` para `auth.user`),
   `GET /api/v1/me`, onboarding com `TERMS_VERSION` e `seed:dev-session`. A guarda de `Origin` passou
   a cobrir `/api/auth/*`.
+- `add-ask-question-streaming` (arquivada em 2026-11-14; junta as mudanças previstas
+  `add-ask-question-streaming`, `add-llm-provider-chain`, `add-quota-guards-and-cache` e a parte de PII
+  de `add-privacy-guards`): cadeia de LLM pelo AI SDK (ADR 0007), política regional, prompt
+  versionado, `POST /api/v1/questions` com `QuotaGuard` sob advisory lock, cache exato e kill switch,
+  stream em UI Message Stream v1 com teto próprio e desconexão abortando o LLM, histórico, feedback,
+  cota e `POST /api/v1/_eval/answer`. ADRs 0007 e 0019 escritas.
 
-Pendências do mantenedor (fora do repositório), exigidas pelo deploy da F7: OAuth apps do GitHub e
-do Google de staging e produção (callbacks em `<WEB_ORIGIN>/api/auth/callback/{github,google}`) e
-as env vars Sensitive `BETTER_AUTH_SECRET`, `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`,
-`GOOGLE_CLIENT_ID` e `GOOGLE_CLIENT_SECRET` nos dois projetos da Vercel.
+Pendências do mantenedor (fora do repositório), exigidas pelo deploy da F7:
+
+- OAuth apps do GitHub e do Google de staging e produção (callbacks em
+  `<WEB_ORIGIN>/api/auth/callback/{github,google}`) e as env vars Sensitive `BETTER_AUTH_SECRET`,
+  `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, `GOOGLE_CLIENT_ID` e `GOOGLE_CLIENT_SECRET` nos dois
+  projetos da Vercel;
+- `GEMINI_API_KEY` e `GROQ_API_KEY` (Sensitive) nos dois projetos, com o ZDR ligado no console do
+  Groq.
 
 ## Revisão antes da F4 (2026-11-12)
 

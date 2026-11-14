@@ -19,7 +19,8 @@ const EVALS = '^evals/'
 const SHARED = '(^|/)packages/shared/'
 /** @param {string} name */
 const npm = (name) => `(^|/)node_modules/${name}/`
-const LLM_SDKS = ['@google/genai', 'groq-sdk'].map(npm).join('|')
+/** AI SDK da Vercel (núcleo e provedores Gemini e Groq; decisão do mantenedor em 2026-11-14). */
+const LLM_SDKS = ['ai', '@ai-sdk/[^/]+'].map(npm).join('|')
 const VERCEL_PACKAGES = npm('@vercel/[^/]+')
 const PLATFORM_CONFIG = '^src/config/platform\\.ts$'
 

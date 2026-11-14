@@ -1,6 +1,7 @@
-import { attachDatabasePool, ipAddress, waitUntil } from '@vercel/functions'
+import { attachDatabasePool, geolocation, ipAddress, waitUntil } from '@vercel/functions'
 import type { BackgroundTaskFailure, BackgroundTasks } from '#app/ports/background-tasks.ts'
 import { type ClientIp, ClientIpSource, type RequestHeaders } from '#app/ports/client-ip.ts'
+import type { GeoResolver } from '#app/ports/geo-resolver.ts'
 import type { InvocationDeadline } from '#app/ports/invocation-deadline.ts'
 import { NO_CLIENT_IP, singleIpHeader } from '../client-ip-headers.ts'
 import { createTrackedBackgroundTasks } from '../tracked-background-tasks.ts'
@@ -68,5 +69,31 @@ export function createVercelClientIp(): ClientIp {
 export function createVercelInvocationDeadline(maxDurationMs: number): InvocationDeadline {
   return {
     deadlineFor: (startedAtMs) => startedAtMs + maxDurationMs,
+  }
+}
+
+/** `Headers.get` sobre o objeto de headers do Node, sem validar o valor (o país não é um IP). */
+function rawHeaders(headers: RequestHeaders): { get(name: string): string | null } {
+  return {
+    get(name) {
+      const value = headers[name]
+      const first = Array.isArray(value) ? value[0] : value
+      return typeof first === 'string' ? first : null
+    },
+  }
+}
+
+/**
+ * País da requisição pela `geolocation()` (header `x-vercel-ip-country`, que a borda grava). Só a
+ * entrada do `Request` que ela lê é montada: os headers.
+ */
+export function createVercelGeoResolver(): GeoResolver {
+  return {
+    countryOf(headers) {
+      const { country } = geolocation({ headers: rawHeaders(headers) } as Parameters<
+        typeof geolocation
+      >[0])
+      return country === undefined || !/^[A-Za-z]{2}$/.test(country) ? null : country.toUpperCase()
+    },
   }
 }

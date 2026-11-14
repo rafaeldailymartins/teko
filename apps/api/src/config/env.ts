@@ -187,7 +187,28 @@ const envSchema = z
       .max(600_000)
       .default(DEFAULT_SHUTDOWN_GRACE_MS),
     DRAIN_DELAY_MS: z.coerce.number().int().min(0).max(60_000).default(DEFAULT_DRAIN_DELAY_MS),
+    /**
+     * Cadeia de LLM: `gemini` (Gemini primário → Gemini de fallback → Groq), `groq` (só o Groq) ou
+     * `fake` (development e ci). Sem valor, as rotas de pergunta respondem 503.
+     */
     LLM_PROVIDER: llmProviderSchema.optional(),
+    /** Chaves dos provedores (Sensitive na Vercel); hosts fixos no código. */
+    GEMINI_API_KEY: z.string().trim().min(10).optional(),
+    GROQ_API_KEY: z.string().trim().min(10).optional(),
+    GEMINI_MODEL_PRIMARY: z.string().trim().min(1).default('gemini-3.6-flash'),
+    GEMINI_MODEL_FALLBACK: z.string().trim().min(1).default('gemini-3.5-flash-lite'),
+    GROQ_MODEL: z.string().trim().min(1).default('openai/gpt-oss-120b'),
+    /** Kill switch: acerto do cache continua respondendo; o resto recebe 503 `service_paused`. */
+    LLM_KILL_SWITCH: z.stringbool().default(false),
+    /** Tetos diários do ambiente (`usage_daily`); os padrões são os da produção. */
+    QUOTA_QUESTIONS_GLOBAL_DAILY: z.coerce.number().int().min(0).default(300),
+    QUOTA_QUESTIONS_PER_USER_DAILY: z.coerce.number().int().min(0).default(30),
+    QUOTA_NEURONS_DAILY: z.coerce.number().int().min(0).default(800),
+    QUOTA_STREAM_SECONDS_DAILY: z.coerce.number().int().min(0).default(6000),
+    /** Teto de cada stream (e da reserva de `stream_seconds`), em segundos; o plano usa 100. */
+    STREAM_MAX_SECONDS: z.coerce.number().int().min(1).max(100).default(100),
+    /** Validade do cache exato de respostas, em dias. */
+    ANSWER_CACHE_TTL_DAYS: z.coerce.number().int().min(1).max(90).default(7),
     EMBEDDINGS_PROVIDER: z.enum(EmbeddingsProvider).optional(),
     /** Reranker da busca (ADR 0027); `workers-ai` usa as mesmas `CF_ACCOUNT_ID` e `CF_AI_TOKEN`. */
     RERANKER_PROVIDER: z.enum(RerankerProvider).default(RerankerProvider.None),
@@ -298,6 +319,16 @@ const envSchema = z
         'a variável de sistema VERCEL=1 está presente; exige RUNTIME_TARGET=vercel',
       )
     }
+    if (env.LLM_PROVIDER === LlmProvider.Gemini) {
+      for (const name of ['GEMINI_API_KEY', 'GROQ_API_KEY'] as const) {
+        if (env[name] === undefined) {
+          issue(name, `obrigatória com LLM_PROVIDER=gemini (a cadeia termina no Groq)`)
+        }
+      }
+    }
+    if (env.LLM_PROVIDER === LlmProvider.Groq && env.GROQ_API_KEY === undefined) {
+      issue('GROQ_API_KEY', 'obrigatória com LLM_PROVIDER=groq')
+    }
     if (env.DATABASE_URL !== undefined && env.EMBEDDINGS_PROVIDER === undefined) {
       issue('EMBEDDINGS_PROVIDER', 'obrigatória com DATABASE_URL (a busca precisa de embeddings)')
     }
@@ -386,6 +417,9 @@ const envSchema = z
       issue('EMBEDDINGS_PROVIDER', `fake é proibido com APP_ENV=${env.APP_ENV}`)
     }
     if (env.DATABASE_URL !== undefined) {
+      if (env.LLM_PROVIDER === undefined) {
+        issue('LLM_PROVIDER', `obrigatória com APP_ENV=${env.APP_ENV} e DATABASE_URL`)
+      }
       // A API publicada com banco sempre tem login: segredo e os dois OAuth apps.
       for (const name of ['BETTER_AUTH_SECRET', 'GITHUB_CLIENT_ID', 'GOOGLE_CLIENT_ID'] as const) {
         if (env[name] === undefined) {

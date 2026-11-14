@@ -21,8 +21,10 @@ import {
   createFakeEmbeddingAdapter,
   readEmbeddingFixture,
 } from '#adapters/out/fakes/fake-embedding-adapter.ts'
+import { createFakeLlmAdapter } from '#adapters/out/fakes/fake-llm-adapter.ts'
 import { createInMemoryBlobStore } from '#adapters/out/fakes/in-memory-blob-store.ts'
 import { createSafeFetcher } from '#adapters/out/http/safe-fetcher.ts'
+import { createLlmChain } from '#adapters/out/llm/ai-sdk-llm.ts'
 import { createNeonComputeUsage } from '#adapters/out/neon/neon-compute-usage.ts'
 import { createDatabase, type Database } from '#adapters/out/persistence/drizzle/client.ts'
 import { runMigrations } from '#adapters/out/persistence/drizzle/migrate.ts'
@@ -38,6 +40,7 @@ import {
 } from '#adapters/out/persistence/drizzle/repositories/pg-ingestion-database.ts'
 import { createPgIngestionRunRepository } from '#adapters/out/persistence/drizzle/repositories/pg-ingestion-run-repository.ts'
 import { createPgProvisionRepository } from '#adapters/out/persistence/drizzle/repositories/pg-provision-repository.ts'
+import { createPgQuestionRepository } from '#adapters/out/persistence/drizzle/repositories/pg-question-repository.ts'
 import { createPgRateLimitStore } from '#adapters/out/persistence/drizzle/repositories/pg-rate-limit-store.ts'
 import { createPgSearchRepository } from '#adapters/out/persistence/drizzle/repositories/pg-search-repository.ts'
 import { snapshotCodec } from '#adapters/out/persistence/drizzle/repositories/pg-snapshot-codec.ts'
@@ -48,17 +51,24 @@ import {
   createWorkersAiRerankerAdapter,
 } from '#adapters/out/reranker/workers-ai/workers-ai-reranker-adapter.ts'
 import { createLogger } from '#adapters/out/telemetry/logger.ts'
-import type { Container, IngestionContainer, RetrievalUseCases } from '#app/container.ts'
+import type {
+  Container,
+  IngestionContainer,
+  QuestionUseCases,
+  RetrievalUseCases,
+} from '#app/container.ts'
 import type { AuthGateway } from '#app/ports/auth-gateway.ts'
-import type { BackgroundTaskFailure } from '#app/ports/background-tasks.ts'
+import type { BackgroundTaskFailure, BackgroundTasks } from '#app/ports/background-tasks.ts'
 import type { BlobStore } from '#app/ports/blob-store.ts'
 import type { Clock } from '#app/ports/clock.ts'
 import type { ContentHasher } from '#app/ports/content-hasher.ts'
 import type { EmbeddingPort } from '#app/ports/embedding-port.ts'
+import type { LlmModel } from '#app/ports/llm-port.ts'
 import type { RateLimitStore } from '#app/ports/rate-limit-store.ts'
 import type { RerankerPort } from '#app/ports/reranker-port.ts'
 import type { SafeFetcher } from '#app/ports/safe-fetcher.ts'
 import type { BatchLimits } from '#app/services/embedding-batches.ts'
+import type { Lifecycle } from '#app/services/lifecycle.ts'
 import { createLifecycle } from '#app/services/lifecycle.ts'
 import {
   createNeuronBudget,
@@ -67,13 +77,17 @@ import {
   type NeuronMeter,
   type UsageReport,
 } from '#app/services/neuron-budget.ts'
+import { createProviderRouter } from '#app/services/provider-router.ts'
+import type { StreamBudget } from '#app/services/stream-budget.ts'
 import { createStreamBudget } from '#app/services/stream-budget.ts'
+import { createAskQuestion } from '#app/use-cases/ask-question.ts'
 import {
   createCheckCoverage,
   createCoverageSource,
   createGetCoverage,
 } from '#app/use-cases/check-coverage.ts'
 import { createEmbedPending } from '#app/use-cases/embed-pending.ts'
+import { createEvalAnswer } from '#app/use-cases/eval-answer.ts'
 import { createExportSnapshot } from '#app/use-cases/export-snapshot.ts'
 import { createFindPeriodVersions } from '#app/use-cases/find-period-versions.ts'
 import { createGetHealth } from '#app/use-cases/get-health.ts'
@@ -88,6 +102,7 @@ import { createInspectCorpus } from '#app/use-cases/inspect-corpus.ts'
 import { createPromoteSnapshot } from '#app/use-cases/promote-snapshot.ts'
 import { createProvisionUseCases } from '#app/use-cases/provisions.ts'
 import { createPruneEmbeddingCache } from '#app/use-cases/prune-embedding-cache.ts'
+import { createQuestionHistory } from '#app/use-cases/question-history.ts'
 import { createRefreshCoverage } from '#app/use-cases/refresh-coverage.ts'
 import {
   createResolveReferenceDate,
@@ -98,6 +113,7 @@ import {
   createSeedFixtureCorpus,
   type SeedFixtureCorpus,
 } from '#app/use-cases/seed-fixture-corpus.ts'
+import { createStreamAnswer } from '#app/use-cases/stream-answer.ts'
 import { createUserUseCases, type UserUseCases } from '#app/use-cases/users.ts'
 import { PUBLISHABLE_REVIEW_STATUSES, ReviewStatus } from '#domain/corpus/family.ts'
 import { type BuildInfo, createBuildInfo } from '#domain/shared/build-info.ts'
@@ -371,6 +387,7 @@ function createRetrieval(
     rerankTimeoutMs: RERANK_TIMEOUT_MS,
   })
   return {
+    coverage,
     checkCoverage,
     getCoverage: createGetCoverage({ coverage }),
     hybridSearch,
@@ -509,10 +526,95 @@ export function createCoverageMarkTargets(urls: readonly WatchDatabaseUrl[]): {
 
 export interface ContainerOverrides {
   readonly clock?: Clock
+  /** Embeddings no lugar dos do env (testes de degradação). */
+  readonly embeddings?: EmbeddingPort
+  /** Modelos da cadeia de LLM no lugar dos do env (testes com espião). */
+  readonly llmModels?: readonly LlmModel[]
   /** Recebe falhas e estouros de teto das tarefas pós-resposta (padrão: descarta). */
   readonly onBackgroundFailure?: (failure: BackgroundTaskFailure) => void
   /** `application_name` do pool (`teko-api`; a CLI usa `teko-cli`). */
   readonly applicationName?: string
+}
+
+/** Neurons estimados por pergunta (embedding da pergunta e reranker de 40 candidatos). */
+const NEURONS_PER_QUESTION = 5
+const DAY_MS = 86_400_000
+
+/** Modelos do `LLM_PROVIDER` (o `parseEnv` já exigiu as chaves de cada um). */
+function createLlmModels(env: Env): LlmModel[] {
+  if (env.LLM_PROVIDER === 'fake') {
+    return [createFakeLlmAdapter()]
+  }
+  if (env.LLM_PROVIDER === undefined || env.GROQ_API_KEY === undefined) {
+    return []
+  }
+  const chain = createLlmChain({
+    geminiApiKey: env.GEMINI_API_KEY ?? '',
+    groqApiKey: env.GROQ_API_KEY,
+    geminiModels: [env.GEMINI_MODEL_PRIMARY, env.GEMINI_MODEL_FALLBACK],
+    groqModel: env.GROQ_MODEL,
+  })
+  return env.LLM_PROVIDER === 'groq' ? chain.filter((model) => model.provider === 'groq') : chain
+}
+
+interface QuestionWiring {
+  readonly database: Database
+  readonly retrieval: RetrievalUseCases
+  readonly resolveReferenceDate: ResolveReferenceDate
+  readonly models: readonly LlmModel[]
+  readonly clock: Clock
+  readonly lifecycle: Lifecycle
+  readonly backgroundTasks: BackgroundTasks
+  readonly streamBudget: StreamBudget
+}
+
+function createQuestions(env: Env, wiring: QuestionWiring): QuestionUseCases | null {
+  if (wiring.models.length === 0) {
+    return null
+  }
+  const { clock, retrieval } = wiring
+  const questions = createPgQuestionRepository(wiring.database.pool)
+  const router = createProviderRouter({ models: wiring.models, clock })
+  const caps = {
+    questionsGlobal: env.QUOTA_QUESTIONS_GLOBAL_DAILY,
+    questionsPerUser: env.QUOTA_QUESTIONS_PER_USER_DAILY,
+    streamSecondsGlobal: env.QUOTA_STREAM_SECONDS_DAILY,
+    neuronsGlobal: env.QUOTA_NEURONS_DAILY,
+  }
+  const reservation = { streamSeconds: env.STREAM_MAX_SECONDS, neurons: NEURONS_PER_QUESTION }
+  const pipeline = {
+    retrieveEvidence: retrieval.retrieveEvidence,
+    router,
+    corpusVersion: async () => (await retrieval.coverage()).corpusVersion,
+    nowMs: () => clock.now().getTime(),
+  }
+  return {
+    ask: createAskQuestion({
+      questions,
+      resolveReferenceDate: wiring.resolveReferenceDate,
+      checkCoverage: retrieval.checkCoverage,
+      coverage: retrieval.coverage,
+      router,
+      hasher: sha256ContentHasher,
+      clock,
+      lifecycle: wiring.lifecycle,
+      caps,
+      reservation,
+      killSwitch: env.LLM_KILL_SWITCH,
+    }),
+    stream: createStreamAnswer({
+      questions,
+      pipeline,
+      clock,
+      streamBudget: wiring.streamBudget,
+      lifecycle: wiring.lifecycle,
+      backgroundTasks: wiring.backgroundTasks,
+      reservation,
+      cacheTtlMs: env.ANSWER_CACHE_TTL_DAYS * DAY_MS,
+    }),
+    history: createQuestionHistory({ questions, clock, caps }),
+    evalAnswer: createEvalAnswer({ ...pipeline, timeoutMs: env.STREAM_MAX_SECONDS * 1000 }),
+  }
 }
 
 function buildInfoOf(env: Env): BuildInfo {
@@ -548,11 +650,16 @@ export function createContainer(env: Env, overrides: ContainerOverrides = {}): C
     onBackgroundFailure: overrides.onBackgroundFailure ?? (() => {}),
   })
   const resolveReferenceDate = createResolveReferenceDate({ clock })
-  const embeddings = createEmbeddings(env)
+  const embeddings = overrides.embeddings ?? createEmbeddings(env)
   let database: Database | null = null
   let retrieval: RetrievalUseCases | null = null
   let users: UserUseCases | null = null
   let auth: AuthGateway | null = null
+  let questions: QuestionUseCases | null = null
+  const streamBudget = createStreamBudget(
+    platform.invocationDeadline,
+    env.STREAM_MAX_SECONDS * 1000,
+  )
   if (env.DATABASE_URL !== undefined && embeddings !== null) {
     database = createDatabase({
       url: env.DATABASE_URL,
@@ -567,6 +674,16 @@ export function createContainer(env: Env, overrides: ContainerOverrides = {}): C
       termsVersion: env.TERMS_VERSION,
     })
     auth = createAuth(env, database)
+    questions = createQuestions(env, {
+      database,
+      retrieval,
+      resolveReferenceDate,
+      models: overrides.llmModels ?? createLlmModels(env),
+      clock,
+      lifecycle,
+      backgroundTasks: platform.backgroundTasks,
+      streamBudget,
+    })
   }
 
   return {
@@ -577,12 +694,14 @@ export function createContainer(env: Env, overrides: ContainerOverrides = {}): C
     backgroundTasks: platform.backgroundTasks,
     clientIp: platform.clientIp,
     rateLimitStore: database === null ? null : createPgRateLimitStore(database.pool),
-    streamBudget: createStreamBudget(platform.invocationDeadline),
+    geo: platform.geo,
+    streamBudget,
     useCases: {
       getHealth: createGetHealth({ buildInfo, appEnv: env.APP_ENV, lifecycle }),
       resolveReferenceDate,
       retrieval,
       users,
+      questions,
     },
     close: async () => {
       await database?.close()

@@ -124,13 +124,15 @@ describe('parseEnv', () => {
 
     it('produção com banco exige o segredo e os dois OAuth apps', () => {
       expect(problemsOf({ ...PROD_ENV, ...DB })).toEqual([
+        'LLM_PROVIDER: obrigatória com APP_ENV=production e DATABASE_URL',
         'BETTER_AUTH_SECRET: obrigatória com APP_ENV=production e DATABASE_URL',
         'GITHUB_CLIENT_ID: obrigatória com APP_ENV=production e DATABASE_URL',
         'GOOGLE_CLIENT_ID: obrigatória com APP_ENV=production e DATABASE_URL',
       ])
-      expect(parseEnv({ ...PROD_ENV, ...DB, ...OAUTH, BETTER_AUTH_SECRET: SECRET }).APP_ENV).toBe(
-        'production',
-      )
+      const LLM = { LLM_PROVIDER: 'groq', GROQ_API_KEY: 'q'.repeat(16) }
+      expect(
+        parseEnv({ ...PROD_ENV, ...DB, ...OAUTH, ...LLM, BETTER_AUTH_SECRET: SECRET }).APP_ENV,
+      ).toBe('production')
     })
 
     it.each(['BETTER_AUTH_TELEMETRY', 'BETTER_AUTH_TELEMETRY_ENDPOINT'])(

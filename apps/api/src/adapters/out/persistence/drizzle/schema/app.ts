@@ -57,6 +57,8 @@ export const questions = app.table(
     ttftMs: integer(),
     latencyMs: integer(),
     langfuseTraceId: text(),
+    /** Request id da requisição que criou a pergunta (não repúdio; correlação com os logs). */
+    requestId: text(),
     streamStartedAt: timestamp({ withTimezone: true }),
     createdAt: createdAt(),
     updatedAt: createdAt(),

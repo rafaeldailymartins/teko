@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   createVercelBackgroundTasks,
   createVercelClientIp,
+  createVercelGeoResolver,
   createVercelInvocationDeadline,
   vercelAttachDatabasePool,
 } from './vercel-platform.ts'
@@ -44,6 +45,20 @@ describe('createVercelClientIp', () => {
         forwardedIp: '198.51.100.1',
       }),
     ).toEqual({ ip: null, source: 'none' })
+  })
+})
+
+describe('createVercelGeoResolver', () => {
+  const geo = createVercelGeoResolver()
+
+  it('lê o país que a borda grava, em maiúsculas', () => {
+    expect(geo.countryOf({ 'x-vercel-ip-country': 'pt' })).toBe('PT')
+    expect(geo.countryOf({ 'x-vercel-ip-country': 'BR' })).toBe('BR')
+  })
+
+  it('sem header ou com valor fora do formato, null', () => {
+    expect(geo.countryOf({})).toBeNull()
+    expect(geo.countryOf({ 'x-vercel-ip-country': 'XYZ' })).toBeNull()
   })
 })
 
