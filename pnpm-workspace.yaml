@@ -139,3 +139,4 @@ catalog:
   postcss: 8.5.32
   babel-plugin-react-compiler: 1.0.0
   next-intl: 4.14.9
+  "@playwright/test": 1.65.0 # e2e na stack de CI (Chromium + viewport mobile); browsers baixados no job

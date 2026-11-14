@@ -1,0 +1,83 @@
+# E2E na stack descartável de CI (infra/ci; docs/architecture/qualidade-e-seguranca.md): o estático e
+# a API na mesma origem atrás do Caddy, Postgres com a fixture única, LLM e embeddings fake e uma
+# sessão de teste. Playwright com Chromium e viewport mobile.
+#   - pr-gate.yml: chamado sempre; o job só roda com web ou api afetados;
+#   - nightly e workflow_dispatch: sempre.
+# Nenhum segredo: a stack gera o próprio BETTER_AUTH_SECRET e nunca fala com provedor real.
+name: E2E
+
+on:
+  workflow_call:
+    inputs:
+      affected:
+        description: JSON do job `affected` do pr-gate.yml. Vazio = tudo.
+        type: string
+        required: false
+        default: ""
+  schedule:
+    - cron: "40 4 * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: e2e-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  NEXT_TELEMETRY_DISABLED: "1"
+  TURBO_TELEMETRY_DISABLED: "1"
+
+jobs:
+  e2e:
+    name: e2e
+    if: >-
+      ${{ inputs.affected == '' || inputs.affected == null
+      || fromJSON(inputs.affected).web || fromJSON(inputs.affected).api }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          # audit nas primeiras semanas (imagens do Docker Hub, browsers do Playwright); depois block.
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      - name: Subir a stack de CI (imagem da API, export do web, fixture e sessão de teste)
+        run: bash infra/ci/up.sh
+
+      - name: Instalar o Chromium do Playwright
+        run: pnpm --filter @teko/web exec playwright install --with-deps chromium
+
+      - name: E2E (Chromium e viewport mobile)
+        env:
+          CI: "true"
+          E2E_BASE_URL: http://localhost:8080
+        run: pnpm --filter @teko/web test:e2e
+
+      - name: Logs da stack
+        if: failure()
+        run: docker compose -f infra/ci/compose.yaml logs --no-color --tail 300
+
+      - name: Traces do Playwright
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: e2e-traces
+          path: apps/web/test-results
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Derrubar a stack
+        if: always()
+        run: docker compose -f infra/ci/compose.yaml down --volumes --timeout 5

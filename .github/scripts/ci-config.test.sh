@@ -91,14 +91,16 @@ check "python roda sempre em push (coverage.xml para o Sonar)" \
 check "Codecov fora do CI" \
   bash -c "! grep -rqi 'codecov' .github/workflows && [[ ! -e codecov.yml ]]"
 
-# --- ci-gate (ADR 0032): agregador sem `always()`, sem mutação e com só o perf podendo pular ----
+# --- ci-gate (ADR 0032): agregador sem `always()`, sem mutação e só perf e e2e podendo pular -----
 check "ci-gate roda com !cancelled(), não always()" \
   yq_true '.jobs."ci-gate".if == "${{ !cancelled() }}"' .github/workflows/pr-gate.yml
-check "ci-gate depende de affected, ci, security e perf" \
-  yq_true '(.jobs."ci-gate".needs | sort | join(",")) == "affected,ci,perf,security"' .github/workflows/pr-gate.yml
-# Só o perf pode pular (workflow só com jobs filtrados por escopo); ci e security, nunca.
-check "ci-gate aceita skip só do perf" \
-  bash -c "yq -r '.jobs.\"ci-gate\".steps[] | select(.uses // \"\" | test(\"alls-green\")) | .with.\"allowed-skips\"' .github/workflows/pr-gate.yml | jq -e '. == [\"perf\"]' >/dev/null"
+check "ci-gate depende de affected, ci, security, perf e e2e" \
+  yq_true '(.jobs."ci-gate".needs | sort | join(",")) == "affected,ci,e2e,perf,security"' .github/workflows/pr-gate.yml
+# Só perf e e2e podem pular (workflows só com jobs filtrados por escopo); ci e security, nunca.
+check "ci-gate aceita skip só do perf e do e2e" \
+  bash -c "yq -r '.jobs.\"ci-gate\".steps[] | select(.uses // \"\" | test(\"alls-green\")) | .with.\"allowed-skips\"' .github/workflows/pr-gate.yml | jq -e '. == [\"perf\", \"e2e\"]' >/dev/null"
+check "e2e sobe a stack de CI e roda o Playwright" \
+  bash -c "yq -r '.jobs.e2e.steps[].run // \"\"' .github/workflows/e2e.yml | grep -q 'bash infra/ci/up.sh' && yq -r '.jobs.e2e.steps[].run // \"\"' .github/workflows/e2e.yml | grep -q 'test:e2e'"
 # Stryker só no noturno, e só com commit novo desde o último run verde.
 check "mutation.yml fora do PR (só schedule e workflow_dispatch)" \
   yq_true '(.on | keys | sort | join(",")) == "schedule,workflow_dispatch"' .github/workflows/mutation.yml

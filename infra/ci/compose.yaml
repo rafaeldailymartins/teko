@@ -1,0 +1,81 @@
+# Stack descartável de CI do Tekó (docs/architecture/qualidade-e-seguranca.md): Postgres com
+# pgvector, a imagem candidata da API e o Caddy servindo o export estático do web e a API na mesma
+# origem (http://localhost:8080), como na Vercel. Sobe com `bash infra/ci/up.sh`; e2e, k6, ZAP e as
+# evals de geração rodam contra ela. Nunca publica nada e nunca usa segredo real.
+#
+# Tudo preso a 127.0.0.1. Imagens fixadas por digest (tag mantida para leitura).
+name: teko-ci
+
+x-hardening: &hardening
+  security_opt:
+    - no-new-privileges:true
+
+services:
+  postgres:
+    <<: *hardening
+    # Paridade com o Neon e com o compose local: PostgreSQL 18 + pgvector 0.8.6.
+    image: pgvector/pgvector:0.8.6-pg18-trixie@sha256:78bf48b801e792f99e3ac62b5036fd3876e9be48afda16c1e331af1c75ceb2ff
+    command: [postgres, -c, fsync=off, -c, full_page_writes=off, -c, synchronous_commit=off]
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_DB: teko
+      # Só da stack descartável (sem dado real, presa a 127.0.0.1).
+      POSTGRES_PASSWORD: postgres-ci-only
+    volumes:
+      - ./postgres-init:/docker-entrypoint-initdb.d:ro
+    tmpfs:
+      - /var/lib/postgresql
+    ports:
+      - 127.0.0.1:55432:5432
+    networks: [stack]
+    healthcheck:
+      test: [CMD, pg_isready, --username=postgres, --dbname=teko]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  api:
+    <<: *hardening
+    # Construída por up.sh a partir de apps/api/Dockerfile; nunca publicada.
+    image: teko-api:ci
+    environment:
+      APP_ENV: ci
+      LOG_LEVEL: warn
+      WEB_ORIGIN: http://localhost:8080
+      DATABASE_URL: postgresql://teko_app:app-ci-only@postgres:5432/teko
+      EMBEDDINGS_PROVIDER: fake
+      EMBEDDINGS_FIXTURE_PATH: /fixtures/embeddings.json.gz
+      LLM_PROVIDER: fake
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?up.sh gera o segredo da stack}
+    volumes:
+      - ../../apps/api/test/fixtures/corpus/embeddings.json.gz:/fixtures/embeddings.json.gz:ro
+    # Os limites de uma instância Fluid da Vercel (1 vCPU, 2 GB).
+    cpus: 1
+    mem_limit: 2g
+    # Acima do teto do stream (100 s) e do SHUTDOWN_GRACE_MS (105 s).
+    stop_grace_period: 110s
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks: [stack]
+
+  caddy:
+    <<: *hardening
+    image: caddy:2.11.9-alpine@sha256:003a97808e781aa9f7e75cc2f43d34d461099031faf5e20faefb9f61126836f0
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ../../apps/web/out:/srv:ro
+    ports:
+      - 127.0.0.1:8080:8080
+    depends_on:
+      api:
+        condition: service_healthy
+    networks: [stack]
+
+networks:
+  stack:
+    ipam:
+      config:
+        # A rede que o `trustProxy` da API aceita em development e ci (DEFAULT_TRUST_PROXY em
+        # apps/api/src/config/env.ts). Mudou aqui, mude lá.
+        - subnet: 172.30.0.0/24

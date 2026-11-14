@@ -45,3 +45,6 @@ htmlcov/
 Thumbs.db
 .idea/
 *.swp
+
+# Cookie da sessão de teste da stack de CI (infra/ci/up.sh, local)
+/infra/ci/.e2e.env

@@ -10,9 +10,10 @@ com feedback local antecipado e um único check agregador obrigatório no PR.
 ### Requirement: Check agregador único
 
 Todo PR para `main` MUST ser aprovado pelo check `ci-gate`, que SHALL falhar quando
-qualquer job agregado (`affected`, `ci`, `security`, `perf`) falhar ou for cancelado, e SHALL rodar
-com `!cancelled()`, nunca com `always()`. A análise do SonarQube Cloud MUST NOT fazer parte do
-`ci-gate`: ela é só informativa.
+qualquer job agregado (`affected`, `ci`, `security`, `perf`, `e2e`) falhar ou for cancelado, e SHALL
+rodar com `!cancelled()`, nunca com `always()`. Só `perf` e `e2e`, que pulam inteiros sem o escopo
+deles, MAY terminar como `skipped`. A análise do SonarQube Cloud MUST NOT fazer parte do `ci-gate`:
+ela é só informativa.
 
 #### Scenario: Job de lint falha
 
@@ -33,6 +34,11 @@ com `!cancelled()`, nunca com `always()`. A análise do SonarQube Cloud MUST NOT
 
 - **WHEN** um push novo no PR cancela o run anterior do `pr-gate.yml`
 - **THEN** o `ci-gate` do run cancelado não roda, e vale o do run novo
+
+#### Scenario: E2E reprovado
+
+- **WHEN** uma jornada do Playwright falha na stack de CI num PR que altera `apps/api`
+- **THEN** o job `e2e` fica vermelho e o `ci-gate` também
 
 ### Requirement: Mensagens de commit convencionais
 
@@ -161,3 +167,15 @@ pelo check `dco`.
 
 - **WHEN** um PR contém um commit humano sem `Signed-off-by:`
 - **THEN** o check `dco` falha
+
+### Requirement: E2E na stack de CI
+
+Um PR que afeta `apps/web` ou `apps/api` MUST rodar o Playwright (Chromium e viewport mobile) contra
+a stack descartável de `infra/ci`, com o estático e a API na mesma origem, a fixture única, LLM e
+embeddings fake e uma sessão de teste criada sem endpoint HTTP; a stack SHALL usar só segredos
+gerados na subida e nunca falar com provedor real.
+
+#### Scenario: Pergunta pela mesma origem
+
+- **WHEN** o e2e faz uma pergunta com a sessão de teste e abre o stream na stack de CI
+- **THEN** o stream termina com `finish` e `[DONE]`, e a pergunta fica `answered`
