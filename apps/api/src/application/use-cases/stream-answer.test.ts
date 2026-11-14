@@ -64,6 +64,7 @@ const RETRIEVE: RetrieveEvidence = async () => ({
   ],
   uncoveredFamilies: [],
   stableKeys: [],
+  rewrittenQuery: null,
 })
 
 type Script = 'answer' | 'hang' | 'boom'

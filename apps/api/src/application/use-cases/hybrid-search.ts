@@ -6,6 +6,7 @@ import { extractProvisionRefs } from '#domain/qa/provision-refs.ts'
 import { type EmbeddingPort, EmbeddingUnavailableError } from '../ports/embedding-port.ts'
 import { type RerankerPort, RerankerUnavailableError } from '../ports/reranker-port.ts'
 import type { SearchRepository } from '../ports/search-repository.ts'
+import type { QueryRewriter } from '../services/query-rewriter.ts'
 
 /**
  * `HybridSearch`: embedding da pergunta (teto de 3 s) e uma única instrução SQL com os três braços
@@ -13,8 +14,13 @@ import type { SearchRepository } from '../ports/search-repository.ts'
  * a busca degrada para `lexical_only` (rotulada no `data-meta`), sem falhar a pergunta.
  *
  * Com reranker (ADR 0027): a instrução traz `rerankCandidates` candidatos, o reranker os reordena
- * pela relevância do `rerankText` (caminho, ancestrais e conteúdo) para a pergunta e a busca devolve os `limit`
- * primeiros. Falha ou teto do reranker mantêm a ordem do RRF (`reranked: false`).
+ * pela relevância do `rerankText` (caminho, ancestrais e conteúdo) para a pergunta e a busca
+ * devolve os `limit` primeiros. Falha ou teto do reranker mantêm a ordem do RRF (`reranked: false`).
+ *
+ * Com reescrita (ADR 0034): o LLM transforma a pergunta numa consulta na linguagem do corpus. O
+ * braço léxico recebe a pergunta e a consulta (OU dos lexemas das duas), o embedding e o reranker
+ * recebem a consulta, e as referências citadas saem das duas. Sem consulta (falha, teto ou saída
+ * vazia), a busca segue com a pergunta.
  */
 interface HybridSearchCommand {
   /** Pergunta já redigida. */
@@ -22,6 +28,8 @@ interface HybridSearchCommand {
   readonly referenceDate: IsoDate
   /** Famílias cobertas na data (o `CheckCoverage` já tirou as demais). */
   readonly families: readonly string[]
+  /** Usuário do EEE, Reino Unido ou Suíça: a reescrita só usa modelos com ZDR. */
+  readonly zeroDataRetentionOnly?: boolean
   readonly signal?: AbortSignal
 }
 
@@ -32,6 +40,8 @@ export interface HybridSearchResult {
   readonly stableKeys: readonly string[]
   /** A ordem veio do reranker (`false`: sem reranker, ou ele falhou e valeu a ordem do RRF). */
   readonly reranked: boolean
+  /** Consulta reescrita pelo LLM que a busca usou; `null` sem reescrita. */
+  readonly rewrittenQuery: string | null
 }
 
 export type HybridSearch = (command: HybridSearchCommand) => Promise<HybridSearchResult>
@@ -50,6 +60,8 @@ export interface HybridSearchDeps {
   readonly rerankCandidates: number
   /** Teto do reranker antes de manter a ordem do RRF (ADR 0027: 3 s). */
   readonly rerankTimeoutMs: number
+  /** `null` = sem reescrita (`QUERY_REWRITE_ENABLED` desligada ou sem cadeia de LLM). */
+  readonly rewriter: QueryRewriter | null
 }
 
 /**
@@ -101,15 +113,38 @@ async function embedQuestion(
 }
 
 export function createHybridSearch(deps: HybridSearchDeps): HybridSearch {
-  return async ({ question, referenceDate, families, signal }) => {
-    const stableKeys = extractProvisionRefs(question, families)
+  return async ({ question, referenceDate, families, zeroDataRetentionOnly, signal }) => {
     if (families.length === 0) {
-      return { mode: RetrievalMode.Hybrid, evidence: [], stableKeys, reranked: false }
+      const stableKeys = extractProvisionRefs(question, families)
+      return {
+        mode: RetrievalMode.Hybrid,
+        evidence: [],
+        stableKeys,
+        reranked: false,
+        rewrittenQuery: null,
+      }
     }
-    const embedding = await embedQuestion(deps, question, signal)
+    const rewrittenQuery =
+      deps.rewriter === null
+        ? null
+        : await deps.rewriter(question, {
+            zeroDataRetentionOnly: zeroDataRetentionOnly ?? false,
+            ...(signal === undefined ? {} : { signal }),
+          })
+    const query = rewrittenQuery ?? question
+    const stableKeys =
+      rewrittenQuery === null
+        ? extractProvisionRefs(question, families)
+        : [
+            ...new Set([
+              ...extractProvisionRefs(question, families),
+              ...extractProvisionRefs(rewrittenQuery, families),
+            ]),
+          ]
+    const embedding = await embedQuestion(deps, query, signal)
     const { reranker } = deps
     const candidates = await deps.searchRepository.search({
-      text: question,
+      text: rewrittenQuery === null ? question : `${question}\n${rewrittenQuery}`,
       embedding,
       referenceDate,
       families,
@@ -121,9 +156,15 @@ export function createHybridSearch(deps: HybridSearchDeps): HybridSearch {
     const scores =
       reranker === null || candidates.length < 2
         ? null
-        : await rerankScores({ ...deps, reranker }, question, candidates, signal)
+        : await rerankScores({ ...deps, reranker }, query, candidates, signal)
     if (scores === null) {
-      return { mode, evidence: candidates.slice(0, deps.limit), stableKeys, reranked: false }
+      return {
+        mode,
+        evidence: candidates.slice(0, deps.limit),
+        stableKeys,
+        reranked: false,
+        rewrittenQuery,
+      }
     }
     // Ordem estável: empate de nota mantém a ordem do RRF.
     const evidence = candidates
@@ -131,6 +172,6 @@ export function createHybridSearch(deps: HybridSearchDeps): HybridSearch {
       .sort((a, b) => b.score - a.score || a.index - b.index)
       .slice(0, deps.limit)
       .map(({ item }) => item)
-    return { mode, evidence, stableKeys, reranked: true }
+    return { mode, evidence, stableKeys, reranked: true, rewrittenQuery }
   }
 }

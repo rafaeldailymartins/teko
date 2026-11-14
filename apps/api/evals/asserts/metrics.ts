@@ -28,6 +28,8 @@ export const retrievalOutputSchema = z.object({
    * staging (`corpus-eval`), que usa `staging_validity` quando o caso a define.
    */
   corpus: z.enum(['fixture', 'staging']).optional(),
+  /** Consulta reescrita pelo LLM que a busca usou (só com `QUERY_REWRITE_ENABLED`; ADR 0034). */
+  rewrittenQuery: z.string().nullable().optional(),
   /** Candidatos antes do reranker, na ordem do RRF (só com `EVAL_POOL_SIZE`; ADR 0027). */
   pool: z.array(z.object({ stableKey: z.string(), text: z.string() })).optional(),
   /**

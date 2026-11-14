@@ -145,6 +145,17 @@ describe('parseEnv', () => {
     )
   })
 
+  it('reescrita da pergunta: desligada por padrão e só com LLM_PROVIDER (ADR 0034)', () => {
+    expect(parseEnv(DEV_ENV).QUERY_REWRITE_ENABLED).toBe(false)
+    expect(problemsOf({ ...DEV_ENV, QUERY_REWRITE_ENABLED: 'true' })).toEqual([
+      'QUERY_REWRITE_ENABLED: exige LLM_PROVIDER (a reescrita usa a cadeia de LLM)',
+    ])
+    expect(
+      parseEnv({ ...DEV_ENV, QUERY_REWRITE_ENABLED: 'true', LLM_PROVIDER: 'fake' })
+        .QUERY_REWRITE_ENABLED,
+    ).toBe(true)
+  })
+
   it('exige APP_ENV e WEB_ORIGIN', () => {
     const problems = problemsOf({})
     expect(problems.some((p) => p.startsWith('APP_ENV:'))).toBe(true)

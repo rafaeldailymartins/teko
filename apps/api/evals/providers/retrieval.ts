@@ -93,12 +93,13 @@ export async function retrieve(golden: GoldenCase): Promise<RetrievalOutput> {
   }))
   const top = new Set([...new Set(hits.map((hit) => hit.stableKey))].slice(0, RECALL_K))
   const missing = golden.expected.provisions.filter((key) => !top.has(key))
-  const pool = await candidatePool(golden, result.reference.value)
+  const pool = await candidatePool(golden, result.reference.value, result.rewrittenQuery)
   return {
     ...base,
     outcome: result.outcome,
     reason: null,
     hits,
+    rewrittenQuery: result.rewrittenQuery,
     ...(missing.length > 0 ? { diagnostics: await diagnose(missing, result.reference.value) } : {}),
     ...(pool === null ? {} : { pool }),
   }
@@ -108,11 +109,14 @@ export async function retrieve(golden: GoldenCase): Promise<RetrievalOutput> {
  * Candidatos da instrução híbrida antes do reranker, na ordem do RRF, com o texto que o reranker
  * recebe (`rerankText`: caminho de títulos, ancestrais e conteúdo). Só com `EVAL_POOL_SIZE` (o
  * `corpus-eval` usa 50): como o reranker pontua cada par pergunta-texto sozinho, um despejo de 50
- * permite simular offline qualquer número de candidatos (ADR 0027).
+ * permite simular offline qualquer número de candidatos (ADR 0027). Com a consulta reescrita
+ * (ADR 0034), a instrução recebe o mesmo que a busca: a pergunta e a consulta no léxico, o vetor
+ * da consulta e as referências das duas.
  */
 async function candidatePool(
   golden: GoldenCase,
   referenceDate: string,
+  rewrittenQuery: string | null,
 ): Promise<{ stableKey: string; text: string }[] | null> {
   const size = Number(process.env['EVAL_POOL_SIZE'] ?? '0')
   const env = evalEnv()
@@ -126,14 +130,21 @@ async function candidatePool(
     return null
   }
   poolDatabase ??= createDatabase({ url: env.DATABASE_URL, applicationName: 'teko-evals-pool' })
-  const [vector] = await embeddings.embed([golden.question])
+  const query = rewrittenQuery ?? golden.question
+  const [vector] = await embeddings.embed([query])
   const families = golden.families ?? FAMILIES
+  const stableKeys = [
+    ...new Set([
+      ...extractProvisionRefs(golden.question, families),
+      ...extractProvisionRefs(query, families),
+    ]),
+  ]
   const evidence = await createPgSearchRepository(poolDatabase.pool).search({
-    text: golden.question,
+    text: rewrittenQuery === null ? golden.question : `${golden.question}\n${rewrittenQuery}`,
     embedding: vector ?? null,
     referenceDate,
     families,
-    stableKeys: extractProvisionRefs(golden.question, families),
+    stableKeys,
     reviewStatuses: reviewStatusesFor(env.APP_ENV),
     limit: size,
   })

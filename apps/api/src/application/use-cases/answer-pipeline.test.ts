@@ -51,6 +51,7 @@ const FOUND = retrieveWith({
   evidence: EVIDENCE,
   uncoveredFamilies: ['cte'],
   stableKeys: [],
+  rewrittenQuery: null,
 })
 
 function scriptedModel(text: string): LlmModel & { requests: LlmRequest[] } {

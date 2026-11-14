@@ -19,6 +19,8 @@ import {
  * - `[[fault:bad-citation]]`: cita `[S99]`, que não existe;
  * - `[[fault:xss]]`: devolve HTML cru e imagem, que a saída precisa remover;
  * - `[[fault:insufficient]]`: devolve a sentinela `INSUFICIENTE`.
+ *
+ * A reescrita da pergunta (`<pergunta>…</pergunta>`, ADR 0034) devolve a própria pergunta.
  */
 export const FAKE_LLM_MODEL = 'fake-llm-1'
 
@@ -28,7 +30,13 @@ function sourceIds(prompt: string): string[] {
   return [...prompt.matchAll(SOURCE_ID)].map((match) => match[1] ?? '')
 }
 
+const REWRITE_REQUEST = /^<pergunta>([^<]*)<\/pergunta>$/
+
 function answerFor(prompt: string): string {
+  const rewrite = REWRITE_REQUEST.exec(prompt)
+  if (rewrite !== null) {
+    return rewrite[1] ?? ''
+  }
   if (prompt.includes('[[fault:insufficient]]')) {
     return 'INSUFICIENTE'
   }

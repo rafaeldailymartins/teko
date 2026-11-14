@@ -49,6 +49,12 @@ describe('createFakeLlmAdapter', () => {
     expect(text(await run(`${sources}\n${marker}`))).toBe(expected)
   })
 
+  it('reescrita da pergunta: devolve a própria pergunta', async () => {
+    expect(text(await run('<pergunta>alíquota interna do ICMS</pergunta>'))).toBe(
+      'alíquota interna do ICMS',
+    )
+  })
+
   it('[[fault:xss]] devolve HTML e imagem', async () => {
     expect(text(await run(`${SOURCES} [[fault:xss]]`))).toContain('<script>')
   })

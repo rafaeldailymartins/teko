@@ -29,6 +29,8 @@ interface RetrieveEvidenceCommand extends ResolveReferenceDateCommand {
   readonly questionText: string
   /** Famílias pedidas; vazio = todas. */
   readonly families: readonly string[]
+  /** Usuário do EEE, Reino Unido ou Suíça: a reescrita da pergunta só usa modelos com ZDR. */
+  readonly zeroDataRetentionOnly?: boolean
   readonly signal?: AbortSignal
 }
 
@@ -58,6 +60,8 @@ type RetrievalResult =
       readonly evidence: readonly Evidence[]
       readonly uncoveredFamilies: readonly string[]
       readonly stableKeys: readonly string[]
+      /** Consulta reescrita pelo LLM que a busca usou; `null` sem reescrita (ADR 0034). */
+      readonly rewrittenQuery: string | null
     }
 
 export type RetrieveEvidence = (command: RetrieveEvidenceCommand) => Promise<RetrievalResult>
@@ -123,6 +127,9 @@ export function createRetrieveEvidence(deps: RetrieveEvidenceDeps): RetrieveEvid
       question: command.questionText,
       referenceDate: date,
       families: decision.coveredFamilies,
+      ...(command.zeroDataRetentionOnly === undefined
+        ? {}
+        : { zeroDataRetentionOnly: command.zeroDataRetentionOnly }),
       ...(command.signal === undefined ? {} : { signal: command.signal }),
     })
     if (search.evidence.length === 0 || maxRrf(search.evidence) < deps.minEvidenceRrf) {
@@ -146,6 +153,7 @@ export function createRetrieveEvidence(deps: RetrieveEvidenceDeps): RetrieveEvid
       evidence: search.evidence,
       uncoveredFamilies: decision.uncoveredFamilies,
       stableKeys: search.stableKeys,
+      rewrittenQuery: search.rewrittenQuery,
     }
   }
 }

@@ -121,6 +121,12 @@ on:
       CF_AI_TOKEN:
         description: Token do Workers AI (environment staging).
         required: false
+      GEMINI_API_KEY:
+        description: Chave do Gemini (environment staging), para a reescrita da pergunta no corpus-eval (ADR 0034).
+        required: false
+      GROQ_API_KEY:
+        description: Chave do Groq com ZDR (environment staging), para a reescrita da pergunta no corpus-eval (ADR 0034).
+        required: false
 
 permissions: {}
 
@@ -653,6 +659,8 @@ jobs:
             nodejs.org:443
             api.cloudflare.com:443
             *.neon.tech:5432
+            generativelanguage.googleapis.com:443
+            api.groq.com:443
 
       - name: Conferir entradas e segredos do environment staging
         env:
@@ -701,10 +709,22 @@ jobs:
           EVAL_POOL_SIZE: "50"
           CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
           CF_AI_TOKEN: ${{ secrets.CF_AI_TOKEN }}
+          # Reescrita da pergunta pelo LLM (ADR 0034): liga só quando o environment staging tem as
+          # chaves; sem elas, o eval mede a busca sem reescrita, como até aqui.
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           # O BLOB_STORE do workflow (github-releases) exige o token na configuração; aqui ele só
           # lê (o job tem contents: read) e o eval não grava artefato.
           GITHUB_TOKEN: ${{ github.token }}
         run: |
+          if [[ -n "$GEMINI_API_KEY" && -n "$GROQ_API_KEY" ]]; then
+            export LLM_PROVIDER=gemini QUERY_REWRITE_ENABLED=true
+          elif [[ -n "$GROQ_API_KEY" ]]; then
+            export LLM_PROVIDER=groq QUERY_REWRITE_ENABLED=true
+          else
+            unset GEMINI_API_KEY GROQ_API_KEY
+          fi
+          echo "reescrita da pergunta: ${QUERY_REWRITE_ENABLED:-desligada} (${LLM_PROVIDER:-sem LLM})" >>"$GITHUB_STEP_SUMMARY"
           pnpm --filter @teko/api eval:retrieval
           pnpm --filter @teko/api eval:retrieval:holdout
 
