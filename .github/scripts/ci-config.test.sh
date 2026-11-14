@@ -230,15 +230,20 @@ check "ingest: corpus-eval avalia o corpus real (EVAL_CORPUS=staging)" \
   bash -c "yq -r '.jobs.\"corpus-eval\".steps[].env.EVAL_CORPUS // \"\"' '$ingest' | grep -qx 'staging'"
 check "ingest: corpus-eval com os limites do corpus real (retrieval-corpus), que nunca ficam abaixo da fixture no recall" \
   bash -c "yq -r '.jobs.\"corpus-eval\".steps[].run // \"\"' '$ingest' | grep -q 'corpus-eval-record.ts build' && jq -e '.\"retrieval-corpus\".\"recall@10\" >= .retrieval.\"recall@10\" and .\"retrieval-corpus\".vigencia == 1 and .\"retrieval-corpus\".recusa == 1' apps/api/evals/thresholds.json >/dev/null"
-# RAGOps (ADR 0031): o corpus-eval mede os conjuntos dev e holdout e o lock só vai a PR com ele verde.
+# RAGOps (ADR 0031): o corpus-eval mede os conjuntos dev, holdout e ajuste (adendo de 2026-11-14,
+# os casos que saíram do holdout) e o lock só vai a PR com ele verde.
 corpus_eval_dev_and_holdout() {
   local runs
   runs="$(yq -r '.jobs."corpus-eval".steps[].run // ""' "$ingest")"
-  # Os dois conjuntos, com ou sem os argumentos que espaçam o eval quando há reescrita (ADR 0034).
+  # Os conjuntos, com ou sem os argumentos que espaçam o eval quando há reescrita (ADR 0034).
   grep -Eq 'eval:retrieval( |$)' <<<"$runs" && grep -Eq 'eval:retrieval:holdout( |$)' <<<"$runs" &&
-    grep -q -- '--holdout reports/retrieval-evals-holdout.json' <<<"$runs"
+    grep -Eq 'eval:retrieval:ajuste( |$)' <<<"$runs" &&
+    grep -q -- '--holdout reports/retrieval-evals-holdout.json' <<<"$runs" &&
+    grep -q -- '--ajuste reports/retrieval-evals-ajuste.json' <<<"$runs" &&
+    jq -e '."retrieval-ajuste".vigencia == 1 and ."retrieval-ajuste".recusa == 1' \
+      apps/api/evals/thresholds.json >/dev/null
 }
-check "ingest: corpus-eval roda os conjuntos dev e holdout e grava o registro" corpus_eval_dev_and_holdout
+check "ingest: corpus-eval roda os conjuntos dev, holdout e ajuste e grava o registro" corpus_eval_dev_and_holdout
 check "ingest: lock-pr depende do corpus-eval verde e nunca roda para o código de um PR (ref)" \
   yq_true '(.jobs."lock-pr".needs | contains(["load", "corpus-eval"])) and (.jobs."lock-pr".if | (test("needs\\.corpus-eval\\.result == .success.") and test("inputs\\.ref == ..")))' "$ingest"
 check "ingest: o PR do lock leva o corpus.eval.json" \

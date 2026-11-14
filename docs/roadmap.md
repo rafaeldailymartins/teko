@@ -67,7 +67,9 @@ seguimento que troca `develop` por `main` no código.
   - `/api/v1/_eval/*` → 404 com `APP_ENV=staging`; query string em `POST /questions` → 400;
   - contrato OpenAPI e chunks verdes; sessão revogada por `DELETE /me` não lê dados depois do
     acesso ao banco (janela do `cookieCache` documentada);
-  - **MRR ≥ 0,70 no `holdout` do `corpus-eval`**, sem regressão no `dev`.
+  - **MRR ≥ 0,70 no `holdout` do `corpus-eval`**, sem regressão no `dev`. Desvio aprovado pelo
+    mantenedor em 2026-11-14: 0,654 (0,668 com a reescrita só no léxico, desligada), com o dev em
+    0,718 ([registro](evals/mrr-f4-2026-11-14.md); ADR 0031, adendo de 2026-11-14).
 
 ## F5: Frontend completo
 

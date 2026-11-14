@@ -12,7 +12,7 @@ no [roteiro](roadmap.md); o desenho, em [`architecture/`](architecture/README.md
 | F2 domínio de vigência, schema e busca  | concluída em 2026-11-11                      |
 | F3 ingestão C1 e C2, embeddings e watch | fechada em 2026-11-13                        |
 | Revisão antes da F4                     | concluída em 2026-11-13                      |
-| F4 API completa                         | em andamento desde 2026-11-14                |
+| F4 API completa                         | concluída em 2026-11-14                      |
 | F5 em diante                            | depois da F4                                 |
 
 ## F0: contas e governança
@@ -128,6 +128,7 @@ Sem pendências: a F3 está fechada.
 
 ## F4: API completa
 
+Concluída em 2026-11-14 (PRs #85 a #95), com um desvio aprovado na meta de MRR (abaixo).
 Começou em 2026-11-14, em PRs por mudança OpenSpec. Decisão do mantenedor no início da fase: a
 cadeia de LLM usa o AI SDK da Vercel (`ai`, `@ai-sdk/google` e `@ai-sdk/groq`, todos com
 proveniência) no lugar do `@google/genai` (sem proveniência em nenhuma versão) e do `groq-sdk`.
@@ -156,25 +157,24 @@ proveniência) no lugar do `@google/genai` (sem proveniência em nenhuma versão
   passaram a ver o contexto do dispositivo-pai (ADR 0027, adendo). `corpus-eval` (run 43601785029):
   MRR de 0,683 para 0,714 no dev e de 0,475 para **0,654** no holdout. Outras três variantes foram
   medidas e revertidas ([registro](evals/mrr-f4-2026-11-14.md)). ADRs 0006 e 0008 escritas.
-
 - `add-query-rewriting` (arquivada em 2026-11-14): reescrita da pergunta pelo LLM antes da busca
   (ADR 0034), desligada por padrão (`QUERY_REWRITE_ENABLED`); o `corpus-eval` a liga quando o
   environment `staging` tem as chaves do LLM e grava a consulta de cada caso no relatório.
 
-Pendente para fechar a F4:
+- **Meta de MRR (desvio aprovado em 2026-11-14):** o holdout ficou em 0,654 sem reescrita e 0,668 com
+  a reescrita só no braço léxico, desligada (dev 0,718, sem regressão); a meta era 0,70. O mantenedor
+  aceitou o nível medido. Os 13 casos do holdout que orientaram os ajustes foram para o conjunto
+  `ajuste`, e o holdout recebeu 13 casos novos (ADR 0031, adendo).
 
-- **MRR ≥ 0,70 no holdout** não foi atingido: 0,654 sem reescrita e 0,668 com a reescrita só no
-  braço léxico (dev 0,718, sem regressão). A reescrita foi medida com as chaves no environment
-  `staging` e segue desligada (ADR 0034, adendos). Decisão do mantenedor: aceitar o nível medido e
-  fechar a F4, ou investir na próxima alavanca (contexto do pai no embedding, que exige reingestão).
-  Pela ADR 0031, os casos do holdout que orientaram os ajustes iriam para o dev, com casos novos no
-  lugar.
-- **Cota gratuita da cadeia de LLM** (medida em 2026-11-14): Gemini 3.6 Flash com 5 pedidos por
+Pendências do mantenedor:
+
+- revisar os 13 casos novos do holdout (`reviewed_at` nulo, tag `novo-2026-11-14`);
+- **cota gratuita da cadeia de LLM** (medida em 2026-11-14): Gemini 3.6 Flash com 5 pedidos por
   minuto e 20 por dia, Gemini 3.5 Flash Lite com 15 e 500, `gpt-oss-120b` no Groq com 8 mil tokens
   por minuto. O primário não sustenta o volume previsto; rever a ordem da cadeia (ADR 0007) antes da
   F7.
 
-Pendências do mantenedor (fora do repositório), exigidas pelo deploy da F7:
+Exigidas pelo deploy da F7 (fora do repositório):
 
 - OAuth apps do GitHub e do Google de staging e produção (callbacks em
   `<WEB_ORIGIN>/api/auth/callback/{github,google}`) e as env vars Sensitive `BETTER_AUTH_SECRET`,

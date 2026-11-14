@@ -3,9 +3,9 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { loadFixtureDocuments } from '../../src/adapters/in/cli/seed-fixtures/seed-fixtures.ts'
 import { tempDir } from '../../test/setup/temp-dir.ts'
-import { devTests, holdoutTests, metricsFor, toPromptfooTest } from './golden-tests.ts'
+import { ajusteTests, devTests, holdoutTests, metricsFor, toPromptfooTest } from './golden-tests.ts'
 import { GoldenSplit, goldenPath, loadGolden } from './load-golden.ts'
-import { goldenCaseSchema, goldenDatasetSchema } from './schema.ts'
+import { type GoldenCase, goldenCaseSchema, goldenDatasetSchema } from './schema.ts'
 
 const base = {
   id: 'caso',
@@ -114,6 +114,39 @@ describe('holdout versionado (ADR 0031)', () => {
   it('o gerador do holdout cobre o arquivo inteiro', async () => {
     const tests = await holdoutTests()
     expect(tests.map((test) => test.description)).toEqual(holdout.map((golden) => golden.id))
+  })
+})
+
+describe('ajuste versionado (ADR 0031, adendo de 2026-11-14)', () => {
+  const dev = loadGolden(goldenPath(GoldenSplit.Dev))
+  const holdout = loadGolden(goldenPath(GoldenSplit.Holdout))
+  const ajuste = loadGolden(goldenPath(GoldenSplit.Ajuste))
+
+  it('são os 13 casos que saíram do holdout, revisados e marcados ex-holdout', () => {
+    expect(ajuste).toHaveLength(13)
+    expect(ajuste.every((golden) => golden.id.startsWith('ajuste-'))).toBe(true)
+    expect(ajuste.every((golden) => golden.tags.includes('ex-holdout'))).toBe(true)
+    expect(ajuste.every((golden) => golden.reviewed_at !== null)).toBe(true)
+  })
+
+  it('nenhum id, pergunta ou caso de origem se repete entre os três conjuntos', () => {
+    const all = [...dev, ...holdout, ...ajuste]
+    expect(new Set(all.map((golden) => golden.id)).size).toBe(all.length)
+    // Os pares do dev repetem a pergunta em datas diferentes; entre conjuntos, nenhuma se repete.
+    const questions = (cases: readonly GoldenCase[]) =>
+      new Set(cases.map((golden) => golden.question.trim().toLowerCase()))
+    const [inDev, inHoldout, inAjuste] = [questions(dev), questions(holdout), questions(ajuste)]
+    expect(
+      [...inAjuste].filter((question) => inDev.has(question) || inHoldout.has(question)),
+    ).toEqual([])
+    expect([...inHoldout].filter((question) => inDev.has(question))).toEqual([])
+    const origins = new Set(ajuste.map((golden) => golden.id.replace(/^ajuste-/, 'hold-')))
+    expect(holdout.filter((golden) => origins.has(golden.id))).toEqual([])
+  })
+
+  it('o gerador do ajuste cobre o arquivo inteiro', async () => {
+    const tests = await ajusteTests()
+    expect(tests.map((test) => test.description)).toEqual(ajuste.map((golden) => golden.id))
   })
 })
 

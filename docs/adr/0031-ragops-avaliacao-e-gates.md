@@ -151,3 +151,26 @@ O `ingest.yml` aceita `mode: eval-only`, que pula discover, extract e load e rod
   segredos fora do PR.
 - **Regerar o lock a partir do banco no `eval-only`.** Exigiria o owner do staging e o Blobs no job
   do eval; o artifact do run que exportou o snapshot já é o lock certo.
+
+## Adendo (2026-11-14): conjunto ajuste e troca de casos do holdout
+
+A melhora do MRR da F4 ([registro](../evals/mrr-f4-2026-11-14.md)) saiu do diagnóstico dos 13 casos
+do holdout que reprovaram no primeiro `corpus-eval` ([revisão](../evals/revisao-holdout-2026-11-13.md)),
+como o roteiro da fase pediu. Pela regra deste ADR, esses casos deixam o holdout. Levá-los ao dev,
+porém, derrubaria o dev do `corpus-eval` abaixo dos gates (MRR de 0,718 para 0,616 e recall@10 de
+0,925 para 0,774, contra 0,65 e 0,90), e 12 deles estão fora da fixture, onde o dev também roda.
+
+Decisão do mantenedor em 2026-11-14:
+
+- **Conjunto `ajuste`** (`apps/api/evals/datasets/ajuste.yaml`): os 13 casos, sem mudança no
+  esperado (id `ajuste-` no lugar de `hold-`, tag `ex-holdout`). Orientam parâmetros, como o dev, e
+  rodam só no `corpus-eval`, com a seção `retrieval-ajuste` do `thresholds.json`: vigência, recusa,
+  clarificação, data de referência e sem resposta em 1,00; recall@10 e MRR informativos. O registro
+  do `corpus-eval` ganha o conjunto (opcional, para o histórico anterior continuar legível).
+- **Gates do dev sem mudança** (`retrieval-corpus`: recall@10 0,90 e MRR 0,65).
+- **Holdout com 13 casos novos** no lugar, de dispositivos que nenhum caso usava, com `source_quote`
+  conferida (RCTE, CTE e Tabelas nas fontes baixadas em 2026-11-14; EFD ICMS/IPI, EFD de Goiás e
+  EFD-Reinf no texto do corpus) e revisão do mantenedor pendente (`reviewed_at` nulo).
+- **Meta da F4:** o MRR do holdout ficou em 0,654 (0,668 com a reescrita só no léxico, desligada),
+  abaixo do 0,70. O mantenedor aceitou o nível medido e fechou a F4; com 42 casos, o intervalo de 95%
+  (cerca de 0,54 a 0,79) contém a meta.
