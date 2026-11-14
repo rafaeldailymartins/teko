@@ -280,10 +280,17 @@ describe('parseWithoutEffectNote ("Redação … sem efeitos a partir de …")',
         RCTE,
       ),
     ).toEqual({ label: 'inciso ix sem efeitosx', from: '2024-01-01', until: null })
+    // Sem artigo ("Redação inciso IX") também vale; o prefixo só vale no início da nota.
+    expect(parseWithoutEffectNote('Redação inciso IX sem efeitos desde 01.07.23', RCTE)).toEqual({
+      label: 'inciso ix',
+      from: '2023-07-01',
+      until: null,
+    })
     for (const text of [
       'Redação do inciso IX sem efeitos',
       'Redação do sem efeitos a partir de 01.07.23',
       'Redação do inciso IX sem efeitosx a partir de 01.07.23',
+      'Ver a redação do inciso IX sem efeitos a partir de 01.07.23',
     ]) {
       expect(parseWithoutEffectNote(text, RCTE), text).toBeNull()
     }
@@ -500,6 +507,11 @@ describe('parseCitedLabels (dispositivos citados na nota de alteração)', () =>
       ['par:1', 'par:unico'],
     ],
     ['CONFERIDA NOVA REDAÇÃO AO CAPÍTULO II PELO ART. 1º DO DECRETO Nº 6.669', []],
+    // Duas citações de ato antes do "pelo": as duas saem (o padrão é global).
+    [
+      'ACRESCIDO O § 3º AO ART. 5º POR FORÇA DO ART. 2º DO DECRETO Nº 7.344, DE 2011 E CONFORME O ART. 9º DA LEI Nº 17.000',
+      ['art:5', 'par:3'],
+    ],
   ])('%s', (raw, expected) => {
     expect(labels(raw)).toEqual(expected)
   })

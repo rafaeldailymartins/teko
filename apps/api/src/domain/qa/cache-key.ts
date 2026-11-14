@@ -14,11 +14,12 @@ const TRAILING = new Set([' ', '?', '!', '.', ';', ':'])
 
 /**
  * Corta do fim os sinais e espaços, num laço linear: a regex `[\s?!.;:]+$` equivalente tinha
- * backtracking super-linear (SonarQube S8786).
+ * backtracking super-linear (SonarQube S8786). No início do texto, `charAt(-1)` é `''` e o laço
+ * para.
  */
 function withoutTrailingPunctuation(text: string): string {
   let end = text.length
-  while (end > 0 && TRAILING.has(text.charAt(end - 1))) {
+  while (TRAILING.has(text.charAt(end - 1))) {
     end -= 1
   }
   return text.slice(0, end)
