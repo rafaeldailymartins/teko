@@ -33,6 +33,18 @@ const EXACT_LIMIT = 10
  * 16 mil casamentos no sql-perf de 100k chunks; o primeiro estágio custa ~40 ms (ADR 0010).
  */
 const LEXICAL_CANDIDATES = 200
+/**
+ * Contexto do pai no braço léxico (diagnóstico do holdout, 2026-11-13): um inciso, alínea, item ou
+ * campo curto ("4. ovo;", "I - 17% … internas") não traz as palavras do caput ("As alíquotas do
+ * imposto são"). Os filhos dos `LEXICAL_PARENTS` primeiros candidatos entram no segundo estágio
+ * (até `LEXICAL_CHILDREN`), e todo candidato é pontuado pelo próprio `tsv` somado ao texto dos
+ * ancestrais vigentes na data, com peso D: o contexto desempata e traz o filho, mas não vence quem
+ * casa pelo próprio texto.
+ */
+/** Profundidade máxima da cadeia de ancestrais (artigo > parágrafo > inciso > alínea > item …). */
+const MAX_ANCESTOR_DEPTH = 8
+const LEXICAL_PARENTS = 50
+const LEXICAL_CHILDREN = 400
 
 /**
  * Ajustes do braço vetorial, locais à transação curta (compatível com o PgBouncer em modo
@@ -54,12 +66,45 @@ const COMMON_HEAD = `WITH tsq AS MATERIALIZED (
   FROM unnest(to_tsvector('pg_catalog.portuguese', public.immutable_unaccent($1::text)))),
 base AS NOT MATERIALIZED (SELECT c.* FROM corpus.chunks c WHERE ${PUBLISHABLE_FILTER}),
 lexical_candidates AS MATERIALIZED (
-  SELECT b.id, b.provision_version_id AS pv, b.tsv FROM base b, tsq t WHERE b.tsv @@ t.q
-  ORDER BY ts_rank(b.tsv, t.q, 1 | 32) DESC, b.id LIMIT ${String(LEXICAL_CANDIDATES)}),
+  SELECT b.id, b.provision_version_id AS pv, b.tsv,
+    row_number() OVER (ORDER BY ts_rank(b.tsv, t.q, 1 | 32) DESC, b.id) AS r
+  FROM base b, tsq t WHERE b.tsv @@ t.q
+  ORDER BY r LIMIT ${String(LEXICAL_CANDIDATES)}),
+lexical_children AS MATERIALIZED (
+  SELECT b.id, b.provision_version_id AS pv, b.tsv
+  FROM (SELECT DISTINCT v.provision_id FROM lexical_candidates l
+        JOIN corpus.provision_versions v ON v.id = l.pv
+        WHERE l.r <= ${String(LEXICAL_PARENTS)}) lp
+  JOIN corpus.provisions k ON k.parent_id = lp.provision_id
+  JOIN corpus.provision_versions kv ON kv.provision_id = k.id
+  JOIN base b ON b.provision_version_id = kv.id
+  ORDER BY k.sort_path, b.ordinal LIMIT ${String(LEXICAL_CHILDREN)}),
+lexical_pool AS (
+  SELECT id, pv, tsv FROM lexical_candidates UNION SELECT id, pv, tsv FROM lexical_children),
+lexical_scored AS (
+  SELECT l.id, l.pv,
+    ts_rank_cd(l.tsv || setweight(coalesce(ctx.tsv, ''::tsvector), 'D'), t.q, 1 | 32) AS score
+  FROM lexical_pool l
+  CROSS JOIN tsq t
+  JOIN corpus.provision_versions v ON v.id = l.pv
+  JOIN corpus.provisions p ON p.id = v.provision_id
+  LEFT JOIN LATERAL (
+    WITH RECURSIVE up(provision_id, depth) AS (
+      SELECT p.parent_id, 1 WHERE p.parent_id IS NOT NULL
+      UNION ALL
+      SELECT a.parent_id, up.depth + 1 FROM up JOIN corpus.provisions a ON a.id = up.provision_id
+      WHERE a.parent_id IS NOT NULL AND up.depth < ${String(MAX_ANCESTOR_DEPTH)})
+    SELECT to_tsvector('pg_catalog.portuguese', public.immutable_unaccent(string_agg(t2.text, ' '))) AS tsv
+    FROM up
+    JOIN LATERAL (
+      SELECT av.text FROM corpus.provision_versions av
+      WHERE av.provision_id = up.provision_id AND av.valid_during @> $3::date
+        AND upper_inf(av.knowledge)
+      ORDER BY (av.review_status = ANY($6::text[])) DESC, av.id LIMIT 1) t2 ON true) ctx ON true),
 lexical AS (
   SELECT d.id, d.pv, row_number() OVER (ORDER BY d.score DESC, d.id) AS rnk
-  FROM (SELECT DISTINCT ON (l.pv) l.id, l.pv, ts_rank_cd(l.tsv, t.q, 1 | 32) AS score
-        FROM lexical_candidates l, tsq t ORDER BY l.pv, score DESC, l.id) d
+  FROM (SELECT DISTINCT ON (l.pv) l.id, l.pv, l.score
+        FROM lexical_scored l ORDER BY l.pv, l.score DESC, l.id) d
   ORDER BY rnk LIMIT ${String(ARM_LIMIT)}),`
 
 const SEMANTIC_ARMS = `
@@ -125,9 +170,6 @@ fused AS (
         UNION ALL SELECT id, pv, rnk, 'ref' FROM exact) u
   GROUP BY pv)`
 }
-
-/** Profundidade máxima da cadeia de ancestrais (artigo > parágrafo > inciso > alínea > item …). */
-const MAX_ANCESTOR_DEPTH = 8
 
 /**
  * Ancestrais de cada resultado: a cadeia de `parent_id` e, de cada ancestral, a redação de
