@@ -11,9 +11,11 @@ pré-release (ADR 0032). Nenhum gate de PR pode ficar vermelho num merge: o `ci-
 - **Stack descartável de CI** (`infra/ci/`, F4): Postgres `pgvector/pgvector` por digest (paridade
   com o pgvector do Neon) e a imagem candidata da API (builder `node:24-trixie-slim`, runtime
   distroless, nunca publicada), com `APP_ENV=ci` e os limites de uma instância Fluid (1 vCPU,
-  2 GB). O estático e a API respondem na mesma origem, como na Vercel. Aceitação, e2e, k6, ZAP
-  ativo, evals de geração e red team rodam só aí; os ambientes reais recebem só smoke, system test
-  e ZAP baseline passivo.
+  2 GB), atrás de um Caddy que serve o export do web e manda `/api/*` e `/healthz` para a API: o
+  estático e a API respondem na mesma origem, como na Vercel (`http://localhost:8080`). Sobe com
+  `bash infra/ci/up.sh`, que aplica migrações e fixture pelo `cli seed-fixtures` e cria a sessão de
+  teste pelo `cli seed-dev-session`. Aceitação, e2e, k6, ZAP ativo, evals de geração e red team
+  rodam só aí; os ambientes reais recebem só smoke, system test e ZAP baseline passivo.
 - **Relógio** fixo em `2026-11-10`.
 
 ## Matriz de testes

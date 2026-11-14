@@ -1,0 +1,29 @@
+# Frente da stack de CI: a mesma origem da Vercel (ADR 0029). `/api/*` e `/healthz` vão para a API;
+# o resto é o export estático do web, como a CDN serve na Vercel.
+{
+	admin off
+	auto_https off
+}
+
+:8080 {
+	# Mesmo limite de corpo da API (BODY_LIMIT_BYTES) e do Hobby.
+	request_body {
+		max_size 32KB
+	}
+
+	@api path /api /api/* /healthz
+	handle @api {
+		reverse_proxy api:4000 {
+			# O request id do Caddy chega à API e volta no x-request-id.
+			header_up X-Request-Id {http.request.uuid}
+		}
+	}
+
+	handle {
+		root * /srv
+		# Na Vercel a raiz redireciona por Accept-Language; aqui, sempre para pt-BR.
+		redir / /pt-BR/ 302
+		try_files {path} {path}/index.html {path}.html
+		file_server
+	}
+}

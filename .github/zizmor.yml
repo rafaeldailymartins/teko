@@ -10,6 +10,7 @@ rules:
     ignore:
       - audit.yml
       - ci.yml
+      - e2e.yml
       - ingest.yml
       - mutation.yml
       - perf.yml
