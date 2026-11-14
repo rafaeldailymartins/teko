@@ -163,11 +163,16 @@ proveniência) no lugar do `@google/genai` (sem proveniência em nenhuma versão
 
 Pendente para fechar a F4:
 
-- **MRR ≥ 0,70 no holdout** (está em 0,654, sem a reescrita). Falta medir a reescrita: cadastrar
-  `GEMINI_API_KEY` e `GROQ_API_KEY` (ou só a do Groq) no environment `staging` do GitHub e rodar o
-  `ingest.yml` em `eval-only`. Com a meta atingida e sem regressão no dev, ligar
-  `QUERY_REWRITE_ENABLED` em `infra/vercel/env.*.json`. Pela ADR 0031, os casos do holdout que
-  orientaram o ajuste iriam para o dev, com casos novos no lugar; a decisão é do mantenedor.
+- **MRR ≥ 0,70 no holdout** não foi atingido: 0,654 sem reescrita e 0,668 com a reescrita só no
+  braço léxico (dev 0,718, sem regressão). A reescrita foi medida com as chaves no environment
+  `staging` e segue desligada (ADR 0034, adendos). Decisão do mantenedor: aceitar o nível medido e
+  fechar a F4, ou investir na próxima alavanca (contexto do pai no embedding, que exige reingestão).
+  Pela ADR 0031, os casos do holdout que orientaram os ajustes iriam para o dev, com casos novos no
+  lugar.
+- **Cota gratuita da cadeia de LLM** (medida em 2026-11-14): Gemini 3.6 Flash com 5 pedidos por
+  minuto e 20 por dia, Gemini 3.5 Flash Lite com 15 e 500, `gpt-oss-120b` no Groq com 8 mil tokens
+  por minuto. O primário não sustenta o volume previsto; rever a ordem da cadeia (ADR 0007) antes da
+  F7.
 
 Pendências do mantenedor (fora do repositório), exigidas pelo deploy da F7:
 
