@@ -8,7 +8,7 @@ import {
 
 describe('REWRITE_PROMPT_VERSION', () => {
   it('tem nome, semver e o hash do texto', () => {
-    expect(REWRITE_PROMPT_VERSION).toMatch(/^rewrite@1\.0\.0\+[0-9a-f]{8}$/)
+    expect(REWRITE_PROMPT_VERSION).toMatch(/^rewrite@1\.1\.0\+[0-9a-f]{8}$/)
   })
 })
 

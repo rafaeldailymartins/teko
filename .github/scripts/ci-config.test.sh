@@ -234,7 +234,8 @@ check "ingest: corpus-eval com os limites do corpus real (retrieval-corpus), que
 corpus_eval_dev_and_holdout() {
   local runs
   runs="$(yq -r '.jobs."corpus-eval".steps[].run // ""' "$ingest")"
-  grep -q 'eval:retrieval$' <<<"$runs" && grep -q 'eval:retrieval:holdout$' <<<"$runs" &&
+  # Os dois conjuntos, com ou sem os argumentos que espaçam o eval quando há reescrita (ADR 0034).
+  grep -Eq 'eval:retrieval( |$)' <<<"$runs" && grep -Eq 'eval:retrieval:holdout( |$)' <<<"$runs" &&
     grep -q -- '--holdout reports/retrieval-evals-holdout.json' <<<"$runs"
 }
 check "ingest: corpus-eval roda os conjuntos dev e holdout e grava o registro" corpus_eval_dev_and_holdout

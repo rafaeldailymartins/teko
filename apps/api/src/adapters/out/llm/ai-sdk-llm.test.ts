@@ -122,6 +122,24 @@ describe('createLlmChain', () => {
     expect(calls[0]?.headers.get('authorization')).toBe(`Bearer ${GROQ_KEY}`)
   })
 
+  it('raciocínio mínimo: thinkingLevel no Gemini, reasoning_effort no Groq; sem ele, nada', async () => {
+    const { chain, calls } = chainWith((url) =>
+      url.startsWith(GROQ_BASE_URL) ? sse(GROQ_STREAM, true) : sse(GEMINI_STREAM),
+    )
+    for (const model of [chain[0], chain[2]] as LlmModel[]) {
+      for await (const _event of model.stream({ ...REQUEST, reasoning: 'minimal' })) {
+        // só a requisição importa
+      }
+    }
+    await collect(chain[0] as LlmModel)
+    const [gemini, groq, plain] = calls.map((call) => call.body as Record<string, unknown>)
+    expect(gemini?.['generationConfig']).toMatchObject({
+      thinkingConfig: { thinkingLevel: 'minimal' },
+    })
+    expect(groq?.['reasoning_effort']).toBe('low')
+    expect(plain?.['generationConfig']).not.toHaveProperty('thinkingConfig')
+  })
+
   it.each([
     [429, { 'retry-after': '30' }, 'rate_limited', 30_000],
     [503, {}, 'unavailable', null],

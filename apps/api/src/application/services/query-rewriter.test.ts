@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import { LlmError, LlmErrorKind, type LlmModel, type LlmRequest } from '../ports/llm-port.ts'
-import { REWRITE_MAX_OUTPUT_TOKENS, REWRITE_TEMPERATURE } from '../prompts/rewrite.ts'
+import {
+  REWRITE_MAX_OUTPUT_TOKENS,
+  REWRITE_REASONING,
+  REWRITE_TEMPERATURE,
+} from '../prompts/rewrite.ts'
 import { createProviderRouter } from './provider-router.ts'
 import { createQueryRewriter } from './query-rewriter.ts'
 
@@ -60,6 +64,7 @@ describe('createQueryRewriter', () => {
     const [request] = gemini.requests
     expect(request?.temperature).toBe(REWRITE_TEMPERATURE)
     expect(request?.maxOutputTokens).toBe(REWRITE_MAX_OUTPUT_TOKENS)
+    expect(request?.reasoning).toBe(REWRITE_REASONING)
     expect(request?.prompt).toBe('<pergunta>alíquota geral nas vendas dentro de Goiás?</pergunta>')
   })
 

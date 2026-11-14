@@ -99,6 +99,8 @@ function createAiSdkLlm(
         prompt: request.prompt,
         temperature: request.temperature,
         maxOutputTokens: request.maxOutputTokens,
+        // Nível de raciocínio portátil do AI SDK 7 (Gemini: `thinkingLevel`; Groq: `reasoning_effort`).
+        ...(request.reasoning === undefined ? {} : { reasoning: request.reasoning }),
         abortSignal: request.signal,
         maxRetries: 0,
         // O erro chega pelo `fullStream` e vira `LlmError`; o padrão do SDK o imprimiria no console.

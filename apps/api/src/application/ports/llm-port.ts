@@ -7,11 +7,19 @@ import type { LlmProvider } from '@teko/shared/contracts'
  * `stream` devolve os pedaços de texto e, por último, o uso de tokens. Falhas do provedor saem
  * como `LlmError`; o cancelamento pelo `signal` sai como o `reason` do próprio sinal.
  */
+/**
+ * Raciocínio interno do modelo antes do texto (Gemini 3 e `gpt-oss` pensam por padrão). Os tokens
+ * de raciocínio contam no `maxOutputTokens`: uma chamada curta, como a reescrita da pergunta, pede
+ * o mínimo para a saída não sair cortada (ADR 0034). Sem o campo, vale o padrão do provedor.
+ */
+type LlmReasoning = 'minimal' | 'low'
+
 export interface LlmRequest {
   readonly system: string
   readonly prompt: string
   readonly temperature: number
   readonly maxOutputTokens: number
+  readonly reasoning?: LlmReasoning
   readonly signal: AbortSignal
 }
 
