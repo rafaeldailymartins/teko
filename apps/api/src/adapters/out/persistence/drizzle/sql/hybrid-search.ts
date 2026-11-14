@@ -126,15 +126,38 @@ fused AS (
   GROUP BY pv)`
 }
 
+/** Profundidade máxima da cadeia de ancestrais (artigo > parágrafo > inciso > alínea > item …). */
+const MAX_ANCESTOR_DEPTH = 8
+
+/**
+ * Ancestrais de cada resultado: a cadeia de `parent_id` e, de cada ancestral, a redação de
+ * conhecimento aberto vigente na data ($3), preferindo um `review_status` permitido ($6), da raiz
+ * para o pai imediato. Só para as linhas devolvidas (o `LIMIT` vem antes, no `ranked`).
+ */
+const ANCESTORS = `
+LEFT JOIN LATERAL (
+  WITH RECURSIVE up(provision_id, depth) AS (
+    SELECT p.parent_id, 1 WHERE p.parent_id IS NOT NULL
+    UNION ALL
+    SELECT a.parent_id, up.depth + 1 FROM up JOIN corpus.provisions a ON a.id = up.provision_id
+    WHERE a.parent_id IS NOT NULL AND up.depth < ${String(MAX_ANCESTOR_DEPTH)})
+  SELECT array_agg(t.text ORDER BY up.depth DESC) AS texts
+  FROM up
+  JOIN LATERAL (
+    SELECT v.text FROM corpus.provision_versions v
+    WHERE v.provision_id = up.provision_id AND v.valid_during @> $3::date AND upper_inf(v.knowledge)
+    ORDER BY (v.review_status = ANY($6::text[])) DESC, v.id LIMIT 1) t ON true) anc ON true`
+
 const TAIL = `
-SELECT c.id, p.stable_key, c.family, c.content, c.citation_label,
+SELECT c.id, p.stable_key, c.family, c.content, c.citation_label, c.heading_path,
+       coalesce(anc.texts, '{}'::text[]) AS ancestors,
        lower(c.valid_during)::text AS valid_from, upper(c.valid_during)::text AS valid_to,
        dv.version_label, dv.id AS doc_version_id, d.title AS doc_title, d.source_url,
        f.rrf::float8 AS rrf, f.lex_rank, f.sem_rank, f.ref_rank
-FROM fused f
+FROM (SELECT * FROM fused ORDER BY rrf DESC, id LIMIT $7::int) f
 JOIN corpus.chunks c ON c.id = f.id
 JOIN corpus.provision_versions pv ON pv.id = c.provision_version_id
-JOIN corpus.provisions p ON p.id = pv.provision_id
+JOIN corpus.provisions p ON p.id = pv.provision_id${ANCESTORS}
 JOIN LATERAL (
   SELECT dv.* FROM corpus.chunk_sources s
   JOIN corpus.document_versions dv ON dv.id = s.document_version_id

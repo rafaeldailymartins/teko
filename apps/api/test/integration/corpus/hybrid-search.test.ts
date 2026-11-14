@@ -68,8 +68,16 @@ describe('redação na data, a partir de um snapshot consolidado posterior', () 
     expect(paragraph?.validity).toEqual({ from: '2004-11-04', to: '2009-11-23' })
     expect(paragraph?.content).toContain('40.000,00')
     expect(paragraph?.document.versionLabel).toBe(RCTE_SNAPSHOT)
+    // Contexto do reranker: o caminho de títulos e o caput do art. 76 vigente na data.
+    expect(paragraph?.headingPath).toMatch(/> Art\. 76 > § 6º$/)
+    expect(paragraph?.ancestors).toHaveLength(1)
+    expect(paragraph?.ancestors[0]).toMatch(/^Art\. 76\. Nas situações especiais/)
     for (const item of result.evidence) {
       expect(containsDate(item.validity, '2006-05-01')).toBe(true)
+      // Ancestrais só de quem tem pai: um artigo não tem nenhum.
+      if (/^go:rcte:art:[^:]+$/.test(item.stableKey)) {
+        expect(item.ancestors).toEqual([])
+      }
     }
   })
 

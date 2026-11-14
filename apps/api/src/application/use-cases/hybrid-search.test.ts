@@ -12,6 +12,8 @@ const evidence: Evidence = {
   stableKey: 'go:rcte:art:76:par:6',
   family: 'rcte',
   citationLabel: 'RCTE, art. 76, § 6º',
+  headingPath: 'RCTE > Art. 76',
+  ancestors: [],
   content: '§ 6º ...',
   validity: { from: '2004-11-04', to: '2009-11-23' },
   document: { versionId: 'v', versionLabel: 'RCTE 2026', title: 'RCTE', sourceUrl: 'https://x' },
@@ -153,9 +155,15 @@ describe('createHybridSearch com reranker (ADR 0027)', () => {
     chunkId: id,
     stableKey: `go:rcte:art:${id}`,
     citationLabel: `RCTE, art. ${id}`,
+    headingPath: `RCTE > Art. ${id}`,
+    ancestors: [],
     content,
   })
-  const pool = [candidate('1', 'registro'), candidate('2', 'campo'), candidate('3', 'outro')]
+  const pool = [
+    candidate('1', 'registro'),
+    { ...candidate('2', 'campo'), ancestors: ['Registro C100'] },
+    candidate('3', 'outro'),
+  ]
 
   function withReranker(rerank: RerankerPort['rerank'], options: { limit?: number } = {}) {
     const queries: SearchQuery[] = []
@@ -185,7 +193,7 @@ describe('createHybridSearch com reranker (ADR 0027)', () => {
     expect(queries[0]?.limit).toBe(30)
     expect(rerank).toHaveBeenCalledWith(
       command.question,
-      ['RCTE, art. 1\nregistro', 'RCTE, art. 2\ncampo', 'RCTE, art. 3\noutro'],
+      ['RCTE > Art. 1\nregistro', 'RCTE > Art. 2\nRegistro C100\ncampo', 'RCTE > Art. 3\noutro'],
       { signal: expect.any(AbortSignal) },
     )
     expect(result.evidence.map((item) => item.chunkId)).toEqual(['2', '3'])

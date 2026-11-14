@@ -27,6 +27,8 @@ interface SearchRow {
   readonly family: string
   readonly content: string
   readonly citation_label: string
+  readonly heading_path: string
+  readonly ancestors: readonly string[]
   readonly valid_from: string
   readonly valid_to: string | null
   readonly version_label: string
@@ -48,6 +50,8 @@ export function toEvidence(row: SearchRow): Evidence {
     family: row.family,
     citationLabel: row.citation_label,
     content: row.content,
+    headingPath: row.heading_path,
+    ancestors: Object.freeze([...row.ancestors]),
     validity: Object.freeze({
       // `::text` na consulta: a data chega como `AAAA-MM-DD`, sem passar por `Date` (fuso local).
       from: row.valid_from,

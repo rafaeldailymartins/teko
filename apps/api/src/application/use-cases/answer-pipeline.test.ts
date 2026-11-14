@@ -21,6 +21,8 @@ function evidence(stableKey: string, family = 'rcte'): Evidence {
     stableKey,
     family,
     citationLabel: `RCTE, ${stableKey}`,
+    headingPath: 'RCTE > Art. 76',
+    ancestors: [],
     content: 'texto da redação',
     validity: { from: '2005-01-01', to: null },
     document: {

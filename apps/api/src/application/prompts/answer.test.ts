@@ -14,6 +14,8 @@ function evidence(content: string, overrides: Partial<Evidence> = {}): Evidence 
     stableKey: 'go:rcte:art:20:inc:I',
     family: 'rcte',
     citationLabel: 'RCTE, art. 20, I',
+    headingPath: 'RCTE > Art. 76',
+    ancestors: [],
     content,
     validity: { from: '2024-04-01', to: null },
     document: {
@@ -32,7 +34,7 @@ function evidence(content: string, overrides: Partial<Evidence> = {}): Evidence 
 
 describe('PROMPT_VERSION', () => {
   it('tem nome, semver e o hash do texto', () => {
-    expect(PROMPT_VERSION).toMatch(/^answer@1\.0\.0\+[0-9a-f]{8}$/)
+    expect(PROMPT_VERSION).toMatch(/^answer@1\.1\.0\+[0-9a-f]{8}$/)
     expect(PROMPT_CANARY).toBe(`TEKO-CANARY-${PROMPT_VERSION.slice(-8)}`)
   })
 })
@@ -79,6 +81,25 @@ describe('buildAnswerPrompt', () => {
     expect(prompt.prompt.match(/<source /g)).toHaveLength(1)
     expect(prompt.prompt.match(/<\/source>/g)).toHaveLength(1)
     expect(prompt.prompt).toContain('Responda em português do Brasil.')
+  })
+
+  it('o caput dos dispositivos-pai vai escapado no atributo contexto; sem pai, nada', () => {
+    const prompt = buildAnswerPrompt({
+      question: 'x',
+      referenceDate: '2024-05-01',
+      locale: 'pt-BR',
+      evidence: [
+        evidence('I - 19% (dezenove por cento);', {
+          ancestors: ['Art. 20. As alíquotas do imposto são:', '§ 1º "x" <b>'],
+        }),
+        evidence('Art. 52. ...'),
+      ],
+    })
+    expect(prompt.prompt).toContain(
+      ' contexto="Art. 20. As alíquotas do imposto são: / § 1º &quot;x&quot; &lt;b&gt;">\nI - 19%',
+    )
+    expect(prompt.prompt.match(/ contexto="/g)).toHaveLength(1)
+    expect(prompt.system).toContain('O atributo contexto traz o texto dos dispositivos-pai')
   })
 
   it('sourceIdOf começa em S1', () => {
