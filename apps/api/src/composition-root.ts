@@ -28,6 +28,10 @@ import { createLlmChain } from '#adapters/out/llm/ai-sdk-llm.ts'
 import { createNeonComputeUsage } from '#adapters/out/neon/neon-compute-usage.ts'
 import { createDatabase, type Database } from '#adapters/out/persistence/drizzle/client.ts'
 import { runMigrations } from '#adapters/out/persistence/drizzle/migrate.ts'
+import {
+  createPgAccountRepository,
+  createPgMaintenanceRepository,
+} from '#adapters/out/persistence/drizzle/repositories/pg-account-repository.ts'
 import { createPgCoverageRepository } from '#adapters/out/persistence/drizzle/repositories/pg-coverage-repository.ts'
 import { createPgCoverageWatchRepository } from '#adapters/out/persistence/drizzle/repositories/pg-coverage-watch-repository.ts'
 import { createPgEmbeddingCache } from '#adapters/out/persistence/drizzle/repositories/pg-embedding-cache.ts'
@@ -99,6 +103,12 @@ import {
 } from '#app/use-cases/ingest-document-version.ts'
 import { createFinishIngestionRun, createStartIngestionRun } from '#app/use-cases/ingestion-run.ts'
 import { createInspectCorpus } from '#app/use-cases/inspect-corpus.ts'
+import {
+  createPrivacyUseCases,
+  createPurgeExpiredData,
+  type PrivacyUseCases,
+  type PurgeExpiredData,
+} from '#app/use-cases/privacy.ts'
 import { createPromoteSnapshot } from '#app/use-cases/promote-snapshot.ts'
 import { createProvisionUseCases } from '#app/use-cases/provisions.ts'
 import { createPruneEmbeddingCache } from '#app/use-cases/prune-embedding-cache.ts'
@@ -481,6 +491,31 @@ export function createDevSessionSeeder(
   }
 }
 
+/**
+ * `cli maintenance purge` (manutenção semanal, environment `maintenance`, role `teko_app`):
+ * `PurgeExpiredData` sobre `DATABASE_URL`.
+ */
+export function createMaintenance(
+  env: Env,
+  clock: Clock = systemClock,
+): { readonly purge: PurgeExpiredData; close(): Promise<void> } {
+  if (env.DATABASE_URL === undefined) {
+    throw new Error('maintenance exige DATABASE_URL (role teko_app)')
+  }
+  const database = createDatabase({
+    url: env.DATABASE_URL,
+    applicationName: 'teko-maintenance',
+    maxConnections: 1,
+  })
+  return {
+    purge: createPurgeExpiredData({
+      maintenance: createPgMaintenanceRepository(database.pool),
+      clock,
+    }),
+    close: () => database.close(),
+  }
+}
+
 /** Leitor do corpus no formato da fixture (`cli eval-fixture`), sobre `DATABASE_URL`. */
 export function createFixtureCorpusReader(
   env: Env,
@@ -656,6 +691,7 @@ export function createContainer(env: Env, overrides: ContainerOverrides = {}): C
   let users: UserUseCases | null = null
   let auth: AuthGateway | null = null
   let questions: QuestionUseCases | null = null
+  let privacy: PrivacyUseCases | null = null
   const streamBudget = createStreamBudget(
     platform.invocationDeadline,
     env.STREAM_MAX_SECONDS * 1000,
@@ -674,6 +710,13 @@ export function createContainer(env: Env, overrides: ContainerOverrides = {}): C
       termsVersion: env.TERMS_VERSION,
     })
     auth = createAuth(env, database)
+    // Apagamento nos terceiros (PostHog e Langfuse) entra com eles, na F6.
+    privacy = createPrivacyUseCases({
+      accounts: createPgAccountRepository(database.pool),
+      erasure: [],
+      backgroundTasks: platform.backgroundTasks,
+      clock,
+    })
     questions = createQuestions(env, {
       database,
       retrieval,
@@ -702,6 +745,7 @@ export function createContainer(env: Env, overrides: ContainerOverrides = {}): C
       retrieval,
       users,
       questions,
+      privacy,
     },
     close: async () => {
       await database?.close()

@@ -73,24 +73,18 @@ export async function requireSession(
 }
 
 /**
- * Sessão de usuário com onboarding concluído: sem ele, 403 `onboarding_required`. Se o cache do
- * cookie (até 5 min) ainda diz "pendente", relê do banco antes de recusar: o onboarding acabou de
- * ser concluído em outra requisição.
+ * Sessão de usuário com onboarding concluído (sem ele, 403 `onboarding_required`), lida do banco:
+ * as rotas que a usam gravam em nome do usuário (pergunta), e o `cookieCache` de 5 min aceitaria
+ * uma sessão revogada (ou de um usuário apagado por `DELETE /me`) e um onboarding desatualizado.
  */
 export async function requireOnboardedSession(request: FastifyRequest): Promise<AuthSession> {
   const users = request.server.container.useCases.users
   if (users === null) {
     throw request.server.httpErrors.serviceUnavailable()
   }
-  const cached = await requireSession(request)
-  try {
-    users.requireOnboarded(cached.user)
-    return cached
-  } catch {
-    const fresh = await requireSession(request, { fresh: true })
-    users.requireOnboarded(fresh.user)
-    return fresh
-  }
+  const session = await requireSession(request, { fresh: true })
+  users.requireOnboarded(session.user)
+  return session
 }
 
 function toRequest(request: FastifyRequest): Request {

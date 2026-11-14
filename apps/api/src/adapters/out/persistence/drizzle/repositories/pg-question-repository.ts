@@ -29,11 +29,11 @@ import { isTransientConnectionError, retryTransientRead } from '../client.ts'
  *   stream e o histórico precisam para refazer a resposta.
  */
 
-const QUESTION_COLUMNS = `id, user_id, conversation_id, question_redacted, locale, families,
+export const QUESTION_COLUMNS = `id, user_id, conversation_id, question_redacted, locale, families,
   reference_date::text AS reference_date, reference_source, status, answer_md, citations,
   retrieval, cache_key, corpus_version, request_id, created_at`
 
-interface QuestionRow {
+export interface QuestionRow {
   readonly id: string
   readonly user_id: string
   readonly conversation_id: string
@@ -152,7 +152,7 @@ function toNewQuestion(row: QuestionRow): NewQuestion {
   }
 }
 
-function toRecord(row: QuestionRow): QuestionRecord {
+export function toRecord(row: QuestionRow): QuestionRecord {
   const answer =
     row.status === 'answered' && row.answer_md !== null
       ? parseOrNull<Answer>(answerSchema, {

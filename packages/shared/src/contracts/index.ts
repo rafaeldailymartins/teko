@@ -32,7 +32,9 @@ export {
 } from './history.ts'
 export {
   countryCodeSchema,
+  type MeExport,
   type MeResponse,
+  meExportSchema,
   meResponseSchema,
   type OnboardingRequest,
   onboardingRequestSchema,
