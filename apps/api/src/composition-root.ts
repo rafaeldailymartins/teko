@@ -138,8 +138,6 @@ const QUESTION_EMBEDDING_TIMEOUT_MS = 3000
 const SEARCH_LIMIT = 12
 /** Candidatos que o reranker reordena antes do corte em `SEARCH_LIMIT` (ADR 0027). */
 const RERANK_CANDIDATES = 40
-/** Parentes dos candidatos do topo que entram no pool do reranker (ADR 0027, adendo). */
-export const RERANK_EXPANSION = 20
 /** Teto do reranker antes de manter a ordem do RRF. */
 const RERANK_TIMEOUT_MS = 3000
 
@@ -386,7 +384,6 @@ function createRetrieval(
     limit: SEARCH_LIMIT,
     reranker: createReranker(env),
     rerankCandidates: RERANK_CANDIDATES,
-    rerankExpansion: RERANK_EXPANSION,
     rerankTimeoutMs: RERANK_TIMEOUT_MS,
   })
   return {

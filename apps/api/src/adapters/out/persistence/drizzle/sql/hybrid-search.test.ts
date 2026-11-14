@@ -16,9 +16,9 @@ function placeholders(sql: string): number[] {
 }
 
 describe('SQL da busca híbrida', () => {
-  it('as duas variantes usam os mesmos 8 parâmetros', () => {
-    expect(placeholders(HYBRID_SEARCH_SQL)).toEqual([1, 2, 3, 4, 5, 6, 7, 8])
-    expect(placeholders(LEXICAL_ONLY_SQL)).toEqual([1, 2, 3, 4, 5, 6, 7, 8])
+  it('as duas variantes usam os mesmos 7 parâmetros', () => {
+    expect(placeholders(HYBRID_SEARCH_SQL)).toEqual([1, 2, 3, 4, 5, 6, 7])
+    expect(placeholders(LEXICAL_ONLY_SQL)).toEqual([1, 2, 3, 4, 5, 6, 7])
   })
 
   it('o modo híbrido ordena o braço vetorial pelo vetor; o léxico não tem braço vetorial', () => {

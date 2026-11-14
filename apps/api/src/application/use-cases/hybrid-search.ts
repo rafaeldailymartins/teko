@@ -48,8 +48,6 @@ export interface HybridSearchDeps {
   readonly reranker: RerankerPort | null
   /** Candidatos pedidos à instrução quando há reranker (ADR 0027: 40). */
   readonly rerankCandidates: number
-  /** Parentes dos candidatos do topo somados ao pool do reranker (ADR 0027, adendo: 20). */
-  readonly rerankExpansion: number
   /** Teto do reranker antes de manter a ordem do RRF (ADR 0027: 3 s). */
   readonly rerankTimeoutMs: number
 }
@@ -118,7 +116,6 @@ export function createHybridSearch(deps: HybridSearchDeps): HybridSearch {
       stableKeys,
       reviewStatuses: deps.reviewStatuses,
       limit: reranker === null ? deps.limit : Math.max(deps.limit, deps.rerankCandidates),
-      expansion: reranker === null ? 0 : deps.rerankExpansion,
     })
     const mode = embedding === null ? RetrievalMode.LexicalOnly : RetrievalMode.Hybrid
     const scores =

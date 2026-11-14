@@ -43,7 +43,6 @@ const query: SearchQuery = {
   stableKeys: ['go:rcte:art:76'],
   reviewStatuses: ['auto', 'approved'],
   limit: 12,
-  expansion: 20,
 }
 
 /** `failures`: erro da busca em cada tentativa (`undefined` = sucesso); `true` = sempre falha. */
@@ -119,7 +118,6 @@ describe('toEvidence e searchParameters', () => {
       ['go:rcte:art:76'],
       ['auto', 'approved'],
       12,
-      20,
     ])
     expect(searchParameters({ ...query, embedding: null })[1]).toBeNull()
   })
@@ -129,7 +127,7 @@ describe('createPgSearchRepository', () => {
   it('modo híbrido: três idas ao banco, com os ajustes do HNSW junto do BEGIN', async () => {
     const { pool, statements, release } = fakePool()
     await expect(createPgSearchRepository(pool).search(query)).resolves.toHaveLength(1)
-    expect(statements).toEqual([BEGIN_HYBRID_SEARCH, 'SQL(8)', 'COMMIT'])
+    expect(statements).toEqual([BEGIN_HYBRID_SEARCH, 'SQL(7)', 'COMMIT'])
     expect(BEGIN_HYBRID_SEARCH).toBe(`BEGIN READ ONLY; ${HNSW_SETTINGS_SQL}`)
     expect(release).toHaveBeenCalledOnce()
     expect(HYBRID_SEARCH_SQL).not.toBe(LEXICAL_ONLY_SQL)
@@ -138,7 +136,7 @@ describe('createPgSearchRepository', () => {
   it('lexical_only: sem os ajustes do HNSW', async () => {
     const { pool, statements } = fakePool()
     await createPgSearchRepository(pool).search({ ...query, embedding: null })
-    expect(statements).toEqual(['BEGIN READ ONLY', 'SQL(8)', 'COMMIT'])
+    expect(statements).toEqual(['BEGIN READ ONLY', 'SQL(7)', 'COMMIT'])
   })
 
   it('erro: ROLLBACK, libera a conexão e propaga', async () => {
@@ -154,10 +152,10 @@ describe('createPgSearchRepository', () => {
     await expect(createPgSearchRepository(pool).search(query)).resolves.toHaveLength(1)
     expect(statements).toEqual([
       BEGIN_HYBRID_SEARCH,
-      'SQL(8)',
+      'SQL(7)',
       'ROLLBACK',
       BEGIN_HYBRID_SEARCH,
-      'SQL(8)',
+      'SQL(7)',
       'COMMIT',
     ])
     expect(release).toHaveBeenCalledTimes(2)

@@ -79,7 +79,6 @@ export function searchParameters(query: SearchQuery): unknown[] {
     query.stableKeys,
     query.reviewStatuses,
     query.limit,
-    query.expansion,
   ]
 }
 
