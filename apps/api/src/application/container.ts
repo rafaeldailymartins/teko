@@ -2,10 +2,11 @@ import type { AppEnv } from '@teko/shared/contracts'
 import type { BuildInfo } from '#domain/shared/build-info.ts'
 import type { BackgroundTasks } from './ports/background-tasks.ts'
 import type { ClientIp } from './ports/client-ip.ts'
+import type { RateLimitStore } from './ports/rate-limit-store.ts'
 import type { Lifecycle } from './services/lifecycle.ts'
 import type { NeuronBudget } from './services/neuron-budget.ts'
 import type { StreamBudget } from './services/stream-budget.ts'
-import type { CheckCoverage } from './use-cases/check-coverage.ts'
+import type { CheckCoverage, GetCoverage } from './use-cases/check-coverage.ts'
 import type { EmbedPending } from './use-cases/embed-pending.ts'
 import type { ExportSnapshot } from './use-cases/export-snapshot.ts'
 import type { GetHealth } from './use-cases/get-health.ts'
@@ -14,6 +15,7 @@ import type { IngestDocumentVersion } from './use-cases/ingest-document-version.
 import type { FinishIngestionRun, StartIngestionRun } from './use-cases/ingestion-run.ts'
 import type { InspectCorpus } from './use-cases/inspect-corpus.ts'
 import type { PromoteSnapshot } from './use-cases/promote-snapshot.ts'
+import type { ProvisionUseCases } from './use-cases/provisions.ts'
 import type { PruneEmbeddingCache } from './use-cases/prune-embedding-cache.ts'
 import type { RefreshCoverage } from './use-cases/refresh-coverage.ts'
 import type { ResolveReferenceDate } from './use-cases/resolve-reference-date.ts'
@@ -23,15 +25,19 @@ import type { SeedFixtureCorpus } from './use-cases/seed-fixture-corpus.ts'
 /** Casos de uso que dependem do Postgres (montados só com `DATABASE_URL`). */
 export interface RetrievalUseCases {
   readonly checkCoverage: CheckCoverage
+  /** `GET /api/v1/coverage` (mesmo cache de 10 min da `CheckCoverage`). */
+  readonly getCoverage: GetCoverage
   readonly hybridSearch: HybridSearch
   readonly retrieveEvidence: RetrieveEvidence
+  /** Paleta, linha do tempo e diff de dispositivos. */
+  readonly provisions: ProvisionUseCases
 }
 
 /** Casos de uso expostos aos adapters de entrada (HTTP e CLI). */
 interface UseCases {
   readonly getHealth: GetHealth
   readonly resolveReferenceDate: ResolveReferenceDate
-  /** `null` sem `DATABASE_URL` (as rotas que a usam chegam na F4). */
+  /** `null` sem `DATABASE_URL`: as rotas que dependem do corpus respondem 503. */
   readonly retrieval: RetrievalUseCases | null
 }
 
@@ -78,6 +84,11 @@ export interface Container {
   readonly backgroundTasks: BackgroundTasks
   /** IP do cliente conforme a plataforma e o caminho (direto ou proxiado). */
   readonly clientIp: ClientIp
+  /**
+   * Contador do rate limit da aplicação (`app.rate_limits`), compartilhado entre instâncias;
+   * `null` sem banco (o rate limit não é registrado).
+   */
+  readonly rateLimitStore: RateLimitStore | null
   /** Teto de cada stream, descontado o prazo da invocação (F4). */
   readonly streamBudget: StreamBudget
   /** Libera recursos (pool do Postgres, exporters...) depois que o servidor HTTP fechou. */

@@ -37,4 +37,29 @@ describe('buildApp', () => {
     expect(app.hasDecorator('rateLimit')).toBe(true)
     await app.close()
   })
+
+  it('recusa as rotas de eval fora de APP_ENV=ci', async () => {
+    const env = parseEnv({ APP_ENV: 'development', WEB_ORIGIN: 'http://localhost:3000' })
+    await expect(
+      buildApp({
+        container: createContainer(env),
+        http: { ...createHttpOptions(env), evalRoutes: true },
+      }),
+    ).rejects.toThrow('rotas /api/v1/_eval/* proibidas com APP_ENV=development')
+  })
+
+  it('só registra as rotas de eval com APP_ENV=ci', async () => {
+    const ci = parseEnv({ APP_ENV: 'ci', WEB_ORIGIN: 'http://localhost:3000' })
+    const dev = parseEnv({ APP_ENV: 'development', WEB_ORIGIN: 'http://localhost:3000' })
+    expect(createHttpOptions(ci).evalRoutes).toBe(true)
+    expect(createHttpOptions(dev).evalRoutes).toBe(false)
+    const app = await buildApp({ container: createContainer(ci), http: createHttpOptions(ci) })
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/v1/_eval/search?question=x&referenceDate=2024-01-01&source=explicit',
+    })
+    // Sem banco: a rota existe e responde 503 (`service_paused`), não 404.
+    expect(response.statusCode).toBe(503)
+    await app.close()
+  })
 })

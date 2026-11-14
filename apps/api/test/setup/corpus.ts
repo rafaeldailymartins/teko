@@ -18,7 +18,7 @@ export const FIXTURE_EMBEDDINGS = `${FIXTURE_DIR}/embeddings.json.gz`
 export const FIXED_NOW = new Date('2026-11-10T12:00:00-03:00')
 const FIXED_CLOCK = { now: () => new Date(FIXED_NOW) }
 
-function testEnv(databaseUrl: string, appEnv: 'ci' | 'development' = 'ci'): Env {
+export function testEnv(databaseUrl: string, appEnv: 'ci' | 'development' = 'ci'): Env {
   return parseEnv({
     APP_ENV: appEnv,
     WEB_ORIGIN: 'http://localhost:3000',

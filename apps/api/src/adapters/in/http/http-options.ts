@@ -23,14 +23,18 @@ export interface HttpOptions {
   readonly eventLoopDelayGuard: boolean
   /** Swagger + Scalar em `/api/docs` (nunca em produção). */
   readonly docs: boolean
+  /** Origem exata do ambiente (`WEB_ORIGIN`): a única aceita nas mutações e no stream. */
+  readonly webOrigin: string
+  /** Rotas `/api/v1/_eval/*` (só com `APP_ENV=ci`; o `buildApp` recusa fora do CI). */
+  readonly evalRoutes: boolean
   /**
    * Export estático do web servido na mesma origem (só no Plano B, Render; ADR 0029). Ausente = a
    * plataforma serve o estático (CDN da Vercel) ou não há web (CI, dev com `next dev`).
    */
   readonly staticSite?: { readonly root: string }
   /**
-   * Rate limit de aplicação com store compartilhado (Postgres). Ausente = não registrado: a F1 não
-   * tem store nem rotas transacionais, e memória local não limita nada com várias instâncias.
+   * Rate limit de aplicação com store compartilhado (Postgres). Ausente = não registrado (sem
+   * banco): memória local não limita nada com várias instâncias.
    */
   readonly rateLimit?: RateLimitOptions
 }

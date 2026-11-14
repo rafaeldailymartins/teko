@@ -1,7 +1,12 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { FamilyCoverageRecord } from '#domain/vigencia/coverage-decision.ts'
 import type { CoverageRepository } from '../ports/coverage-repository.ts'
-import { COVERAGE_CACHE_TTL_MS, createCheckCoverage } from './check-coverage.ts'
+import {
+  COVERAGE_CACHE_TTL_MS,
+  createCheckCoverage,
+  createCoverageSource,
+  createGetCoverage,
+} from './check-coverage.ts'
 
 const RCTE: FamilyCoverageRecord = {
   family: 'rcte',
@@ -11,21 +16,44 @@ const RCTE: FamilyCoverageRecord = {
   gaps: [],
 }
 
-function setup(load: CoverageRepository['loadCoverage'] = () => Promise.resolve([RCTE])) {
+const SNAPSHOT = { corpusVersion: 14, families: [RCTE] }
+
+function setup(load: CoverageRepository['loadCoverage'] = () => Promise.resolve(SNAPSHOT)) {
   let now = Date.parse('2026-11-10T12:00:00-03:00')
   const loadCoverage = vi.fn<CoverageRepository['loadCoverage']>(load)
-  const checkCoverage = createCheckCoverage({
+  const coverage = createCoverageSource({
     coverageRepository: { loadCoverage },
     clock: { now: () => new Date(now) },
   })
+  const checkCoverage = createCheckCoverage({ coverage })
   return {
     checkCoverage,
+    getCoverage: createGetCoverage({ coverage }),
     loadCoverage,
     advance: (ms: number) => {
       now += ms
     },
   }
 }
+
+describe('createGetCoverage', () => {
+  it('devolve a cobertura efetiva e a corpus_version, dividindo o cache da CheckCoverage', async () => {
+    const { getCoverage, checkCoverage, loadCoverage } = setup()
+    await checkCoverage('2006-05-01', ['rcte'])
+    await expect(getCoverage()).resolves.toEqual({
+      corpusVersion: 14,
+      families: [
+        {
+          family: 'rcte',
+          jurisdiction: 'GO',
+          covered: [{ from: '1998-01-01', to: '2026-11-11' }],
+          verifiedAt: '2026-11-10',
+        },
+      ],
+    })
+    expect(loadCoverage).toHaveBeenCalledOnce()
+  })
+})
 
 describe('createCheckCoverage', () => {
   it('decide sobre a cobertura lida do repositório', async () => {
@@ -74,7 +102,7 @@ describe('createCheckCoverage', () => {
       vi
         .fn<CoverageRepository['loadCoverage']>()
         .mockRejectedValueOnce(new Error('Neon fora'))
-        .mockResolvedValue([RCTE]),
+        .mockResolvedValue(SNAPSHOT),
     )
     await expect(checkCoverage('2006-05-01', ['rcte'])).rejects.toThrow('Neon fora')
     await expect(checkCoverage('2006-05-01', ['rcte'])).resolves.toMatchObject({
@@ -94,7 +122,7 @@ describe('createCheckCoverage', () => {
               rejectOld = reject
             }),
         )
-        .mockResolvedValue([RCTE]),
+        .mockResolvedValue(SNAPSHOT),
     )
     const old = checkCoverage('2006-05-01', ['rcte'])
     advance(COVERAGE_CACHE_TTL_MS)

@@ -32,6 +32,7 @@ const container: Container = {
   },
   backgroundTasks: { run: () => {}, pending: () => 0, drain: async () => 0 },
   clientIp: { resolve: () => ({ ip: null, source: 'none' }) },
+  rateLimitStore: null,
   streamBudget: { timeoutMs: () => 100_000 },
   close: async () => {},
 }

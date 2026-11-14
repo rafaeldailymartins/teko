@@ -1,4 +1,5 @@
 import sensible from '@fastify/sensible'
+import { AppEnv } from '@teko/shared/contracts'
 import Fastify, { type FastifyBaseLogger, type FastifyInstance } from 'fastify'
 import { serializerCompiler, validatorCompiler } from 'fastify-type-provider-zod'
 import { BODY_LIMIT_BYTES, type HttpOptions } from '#adapters/in/http/http-options.ts'
@@ -8,6 +9,7 @@ import {
   registerUnderPressure,
 } from '#adapters/in/http/plugins/load-protection.ts'
 import { registerOpenApi } from '#adapters/in/http/plugins/openapi.ts'
+import { registerOriginGuard } from '#adapters/in/http/plugins/origin-guard.ts'
 import {
   createRequestIdGenerator,
   registerRequestIdHeader,
@@ -17,7 +19,10 @@ import {
   registerSecurityHeaders,
 } from '#adapters/in/http/plugins/security-headers.ts'
 import { registerProblemHandlers } from '#adapters/in/http/problem/error-handler.ts'
+import { coverageRoutes } from '#adapters/in/http/routes/coverage.ts'
+import { evalRoutes } from '#adapters/in/http/routes/eval.ts'
 import { healthRoutes } from '#adapters/in/http/routes/health.ts'
+import { provisionRoutes } from '#adapters/in/http/routes/provisions.ts'
 import { registerStaticSite, staticNotFound } from '#adapters/in/http/static-site/static-site.ts'
 import type { Container } from '#app/container.ts'
 
@@ -55,15 +60,19 @@ export function fastifyTrustProxy(trustProxy: HttpOptions['trustProxy']): Fastif
  *  3. `under-pressure`;
  *  4. `helmet` (CSP `default-src 'none'`);
  *  5. hook `/api/*` com `Cache-Control: private, no-store` e `Vary: Cookie`;
- *  6. checagem de `Origin` nos métodos que mudam estado (F4; web e API na mesma origem, sem CORS,
- *     ADR 0029);
+ *  6. checagem de `Origin` e `content-type` nos métodos que mudam estado em `/api/v1/*` (web e
+ *     API na mesma origem, sem CORS, ADR 0029);
  *  7. rate limit com store compartilhado (só quando há store; ver `HttpOptions.rateLimit`);
  *  8. Better Auth (F4);
  *  9. Swagger + Scalar em `/api/docs` (fora de produção);
- * 10. rotas (e, só no Plano B, o export estático do web na mesma origem);
+ * 10. rotas (as de eval só com `APP_ENV=ci`; e, só no Plano B, o export estático do web);
  * 11. error handler RFC 9457 (registrado antes de tudo para valer em todos os escopos).
  */
 export async function buildApp(deps: BuildAppDeps): Promise<FastifyInstance> {
+  if (deps.http.evalRoutes && deps.container.appEnv !== AppEnv.Ci) {
+    // Asserção de boot: as rotas de eval nunca sobem fora da stack de CI.
+    throw new Error(`rotas /api/v1/_eval/* proibidas com APP_ENV=${deps.container.appEnv}`)
+  }
   const app = Fastify({
     ...(deps.logger === undefined ? { logger: false } : { loggerInstance: deps.logger }),
     bodyLimit: BODY_LIMIT_BYTES,
@@ -82,6 +91,7 @@ export async function buildApp(deps: BuildAppDeps): Promise<FastifyInstance> {
   await registerUnderPressure(app, { eventLoopDelayGuard: deps.http.eventLoopDelayGuard })
   await registerSecurityHeaders(app)
   registerApiCacheControl(app)
+  registerOriginGuard(app, { webOrigin: deps.http.webOrigin })
   if (deps.http.rateLimit !== undefined) {
     await registerRateLimit(app, deps.http.rateLimit)
   }
@@ -92,6 +102,11 @@ export async function buildApp(deps: BuildAppDeps): Promise<FastifyInstance> {
   }
 
   await app.register(healthRoutes)
+  await app.register(coverageRoutes)
+  await app.register(provisionRoutes)
+  if (deps.http.evalRoutes) {
+    await app.register(evalRoutes)
+  }
   if (deps.http.staticSite !== undefined) {
     await registerStaticSite(app, deps.http.staticSite)
   }

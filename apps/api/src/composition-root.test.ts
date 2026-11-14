@@ -96,7 +96,15 @@ describe('createHttpOptions', () => {
       requestIdHeader: 'x-request-id',
       eventLoopDelayGuard: true,
       docs: true,
+      webOrigin: 'https://tekoia-staging.vercel.app',
+      evalRoutes: true,
     })
+  })
+
+  it('liga o rate limit com o store do banco, na janela de 60 s', () => {
+    const store = { hit: async () => ({ count: 1, resetInMs: 1 }) }
+    const options = createHttpOptions(parseEnv({ ...BASE, RATE_LIMIT_PER_MINUTE: '30' }), store)
+    expect(options.rateLimit).toEqual({ store, max: 30, timeWindowMs: 60_000 })
   })
 
   it('em produção não expõe docs', () => {

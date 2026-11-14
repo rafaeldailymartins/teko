@@ -11,8 +11,9 @@ no [roteiro](roadmap.md); o desenho, em [`architecture/`](architecture/README.md
 | F1 esqueleto, gates e spikes            | concluída em 2026-11-11                      |
 | F2 domínio de vigência, schema e busca  | concluída em 2026-11-11                      |
 | F3 ingestão C1 e C2, embeddings e watch | fechada em 2026-11-13                        |
-| Revisão antes da F4                     | em andamento (pacotes A a E, 2026-11-12)     |
-| F4 em diante                            | a F4 começa quando o mantenedor decidir      |
+| Revisão antes da F4                     | concluída em 2026-11-13                      |
+| F4 API completa                         | em andamento desde 2026-11-14                |
+| F5 em diante                            | depois da F4                                 |
 
 ## F0: contas e governança
 
@@ -124,6 +125,16 @@ de banco sem o schema `corpus` até a primeira promoção. O harden-runner dos t
 F6, que traz o DSN (TODO no workflow).
 
 Sem pendências: a F3 está fechada.
+
+## F4: API completa
+
+Começou em 2026-11-14, em PRs por mudança OpenSpec. Decisão do mantenedor no início da fase: a
+cadeia de LLM usa o AI SDK da Vercel (`ai`, `@ai-sdk/google` e `@ai-sdk/groq`, todos com
+proveniência) no lugar do `@google/genai` (sem proveniência em nenhuma versão) e do `groq-sdk`.
+
+- `add-api-foundation` (arquivada em 2026-11-14): guarda de `Origin`, `content-type` e query
+  string nas mutações, rate limit em Postgres entre instâncias, `GET /api/v1/coverage`, paleta,
+  linha do tempo e diff de dispositivos, e `GET /api/v1/_eval/search` só com `APP_ENV=ci`.
 
 ## Revisão antes da F4 (2026-11-12)
 
