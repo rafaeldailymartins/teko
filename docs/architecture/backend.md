@@ -14,7 +14,8 @@ As versões vêm do catálogo do `pnpm-workspace.yaml`. Escolhas que fazem parte
 - Drizzle 1.0 RC (com `halfvec` nativo) e `pg` (exceção de proveniência, ADR 0002).
 - Better Auth + `@better-auth/drizzle-adapter` (entry `/relations-v2`) + `@better-auth/passkey`,
   todos na mesma linha.
-- `@google/genai` e `groq-sdk` só em `adapters/out/llm/**`.
+- AI SDK da Vercel (`ai`, `@ai-sdk/google`, `@ai-sdk/groq`) só em `adapters/out/llm/**` (ADR 0007;
+  o `@google/genai` não tem proveniência).
 - OTel 2.x com `@fastify/otel` e `@langfuse/otel` (veja [observabilidade](observabilidade.md)).
 - `@vercel/functions` fixado em 3.7.6 (última com proveniência, ADR 0002), só em
   `adapters/out/platform/vercel`: `waitUntil`, `attachDatabasePool`, `ipAddress` e `geolocation`.
@@ -138,7 +139,10 @@ default | clarified`), `RetrievalMode` (`hybrid | lexical_only`) e `ErrorCode`
 **Variáveis que mudam comportamento:** `LLM_KILL_SWITCH=true` (cache hit responde; miss dá 503
 `service_paused`), `GEMINI_MODEL_PRIMARY`, `GEMINI_MODEL_FALLBACK`, `GROQ_MODEL`, `LLM_PROVIDER`,
 `EMBEDDINGS_PROVIDER`, `RERANKER_PROVIDER` (`workers-ai` em staging e produção),
-`RATE_LIMIT_PER_MINUTE` (padrão 60, por usuário ou IP nas rotas com rate limit da aplicação).
+`RATE_LIMIT_PER_MINUTE` (padrão 60, por usuário ou IP nas rotas com rate limit da aplicação),
+`QUOTA_QUESTIONS_GLOBAL_DAILY`, `QUOTA_QUESTIONS_PER_USER_DAILY`, `QUOTA_NEURONS_DAILY` e
+`QUOTA_STREAM_SECONDS_DAILY` (tetos abaixo), `STREAM_MAX_SECONDS` (teto do stream e da reserva,
+padrão 100), `ANSWER_CACHE_TTL_DAYS` (padrão 7) e `TERMS_VERSION`.
 
 ## Autenticação (Better Auth)
 
@@ -242,7 +246,8 @@ direta (o staging também pelo `ingest load --migrate`). Sempre expand/contract:
    `QuotaGuard`; `QuotaGuard` (teto global e por usuário em `usage_daily`, 1 stream ativo por
    usuário: `streaming` com `stream_started_at > now() − 110 s`); **reserva de `stream_seconds`**
    (o teto do stream, 100 s) antes de aceitar, devolvida no fim pelo uso real; redação, data e
-   cobertura; cache exato (`sha256(normalize(q)|refDate|corpus_version|PROMPT_VERSION|modelFamily|locale)`);
+   cobertura; cache exato (`sha256(normalize(q)|refDate|corpus_version|PROMPT_VERSION|modelFamily|locale|famílias)`,
+   `modelFamily` = `zdr` ou `default`);
    num miss, `INSERT questions(status='pending')` e `accepted{questionId}`.
 2. **Stream** (`POST /api/v1/questions/:id/stream`, mesma origem, cookie + `Origin`): claim
    atômico `UPDATE app.questions SET status='streaming', stream_started_at=now() WHERE id=$1 AND
@@ -276,8 +281,8 @@ direta (o staging também pelo `ingest load --migrate`). Sempre expand/contract:
 - **Política regional:** EEE/UK/CH só no Groq. Origem: país declarado no onboarding **ou**
   `geolocation()` da Vercel (header de país da plataforma; sem base GeoIP no repositório). Fora da
   Vercel, só o país declarado.
-- **Prompt:** `application/prompts/answer.md` com `version`; `PROMPT_VERSION = name@semver+sha8`;
-  `pricing.json` versionado alimenta o custo-sombra. Fontes em `<source id="S1" …>` com escape e
+- **Prompt:** `application/prompts/answer.ts` (TypeScript, para entrar no bundle);
+  `PROMPT_VERSION = name@semver+sha8`; `services/pricing.ts` versionado alimenta o custo-sombra. Fontes em `<source id="S1" …>` com escape e
   sem caracteres de controle; o prompt diz que fontes são dados. Sem tools nem grounding. Canary no
   system prompt bloqueia a saída se vazar. Pergunta ≤ 1.000 caracteres, temperatura 0,1, saída ≤
   1.200 tokens.

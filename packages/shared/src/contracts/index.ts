@@ -19,6 +19,18 @@ export {
 export { type CoverageResponse, coverageResponseSchema } from './coverage.ts'
 export { type HealthResponse, HealthStatus, healthResponseSchema } from './health.ts'
 export {
+  HISTORY_PAGE_SIZE,
+  type HistoryQuery,
+  type HistoryResponse,
+  historyQuerySchema,
+  historyResponseSchema,
+  type QuestionDetail,
+  type QuotaResponse,
+  questionDetailSchema,
+  quotaResponseSchema,
+  StoredQuestionStatus,
+} from './history.ts'
+export {
   countryCodeSchema,
   type MeResponse,
   meResponseSchema,

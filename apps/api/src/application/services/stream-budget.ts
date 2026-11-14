@@ -17,15 +17,18 @@ export interface StreamBudget {
   timeoutMs(startedAtMs: number, nowMs: number): number
 }
 
-export function createStreamBudget(deadline: InvocationDeadline): StreamBudget {
+export function createStreamBudget(
+  deadline: InvocationDeadline,
+  capMs: number = STREAM_CAP_MS,
+): StreamBudget {
   return {
     timeoutMs(startedAtMs, nowMs) {
       const deadlineMs = deadline.deadlineFor(startedAtMs)
       if (deadlineMs === null) {
-        return STREAM_CAP_MS
+        return capMs
       }
       const remaining = deadlineMs - nowMs - STREAM_DEADLINE_RESERVE_MS
-      return Math.max(0, Math.min(STREAM_CAP_MS, remaining))
+      return Math.max(0, Math.min(capMs, remaining))
     },
   }
 }

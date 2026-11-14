@@ -1,0 +1,47 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "b98aab2e-eeed-4585-a6e7-e5d3b5de4108",
+  "prevIds": [
+    "44c10011-20a2-433b-95bd-823687043003"
+  ],
+  "footprints": [
+    {
+      "statementType": "add_column",
+      "statementTarget": [
+        "column",
+        "app",
+        "questions",
+        "request_id"
+      ],
+      "writes": [
+        "s|col|app.questions.request_id",
+        "n|col|app.questions.request_id",
+        "e|col|app.questions.request_id"
+      ],
+      "reads": [
+        "n|tbl|app.questions",
+        "n|sch|app"
+      ]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "app",
+        "table": "questions",
+        "name": "request_id",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    }
+  ]
+}

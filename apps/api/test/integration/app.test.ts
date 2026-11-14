@@ -280,7 +280,7 @@ describe('OpenAPI + Scalar', () => {
       expect(res.statusCode).toBe(200)
       const document = openApiDocumentSchema.parse(res.json())
       expect(document.openapi).toBe('3.1.0')
-      const evalPaths = name === 'ci' ? ['/api/v1/_eval/search'] : []
+      const evalPaths = name === 'ci' ? ['/api/v1/_eval/answer', '/api/v1/_eval/search'] : []
       expect(Object.keys(document.paths).sort()).toEqual(
         [
           '/api/healthz',
@@ -288,6 +288,11 @@ describe('OpenAPI + Scalar', () => {
           '/api/v1/coverage',
           '/api/v1/me',
           '/api/v1/me/onboarding',
+          '/api/v1/me/quota',
+          '/api/v1/questions',
+          '/api/v1/questions/{id}',
+          '/api/v1/questions/{id}/feedback',
+          '/api/v1/questions/{id}/stream',
           '/api/v1/provisions',
           '/api/v1/provisions/{stableKey}/diff',
           '/api/v1/provisions/{stableKey}/timeline',

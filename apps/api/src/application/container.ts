@@ -3,12 +3,15 @@ import type { BuildInfo } from '#domain/shared/build-info.ts'
 import type { AuthGateway } from './ports/auth-gateway.ts'
 import type { BackgroundTasks } from './ports/background-tasks.ts'
 import type { ClientIp } from './ports/client-ip.ts'
+import type { GeoResolver } from './ports/geo-resolver.ts'
 import type { RateLimitStore } from './ports/rate-limit-store.ts'
 import type { Lifecycle } from './services/lifecycle.ts'
 import type { NeuronBudget } from './services/neuron-budget.ts'
 import type { StreamBudget } from './services/stream-budget.ts'
-import type { CheckCoverage, GetCoverage } from './use-cases/check-coverage.ts'
+import type { AskQuestion } from './use-cases/ask-question.ts'
+import type { CheckCoverage, CoverageSource, GetCoverage } from './use-cases/check-coverage.ts'
 import type { EmbedPending } from './use-cases/embed-pending.ts'
+import type { EvalAnswer } from './use-cases/eval-answer.ts'
 import type { ExportSnapshot } from './use-cases/export-snapshot.ts'
 import type { GetHealth } from './use-cases/get-health.ts'
 import type { HybridSearch } from './use-cases/hybrid-search.ts'
@@ -18,14 +21,18 @@ import type { InspectCorpus } from './use-cases/inspect-corpus.ts'
 import type { PromoteSnapshot } from './use-cases/promote-snapshot.ts'
 import type { ProvisionUseCases } from './use-cases/provisions.ts'
 import type { PruneEmbeddingCache } from './use-cases/prune-embedding-cache.ts'
+import type { QuestionHistory } from './use-cases/question-history.ts'
 import type { RefreshCoverage } from './use-cases/refresh-coverage.ts'
 import type { ResolveReferenceDate } from './use-cases/resolve-reference-date.ts'
 import type { RetrieveEvidence } from './use-cases/retrieve-evidence.ts'
 import type { SeedFixtureCorpus } from './use-cases/seed-fixture-corpus.ts'
+import type { StreamAnswer } from './use-cases/stream-answer.ts'
 import type { UserUseCases } from './use-cases/users.ts'
 
 /** Casos de uso que dependem do Postgres (montados só com `DATABASE_URL`). */
 export interface RetrievalUseCases {
+  /** Cobertura e `corpus_version` do cache de 10 min (dividido com a `CheckCoverage`). */
+  readonly coverage: CoverageSource
   readonly checkCoverage: CheckCoverage
   /** `GET /api/v1/coverage` (mesmo cache de 10 min da `CheckCoverage`). */
   readonly getCoverage: GetCoverage
@@ -33,6 +40,15 @@ export interface RetrievalUseCases {
   readonly retrieveEvidence: RetrieveEvidence
   /** Paleta, linha do tempo e diff de dispositivos. */
   readonly provisions: ProvisionUseCases
+}
+
+/** Pergunta, stream, histórico e a resposta das evals (montados com banco e `LLM_PROVIDER`). */
+export interface QuestionUseCases {
+  readonly ask: AskQuestion
+  readonly stream: StreamAnswer
+  readonly history: QuestionHistory
+  /** Só usado pela rota de eval (`APP_ENV=ci`). */
+  readonly evalAnswer: EvalAnswer
 }
 
 /** Casos de uso expostos aos adapters de entrada (HTTP e CLI). */
@@ -43,6 +59,8 @@ interface UseCases {
   readonly retrieval: RetrievalUseCases | null
   /** Perfil e onboarding; `null` sem banco. */
   readonly users: UserUseCases | null
+  /** `null` sem banco ou sem `LLM_PROVIDER` (as rotas de pergunta respondem 503). */
+  readonly questions: QuestionUseCases | null
 }
 
 /**
@@ -90,6 +108,8 @@ export interface Container {
   readonly backgroundTasks: BackgroundTasks
   /** IP do cliente conforme a plataforma e o caminho (direto ou proxiado). */
   readonly clientIp: ClientIp
+  /** País da requisição informado pela plataforma (política regional). */
+  readonly geo: GeoResolver
   /**
    * Contador do rate limit da aplicação (`app.rate_limits`), compartilhado entre instâncias;
    * `null` sem banco (o rate limit não é registrado).

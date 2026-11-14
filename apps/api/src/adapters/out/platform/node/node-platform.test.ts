@@ -3,6 +3,7 @@ import {
   createNodeBackgroundTasks,
   createNodeClientIp,
   nodeAttachDatabasePool,
+  nodeGeoResolver,
   nodeInvocationDeadline,
 } from './node-platform.ts'
 
@@ -20,6 +21,12 @@ describe('createNodeClientIp', () => {
 
   it('descarta um forwardedIp que não é IP', () => {
     expect(clientIp.resolve({ headers: {}, forwardedIp: '' })).toEqual({ ip: null, source: 'none' })
+  })
+})
+
+describe('nodeGeoResolver', () => {
+  it('fora da Vercel não há país da requisição', () => {
+    expect(nodeGeoResolver.countryOf({ 'x-vercel-ip-country': 'PT' })).toBeNull()
   })
 })
 

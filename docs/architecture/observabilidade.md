@@ -34,9 +34,9 @@ timer de exportação: a instância da Vercel pausa entre requisições.
 - **Trace (3 a 5 units):** `rag-query` (usuário com hash, pergunta redigida, data e
   `ReferenceSource`, `corpus_version`, `prompt_version`, cache, cobertura); span `retrieval`
   (candidatos por canal, top-k, RRF, reranker, `retrievalMode`); uma generation `answer` por
-  provedor tentado, com `usageDetails`, `costDetails` a preço de tabela (`pricing.json`),
+  provedor tentado, com `usageDetails`, `costDetails` a preço de tabela (`services/pricing.ts`),
   `metadata.billed_usd=0` e TTFT; cache hit gera só o trace.
-- Modelos cadastrados em Settings → Models com os preços do `pricing.json`, pelo `ops.yml`. O
+- Modelos cadastrados em Settings → Models com os preços de `services/pricing.ts`, pelo `ops.yml`. O
   dashboard de custo do Langfuse é a visão oficial de custo por consulta; as não amostradas têm o
   custo em `app.questions.shadow_cost_usd`.
 - **Amostragem:** prod 1,0 até a projeção mensal chegar a 35k units, depois 0,2; staging 0,1; CI

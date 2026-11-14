@@ -2,17 +2,20 @@ import {
   createNodeBackgroundTasks,
   createNodeClientIp,
   nodeAttachDatabasePool,
+  nodeGeoResolver,
   nodeInvocationDeadline,
 } from '#adapters/out/platform/node/node-platform.ts'
 import {
   type AttachablePool,
   createVercelBackgroundTasks,
   createVercelClientIp,
+  createVercelGeoResolver,
   createVercelInvocationDeadline,
   vercelAttachDatabasePool,
 } from '#adapters/out/platform/vercel/vercel-platform.ts'
 import type { BackgroundTaskFailure, BackgroundTasks } from '#app/ports/background-tasks.ts'
 import type { ClientIp } from '#app/ports/client-ip.ts'
+import type { GeoResolver } from '#app/ports/geo-resolver.ts'
 import type { InvocationDeadline } from '#app/ports/invocation-deadline.ts'
 import {
   CADDY_NETWORK_APP_ENVS,
@@ -112,6 +115,8 @@ export function platformShutdown(env: Env): ShutdownProfile {
 export interface PlatformAdapters {
   readonly backgroundTasks: BackgroundTasks
   readonly clientIp: ClientIp
+  /** País da requisição para a política regional (só na Vercel). */
+  readonly geo: GeoResolver
   readonly invocationDeadline: InvocationDeadline
   /** Registra o pool do Postgres na plataforma (`attachDatabasePool` na Vercel). */
   readonly attachDatabasePool: (pool: AttachablePool) => void
@@ -137,6 +142,7 @@ export function createPlatformAdapters(env: Env, deps: PlatformDeps): PlatformAd
     return {
       backgroundTasks: createVercelBackgroundTasks(deps.onBackgroundFailure),
       clientIp: createVercelClientIp(),
+      geo: createVercelGeoResolver(),
       invocationDeadline: createVercelInvocationDeadline(vercelMaxDurationMs(env)),
       attachDatabasePool: (pool) => {
         vercelAttachDatabasePool(pool)
@@ -146,6 +152,7 @@ export function createPlatformAdapters(env: Env, deps: PlatformDeps): PlatformAd
   return {
     backgroundTasks: createNodeBackgroundTasks(deps.onBackgroundFailure),
     clientIp: createNodeClientIp(),
+    geo: nodeGeoResolver,
     invocationDeadline: nodeInvocationDeadline,
     attachDatabasePool: nodeAttachDatabasePool,
   }

@@ -1,4 +1,11 @@
-import { familySchema, retrievalModeSchema } from '@teko/shared/contracts'
+import {
+  answerSchema,
+  familySchema,
+  llmProviderSchema,
+  refusalSchema,
+  retrievalModeSchema,
+} from '@teko/shared/contracts'
+import { localeSchema } from '@teko/shared/i18n'
 import {
   isoDateSchema,
   periodoApuracaoSchema,
@@ -15,8 +22,9 @@ import { RetrievalOutcome } from '#app/use-cases/retrieve-evidence.ts'
  * produção elas não existem (404), e o boot recusa o registro fora do CI.
  *
  * `GET /api/v1/_eval/search` devolve o resultado do `RetrieveEvidence` (data → cobertura → busca)
- * no formato das retrieval evals, sem LLM. O `POST /api/v1/_eval/answer` chega com a cadeia de
- * LLM.
+ * no formato das retrieval evals, sem LLM. `POST /api/v1/_eval/answer` roda o pipeline inteiro da
+ * resposta (busca, prompt, cadeia de LLM e validação), sem sessão, cota nem persistência, e devolve
+ * os chunks e o resultado: é a entrada das evals de geração e do red team da F8.
  */
 const EVAL_PREFIX = '/api/v1/_eval'
 
@@ -57,7 +65,71 @@ const evalSearchResponseSchema = z.object({
   ),
 })
 
+const evalAnswerBodySchema = z
+  .strictObject({
+    question: z.string().trim().min(1).max(1000),
+    families: z.array(familySchema).max(10).optional(),
+    periodoApuracao: periodoApuracaoSchema.optional(),
+    referenceDate: isoDateSchema.optional(),
+    source: referenceSourceSchema,
+    locale: localeSchema.default('pt-BR'),
+    zeroDataRetention: z.boolean().default(false),
+  })
+  .refine((body) => (body.periodoApuracao === undefined) !== (body.referenceDate === undefined), {
+    message: 'Informe exatamente um entre periodoApuracao e referenceDate',
+    path: ['referenceDate'],
+  })
+
+const evalAnswerResponseSchema = z.object({
+  chunks: z.array(z.unknown()),
+  answer: answerSchema.nullable(),
+  refusal: refusalSchema.nullable(),
+  provider: llmProviderSchema.nullable(),
+  model: z.string().nullable(),
+  usage: z.object({ inputTokens: z.int(), outputTokens: z.int() }),
+})
+
 export const evalRoutes: FastifyPluginAsyncZod = async (app) => {
+  app.post(
+    `${EVAL_PREFIX}/answer`,
+    {
+      config: { rateLimit: false },
+      schema: {
+        operationId: 'evalAnswer',
+        summary: 'Resposta completa sem sessão nem persistência (só APP_ENV=ci)',
+        tags: ['eval'],
+        body: evalAnswerBodySchema,
+        response: { 200: evalAnswerResponseSchema },
+      },
+    },
+    async (request) => {
+      const questions = app.container.useCases.questions
+      if (questions === null) {
+        throw app.httpErrors.serviceUnavailable()
+      }
+      const body = request.body
+      const result = await questions.evalAnswer({
+        question: body.question,
+        referenceInput:
+          body.periodoApuracao === undefined
+            ? { referenceDate: body.referenceDate ?? '' }
+            : { periodoApuracao: body.periodoApuracao },
+        referenceSource: body.source,
+        families: body.families ?? [],
+        locale: body.locale,
+        zeroDataRetention: body.zeroDataRetention,
+      })
+      return {
+        chunks: [...result.chunks],
+        answer: result.outcome?.answer ?? null,
+        refusal: result.outcome?.refusal ?? null,
+        provider: result.outcome?.provider ?? null,
+        model: result.outcome?.model ?? null,
+        usage: { ...(result.outcome?.usage ?? { inputTokens: 0, outputTokens: 0 }) },
+      }
+    },
+  )
+
   app.get(
     `${EVAL_PREFIX}/search`,
     {

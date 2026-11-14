@@ -25,6 +25,7 @@ import { evalRoutes } from '#adapters/in/http/routes/eval.ts'
 import { healthRoutes } from '#adapters/in/http/routes/health.ts'
 import { meRoutes } from '#adapters/in/http/routes/me.ts'
 import { provisionRoutes } from '#adapters/in/http/routes/provisions.ts'
+import { questionRoutes } from '#adapters/in/http/routes/questions.ts'
 import { registerStaticSite, staticNotFound } from '#adapters/in/http/static-site/static-site.ts'
 import type { Container } from '#app/container.ts'
 
@@ -107,6 +108,7 @@ export async function buildApp(deps: BuildAppDeps): Promise<FastifyInstance> {
   await app.register(healthRoutes)
   await app.register(coverageRoutes)
   await app.register(meRoutes)
+  await app.register(questionRoutes)
   await app.register(provisionRoutes)
   if (deps.http.evalRoutes) {
     await app.register(evalRoutes)

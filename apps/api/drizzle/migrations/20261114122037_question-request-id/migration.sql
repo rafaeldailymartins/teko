@@ -1,0 +1,1 @@
+ALTER TABLE "app"."questions" ADD COLUMN "request_id" text;

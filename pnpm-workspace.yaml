@@ -106,6 +106,12 @@ catalog:
   better-auth: 1.7.18
   "@better-auth/drizzle-adapter": 1.7.18
   "@better-auth/passkey": 1.7.18
+  # AI SDK da Vercel (F4): cadeia de LLM (Gemini e Groq) e o schema do UI Message Stream. Núcleo e
+  # provedores sempre na mesma base (@ai-sdk/provider e provider-utils iguais); todos com proveniência.
+  # Substitui @google/genai (sem proveniência) e groq-sdk, por decisão do mantenedor em 2026-11-14.
+  ai: 7.0.164
+  "@ai-sdk/google": 4.0.113
+  "@ai-sdk/groq": 4.0.77
   "@vercel/functions": 3.7.6 # última com provenance SLSA + trusted publisher; 3.9+ sem provenance (ADR 0002)
 
   # Banco (F2). Nenhum driver Postgres do npm é publicado com proveniência: pg e Testcontainers são

@@ -37,6 +37,8 @@
     "seed:dev-session": "node --env-file-if-exists=.env src/cli.ts seed-dev-session"
   },
   "dependencies": {
+    "@ai-sdk/google": "catalog:",
+    "@ai-sdk/groq": "catalog:",
     "@better-auth/drizzle-adapter": "catalog:",
     "@better-auth/passkey": "catalog:",
     "@fastify/helmet": "catalog:",
@@ -48,6 +50,7 @@
     "@scalar/fastify-api-reference": "catalog:",
     "@teko/shared": "workspace:*",
     "@vercel/functions": "catalog:",
+    "ai": "catalog:",
     "better-auth": "catalog:",
     "close-with-grace": "catalog:",
     "drizzle-orm": "catalog:",
