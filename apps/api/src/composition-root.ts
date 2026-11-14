@@ -51,7 +51,6 @@ import {
   createWorkersAiRerankerAdapter,
 } from '#adapters/out/reranker/workers-ai/workers-ai-reranker-adapter.ts'
 import { createLogger } from '#adapters/out/telemetry/logger.ts'
-import { createWorkersAiTranslatorAdapter } from '#adapters/out/translator/workers-ai/workers-ai-translator-adapter.ts'
 import type {
   Container,
   IngestionContainer,
@@ -68,7 +67,6 @@ import type { LlmModel } from '#app/ports/llm-port.ts'
 import type { RateLimitStore } from '#app/ports/rate-limit-store.ts'
 import type { RerankerPort } from '#app/ports/reranker-port.ts'
 import type { SafeFetcher } from '#app/ports/safe-fetcher.ts'
-import type { TranslatorPort } from '#app/ports/translator-port.ts'
 import type { BatchLimits } from '#app/services/embedding-batches.ts'
 import type { Lifecycle } from '#app/services/lifecycle.ts'
 import { createLifecycle } from '#app/services/lifecycle.ts'
@@ -142,26 +140,6 @@ const SEARCH_LIMIT = 12
 const RERANK_CANDIDATES = 40
 /** Teto do reranker antes de manter a ordem do RRF. */
 const RERANK_TIMEOUT_MS = 3000
-/** Teto da tradução da pergunta em inglês antes de seguir com a original (ADR 0034). */
-const TRANSLATION_TIMEOUT_MS = 2000
-
-/**
- * Tradutor da pergunta em inglês: o `m2m100` da mesma conta do Workers AI, ligado junto com os
- * embeddings dela (ADR 0034). Com o fake da fixture, nada é traduzido.
- */
-function createTranslator(env: Env): TranslatorPort | null {
-  if (
-    env.EMBEDDINGS_PROVIDER === EmbeddingsProvider.WorkersAi &&
-    env.CF_ACCOUNT_ID !== undefined &&
-    env.CF_AI_TOKEN !== undefined
-  ) {
-    return createWorkersAiTranslatorAdapter({
-      accountId: env.CF_ACCOUNT_ID,
-      apiToken: env.CF_AI_TOKEN,
-    })
-  }
-  return null
-}
 
 /** Reranker do `RERANKER_PROVIDER`, ou `null` (o `parseEnv` já exigiu as credenciais). */
 export function createReranker(env: Env): RerankerPort | null {
@@ -407,8 +385,6 @@ function createRetrieval(
     reranker: createReranker(env),
     rerankCandidates: RERANK_CANDIDATES,
     rerankTimeoutMs: RERANK_TIMEOUT_MS,
-    translator: createTranslator(env),
-    translationTimeoutMs: TRANSLATION_TIMEOUT_MS,
   })
   return {
     coverage,

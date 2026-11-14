@@ -118,7 +118,6 @@ export async function* runAnswerPipeline(
     source: input.referenceSource,
     questionText: input.question,
     families: input.families,
-    locale: input.locale,
     signal: input.signal,
   })
   if (retrieval.outcome === RetrievalOutcome.NeedsClarification) {

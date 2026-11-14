@@ -1,5 +1,4 @@
 import { RetrievalMode } from '@teko/shared/contracts'
-import type { Locale } from '@teko/shared/i18n'
 import type { IsoDate } from '@teko/shared/vigencia'
 import type { ReviewStatus } from '#domain/corpus/family.ts'
 import { type Evidence, rerankText } from '#domain/qa/evidence.ts'
@@ -7,7 +6,6 @@ import { extractProvisionRefs } from '#domain/qa/provision-refs.ts'
 import { type EmbeddingPort, EmbeddingUnavailableError } from '../ports/embedding-port.ts'
 import { type RerankerPort, RerankerUnavailableError } from '../ports/reranker-port.ts'
 import type { SearchRepository } from '../ports/search-repository.ts'
-import { type TranslatorPort, TranslatorUnavailableError } from '../ports/translator-port.ts'
 
 /**
  * `HybridSearch`: embedding da pergunta (teto de 3 s) e uma única instrução SQL com os três braços
@@ -17,10 +15,6 @@ import { type TranslatorPort, TranslatorUnavailableError } from '../ports/transl
  * Com reranker (ADR 0027): a instrução traz `rerankCandidates` candidatos, o reranker os reordena
  * pela relevância do `rerankText` (caminho, ancestrais e conteúdo) para a pergunta e a busca devolve os `limit`
  * primeiros. Falha ou teto do reranker mantêm a ordem do RRF (`reranked: false`).
- *
- * Pergunta em inglês (`locale: 'en'`) com tradutor (ADR 0034): os três braços e o reranker usam a
- * tradução para o português; as referências citadas saem das duas versões. Falha ou teto do
- * tradutor seguem com a pergunta original.
  */
 interface HybridSearchCommand {
   /** Pergunta já redigida. */
@@ -28,8 +22,6 @@ interface HybridSearchCommand {
   readonly referenceDate: IsoDate
   /** Famílias cobertas na data (o `CheckCoverage` já tirou as demais). */
   readonly families: readonly string[]
-  /** Idioma da pergunta (o da interface); `en` passa pelo tradutor, se houver. */
-  readonly locale?: Locale
   readonly signal?: AbortSignal
 }
 
@@ -58,38 +50,6 @@ export interface HybridSearchDeps {
   readonly rerankCandidates: number
   /** Teto do reranker antes de manter a ordem do RRF (ADR 0027: 3 s). */
   readonly rerankTimeoutMs: number
-  /** `null` = sem tradução (a pergunta em inglês vai como veio). */
-  readonly translator: TranslatorPort | null
-  /** Teto da tradução antes de seguir com a pergunta original (ADR 0034: 2 s). */
-  readonly translationTimeoutMs: number
-}
-
-/**
- * Texto da busca: a pergunta, ou a tradução dela para o português quando veio em inglês e há
- * tradutor. Indisponibilidade e teto seguem com a original; cancelamento do cliente propaga.
- */
-async function searchText(
-  deps: HybridSearchDeps,
-  question: string,
-  locale: Locale | undefined,
-  signal: AbortSignal | undefined,
-): Promise<string> {
-  if (locale !== 'en' || deps.translator === null) {
-    return question
-  }
-  const timeout = AbortSignal.timeout(deps.translationTimeoutMs)
-  const combined = signal === undefined ? timeout : AbortSignal.any([signal, timeout])
-  try {
-    return await deps.translator.toPortuguese(question, { signal: combined })
-  } catch (error) {
-    if (signal?.aborted === true) {
-      throw error
-    }
-    if (error instanceof TranslatorUnavailableError || timeout.aborted) {
-      return question
-    }
-    throw error
-  }
 }
 
 /**
@@ -141,22 +101,15 @@ async function embedQuestion(
 }
 
 export function createHybridSearch(deps: HybridSearchDeps): HybridSearch {
-  return async ({ question, referenceDate, families, locale, signal }) => {
+  return async ({ question, referenceDate, families, signal }) => {
+    const stableKeys = extractProvisionRefs(question, families)
     if (families.length === 0) {
-      const stableKeys = extractProvisionRefs(question, families)
       return { mode: RetrievalMode.Hybrid, evidence: [], stableKeys, reranked: false }
     }
-    const text = await searchText(deps, question, locale, signal)
-    const stableKeys = [
-      ...new Set([
-        ...extractProvisionRefs(question, families),
-        ...extractProvisionRefs(text, families),
-      ]),
-    ]
-    const embedding = await embedQuestion(deps, text, signal)
+    const embedding = await embedQuestion(deps, question, signal)
     const { reranker } = deps
     const candidates = await deps.searchRepository.search({
-      text,
+      text: question,
       embedding,
       referenceDate,
       families,
@@ -168,7 +121,7 @@ export function createHybridSearch(deps: HybridSearchDeps): HybridSearch {
     const scores =
       reranker === null || candidates.length < 2
         ? null
-        : await rerankScores({ ...deps, reranker }, text, candidates, signal)
+        : await rerankScores({ ...deps, reranker }, question, candidates, signal)
     if (scores === null) {
       return { mode, evidence: candidates.slice(0, deps.limit), stableKeys, reranked: false }
     }

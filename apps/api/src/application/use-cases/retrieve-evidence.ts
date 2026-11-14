@@ -4,7 +4,6 @@ import {
   RefusalReason,
   type RetrievalMode,
 } from '@teko/shared/contracts'
-import type { Locale } from '@teko/shared/i18n'
 import type { IsoDate } from '@teko/shared/vigencia'
 import type { Evidence } from '#domain/qa/evidence.ts'
 import { maxRrf } from '#domain/qa/evidence.ts'
@@ -30,8 +29,6 @@ interface RetrieveEvidenceCommand extends ResolveReferenceDateCommand {
   readonly questionText: string
   /** Famílias pedidas; vazio = todas. */
   readonly families: readonly string[]
-  /** Idioma da pergunta; `en` é traduzida antes da busca, se houver tradutor (ADR 0034). */
-  readonly locale?: Locale
   readonly signal?: AbortSignal
 }
 
@@ -126,7 +123,6 @@ export function createRetrieveEvidence(deps: RetrieveEvidenceDeps): RetrieveEvid
       question: command.questionText,
       referenceDate: date,
       families: decision.coveredFamilies,
-      ...(command.locale === undefined ? {} : { locale: command.locale }),
       ...(command.signal === undefined ? {} : { signal: command.signal }),
     })
     if (search.evidence.length === 0 || maxRrf(search.evidence) < deps.minEvidenceRrf) {
