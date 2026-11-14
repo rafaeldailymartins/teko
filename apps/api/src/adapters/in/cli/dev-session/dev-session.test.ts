@@ -4,7 +4,7 @@ import { parseDevSessionArgs, sessionCookieName, signSessionToken } from './dev-
 
 describe('signSessionToken', () => {
   it('assina como o Better Auth (HMAC-SHA256 em base64, URL-encoded)', async () => {
-    const secret = 'segredo-de-teste-com-mais-de-32-caracteres'
+    const secret = 'teste'.repeat(8)
     const token = 'abc_DEF-123'
     const expected = encodeURIComponent(`${token}.${await makeSignature(token, secret)}`)
     expect(signSessionToken(token, secret)).toBe(expected)

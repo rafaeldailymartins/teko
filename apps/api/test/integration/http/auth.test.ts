@@ -20,7 +20,7 @@ import { createTestDatabase, type TestDatabase } from '../../setup/database.ts'
  */
 
 const ORIGIN = 'http://localhost:3000'
-const SECRET = 'segredo-de-teste-com-mais-de-32-caracteres'
+const SECRET = 'teste'.repeat(8)
 
 let database: TestDatabase
 let env: Env

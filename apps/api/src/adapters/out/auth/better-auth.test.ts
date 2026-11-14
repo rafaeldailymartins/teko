@@ -4,7 +4,7 @@ import { createBetterAuthOptions, SESSION_COOKIE_CACHE_S } from './better-auth.t
 
 const db = {} as DrizzleDb
 const BASE = {
-  secret: 'segredo-de-teste-com-mais-de-32-caracteres',
+  secret: 'teste'.repeat(8),
   cookiePrefix: 'teko',
   github: { clientId: 'gh', clientSecret: 'ghs' },
   google: null,
