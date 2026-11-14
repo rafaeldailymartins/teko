@@ -75,3 +75,12 @@ ideia.
   abriram e 41 de 46 reescritas do holdout falharam. Com a reescrita ligada, o `corpus-eval` roda um
   caso por vez, com 2 s entre eles, e o job ganhou 50 min. Em produção vale o mesmo limite: a
   reescrita só deve ser ligada com a cota medida contra o volume de perguntas.
+
+## Adendo (2026-11-14): consulta só no braço léxico
+
+Com as correções, as reescritas saíram válidas, mas o desenho da decisão 3 piorou o MRR (run
+43640409545: 0,649 no dev e 0,622 no holdout). A consulta é uma lista de termos: ajuda o braço
+léxico, mas o embedding e o reranker comparam frases. Eles voltam a receber a pergunta, e só o
+léxico recebe a pergunta e a consulta (run 43641962158: 0,718 no dev e 0,668 no holdout, contra
+0,714 e 0,654 sem reescrita). O ganho é pequeno, cabe na variação entre runs e não leva à meta de
+0,70; a reescrita continua desligada até o mantenedor decidir se vale a chamada a mais ao LLM.

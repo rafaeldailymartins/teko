@@ -18,8 +18,9 @@ import type { QueryRewriter } from '../services/query-rewriter.ts'
  * devolve os `limit` primeiros. Falha ou teto do reranker mantêm a ordem do RRF (`reranked: false`).
  *
  * Com reescrita (ADR 0034): o LLM transforma a pergunta numa consulta na linguagem do corpus. O
- * braço léxico recebe a pergunta e a consulta (OU dos lexemas das duas), o embedding e o reranker
- * recebem a consulta, e as referências citadas saem das duas. Sem consulta (falha, teto ou saída
+ * braço léxico recebe a pergunta e a consulta (OU dos lexemas das duas); o embedding e o reranker
+ * ficam com a pergunta, porque a consulta é uma lista de termos e eles comparam frases (`corpus-eval`
+ * de 2026-11-14, ADR 0034). As referências citadas saem das duas. Sem consulta (falha, teto ou saída
  * vazia), a busca segue com a pergunta.
  */
 interface HybridSearchCommand {
@@ -131,7 +132,6 @@ export function createHybridSearch(deps: HybridSearchDeps): HybridSearch {
             zeroDataRetentionOnly: zeroDataRetentionOnly ?? false,
             ...(signal === undefined ? {} : { signal }),
           })
-    const query = rewrittenQuery ?? question
     const stableKeys =
       rewrittenQuery === null
         ? extractProvisionRefs(question, families)
@@ -141,7 +141,7 @@ export function createHybridSearch(deps: HybridSearchDeps): HybridSearch {
               ...extractProvisionRefs(rewrittenQuery, families),
             ]),
           ]
-    const embedding = await embedQuestion(deps, query, signal)
+    const embedding = await embedQuestion(deps, question, signal)
     const { reranker } = deps
     const candidates = await deps.searchRepository.search({
       text: rewrittenQuery === null ? question : `${question}\n${rewrittenQuery}`,
@@ -156,7 +156,7 @@ export function createHybridSearch(deps: HybridSearchDeps): HybridSearch {
     const scores =
       reranker === null || candidates.length < 2
         ? null
-        : await rerankScores({ ...deps, reranker }, query, candidates, signal)
+        : await rerankScores({ ...deps, reranker }, question, candidates, signal)
     if (scores === null) {
       return {
         mode,

@@ -308,7 +308,7 @@ describe('createHybridSearch com reescrita (ADR 0034)', () => {
     return { search, queries, embedded, reranked }
   }
 
-  it('léxico com a pergunta e a consulta; embedding e reranker com a consulta; referências das duas', async () => {
+  it('léxico com a pergunta e a consulta; embedding e reranker com a pergunta; referências das duas', async () => {
     const rewriter = vi.fn<QueryRewriter>(() =>
       Promise.resolve('prazo do § 6º do art. 76 do RCTE para o GOYAZES'),
     )
@@ -325,8 +325,8 @@ describe('createHybridSearch com reescrita (ADR 0034)', () => {
     expect(queries[0]?.text).toBe(
       'Qual o prazo do art. 76 para o GOYAZES?\nprazo do § 6º do art. 76 do RCTE para o GOYAZES',
     )
-    expect(embedded).toEqual(['prazo do § 6º do art. 76 do RCTE para o GOYAZES'])
-    expect(reranked).toEqual(['prazo do § 6º do art. 76 do RCTE para o GOYAZES'])
+    expect(embedded).toEqual(['Qual o prazo do art. 76 para o GOYAZES?'])
+    expect(reranked).toEqual(['Qual o prazo do art. 76 para o GOYAZES?'])
     expect(result.stableKeys).toEqual(['go:rcte:art:76', 'go:rcte:art:76:par:6'])
     expect(result.rewrittenQuery).toBe('prazo do § 6º do art. 76 do RCTE para o GOYAZES')
   })

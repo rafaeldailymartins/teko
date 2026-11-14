@@ -111,7 +111,7 @@ export async function retrieve(golden: GoldenCase): Promise<RetrievalOutput> {
  * `corpus-eval` usa 50): como o reranker pontua cada par pergunta-texto sozinho, um despejo de 50
  * permite simular offline qualquer número de candidatos (ADR 0027). Com a consulta reescrita
  * (ADR 0034), a instrução recebe o mesmo que a busca: a pergunta e a consulta no léxico, o vetor
- * da consulta e as referências das duas.
+ * da pergunta e as referências das duas.
  */
 async function candidatePool(
   golden: GoldenCase,
@@ -130,13 +130,12 @@ async function candidatePool(
     return null
   }
   poolDatabase ??= createDatabase({ url: env.DATABASE_URL, applicationName: 'teko-evals-pool' })
-  const query = rewrittenQuery ?? golden.question
-  const [vector] = await embeddings.embed([query])
+  const [vector] = await embeddings.embed([golden.question])
   const families = golden.families ?? FAMILIES
   const stableKeys = [
     ...new Set([
       ...extractProvisionRefs(golden.question, families),
-      ...extractProvisionRefs(query, families),
+      ...extractProvisionRefs(rewrittenQuery ?? '', families),
     ]),
   ]
   const evidence = await createPgSearchRepository(poolDatabase.pool).search({
