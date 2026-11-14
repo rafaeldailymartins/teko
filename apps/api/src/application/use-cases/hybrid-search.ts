@@ -1,7 +1,7 @@
 import { RetrievalMode } from '@teko/shared/contracts'
 import type { IsoDate } from '@teko/shared/vigencia'
 import type { ReviewStatus } from '#domain/corpus/family.ts'
-import type { Evidence } from '#domain/qa/evidence.ts'
+import { type Evidence, rerankText } from '#domain/qa/evidence.ts'
 import { extractProvisionRefs } from '#domain/qa/provision-refs.ts'
 import { type EmbeddingPort, EmbeddingUnavailableError } from '../ports/embedding-port.ts'
 import { type RerankerPort, RerankerUnavailableError } from '../ports/reranker-port.ts'
@@ -13,7 +13,7 @@ import type { SearchRepository } from '../ports/search-repository.ts'
  * a busca degrada para `lexical_only` (rotulada no `data-meta`), sem falhar a pergunta.
  *
  * Com reranker (ADR 0027): a instrução traz `rerankCandidates` candidatos, o reranker os reordena
- * pela relevância de "rótulo de citação + conteúdo" para a pergunta e a busca devolve os `limit`
+ * pela relevância do `rerankText` (caminho, ancestrais e conteúdo) para a pergunta e a busca devolve os `limit`
  * primeiros. Falha ou teto do reranker mantêm a ordem do RRF (`reranked: false`).
  */
 interface HybridSearchCommand {
@@ -65,11 +65,7 @@ async function rerankScores(
   const timeout = AbortSignal.timeout(deps.rerankTimeoutMs)
   const combined = signal === undefined ? timeout : AbortSignal.any([signal, timeout])
   try {
-    return await deps.reranker.rerank(
-      question,
-      evidence.map((item) => `${item.citationLabel}\n${item.content}`),
-      { signal: combined },
-    )
+    return await deps.reranker.rerank(question, evidence.map(rerankText), { signal: combined })
   } catch (error) {
     if (signal?.aborted === true) {
       throw error

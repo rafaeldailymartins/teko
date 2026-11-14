@@ -16,6 +16,8 @@ function evidence(rrf: number, from: string, to: string | null): Evidence {
     stableKey: 'go:rcte:art:76:par:8',
     family: 'rcte',
     citationLabel: 'RCTE, art. 76, § 8º',
+    headingPath: 'RCTE > Art. 76',
+    ancestors: [],
     content: '§ 8º ...',
     validity: { from, to },
     document: { versionId: 'v', versionLabel: 'RCTE 2026', title: 'RCTE', sourceUrl: 'https://x' },

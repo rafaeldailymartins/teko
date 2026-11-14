@@ -21,6 +21,8 @@ const row = {
   family: 'rcte',
   content: '§ 6º ...',
   citation_label: 'RCTE, art. 76, § 6º',
+  heading_path: 'RCTE > Art. 76 > § 6º',
+  ancestors: ['Art. 76. Nas situações especiais …'],
   valid_from: '2004-11-04',
   valid_to: '2009-11-23',
   version_label: 'RCTE 2026',
@@ -87,6 +89,8 @@ describe('toEvidence e searchParameters', () => {
       family: 'rcte',
       citationLabel: 'RCTE, art. 76, § 6º',
       content: '§ 6º ...',
+      headingPath: 'RCTE > Art. 76 > § 6º',
+      ancestors: ['Art. 76. Nas situações especiais …'],
       validity: { from: '2004-11-04', to: '2009-11-23' },
       document: {
         versionId: 'dv1',

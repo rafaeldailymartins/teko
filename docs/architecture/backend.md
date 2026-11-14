@@ -218,7 +218,9 @@ direta (o staging também pelo `ingest load --migrate`). Sempre expand/contract:
   vigência (`valid_during @> $data`), `upper_inf(knowledge)`, família e `review_status` (produção:
   `auto, approved`; staging: + `pending`). Um resultado por versão de dispositivo. Com
   `RERANKER_PROVIDER=workers-ai`, 40 candidatos são reordenados e 12 devolvidos; falha ou mais de
-  3 s mantêm a ordem do RRF. O SQL vigente é o de
+  3 s mantêm a ordem do RRF. O reranker vê o caminho de títulos, os trechos dos ancestrais vigentes
+  na data (o caput de um inciso, o registro de um campo) e o conteúdo, e o prompt leva os mesmos
+  trechos (ADR 0027, adendo de 2026-11-14). O SQL vigente é o de
   `adapters/out/persistence/drizzle/sql/hybrid-search.ts`; os `SET LOCAL` do HNSW vão num único
   `SELECT set_config(…, true)` dentro da transação curta, sem prepared statements nomeados
   (PgBouncer em modo transação), e datas voltam como texto (`::text`), sem conversão por fuso.

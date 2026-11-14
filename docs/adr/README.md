@@ -11,7 +11,9 @@ o roteiro, em [`docs/roadmap.md`](../roadmap.md).
 | [0002](0002-supply-chain-pnpm.md)                    | Supply chain de dependências com pnpm 12                                             | accepted |
 | [0003](0003-f1-spikes.md)                            | Resultados dos spikes da F1                                                          | accepted |
 | [0004](0004-vercel-hobby-api.md)                     | API no Vercel Hobby (uma Function Fluid, dois projetos, `gru1`) + Render             | accepted |
+| [0006](0006-sem-dominio-proprio.md)                  | Sem domínio próprio: os hosts `*.vercel.app` de cada projeto                         | accepted |
 | [0007](0007-cadeia-de-llm.md)                        | Cadeia de LLM: Gemini free → Groq com ZDR, pelo AI SDK da Vercel                     | accepted |
+| [0008](0008-bge-m3-e-halfvec.md)                     | Embeddings `bge-m3` do Workers AI, gravados como `halfvec(1024)`                     | accepted |
 | [0009](0009-vigencia-bitemporal.md)                  | Vigência bitemporal e cobertura limitada pelo `verified_at`                          | accepted |
 | [0010](0010-busca-hibrida-rrf.md)                    | Busca híbrida numa instrução SQL, RRF k = 60, filtrada por vigência                  | accepted |
 | [0011](0011-docling-e-parser-rcte.md)                | Docling (TableFormer V1 ACCURATE) para PDF e máquina de estados HTML para RCTE/CTE   | accepted |
@@ -63,9 +65,9 @@ então valem estas regras:
 | ----------- | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
 | 0004        | Vercel Hobby + Plano B Render                    | [escrita](0004-vercel-hobby-api.md)                                                                                                        |
 | 0005        | Neon com 2 projetos                              | a escrever na F7 (deploy e rehearsal)                                                                                                      |
-| 0006        | Sem domínio (proxy + ticket)                     | a escrever na F4, já sem proxy nem ticket (mesma origem, ADR 0029; login OAuth + passkey)                                                  |
+| 0006        | Sem domínio (proxy + ticket)                     | [escrita](0006-sem-dominio-proprio.md)                                                                                                     |
 | 0007        | Cadeia de LLM                                    | [escrita](0007-cadeia-de-llm.md)                                                                                                           |
-| 0008        | BGE-M3/halfvec                                   | a escrever na F4 (o uso está descrito nas ADRs 0010 e 0027)                                                                                |
+| 0008        | BGE-M3/halfvec                                   | [escrita](0008-bge-m3-e-halfvec.md)                                                                                                        |
 | 0009        | Vigência bitemporal                              | [escrita](0009-vigencia-bitemporal.md)                                                                                                     |
 | 0010        | Híbrido RRF                                      | [escrita](0010-busca-hibrida-rrf.md)                                                                                                       |
 | 0011        | Docling + parser RCTE                            | [escrita](0011-docling-e-parser-rcte.md)                                                                                                   |

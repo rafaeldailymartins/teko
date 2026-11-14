@@ -6,6 +6,7 @@ import { RetrievalOutcome } from '../../src/application/use-cases/retrieve-evide
 import { createContainer, createEmbeddings, reviewStatusesFor } from '../../src/composition-root.ts'
 import { type Env, parseEnv } from '../../src/config/env.ts'
 import { FAMILIES } from '../../src/domain/corpus/family.ts'
+import { rerankText } from '../../src/domain/qa/evidence.ts'
 import { extractProvisionRefs } from '../../src/domain/qa/provision-refs.ts'
 import { RECALL_K, type RetrievalOutput } from '../asserts/metrics.ts'
 import type { GoldenCase } from '../datasets/schema.ts'
@@ -105,9 +106,9 @@ export async function retrieve(golden: GoldenCase): Promise<RetrievalOutput> {
 
 /**
  * Candidatos da instrução híbrida antes do reranker, na ordem do RRF, com o texto que o reranker
- * recebe ("rótulo de citação + conteúdo"). Só com `EVAL_POOL_SIZE` (o `corpus-eval` usa 50): como o
- * reranker pontua cada par pergunta-texto sozinho, um despejo de 50 permite simular offline
- * qualquer número de candidatos (ADR 0027).
+ * recebe (`rerankText`: caminho de títulos, ancestrais e conteúdo). Só com `EVAL_POOL_SIZE` (o
+ * `corpus-eval` usa 50): como o reranker pontua cada par pergunta-texto sozinho, um despejo de 50
+ * permite simular offline qualquer número de candidatos (ADR 0027).
  */
 async function candidatePool(
   golden: GoldenCase,
@@ -138,7 +139,7 @@ async function candidatePool(
   })
   return evidence.map((item) => ({
     stableKey: item.stableKey,
-    text: `${item.citationLabel}\n${item.content}`,
+    text: rerankText(item),
   }))
 }
 

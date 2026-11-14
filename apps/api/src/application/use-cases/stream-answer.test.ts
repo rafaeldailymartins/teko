@@ -46,6 +46,8 @@ const RETRIEVE: RetrieveEvidence = async () => ({
       stableKey: 'go:rcte:art:76',
       family: 'rcte',
       citationLabel: 'RCTE, art. 76',
+      headingPath: 'RCTE > Art. 76',
+      ancestors: [],
       content: 'texto',
       validity: { from: '2005-01-01', to: null },
       document: {
