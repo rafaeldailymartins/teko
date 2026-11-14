@@ -20,6 +20,31 @@ export { type CoverageResponse, coverageResponseSchema } from './coverage.ts'
 export { type HealthResponse, HealthStatus, healthResponseSchema } from './health.ts'
 export { type OnboardingRequest, onboardingRequestSchema } from './onboarding.ts'
 export {
+  DiffOp,
+  type DiffSegment,
+  diffSegmentSchema,
+  type FieldChange,
+  fieldChangeSchema,
+  PROVISION_QUERY_MAX_LENGTH,
+  PROVISION_SEARCH_LIMIT,
+  type ProvisionDiffQuery,
+  type ProvisionDiffResponse,
+  type ProvisionKeyParams,
+  type ProvisionSearchQuery,
+  type ProvisionSearchResponse,
+  type ProvisionSummary,
+  type ProvisionTimelineResponse,
+  type ProvisionVersion,
+  provisionDiffQuerySchema,
+  provisionDiffResponseSchema,
+  provisionKeyParamsSchema,
+  provisionSearchQuerySchema,
+  provisionSearchResponseSchema,
+  provisionSummarySchema,
+  provisionTimelineResponseSchema,
+  provisionVersionSchema,
+} from './provisions.ts'
+export {
   type Answer,
   type AnswerMeta,
   type AskQuestionRequest,

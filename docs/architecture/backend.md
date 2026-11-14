@@ -112,19 +112,19 @@ API usa; escrita do corpus fica no container da CLI.
 
 Contrato canônico em `packages/shared/src/contracts` e no OpenAPI. Tudo na mesma origem.
 
-| Rota                                                                                   | Observação                                                                                                            |
-| -------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| `GET /healthz` e `GET /api/healthz`                                                    | `{status, version, gitSha, env}`; nunca toca o DB. Fora da Vercel, 503 em drenagem                                    |
-| `ALL /api/auth/*`                                                                      | Better Auth                                                                                                           |
-| `POST /api/v1/me/onboarding`                                                           | 18+, aceite dos termos (com versão), país de residência                                                               |
-| `GET /api/v1/me`, `GET /api/v1/me/quota`, `GET /api/v1/me/export`, `DELETE /api/v1/me` | LGPD                                                                                                                  |
-| `GET /api/v1/coverage`                                                                 | Público, cache em memória de até 10 min; é o smoke de DB                                                              |
-| `POST /api/v1/questions`                                                               | `answered \| refused \| needs_clarification \| accepted{questionId, resolved}`; query string → 400 `validation_error` |
-| `POST /api/v1/questions/:id/stream`                                                    | Cookie de sessão + `Origin`; UI Message Stream v1; um stream por pergunta (claim atômico)                             |
-| `GET /api/v1/questions`, `GET /api/v1/questions/:id`                                   | Histórico por `conversationId`                                                                                        |
-| `POST /api/v1/questions/:id/feedback`                                                  | Polegar e motivo, inclusive "citação errada"                                                                          |
-| `GET /api/v1/provisions?q=&family=&at=`, `…/:stableKey/timeline`, `…/:stableKey/diff`  | Paleta, linha do tempo e diff (por campo nos registros)                                                               |
-| `POST /api/v1/_eval/answer`, `GET /api/v1/_eval/search`                                | Só com `APP_ENV=ci`, em plugin separado; com `APP_ENV=staging` dão 404 (teste de integração)                          |
+| Rota                                                                                            | Observação                                                                                                            |
+| ----------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `GET /healthz` e `GET /api/healthz`                                                             | `{status, version, gitSha, env}`; nunca toca o DB. Fora da Vercel, 503 em drenagem                                    |
+| `ALL /api/auth/*`                                                                               | Better Auth                                                                                                           |
+| `POST /api/v1/me/onboarding`                                                                    | 18+, aceite dos termos (com versão), país de residência                                                               |
+| `GET /api/v1/me`, `GET /api/v1/me/quota`, `GET /api/v1/me/export`, `DELETE /api/v1/me`          | LGPD                                                                                                                  |
+| `GET /api/v1/coverage`                                                                          | Público, cache em memória de até 10 min; é o smoke de DB                                                              |
+| `POST /api/v1/questions`                                                                        | `answered \| refused \| needs_clarification \| accepted{questionId, resolved}`; query string → 400 `validation_error` |
+| `POST /api/v1/questions/:id/stream`                                                             | Cookie de sessão + `Origin`; UI Message Stream v1; um stream por pergunta (claim atômico)                             |
+| `GET /api/v1/questions`, `GET /api/v1/questions/:id`                                            | Histórico por `conversationId`                                                                                        |
+| `POST /api/v1/questions/:id/feedback`                                                           | Polegar e motivo, inclusive "citação errada"                                                                          |
+| `GET /api/v1/provisions?q=&family=&at=`, `…/:stableKey/timeline`, `…/:stableKey/diff?from=&to=` | Paleta (chave, rótulo ou texto), linha do tempo e diff por palavra e por campo; rate limit da aplicação               |
+| `POST /api/v1/_eval/answer`, `GET /api/v1/_eval/search`                                         | Só com `APP_ENV=ci`, em plugin separado; com `APP_ENV=staging` dão 404 (teste de integração)                          |
 
 **Enums** (em `@teko/shared`): `ReferenceSource` (`explicit | periodo_apuracao | question_text |
 default | clarified`), `RetrievalMode` (`hybrid | lexical_only`) e `ErrorCode`
@@ -135,7 +135,8 @@ default | clarified`), `RetrievalMode` (`hybrid | lexical_only`) e `ErrorCode`
 
 **Variáveis que mudam comportamento:** `LLM_KILL_SWITCH=true` (cache hit responde; miss dá 503
 `service_paused`), `GEMINI_MODEL_PRIMARY`, `GEMINI_MODEL_FALLBACK`, `GROQ_MODEL`, `LLM_PROVIDER`,
-`EMBEDDINGS_PROVIDER`, `RERANKER_PROVIDER` (`workers-ai` em staging e produção).
+`EMBEDDINGS_PROVIDER`, `RERANKER_PROVIDER` (`workers-ai` em staging e produção),
+`RATE_LIMIT_PER_MINUTE` (padrão 60, por usuário ou IP nas rotas com rate limit da aplicação).
 
 ## Autenticação (Better Auth)
 

@@ -199,6 +199,11 @@ const envSchema = z
       .regex(/^[0-9a-f]{32}$/, { error: 'deve ter 32 dígitos hex' })
       .optional(),
     CF_AI_TOKEN: z.string().min(20).optional(),
+    /**
+     * Requisições por minuto por usuário (ou por IP, sem sessão) nas rotas com rate limit da
+     * aplicação (`/api/v1/provisions*`, histórico e `/me/export`), contadas em Postgres.
+     */
+    RATE_LIMIT_PER_MINUTE: z.coerce.number().int().min(1).max(1000).default(60),
     /** Maior RRF abaixo do qual a pergunta é recusada como `no_evidence` sem chamar o LLM. */
     MIN_EVIDENCE_RRF: z.coerce.number().min(0).max(1).default(0),
     // --- Ingestão (CLI `ingest`, `snapshot`, `eval-fixture`; só no Actions e localmente) -------

@@ -1,5 +1,5 @@
 import { resolve as resolvePath } from 'node:path'
-import { AppEnv } from '@teko/shared/contracts'
+import { AppEnv, PROVISION_SEARCH_LIMIT } from '@teko/shared/contracts'
 import type { FastifyBaseLogger, FastifyInstance } from 'fastify'
 import type { FixtureCorpusReader } from '#adapters/in/cli/eval-fixture/eval-fixture.ts'
 import type {
@@ -31,6 +31,8 @@ import {
   createPgVectorIndexMaintenance,
 } from '#adapters/out/persistence/drizzle/repositories/pg-ingestion-database.ts'
 import { createPgIngestionRunRepository } from '#adapters/out/persistence/drizzle/repositories/pg-ingestion-run-repository.ts'
+import { createPgProvisionRepository } from '#adapters/out/persistence/drizzle/repositories/pg-provision-repository.ts'
+import { createPgRateLimitStore } from '#adapters/out/persistence/drizzle/repositories/pg-rate-limit-store.ts'
 import { createPgSearchRepository } from '#adapters/out/persistence/drizzle/repositories/pg-search-repository.ts'
 import { snapshotCodec } from '#adapters/out/persistence/drizzle/repositories/pg-snapshot-codec.ts'
 import { createPgSnapshotRepository } from '#adapters/out/persistence/drizzle/repositories/pg-snapshot-repository.ts'
@@ -45,6 +47,7 @@ import type { BlobStore } from '#app/ports/blob-store.ts'
 import type { Clock } from '#app/ports/clock.ts'
 import type { ContentHasher } from '#app/ports/content-hasher.ts'
 import type { EmbeddingPort } from '#app/ports/embedding-port.ts'
+import type { RateLimitStore } from '#app/ports/rate-limit-store.ts'
 import type { RerankerPort } from '#app/ports/reranker-port.ts'
 import type { SafeFetcher } from '#app/ports/safe-fetcher.ts'
 import type { BatchLimits } from '#app/services/embedding-batches.ts'
@@ -57,7 +60,11 @@ import {
   type UsageReport,
 } from '#app/services/neuron-budget.ts'
 import { createStreamBudget } from '#app/services/stream-budget.ts'
-import { createCheckCoverage } from '#app/use-cases/check-coverage.ts'
+import {
+  createCheckCoverage,
+  createCoverageSource,
+  createGetCoverage,
+} from '#app/use-cases/check-coverage.ts'
 import { createEmbedPending } from '#app/use-cases/embed-pending.ts'
 import { createExportSnapshot } from '#app/use-cases/export-snapshot.ts'
 import { createFindPeriodVersions } from '#app/use-cases/find-period-versions.ts'
@@ -71,6 +78,7 @@ import {
 import { createFinishIngestionRun, createStartIngestionRun } from '#app/use-cases/ingestion-run.ts'
 import { createInspectCorpus } from '#app/use-cases/inspect-corpus.ts'
 import { createPromoteSnapshot } from '#app/use-cases/promote-snapshot.ts'
+import { createProvisionUseCases } from '#app/use-cases/provisions.ts'
 import { createPruneEmbeddingCache } from '#app/use-cases/prune-embedding-cache.ts'
 import { createRefreshCoverage } from '#app/use-cases/refresh-coverage.ts'
 import {
@@ -336,10 +344,11 @@ function createRetrieval(
   resolveReferenceDate: ResolveReferenceDate,
   clock: Clock,
 ): RetrievalUseCases {
-  const checkCoverage = createCheckCoverage({
+  const coverage = createCoverageSource({
     coverageRepository: createPgCoverageRepository(database.db),
     clock,
   })
+  const checkCoverage = createCheckCoverage({ coverage })
   const searchRepository = createPgSearchRepository(database.pool)
   const reviewStatuses = reviewStatusesFor(env.APP_ENV)
   const hybridSearch = createHybridSearch({
@@ -354,7 +363,14 @@ function createRetrieval(
   })
   return {
     checkCoverage,
+    getCoverage: createGetCoverage({ coverage }),
     hybridSearch,
+    provisions: createProvisionUseCases({
+      repository: createPgProvisionRepository(database.pool),
+      reviewStatuses,
+      clock,
+      limit: PROVISION_SEARCH_LIMIT,
+    }),
     retrieveEvidence: createRetrieveEvidence({
       resolveReferenceDate,
       checkCoverage,
@@ -483,6 +499,7 @@ export function createContainer(env: Env, overrides: ContainerOverrides = {}): C
     lifecycle,
     backgroundTasks: platform.backgroundTasks,
     clientIp: platform.clientIp,
+    rateLimitStore: database === null ? null : createPgRateLimitStore(database.pool),
     streamBudget: createStreamBudget(platform.invocationDeadline),
     useCases: {
       getHealth: createGetHealth({ buildInfo, appEnv: env.APP_ENV, lifecycle }),
@@ -495,19 +512,39 @@ export function createContainer(env: Env, overrides: ContainerOverrides = {}): C
   }
 }
 
-export function createHttpOptions(env: Env): HttpOptions {
+/** Janela fixa do rate limit da aplicação (plano: 60 s). */
+const RATE_LIMIT_WINDOW_MS = 60_000
+
+/**
+ * Opções do adapter HTTP. O rate limit da aplicação só é registrado com o store do Postgres (o
+ * `rateLimitStore` do container): memória local não limita nada com várias instâncias.
+ */
+export function createHttpOptions(
+  env: Env,
+  rateLimitStore: RateLimitStore | null = null,
+): HttpOptions {
   const network = platformNetwork(env)
   return {
     trustProxy: network.trustProxy,
     requestIdHeader: network.requestIdHeader,
     eventLoopDelayGuard: network.eventLoopDelayGuard,
     docs: env.APP_ENV !== AppEnv.Production,
+    webOrigin: env.WEB_ORIGIN,
+    // Rotas `/api/v1/_eval/*`: só na stack descartável de CI.
+    evalRoutes: env.APP_ENV === AppEnv.Ci,
     // Plano B (Render): o export do web na mesma origem; relativo ao diretório de trabalho.
     ...(env.WEB_STATIC_DIR === undefined
       ? {}
       : { staticSite: { root: resolvePath(env.WEB_STATIC_DIR) } }),
-    // Sem `rateLimit`: o `PgRateLimitStore` (tabela `app.rate_limits`) chega com o schema, e
-    // nenhuma rota da F1 abre transação. Memória local não serve com várias instâncias.
+    ...(rateLimitStore === null
+      ? {}
+      : {
+          rateLimit: {
+            store: rateLimitStore,
+            max: env.RATE_LIMIT_PER_MINUTE,
+            timeWindowMs: RATE_LIMIT_WINDOW_MS,
+          },
+        }),
   }
 }
 
@@ -542,6 +579,10 @@ export async function createRuntime(env: Env): Promise<Runtime> {
     pretty: env.LOG_PRETTY,
   })
   const container = createContainer(env, { onBackgroundFailure: logBackgroundFailure(logger) })
-  const app = await buildApp({ container, http: createHttpOptions(env), logger })
+  const app = await buildApp({
+    container,
+    http: createHttpOptions(env, container.rateLimitStore),
+    logger,
+  })
   return { app, container, shutdown: platformShutdown(env) }
 }

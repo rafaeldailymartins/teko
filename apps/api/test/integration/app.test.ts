@@ -111,13 +111,27 @@ describe('GET /healthz e /api/healthz', () => {
     }
   })
 
-  it('não registra rate limit de aplicação na F1 (sem store compartilhado)', async () => {
+  it('não registra rate limit de aplicação sem banco (sem store compartilhado)', async () => {
     const { app } = await start('ci')
     expect(app.hasDecorator('rateLimit')).toBe(false)
     for (let i = 0; i < 5; i += 1) {
       const res = await app.inject({ url: '/healthz' })
       expect(res.statusCode).toBe(200)
       expect(res.headers['x-ratelimit-limit']).toBeUndefined()
+    }
+  })
+})
+
+describe('rotas de eval', () => {
+  it.each(['staging', 'production'] as const)('/api/v1/_eval/* dá 404 em %s', async (name) => {
+    const { app } = await start(name)
+    for (const url of [
+      '/api/v1/_eval/search?question=x&referenceDate=2024-01-01&source=explicit',
+      '/api/v1/_eval/answer',
+    ]) {
+      const res = await app.inject({ url })
+      expect(res.statusCode).toBe(404)
+      expect(res.json()).toMatchObject({ code: 'not_found' })
     }
   })
 })
@@ -265,7 +279,18 @@ describe('OpenAPI + Scalar', () => {
       expect(res.statusCode).toBe(200)
       const document = openApiDocumentSchema.parse(res.json())
       expect(document.openapi).toBe('3.1.0')
-      expect(Object.keys(document.paths).sort()).toEqual(['/api/healthz', '/healthz'])
+      const evalPaths = name === 'ci' ? ['/api/v1/_eval/search'] : []
+      expect(Object.keys(document.paths).sort()).toEqual(
+        [
+          '/api/healthz',
+          '/healthz',
+          '/api/v1/coverage',
+          '/api/v1/provisions',
+          '/api/v1/provisions/{stableKey}/diff',
+          '/api/v1/provisions/{stableKey}/timeline',
+          ...evalPaths,
+        ].sort(),
+      )
       expect(document.paths['/api/healthz']?.get.operationId).toBe('getHealth')
       expect(Object.keys(document.paths['/healthz']?.get.responses ?? {}).sort()).toEqual([
         '200',
