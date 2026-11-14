@@ -31,6 +31,7 @@ import {
   createFixtureSeeder,
   createIngestionContainer,
   createIngestionIo,
+  createMaintenance,
   migrateDatabase,
 } from './composition-root.ts'
 import { type Env, EnvValidationError, loadCliEnv, loadWatchEnv } from './config/env.ts'
@@ -52,7 +53,8 @@ import { type Env, EnvValidationError, loadCliEnv, loadWatchEnv } from './config
  * - `seed-dev-session [--email …] [--name …] [--country BR]` (F4): usuário com onboarding e sessão
  *   do Better Auth direto no banco, para o login local e o e2e (só development e ci).
  *
- * `maintenance` (F4) entra aqui também.
+ * - `maintenance purge` (F4): expurgo da manutenção semanal (`PurgeExpiredData`) sobre `DATABASE_URL`
+ *   (role `teko_app`); imprime as contagens em JSON.
  *
  * Códigos de saída: 0 sucesso, 1 falha, 64 uso incorreto, 75 orçamento de neurons esgotado
  * (o `ingest.yml` retoma no dia seguinte).
@@ -75,6 +77,7 @@ const USAGE = [
   '     cli snapshot export [--corpus-version <n>] | snapshot promote (--manifest <chave> | --corpus-version <n>)',
   '     cli eval-fixture export --from staging --out <dir> [--fixture <dir>]',
   '     cli seed-dev-session [--email <e-mail>] [--name <nome>] [--country <ISO>]',
+  '     cli maintenance purge',
 ].join('\n')
 
 /** Saída de uma linha dos subcomandos (JSON que o workflow lê). */
@@ -270,6 +273,20 @@ async function runSeedDevSession(args: readonly string[]): Promise<number> {
   }
 }
 
+async function runMaintenance(args: readonly string[]): Promise<number> {
+  if (args.length !== 1 || args[0] !== 'purge') {
+    console.error(USAGE)
+    return EXIT_USAGE
+  }
+  const maintenance = createMaintenance(loadCliEnv())
+  try {
+    print(JSON.stringify(await maintenance.purge()))
+    return 0
+  } finally {
+    await maintenance.close()
+  }
+}
+
 const COMMANDS: Readonly<Record<string, (args: readonly string[]) => Promise<number>>> = {
   'seed-fixtures': runSeedFixtures,
   ingest: runIngest,
@@ -278,6 +295,7 @@ const COMMANDS: Readonly<Record<string, (args: readonly string[]) => Promise<num
   'sources-watch': runWatch,
   'coverage-mark': runCoverage,
   'seed-dev-session': runSeedDevSession,
+  maintenance: runMaintenance,
 }
 
 function exitCodeOf(error: unknown): number {

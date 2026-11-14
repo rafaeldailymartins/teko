@@ -34,6 +34,8 @@ export interface AuthGateway {
   handle(request: Request): Promise<Response>
   /** Sessão do cookie, ou `null` sem sessão válida. */
   getSession(headers: Headers, options?: GetSessionOptions): Promise<AuthSession | null>
+  /** `Set-Cookie` que apagam os cookies de sessão no navegador (depois de `DELETE /me`). */
+  clearSessionCookies(): readonly string[]
 }
 
 /** Header interno com o IP do cliente resolvido pela porta `ClientIp` (rate limit do Better Auth). */

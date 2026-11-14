@@ -18,6 +18,7 @@ import type { HybridSearch } from './use-cases/hybrid-search.ts'
 import type { IngestDocumentVersion } from './use-cases/ingest-document-version.ts'
 import type { FinishIngestionRun, StartIngestionRun } from './use-cases/ingestion-run.ts'
 import type { InspectCorpus } from './use-cases/inspect-corpus.ts'
+import type { PrivacyUseCases } from './use-cases/privacy.ts'
 import type { PromoteSnapshot } from './use-cases/promote-snapshot.ts'
 import type { ProvisionUseCases } from './use-cases/provisions.ts'
 import type { PruneEmbeddingCache } from './use-cases/prune-embedding-cache.ts'
@@ -61,6 +62,8 @@ interface UseCases {
   readonly users: UserUseCases | null
   /** `null` sem banco ou sem `LLM_PROVIDER` (as rotas de pergunta respondem 503). */
   readonly questions: QuestionUseCases | null
+  /** Exportação e exclusão dos dados do usuário; `null` sem banco. */
+  readonly privacy: PrivacyUseCases | null
 }
 
 /**

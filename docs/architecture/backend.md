@@ -361,7 +361,7 @@ que falha se faltar uma Sensitive. Env var só vale em deployment nova: rotaçã
 Sensitive + redeploy.
 
 **Manutenção semanal** (`weekly-maintenance` do `ops.yml`, domingo 06:00 UTC, environment
-`maintenance`, role `teko_app`): `PurgeExpiredData` (conversas > 90 dias, `pending` > 1 dia →
+`maintenance`, role `teko_app`, pelo `cli maintenance purge`): `PurgeExpiredData` (conversas > 90 dias, `pending` > 1 dia →
 `expired`, cache e janelas de rate limit vencidos). Acorda cada Neon uma vez por semana.
 
 ## Regras de CU-h no Neon

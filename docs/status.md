@@ -145,6 +145,10 @@ proveniência) no lugar do `@google/genai` (sem proveniência em nenhuma versão
   versionado, `POST /api/v1/questions` com `QuotaGuard` sob advisory lock, cache exato e kill switch,
   stream em UI Message Stream v1 com teto próprio e desconexão abortando o LLM, histórico, feedback,
   cota e `POST /api/v1/_eval/answer`. ADRs 0007 e 0019 escritas.
+- `add-privacy-guards` (arquivada em 2026-11-14): `GET /api/v1/me/export`, `DELETE /api/v1/me` com
+  cascata e cookies apagados, sessão do banco nas rotas de DSR e na pergunta, `cli maintenance purge`
+  (retenção de 90 dias) e o registro de tratamento em [`privacy/ropa.md`](privacy/ropa.md). O
+  agendamento semanal fica com o `ops.yml` da F6.
 
 Pendências do mantenedor (fora do repositório), exigidas pelo deploy da F7:
 
