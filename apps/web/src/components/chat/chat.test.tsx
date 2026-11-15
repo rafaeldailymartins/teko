@@ -209,6 +209,8 @@ beforeEach(() => {
       fetchCalls.push(request)
       const { pathname } = new URL(request.url)
       if (pathname === '/api/v1/coverage') return json(COVERAGE)
+      // Painel de histórico (ConversationList): sem conversas, para não somar um alerta de erro.
+      if (pathname === '/api/v1/conversations') return json({ items: [], nextCursor: null })
       if (pathname === '/api/v1/me/quota') {
         return json({
           day: '2026-11-15',
