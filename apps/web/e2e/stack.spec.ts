@@ -18,6 +18,9 @@ function sessionCookie(): string {
 }
 
 test.describe('mesma origem', () => {
+  // A raiz redireciona por `Accept-Language` (platform.spec.ts); aqui o navegador fala pt-BR.
+  test.use({ locale: 'pt-BR' })
+
   test('o estático e o /healthz respondem pela mesma origem', async ({ page, request }) => {
     const response = await page.goto('/')
     expect(response?.ok()).toBe(true)

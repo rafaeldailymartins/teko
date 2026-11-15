@@ -602,7 +602,7 @@ describe('rotas do config.json', () => {
       assert.match(csp, /^default-src 'self'; script-src 'self' 'sha256-/)
       assert.doesNotMatch(csp, /strict-dynamic|script-src[^;]*'unsafe-inline'/)
       const html = readFileSync(join(realOut, file), 'utf8')
-      const inline = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((m) => m[1] ?? '')
+      const inline = [...html.matchAll(/<script>([\s\S]*?)<\/script\s*>/gi)].map((m) => m[1] ?? '')
       assert.ok(inline.length > 0, `${file} tem scripts inline (tema e payload do Next)`)
       for (const content of inline) {
         const hash = createHash('sha256').update(content, 'utf8').digest('base64')
