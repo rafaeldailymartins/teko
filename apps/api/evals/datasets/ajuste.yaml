@@ -8,8 +8,8 @@
 # - pode orientar parâmetros, como o dev;
 # - roda só no corpus-eval, contra o corpus real do staging: quase todos os dispositivos estão fora
 #   da fixture, e as perguntas não têm vetor nela;
-# - gate próprio (retrieval-ajuste): vigência, recusa, clarificação, data de referência e sem
-#   resposta travadas em 1,00; recall@10 e MRR informativos, para não baixar os gates do dev.
+# - gate próprio (retrieval-ajuste): vigência e data de referência travadas em 1,00 (só há casos
+#   com resposta); recall@10 e MRR informativos, para não baixar os gates do dev.
 #
 # Os casos vieram do holdout sem mudança no esperado (id com ajuste- no lugar de hold- e a tag
 # ex-holdout); revisados pelo mantenedor em 2026-11-13.
