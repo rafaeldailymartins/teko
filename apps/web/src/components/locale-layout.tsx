@@ -7,6 +7,7 @@ import { Providers } from '@/components/providers'
 import { FONT_VARIABLES_CLASS_NAME } from '@/components/ui/fonts'
 import { SkipLink } from '@/components/ui/skip-link'
 import { ThemeScript } from '@/components/ui/theme-script'
+import { clientMessages, loadMessages } from '@/lib/i18n/messages'
 import { openGraphAlternateLocales, openGraphLocale, routing } from '@/lib/i18n/routing'
 import { MAIN_CONTENT_ID, PRODUCT_NAME, SITE_ORIGIN } from '@/lib/site'
 
@@ -64,8 +65,11 @@ export async function LocaleLayout({ children, params }: LocaleLayoutProps) {
       <body>
         <ThemeScript />
         <SkipLink targetId={MAIN_CONTENT_ID}>{t('skipToContent')}</SkipLink>
-        {/* Herda locale, mensagens e fuso do `i18n/request.ts` para os componentes de cliente. */}
-        <NextIntlClientProvider>
+        {/*
+          Herda locale e fuso do `i18n/request.ts`. As mensagens vão sem os namespaces só de
+          servidor (texto legal e "Sobre"), que não precisam ir no HTML de toda página.
+        */}
+        <NextIntlClientProvider messages={clientMessages(await loadMessages(locale))}>
           <Providers>
             {/* Contexto de empilhamento próprio: os popups do Base UI (portais) ficam por cima. */}
             <div className="isolate">{children}</div>

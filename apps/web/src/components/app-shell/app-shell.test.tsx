@@ -5,6 +5,7 @@ import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Providers } from '@/components/providers'
+import { REJECT_ALL, writeConsent } from '@/lib/consent/storage'
 import { THEME_ATTRIBUTE, THEME_STORAGE_KEY } from '@/lib/theme'
 import ptBR from '../../../messages/pt-BR.json'
 import { AppHeader } from './app-header.tsx'
@@ -101,6 +102,8 @@ beforeEach(() => {
   navigation.pathname = '/pt-BR/chat'
   navigation.push.mockReset()
   localStorage.clear()
+  // Escolha de consentimento já feita: o banner (testado em consent-provider.test.tsx) fica fora.
+  writeConsent(localStorage, REJECT_ALL)
   document.documentElement.removeAttribute(THEME_ATTRIBUTE)
   setViewportWidth(1280)
 })

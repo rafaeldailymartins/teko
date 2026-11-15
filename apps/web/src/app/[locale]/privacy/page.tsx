@@ -1,4 +1,4 @@
 export {
   generatePrivacyMetadata as generateMetadata,
   PrivacyPage as default,
-} from '@/components/pages/placeholder-pages'
+} from '@/components/pages/legal-pages'

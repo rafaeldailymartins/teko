@@ -3,6 +3,7 @@ import { hasLocale } from 'next-intl'
 import { getTranslations, setRequestLocale } from 'next-intl/server'
 import type { ReactNode } from 'react'
 import { SessionGate } from '@/components/auth/session-gate'
+import { ConsentPreferencesButton } from '@/components/consent/consent-provider'
 import { routing } from '@/lib/i18n/routing'
 import { MAIN_CONTENT_ID } from '@/lib/site'
 import { AppHeader } from './app-header.tsx'
@@ -37,8 +38,9 @@ export async function AppShellLayout({ children, params }: AppShellLayoutProps) 
       >
         {children}
       </main>
-      <footer className="shrink-0 border-t bg-surface px-4 py-1.5">
-        <p className="text-center text-muted-foreground text-xs">{t('disclaimer')}</p>
+      <footer className="flex shrink-0 flex-wrap items-center justify-center gap-x-4 border-t bg-surface px-4 py-1.5 text-muted-foreground text-xs">
+        <p>{t('disclaimer')}</p>
+        <ConsentPreferencesButton className="inline-flex min-h-6 cursor-pointer items-center underline-offset-4 hover:text-foreground hover:underline" />
       </footer>
     </div>
   )
