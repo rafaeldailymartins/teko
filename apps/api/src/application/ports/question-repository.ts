@@ -119,6 +119,27 @@ export interface QuestionRecord extends NewQuestion {
   readonly createdAt: Date
 }
 
+/**
+ * Posição na lista de conversas: a última pergunta da conversa anterior e o id dela. O instante vai
+ * como texto UTC com microssegundos (`2026-11-10T15:00:00.123456Z`), a precisão do Postgres: um
+ * `Date` perderia os microssegundos e a página seguinte repetiria ou pularia conversas.
+ */
+export interface ConversationCursor {
+  readonly lastAskedAt: string
+  readonly conversationId: string
+}
+
+/** Uma conversa agregada a partir das perguntas dela. */
+export interface ConversationRecord {
+  readonly conversationId: string
+  /** Primeira pergunta (redigida), de onde sai o título. */
+  readonly firstQuestion: string
+  readonly questionCount: number
+  /** Instante da última pergunta, com a precisão do banco (é o cursor). */
+  readonly lastAskedAt: string
+  readonly lastReferenceDate: IsoDate
+}
+
 export interface QuestionRepository {
   insertFinished(question: FinishedQuestion): Promise<string>
   /**
@@ -144,6 +165,15 @@ export interface QuestionRepository {
     conversationId: string,
     limit: number,
   ): Promise<QuestionRecord[]>
+  /**
+   * Conversas do usuário, da última pergunta mais recente para a mais antiga (empate pelo id da
+   * conversa, decrescente), começando depois de `after`.
+   */
+  listConversations(
+    userId: string,
+    after: ConversationCursor | null,
+    limit: number,
+  ): Promise<ConversationRecord[]>
   /** `false` quando a pergunta não existe para o usuário. */
   recordFeedback(
     questionId: string,

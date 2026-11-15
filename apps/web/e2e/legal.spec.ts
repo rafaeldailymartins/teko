@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test'
 import { TERMS_VERSION } from '@teko/shared/legal'
 import en from '../messages/en.json' with { type: 'json' }
 import ptBR from '../messages/pt-BR.json' with { type: 'json' }
-import { enforcedCspViolations, recordCspViolations } from './csp.ts'
+import { enforcedViolations, recordViolations } from './support/csp.ts'
 
 /**
  * Páginas legais e "Sobre" nos dois idiomas: título, `lang` do documento, versão dos Termos igual à
@@ -26,7 +26,7 @@ for (const locale of ['pt-BR', 'en'] as const) {
       test(`/${locale}/${path}/ tem título, sumário com âncoras e nenhuma violação de CSP`, async ({
         page,
       }) => {
-        await recordCspViolations(page)
+        await recordViolations(page)
         const response = await page.goto(`/${locale}/${path}/`)
         expect(response?.status()).toBe(200)
         await expect(page.locator('html')).toHaveAttribute('lang', locale)
@@ -57,7 +57,7 @@ for (const locale of ['pt-BR', 'en'] as const) {
         expect(fontFamily).toMatch(/serif/i)
 
         await page.waitForLoadState('networkidle')
-        expect(await enforcedCspViolations(page)).toEqual([])
+        expect(await enforcedViolations(page)).toEqual([])
       })
     }
 

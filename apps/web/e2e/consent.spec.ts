@@ -1,6 +1,6 @@
 import { type BrowserContext, expect, type Page, test } from '@playwright/test'
 import ptBR from '../messages/pt-BR.json' with { type: 'json' }
-import { enforcedCspViolations, recordCspViolations } from './csp.ts'
+import { enforcedViolations, recordViolations } from './support/csp.ts'
 
 /**
  * Consentimento LGPD (DoD da F5): antes da escolha, zero cookies e nenhuma chave do PostHog no
@@ -58,7 +58,7 @@ function storedChoice(storage: BrowserStorage): { analytics: boolean; surveys: b
 
 test.describe('consentimento', () => {
   test.beforeEach(async ({ page }) => {
-    await recordCspViolations(page)
+    await recordViolations(page)
   })
 
   test('primeira visita: banner, zero cookies e nada gravado no storage', async ({
@@ -75,7 +75,7 @@ test.describe('consentimento', () => {
     await expectNothingStored(page, context)
     expect((await browserStorage(page)).local).toEqual({})
     expect(posthog).toEqual([])
-    expect(await enforcedCspViolations(page)).toEqual([])
+    expect(await enforcedViolations(page)).toEqual([])
   })
 
   test('Aceitar, Recusar e Personalizar têm o mesmo peso visual', async ({ page }) => {
@@ -114,7 +114,7 @@ test.describe('consentimento', () => {
     await expect(page.getByTestId('consent-banner')).toBeHidden()
     expect(await context.cookies()).toEqual([])
     expect(posthog).toEqual([])
-    expect(await enforcedCspViolations(page)).toEqual([])
+    expect(await enforcedViolations(page)).toEqual([])
   })
 
   test('Aceitar grava a escolha; sem a chave pública no build, nada do PostHog carrega', async ({
@@ -133,7 +133,7 @@ test.describe('consentimento', () => {
     expect(storedChoice(await browserStorage(page))).toEqual({ analytics: true, surveys: true })
     await expectNothingStored(page, context)
     expect(posthog).toEqual([])
-    expect(await enforcedCspViolations(page)).toEqual([])
+    expect(await enforcedViolations(page)).toEqual([])
   })
 
   test('Personalizar e o link do rodapé abrem as preferências por categoria', async ({ page }) => {
@@ -158,6 +158,6 @@ test.describe('consentimento', () => {
     await dialog.getByRole('button', { name: preferences.rejectAll, exact: true }).click()
     await expect(dialog).toBeHidden()
     expect(storedChoice(await browserStorage(page))).toEqual({ analytics: false, surveys: false })
-    expect(await enforcedCspViolations(page)).toEqual([])
+    expect(await enforcedViolations(page)).toEqual([])
   })
 })

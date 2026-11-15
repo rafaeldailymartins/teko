@@ -4,6 +4,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest
 import { apiClient } from './client.ts'
 import { ApiError } from './errors.ts'
 import {
+  conversationsQuery,
   coverageQuery,
   historyQuery,
   meQuery,
@@ -139,6 +140,22 @@ describe('consultas', () => {
       provisionSearchQuery(' art. 76 ', { periodoApuracao: '2024-03' }),
     )
     expect(Object.fromEntries(lastUrl().searchParams)).toEqual({ q: 'art. 76', at: '2024-03-01' })
+  })
+
+  it('conversationsQuery pagina pelo cursor: sem cursor na primeira, o nextCursor nas seguintes', async () => {
+    const pages = [
+      { items: [{ conversationId: ID }], nextCursor: 'cursor_2' },
+      { items: [], nextCursor: null },
+    ]
+    mockFetch(() => json(pages[requests.length - 1]))
+    const client = noRetryClient()
+    const data = await client.fetchInfiniteQuery({ ...conversationsQuery(), pages: 2 })
+    expect(requests.map((request) => new URL(request.url).search)).toEqual(['', '?cursor=cursor_2'])
+    expect(lastUrl().pathname).toBe('/api/v1/conversations')
+    expect(data.pages).toEqual(pages)
+    const options = conversationsQuery()
+    expect(options.getNextPageParam(pages[0] as never, [], {}, [])).toBe('cursor_2')
+    expect(options.getNextPageParam(pages[1] as never, [], {}, [])).toBeUndefined()
   })
 })
 

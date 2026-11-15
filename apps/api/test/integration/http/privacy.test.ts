@@ -1,5 +1,9 @@
 import { randomUUID } from 'node:crypto'
-import { askQuestionResponseSchema, meExportSchema } from '@teko/shared/contracts'
+import {
+  askQuestionResponseSchema,
+  conversationListResponseSchema,
+  meExportSchema,
+} from '@teko/shared/contracts'
 import type { FastifyInstance } from 'fastify'
 import pg from 'pg'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
@@ -123,6 +127,10 @@ describe('DELETE /api/v1/me', () => {
   it('apaga tudo do usuário, limpa os cookies e o mesmo cookie não lê mais dados', async () => {
     const { cookie, userId } = await newUser()
     const questionId = await askAndAnswer(cookie)
+    const before = conversationListResponseSchema.parse(
+      (await app.inject({ url: '/api/v1/conversations', headers: { cookie } })).json(),
+    )
+    expect(before.items).toHaveLength(1)
     const foreign = await app.inject({ method: 'DELETE', url: '/api/v1/me', headers: { cookie } })
     expect(foreign.statusCode).toBe(403)
 
@@ -157,6 +165,9 @@ describe('DELETE /api/v1/me', () => {
       (await app.inject({ url: `/api/v1/questions/${questionId}`, headers: { cookie } }))
         .statusCode,
     ).toBeGreaterThanOrEqual(401)
+    expect(
+      (await app.inject({ url: '/api/v1/conversations', headers: { cookie } })).statusCode,
+    ).toBe(401)
     const ask = await app.inject({
       method: 'POST',
       url: '/api/v1/questions',

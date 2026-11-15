@@ -2,7 +2,7 @@
 
 import { HistoryIcon, QuoteIcon } from 'lucide-react'
 import { useTranslations } from 'next-intl'
-import { type ReactNode, useId, useState } from 'react'
+import { createContext, type ReactNode, useContext, useId, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import {
   Drawer,
@@ -23,6 +23,19 @@ interface WorkspaceProps {
   readonly citation: ReactNode
   /** A conversa: o painel central, que nunca é desmontado ao trocar de layout. */
   readonly children: ReactNode
+}
+
+const noop = () => {}
+
+/** Fecha o Sheet do histórico no celular (no desktop o painel fica aberto e nada acontece). */
+const CloseHistoryContext = createContext<() => void>(noop)
+
+/**
+ * Para o conteúdo do histórico fechar o Sheet ao abrir uma conversa: a navegação só troca a query
+ * (`?c=`), a página não muda e o Sheet ficaria aberto. Fora do workspace, não faz nada.
+ */
+export function useCloseHistoryPanel(): () => void {
+  return useContext(CloseHistoryContext)
 }
 
 interface SidePanelProps {
@@ -60,59 +73,62 @@ export function Workspace({ history, citation, children }: WorkspaceProps) {
   const isDesktop = useMediaQuery(DESKTOP_MEDIA_QUERY, true)
   const [historyOpen, setHistoryOpen] = useState(false)
   const [citationOpen, setCitationOpen] = useState(false)
+  const closeHistory = () => setHistoryOpen(false)
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
-      <div className="flex shrink-0 items-center justify-between gap-2 border-b px-3 py-2 md:hidden">
-        <Sheet open={historyOpen && !isDesktop} onOpenChange={setHistoryOpen}>
-          <SheetTrigger render={<Button variant="outline" size="sm" />}>
-            <HistoryIcon aria-hidden="true" />
-            {t('history')}
-          </SheetTrigger>
-          <SheetContent side="left" closeLabel={tCommon('close')}>
-            <SheetHeader>
-              <SheetTitle>{t('history')}</SheetTitle>
-            </SheetHeader>
-            <ScrollArea className="min-h-0 flex-1">{history}</ScrollArea>
-          </SheetContent>
-        </Sheet>
-        <Drawer open={citationOpen && !isDesktop} onOpenChange={setCitationOpen}>
-          <DrawerTrigger render={<Button variant="outline" size="sm" />}>
-            <QuoteIcon aria-hidden="true" />
-            {t('citation')}
-          </DrawerTrigger>
-          <DrawerContent>
-            <DrawerHeader>
-              <DrawerTitle>{t('citation')}</DrawerTitle>
-            </DrawerHeader>
-            <div className="min-h-0 overflow-y-auto pb-6">{citation}</div>
-          </DrawerContent>
-        </Drawer>
-      </div>
+    <CloseHistoryContext value={closeHistory}>
+      <div className="flex h-full min-h-0 flex-col">
+        <div className="flex shrink-0 items-center justify-between gap-2 border-b px-3 py-2 md:hidden">
+          <Sheet open={historyOpen && !isDesktop} onOpenChange={setHistoryOpen}>
+            <SheetTrigger render={<Button variant="outline" size="sm" />}>
+              <HistoryIcon aria-hidden="true" />
+              {t('history')}
+            </SheetTrigger>
+            <SheetContent side="left" closeLabel={tCommon('close')}>
+              <SheetHeader>
+                <SheetTitle>{t('history')}</SheetTitle>
+              </SheetHeader>
+              <ScrollArea className="min-h-0 flex-1">{history}</ScrollArea>
+            </SheetContent>
+          </Sheet>
+          <Drawer open={citationOpen && !isDesktop} onOpenChange={setCitationOpen}>
+            <DrawerTrigger render={<Button variant="outline" size="sm" />}>
+              <QuoteIcon aria-hidden="true" />
+              {t('citation')}
+            </DrawerTrigger>
+            <DrawerContent>
+              <DrawerHeader>
+                <DrawerTitle>{t('citation')}</DrawerTitle>
+              </DrawerHeader>
+              <div className="min-h-0 overflow-y-auto pb-6">{citation}</div>
+            </DrawerContent>
+          </Drawer>
+        </div>
 
-      <ResizablePanelGroup
-        orientation="horizontal"
-        className="min-h-0 flex-1 max-md:[&>:not(:has([data-workspace-thread]))]:hidden"
-      >
-        {isDesktop && (
-          <ResizablePanel id="history" defaultSize="22%" minSize="15%" maxSize="35%" collapsible>
-            <SidePanel title={t('history')}>{history}</SidePanel>
+        <ResizablePanelGroup
+          orientation="horizontal"
+          className="min-h-0 flex-1 max-md:[&>:not(:has([data-workspace-thread]))]:hidden"
+        >
+          {isDesktop && (
+            <ResizablePanel id="history" defaultSize="22%" minSize="15%" maxSize="35%" collapsible>
+              <SidePanel title={t('history')}>{history}</SidePanel>
+            </ResizablePanel>
+          )}
+          {isDesktop && <ResizableHandle withHandle aria-label={t('resizeHistory')} />}
+          <ResizablePanel id="thread" minSize="35%">
+            {/* `data-workspace-thread`: a regra CSS do grupo esconde os outros painéis no celular. */}
+            <div data-workspace-thread="" className="h-full min-h-0 overflow-y-auto">
+              {children}
+            </div>
           </ResizablePanel>
-        )}
-        {isDesktop && <ResizableHandle withHandle aria-label={t('resizeHistory')} />}
-        <ResizablePanel id="thread" minSize="35%">
-          {/* `data-workspace-thread`: a regra CSS do grupo esconde os outros painéis no celular. */}
-          <div data-workspace-thread="" className="h-full min-h-0 overflow-y-auto">
-            {children}
-          </div>
-        </ResizablePanel>
-        {isDesktop && <ResizableHandle withHandle aria-label={t('resizeCitation')} />}
-        {isDesktop && (
-          <ResizablePanel id="citation" defaultSize="28%" minSize="20%" maxSize="45%" collapsible>
-            <SidePanel title={t('citation')}>{citation}</SidePanel>
-          </ResizablePanel>
-        )}
-      </ResizablePanelGroup>
-    </div>
+          {isDesktop && <ResizableHandle withHandle aria-label={t('resizeCitation')} />}
+          {isDesktop && (
+            <ResizablePanel id="citation" defaultSize="28%" minSize="20%" maxSize="45%" collapsible>
+              <SidePanel title={t('citation')}>{citation}</SidePanel>
+            </ResizablePanel>
+          )}
+        </ResizablePanelGroup>
+      </div>
+    </CloseHistoryContext>
   )
 }

@@ -1,4 +1,4 @@
-import { BookOpenTextIcon, GitCompareArrowsIcon, LogInIcon, type LucideIcon } from 'lucide-react'
+import { LogInIcon, type LucideIcon } from 'lucide-react'
 import { getTranslations } from 'next-intl/server'
 import type { ReactNode } from 'react'
 import { PAGE_ICONS } from '@/components/app-shell/page-icons'
@@ -9,15 +9,18 @@ import { isAppPage, type Page } from '@/lib/navigation'
 import { MAIN_CONTENT_ID } from '@/lib/site'
 import { type LocalePageProps, pageMetadata, resolvePageLocale } from './page-route.ts'
 
-/** Páginas que ainda são esqueleto (as legais e o "Sobre" ficam em `legal-pages.tsx`). */
-type PlaceholderPage = Exclude<Page, 'chat' | 'about' | 'privacy' | 'terms'>
+/**
+ * Páginas que ainda são esqueleto (chat, histórico, dispositivo e comparação já têm tela; as legais e
+ * o "Sobre" ficam em `legal-pages.tsx`).
+ */
+type PlaceholderPage = Exclude<
+  Page,
+  'chat' | 'history' | 'provision' | 'compare' | 'about' | 'privacy' | 'terms'
+>
 
 const ICONS: Readonly<Record<PlaceholderPage, LucideIcon>> = {
-  history: PAGE_ICONS.history,
   settings: PAGE_ICONS.settings,
   coverage: PAGE_ICONS.coverage,
-  provision: BookOpenTextIcon,
-  compare: GitCompareArrowsIcon,
   'sign-in': LogInIcon,
 }
 
@@ -62,25 +65,10 @@ async function PlaceholderPageView({ page, params }: PlaceholderPageViewProps) {
   )
 }
 
-export function HistoryPage({ params }: LocalePageProps) {
-  return <PlaceholderPageView page="history" params={params} />
-}
-export const generateHistoryMetadata = pageMetadata('history')
-
 export function SettingsPage({ params }: LocalePageProps) {
   return <PlaceholderPageView page="settings" params={params} />
 }
 export const generateSettingsMetadata = pageMetadata('settings')
-
-export function ProvisionPage({ params }: LocalePageProps) {
-  return <PlaceholderPageView page="provision" params={params} />
-}
-export const generateProvisionMetadata = pageMetadata('provision')
-
-export function ComparePage({ params }: LocalePageProps) {
-  return <PlaceholderPageView page="compare" params={params} />
-}
-export const generateCompareMetadata = pageMetadata('compare')
 
 export function CoveragePage({ params }: LocalePageProps) {
   return <PlaceholderPageView page="coverage" params={params} />
