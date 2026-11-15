@@ -1,4 +1,4 @@
 export {
   AboutPage as default,
   generateAboutMetadata as generateMetadata,
-} from '@/components/pages/placeholder-pages'
+} from '@/components/pages/legal-pages'

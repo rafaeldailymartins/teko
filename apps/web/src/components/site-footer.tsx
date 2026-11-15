@@ -1,5 +1,6 @@
 import type { Locale } from '@teko/shared/i18n'
 import { getTranslations } from 'next-intl/server'
+import { ConsentPreferencesButton } from '@/components/consent/consent-provider'
 import { localePagePath } from '@/lib/navigation'
 import { REPOSITORY_URL } from '@/lib/site'
 
@@ -31,6 +32,9 @@ export async function SiteFooter({ locale }: SiteFooterProps) {
                 </a>
               </li>
             ))}
+            <li>
+              <ConsentPreferencesButton className="inline-flex min-h-6 cursor-pointer items-center underline-offset-4 hover:text-foreground hover:underline" />
+            </li>
           </ul>
           <p>
             {t('license')}{' '}
