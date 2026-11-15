@@ -59,10 +59,18 @@ cliente gerado.
 ## Dados e streaming
 
 - Cliente gerado do OpenAPI (`@hey-api/openapi-ts`, `client-fetch` com `baseUrl: '/api'`, SDK e
-  TanStack Query). O CI faz `git diff --exit-code` no código gerado.
-- TanStack Query (`staleTime: 60_000`, keys com `referenceDate` quando a resposta depende dela),
-  Form (schemas de `@teko/shared`), Table, Virtual, Pacer e Hotkeys (os dois últimos atrás de
-  adapters em `src/lib`).
+  TanStack Query) em `src/lib/api/__generated__/`. A fonte é `apps/web/openapi.json`, exportado pela
+  CLI da API (`pnpm --filter @teko/api openapi:export`, sem servidor nem banco): caminhos relativos a
+  `servers: [{ url: '/api' }]`, versão fixa e ordem estável. `pnpm --filter @teko/web api:generate`
+  regenera os dois; o `pnpm api:check` (no `verify` e no job `lint` do CI) falha se algum deles
+  difere do git.
+- Erros: um interceptor do cliente converte Problem Details em `ApiError` (`code: ErrorCode`,
+  `retryable`, `traceId`, cota), e a UI mostra `t(error.messageKey)` (`errors.<code>`).
+- TanStack Query (`staleTime: 60_000`, retry só de erro transitório; keys com a data efetiva de
+  referência quando a resposta depende dela), options em `src/lib/api/queries.ts` e hooks em
+  `src/lib/api/hooks.ts`; provider em `src/components/providers.tsx`, com o adapter do nuqs (parsers
+  de `q`, `c` e `ref` em `src/lib/url-state.ts`). Form (schemas de `@teko/shared`), Table, Virtual,
+  Pacer e Hotkeys (os dois últimos atrás de adapters em `src/lib`).
 - **Chat:** `useChat<TekoUIMessage>` com transporte próprio em `src/lib/api/chat-transport.ts`:
 
 ```ts

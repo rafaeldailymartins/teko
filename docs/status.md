@@ -172,6 +172,14 @@ a primário, com o Flash de reserva, e o breaker do 429 distingue a cota diária
 
 O que o deploy exige do mantenedor está em [Antes da F7](#antes-da-f7-o-que-o-mantenedor-faz).
 
+## F5: frontend completo (em andamento)
+
+- `add-web-data-layer`: OpenAPI versionado em `apps/web/openapi.json` (exportado pela CLI da API,
+  sem servidor nem banco), cliente `@hey-api/openapi-ts` com gate de drift (`pnpm api:check`, no
+  `verify` e no job `lint`), TanStack Query, `ApiError` a partir de Problem Details, parsers do nuqs
+  (`q`, `c`, `ref`) e hooks de leitura. O item "cliente gerado sem drift" do DoD fica coberto pelo
+  gate.
+
 ## Antes da F7: o que o mantenedor faz
 
 Lista única das ações fora do repositório que o deploy da F7 exige. O agente que começa a F7

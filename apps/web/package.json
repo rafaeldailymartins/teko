@@ -11,16 +11,20 @@
     "typecheck": "tsc -p tsconfig.json --incremental false",
     "test:unit": "vitest run --coverage",
     "type-coverage": "type-coverage --at-least 99 --strict --ignore-catch",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "api:generate": "pnpm --filter @teko/api openapi:export && openapi-ts"
   },
   "dependencies": {
+    "@tanstack/react-query": "catalog:",
     "@teko/shared": "workspace:*",
     "next": "catalog:",
     "next-intl": "catalog:",
+    "nuqs": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:"
   },
   "devDependencies": {
+    "@hey-api/openapi-ts": "catalog:",
     "@playwright/test": "catalog:",
     "@tailwindcss/postcss": "catalog:",
     "@types/node": "catalog:",

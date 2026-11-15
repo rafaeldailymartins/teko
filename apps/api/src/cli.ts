@@ -1,3 +1,5 @@
+import { mkdir, writeFile } from 'node:fs/promises'
+import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parseArgs } from 'node:util'
 import { isoDateInTimeZone } from '@teko/shared/vigencia'
@@ -32,6 +34,7 @@ import {
   createIngestionContainer,
   createIngestionIo,
   createMaintenance,
+  exportWebOpenApi,
   migrateDatabase,
 } from './composition-root.ts'
 import { type Env, EnvValidationError, loadCliEnv, loadWatchEnv } from './config/env.ts'
@@ -56,6 +59,9 @@ import { type Env, EnvValidationError, loadCliEnv, loadWatchEnv } from './config
  * - `maintenance purge` (F4): expurgo da manutenção semanal (`PurgeExpiredData`) sobre `DATABASE_URL`
  *   (role `teko_app`); imprime as contagens em JSON.
  *
+ * - `openapi export [--out <arquivo>]` (F5): grava o OpenAPI versionado da web (padrão
+ *   `apps/web/openapi.json`), sem banco e sem servidor; fonte do cliente gerado do web.
+ *
  * Códigos de saída: 0 sucesso, 1 falha, 64 uso incorreto, 75 orçamento de neurons esgotado
  * (o `ingest.yml` retoma no dia seguinte).
  */
@@ -68,6 +74,7 @@ const MIGRATIONS_FOLDER = fileURLToPath(new URL('../drizzle/migrations', import.
 const CORPUS_DIR = fileURLToPath(new URL('../../../corpus', import.meta.url))
 const CORPUS_LOCK_FILE = fileURLToPath(new URL('../../../corpus/corpus.lock.json', import.meta.url))
 const OVERRIDES_DIR = fileURLToPath(new URL('../../../corpus/overrides', import.meta.url))
+const WEB_OPENAPI_FILE = fileURLToPath(new URL('../../web/openapi.json', import.meta.url))
 const WATCH_CONFIG_FILE = fileURLToPath(new URL('../../../corpus/watch.yaml', import.meta.url))
 
 const USAGE = [
@@ -78,6 +85,7 @@ const USAGE = [
   '     cli eval-fixture export --from staging --out <dir> [--fixture <dir>]',
   '     cli seed-dev-session [--email <e-mail>] [--name <nome>] [--country <ISO>]',
   '     cli maintenance purge',
+  '     cli openapi export [--out <arquivo>]',
 ].join('\n')
 
 /** Saída de uma linha dos subcomandos (JSON que o workflow lê). */
@@ -287,6 +295,24 @@ async function runMaintenance(args: readonly string[]): Promise<number> {
   }
 }
 
+async function runOpenApi(args: readonly string[]): Promise<number> {
+  const [subcommand, ...rest] = args
+  if (subcommand !== 'export') {
+    console.error(USAGE)
+    return EXIT_USAGE
+  }
+  const { values } = parseArgs({
+    args: rest,
+    options: { out: { type: 'string', default: WEB_OPENAPI_FILE } },
+    strict: true,
+  })
+  const target = resolve(values.out)
+  await mkdir(dirname(target), { recursive: true })
+  await writeFile(target, await exportWebOpenApi())
+  print(target)
+  return 0
+}
+
 const COMMANDS: Readonly<Record<string, (args: readonly string[]) => Promise<number>>> = {
   'seed-fixtures': runSeedFixtures,
   ingest: runIngest,
@@ -296,6 +322,7 @@ const COMMANDS: Readonly<Record<string, (args: readonly string[]) => Promise<num
   'coverage-mark': runCoverage,
   'seed-dev-session': runSeedDevSession,
   maintenance: runMaintenance,
+  openapi: runOpenApi,
 }
 
 function exitCodeOf(error: unknown): number {

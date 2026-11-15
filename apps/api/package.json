@@ -36,7 +36,8 @@
     "eval:retrieval:ajuste": "promptfoo eval -c evals/retrieval/ajuste.promptfooconfig.yaml --no-cache --no-write --no-progress-bar --no-table -o reports/retrieval-evals-ajuste.json",
     "eval:retrieval:check:ajuste": "node evals/scripts/check-thresholds.ts reports/retrieval-evals-ajuste.json retrieval-ajuste",
     "eval:corpus:record": "node evals/scripts/corpus-eval-record.ts",
-    "seed:dev-session": "node --env-file-if-exists=.env src/cli.ts seed-dev-session"
+    "seed:dev-session": "node --env-file-if-exists=.env src/cli.ts seed-dev-session",
+    "openapi:export": "node src/cli.ts openapi export"
   },
   "dependencies": {
     "@ai-sdk/google": "catalog:",

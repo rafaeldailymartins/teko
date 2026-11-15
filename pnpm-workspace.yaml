@@ -140,3 +140,6 @@ catalog:
   babel-plugin-react-compiler: 1.0.0
   next-intl: 4.14.9
   "@playwright/test": 1.65.0 # e2e na stack de CI (Chromium + viewport mobile); browsers baixados no job
+  "@tanstack/react-query": 5.107.1 # cache de dados do web (F5): hooks sobre o cliente gerado do OpenAPI
+  nuqs: 2.10.2 # estado em query string no export estático (q, c, ref); 2.10.3 tinha menos de 7 dias
+  "@hey-api/openapi-ts": 0.99.0 # CLI que gera o cliente fetch, o SDK e as queries do OpenAPI da API
