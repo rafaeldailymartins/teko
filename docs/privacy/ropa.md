@@ -24,6 +24,11 @@ comerciais.
 | Contadores de uso por dia                                                            | cotas do serviço gratuito                           | legítimo interesse, IX                 | `app.usage_daily`                    | até a exclusão da conta                  |
 | IP e chave de usuário nas janelas de rate limit                                      | proteção contra abuso                               | legítimo interesse, IX                 | `app.rate_limits`, `auth.rate_limit` | janela de 60 s; vencidas saem na semana  |
 
+No navegador, sem consentimento por serem necessários: o cookie de sessão, a preferência de tema
+(`localStorage['teko-theme']`) e a escolha de consentimento (`localStorage['teko-consent']`, com a
+versão da política e o momento, gravada só depois da decisão). Medição de uso e pesquisas dependem
+dessa escolha.
+
 A pergunta crua nunca é gravada nem enviada: a redação de PII roda antes de qualquer uso, e os
 logs de runtime não a registram.
 

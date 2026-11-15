@@ -188,6 +188,11 @@ O que o deploy exige do mantenedor está em [Antes da F7](#antes-da-f7-o-que-o-m
   microssegundos), histórico no painel do chat e em `/history/`, página de dispositivo com badge de
   vigência, linha do tempo e "O que mudou" sob demanda, busca de dispositivos, comparação entre
   datas (RCTE, art. 76, § 6º, 05/2008 contra 01/2010) e o e2e `history.spec.ts`.
+- `add-i18n-en-ptbr` (arquivada em 2026-11-15): `/privacy`, `/terms` e `/about` com texto real nos
+  dois idiomas (revisão jurídica do mantenedor pendente, lista no PR), `TERMS_VERSION` em
+  `@teko/shared/legal`, banner LGPD com preferências e adapter de analytics no-op (o `posthog-js`
+  fica para a F6), paridade com diff, helper de datas e e2e de consentimento e páginas legais. O item
+  "zero cookies e zero chaves do PostHog antes do consentimento" do DoD fica coberto pelo e2e.
 
 ## Antes da F7: o que o mantenedor faz
 

@@ -9,15 +9,18 @@ import { isAppPage, type Page } from '@/lib/navigation'
 import { MAIN_CONTENT_ID } from '@/lib/site'
 import { type LocalePageProps, pageMetadata, resolvePageLocale } from './page-route.ts'
 
-/** As páginas que ainda são esqueleto (chat, histórico, dispositivo e comparação já têm tela). */
-type PlaceholderPage = Exclude<Page, 'chat' | 'history' | 'provision' | 'compare'>
+/**
+ * Páginas que ainda são esqueleto (chat, histórico, dispositivo e comparação já têm tela; as legais e
+ * o "Sobre" ficam em `legal-pages.tsx`).
+ */
+type PlaceholderPage = Exclude<
+  Page,
+  'chat' | 'history' | 'provision' | 'compare' | 'about' | 'privacy' | 'terms'
+>
 
 const ICONS: Readonly<Record<PlaceholderPage, LucideIcon>> = {
   settings: PAGE_ICONS.settings,
   coverage: PAGE_ICONS.coverage,
-  about: PAGE_ICONS.about,
-  privacy: PAGE_ICONS.privacy,
-  terms: PAGE_ICONS.terms,
   'sign-in': LogInIcon,
 }
 
@@ -71,21 +74,6 @@ export function CoveragePage({ params }: LocalePageProps) {
   return <PlaceholderPageView page="coverage" params={params} />
 }
 export const generateCoverageMetadata = pageMetadata('coverage')
-
-export function AboutPage({ params }: LocalePageProps) {
-  return <PlaceholderPageView page="about" params={params} />
-}
-export const generateAboutMetadata = pageMetadata('about')
-
-export function PrivacyPage({ params }: LocalePageProps) {
-  return <PlaceholderPageView page="privacy" params={params} />
-}
-export const generatePrivacyMetadata = pageMetadata('privacy')
-
-export function TermsPage({ params }: LocalePageProps) {
-  return <PlaceholderPageView page="terms" params={params} />
-}
-export const generateTermsMetadata = pageMetadata('terms')
 
 export function SignInPage({ params }: LocalePageProps) {
   return <PlaceholderPageView page="sign-in" params={params} />

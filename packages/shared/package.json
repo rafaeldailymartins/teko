@@ -2,7 +2,7 @@
   "name": "@teko/shared",
   "version": "0.0.0",
   "private": true,
-  "description": "Contratos, erros, vigência, PII, analytics e chaves de i18n compartilhados por web e api",
+  "description": "Contratos, erros, vigência, PII, analytics, chaves de i18n e versões dos textos legais compartilhados por web e api",
   "license": "MIT",
   "type": "module",
   "exports": {
@@ -12,7 +12,8 @@
     "./vigencia": "./src/vigencia/index.ts",
     "./pii": "./src/pii/index.ts",
     "./analytics": "./src/analytics/index.ts",
-    "./i18n": "./src/i18n/index.ts"
+    "./i18n": "./src/i18n/index.ts",
+    "./legal": "./src/legal/index.ts"
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json",
