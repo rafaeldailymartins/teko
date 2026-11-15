@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 import { hasLocale } from 'next-intl'
 import { getTranslations, setRequestLocale } from 'next-intl/server'
 import type { ReactNode } from 'react'
+import { Providers } from '@/components/providers'
 import { FONT_VARIABLES_CLASS_NAME } from '@/components/ui/fonts'
 import { SkipLink } from '@/components/ui/skip-link'
 import { ThemeScript } from '@/components/ui/theme-script'
@@ -63,7 +64,7 @@ export async function LocaleLayout({ children, params }: LocaleLayoutProps) {
       <body>
         <ThemeScript />
         <SkipLink targetId={MAIN_CONTENT_ID}>{t('skipToContent')}</SkipLink>
-        {children}
+        <Providers>{children}</Providers>
       </body>
     </html>
   )

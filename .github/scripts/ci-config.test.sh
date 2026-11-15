@@ -43,6 +43,7 @@ yq_true() {
 check "lint roda o jscpd (pnpm dup)" job_runs_match lint '^pnpm dup$'
 check "lint roda os testes do affected.sh" job_runs_match lint 'bash \.github/scripts/affected\.test\.sh'
 check "lint roda este teste" job_runs_match lint 'bash \.github/scripts/ci-config\.test\.sh'
+check "lint confere o drift do cliente da API (pnpm api:check)" job_runs_match lint '^pnpm api:check$'
 check "typecheck roda type-coverage no --affected" \
   job_runs_match typecheck 'turbo run .*type-coverage.*--affected'
 

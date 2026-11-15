@@ -12,6 +12,11 @@ import type {
   WatchDatabaseUrl,
 } from '#adapters/in/cli/sources-watch/run-coverage-mark.ts'
 import type { HttpOptions } from '#adapters/in/http/http-options.ts'
+import { DOCS_JSON_PATH } from '#adapters/in/http/plugins/openapi.ts'
+import {
+  normalizeWebOpenApi,
+  serializeOpenApi,
+} from '#adapters/in/http/plugins/openapi-document.ts'
 import { createBetterAuthGateway } from '#adapters/out/auth/better-auth.ts'
 import { createGithubReleasesBlobStore } from '#adapters/out/blobs/github-releases-blob-store.ts'
 import { systemClock } from '#adapters/out/clock/system-clock.ts'
@@ -129,7 +134,7 @@ import { createUserUseCases, type UserUseCases } from '#app/use-cases/users.ts'
 import { PUBLISHABLE_REVIEW_STATUSES, ReviewStatus } from '#domain/corpus/family.ts'
 import { type BuildInfo, createBuildInfo } from '#domain/shared/build-info.ts'
 import { buildApp } from './build-app.ts'
-import { EmbeddingsProvider, type Env, RerankerProvider } from './config/env.ts'
+import { EmbeddingsProvider, type Env, parseEnv, RerankerProvider } from './config/env.ts'
 import {
   createPlatformAdapters,
   platformNetwork,
@@ -836,4 +841,25 @@ export async function createRuntime(env: Env): Promise<Runtime> {
     logger,
   })
   return { app, container, shutdown: platformShutdown(env) }
+}
+
+/**
+ * Documento OpenAPI versionado da web (`cli openapi export`, `apps/web/openapi.json`). Monta a app
+ * com um env fixo de desenvolvimento, sem banco e sem ler `process.env` (o arquivo não pode
+ * depender de quem o gera), pede `/api/docs/json` por `inject` e normaliza o resultado.
+ */
+export async function exportWebOpenApi(): Promise<string> {
+  const env = parseEnv({ APP_ENV: AppEnv.Development, WEB_ORIGIN: 'http://localhost:3000' })
+  const container = createContainer(env)
+  const app = await buildApp({ container, http: { ...createHttpOptions(env), docs: true } })
+  try {
+    const response = await app.inject({ url: DOCS_JSON_PATH })
+    if (response.statusCode !== 200) {
+      throw new Error(`${DOCS_JSON_PATH} respondeu ${String(response.statusCode)}`)
+    }
+    return serializeOpenApi(normalizeWebOpenApi(response.json()))
+  } finally {
+    await app.close()
+    await container.close()
+  }
 }

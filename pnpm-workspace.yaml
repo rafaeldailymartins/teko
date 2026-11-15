@@ -41,6 +41,9 @@ overrides:
   # promptfoo (usa glob/globSync, idem).
   archiver-utils>glob: 14.0.3
   promptfoo>glob: 14.0.3
+  # GHSA-52cp-r559-cp3m, GHSA-5p4m-2wfm-xmqj e GHSA-2883-xcg3-v3hh (high, CPU quadrática). Via
+  # @hey-api/openapi-ts > @hey-api/json-schema-ref-parser (js-yaml 4.2.0); só no codegen do web.
+  "@hey-api/json-schema-ref-parser>js-yaml": 4.3.2
   # Negação de serviço no parser de listagem do basic-ftp <=6.2.0 (high). Via promptfoo > proxy-agent >
   # pac-proxy-agent > get-uri (só eval; o Tekó não usa FTP nem PAC).
   get-uri>basic-ftp: 6.2.5
@@ -140,3 +143,6 @@ catalog:
   babel-plugin-react-compiler: 1.0.0
   next-intl: 4.14.9
   "@playwright/test": 1.65.0 # e2e na stack de CI (Chromium + viewport mobile); browsers baixados no job
+  "@tanstack/react-query": 5.107.1 # cache de dados do web (F5): hooks sobre o cliente gerado do OpenAPI
+  nuqs: 2.10.2 # estado em query string no export estático (q, c, ref); 2.10.3 tinha menos de 7 dias
+  "@hey-api/openapi-ts": 0.99.0 # CLI que gera o cliente fetch, o SDK e as queries do OpenAPI da API
