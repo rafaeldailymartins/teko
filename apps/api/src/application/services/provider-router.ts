@@ -16,8 +16,8 @@ import {
  * Gemini primário → Gemini de fallback → Groq (ZDR). O fallback só acontece antes do primeiro
  * token; depois dele, uma falha encerra o stream com erro. Breaker por modelo:
  *
- * - 429: aberto até o `retry-after` ou, sem ele, até a meia-noite do Pacífico (renovação da cota
- *   diária do Gemini free);
+ * - 429 da cota diária: aberto até a meia-noite do Pacífico (renovação da cota do Gemini free);
+ * - outro 429 (limite por minuto): aberto pelo prazo informado ou, sem ele, por 60 s;
  * - 3 falhas seguidas de 5xx, rede ou outro 4xx: aberto por 60 s.
  *
  * Com `zeroDataRetentionOnly` (usuário do EEE, Reino Unido ou Suíça), só os modelos com ZDR entram.
@@ -78,10 +78,9 @@ export function createProviderRouter(deps: {
     const breaker = breakerOf(model)
     const time = now()
     if (error.kind === LlmErrorKind.RateLimited) {
-      breaker.openUntilMs =
-        error.retryAfterMs === null
-          ? nextMidnightMs(time, QUOTA_RESET_TIME_ZONE)
-          : time + error.retryAfterMs
+      breaker.openUntilMs = error.dailyQuota
+        ? nextMidnightMs(time, QUOTA_RESET_TIME_ZONE)
+        : time + (error.retryAfterMs ?? BREAKER_OPEN_MS)
       breaker.consecutiveFailures = 0
       return
     }

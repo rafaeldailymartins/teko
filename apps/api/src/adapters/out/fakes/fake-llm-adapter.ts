@@ -78,7 +78,7 @@ export function createFakeLlmAdapter(
     async *stream(request: LlmRequest): AsyncIterable<LlmEvent> {
       const { prompt, signal } = request
       if (prompt.includes('[[fault:429]]')) {
-        throw new LlmError(LlmErrorKind.RateLimited, 'fake 429', 1000)
+        throw new LlmError(LlmErrorKind.RateLimited, 'fake 429', { retryAfterMs: 1000 })
       }
       if (prompt.includes('[[fault:5xx]]')) {
         throw new LlmError(LlmErrorKind.Unavailable, 'fake 503')

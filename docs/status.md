@@ -166,12 +166,9 @@ proveniência) no lugar do `@google/genai` (sem proveniência em nenhuma versão
   aceitou o nível medido. Os 13 casos do holdout que orientaram os ajustes foram para o conjunto
   `ajuste`, e o holdout recebeu 13 casos novos (ADR 0031, adendo).
 
-Pendências do mantenedor:
-
-- **cota gratuita da cadeia de LLM** (medida em 2026-11-14): Gemini 3.6 Flash com 5 pedidos por
-  minuto e 20 por dia, Gemini 3.5 Flash Lite com 15 e 500, `gpt-oss-120b` no Groq com 8 mil tokens
-  por minuto. O primário não sustenta o volume previsto; rever a ordem da cadeia (ADR 0007) antes da
-  F7.
+Cota gratuita da cadeia de LLM (medida em 2026-11-14, resolvida em 2026-11-15): o Flash Lite passou
+a primário, com o Flash de reserva, e o breaker do 429 distingue a cota diária do limite por minuto
+(ADR 0007, adendo).
 
 Exigidas pelo deploy da F7 (fora do repositório):
 
@@ -180,7 +177,8 @@ Exigidas pelo deploy da F7 (fora do repositório):
   `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, `GOOGLE_CLIENT_ID` e `GOOGLE_CLIENT_SECRET` nos dois
   projetos da Vercel;
 - `GEMINI_API_KEY` e `GROQ_API_KEY` (Sensitive) nos dois projetos, com o ZDR ligado no console do
-  Groq.
+  Groq. As chaves do Gemini do staging e da produção vêm de projetos diferentes do Google Cloud: a
+  cota é por projeto.
 
 ## Revisão antes da F4 (2026-11-12)
 

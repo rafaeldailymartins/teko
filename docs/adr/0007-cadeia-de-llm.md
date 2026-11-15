@@ -54,3 +54,26 @@ publicada com atestação de proveniência SLSA, que o ADR 0002 exige de depend�
 - O ZDR do Groq é uma configuração da conta (console do Groq), feita pelo mantenedor; o código só
   marca o modelo como ZDR.
 - Custo-sombra pelo preço de tabela (`services/pricing.ts`), gravado em toda resposta.
+
+## Adendo (2026-11-15): Flash Lite primeiro e breaker pela cota que estourou
+
+Decisão do mantenedor em 2026-11-15, com a cota gratuita medida em 2026-11-14: Gemini 3.6 Flash com
+5 pedidos por minuto e 20 por dia, Gemini 3.5 Flash Lite com 15 e 500, `gpt-oss-120b` no Groq com 8
+mil tokens por minuto e 200 mil por dia. A cota do Gemini é por projeto do Google Cloud, não por
+chave.
+
+- **Ordem:** `gemini-3.5-flash-lite` → `gemini-3.6-flash` → `openai/gpt-oss-120b`. Qualquer ordem
+  soma 520 pedidos por dia e 20 por minuto no Gemini; o que muda é quem responde primeiro. Com o
+  Flash na frente, as 20 primeiras perguntas do dia esgotavam a cota dele e os picos da tarde só
+  tinham o Lite e o Groq (uma ou duas respostas por minuto). Com o Lite na frente, ele atende o
+  volume (o teto da produção é de 300 perguntas por dia) e o Flash fica de reserva para picos acima
+  de 15 por minuto o dia todo. As respostas saem do mesmo modelo na maior parte do dia.
+- **Breaker do 429:** o Gemini não manda `retry-after`; o prazo vem no corpo, no `RetryInfo`
+  (`retryDelay`), e a cota que estourou no `QuotaFailure` (`quotaId`). A regra antiga abria o
+  breaker até a meia-noite do Pacífico sempre que faltava o header, e um pico de 6 perguntas num
+  minuto tirava o Flash do dia inteiro (o que explica as 41 reescritas perdidas na primeira medição
+  da ADR 0034). Agora: cota diária (`quotaId` com `PerDay`) abre até a meia-noite do Pacífico; outro 429
+  abre pelo `retry-after` ou pelo `retryDelay` e, sem nenhum dos dois, por 60 s.
+- **Projetos separados:** as chaves do Gemini do staging e da produção devem vir de projetos
+  diferentes do Google Cloud, para o staging não gastar a cota da produção (pendência do
+  mantenedor para a F7).

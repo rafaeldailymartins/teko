@@ -57,9 +57,9 @@ services:
       - key: EMBEDDINGS_PROVIDER
         value: workers-ai
       - key: GEMINI_MODEL_PRIMARY
-        value: gemini-3.6-flash
-      - key: GEMINI_MODEL_FALLBACK
         value: gemini-3.5-flash-lite
+      - key: GEMINI_MODEL_FALLBACK
+        value: gemini-3.6-flash
       - key: GROQ_MODEL
         value: openai/gpt-oss-120b
       - key: QUOTA_QUESTIONS_GLOBAL_DAILY

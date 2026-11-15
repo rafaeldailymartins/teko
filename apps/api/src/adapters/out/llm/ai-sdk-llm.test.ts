@@ -5,6 +5,7 @@ import {
   GEMINI_BASE_URL,
   GROQ_BASE_URL,
   pinnedFetch,
+  quotaHint,
   retryAfterMs,
   toLlmError,
 } from './ai-sdk-llm.ts'
@@ -53,6 +54,35 @@ const GROQ_STREAM = [
     x_groq: { usage: { prompt_tokens: 30, completion_tokens: 2, total_tokens: 32 } },
   },
 ]
+
+/** Corpos de 429 no formato do Gemini (`google.rpc.Status` com `QuotaFailure` e `RetryInfo`). */
+const RPC = 'type.googleapis.com/google.rpc.'
+
+function gemini429(quotaId: string, retryDelay: string): unknown {
+  return {
+    error: {
+      code: 429,
+      message: 'You exceeded your current quota.',
+      status: 'RESOURCE_EXHAUSTED',
+      details: [
+        {
+          '@type': `${RPC}QuotaFailure`,
+          violations: [
+            {
+              quotaMetric: 'generativelanguage.googleapis.com/generate_content_free_tier_requests',
+              quotaId,
+            },
+          ],
+        },
+        { '@type': `${RPC}Help`, links: [] },
+        { '@type': `${RPC}RetryInfo`, retryDelay },
+      ],
+    },
+  }
+}
+
+const PER_MINUTE_429 = gemini429('GenerateRequestsPerMinutePerProjectPerModel-FreeTier', '37.5s')
+const DAILY_429 = gemini429('GenerateRequestsPerDayPerProjectPerModel-FreeTier', '20s')
 
 interface Call {
   readonly url: string
@@ -154,7 +184,45 @@ describe('createLlmChain', () => {
     )
     const failure = await collect(chain[0] as LlmModel).catch((error: unknown) => error)
     expect(failure).toBeInstanceOf(LlmError)
-    expect(failure).toMatchObject({ kind, retryAfterMs: retryAfter })
+    expect(failure).toMatchObject({ kind, retryAfterMs: retryAfter, dailyQuota: false })
+  })
+
+  it.each([
+    ['por minuto', PER_MINUTE_429, 37_500, false],
+    ['diária', DAILY_429, 20_000, true],
+  ] as const)(
+    '429 do Gemini %s: prazo e cota lidos do corpo',
+    async (_name, body, retry, daily) => {
+      const { chain } = chainWith(
+        () =>
+          new Response(JSON.stringify(body), {
+            status: 429,
+            headers: { 'content-type': 'application/json' },
+          }),
+      )
+      const failure = await collect(chain[0] as LlmModel).catch((error: unknown) => error)
+      expect(failure).toMatchObject({
+        kind: 'rate_limited',
+        retryAfterMs: retry,
+        dailyQuota: daily,
+      })
+    },
+  )
+})
+
+describe('quotaHint', () => {
+  it('corpo ausente, inválido ou sem detalhes não informa nada', () => {
+    const nothing = { retryAfterMs: null, dailyQuota: false }
+    expect(quotaHint(undefined)).toEqual(nothing)
+    expect(quotaHint('<html>')).toEqual(nothing)
+    expect(quotaHint(JSON.stringify({ error: { code: 429 } }))).toEqual(nothing)
+    expect(
+      quotaHint(
+        JSON.stringify({
+          error: { details: [{ '@type': `${RPC}RetryInfo`, retryDelay: 'logo' }] },
+        }),
+      ),
+    ).toEqual(nothing)
   })
 })
 

@@ -195,8 +195,8 @@ const envSchema = z
     /** Chaves dos provedores (Sensitive na Vercel); hosts fixos no código. */
     GEMINI_API_KEY: z.string().trim().min(10).optional(),
     GROQ_API_KEY: z.string().trim().min(10).optional(),
-    GEMINI_MODEL_PRIMARY: z.string().trim().min(1).default('gemini-3.6-flash'),
-    GEMINI_MODEL_FALLBACK: z.string().trim().min(1).default('gemini-3.5-flash-lite'),
+    GEMINI_MODEL_PRIMARY: z.string().trim().min(1).default('gemini-3.5-flash-lite'),
+    GEMINI_MODEL_FALLBACK: z.string().trim().min(1).default('gemini-3.6-flash'),
     GROQ_MODEL: z.string().trim().min(1).default('openai/gpt-oss-120b'),
     /** Kill switch: acerto do cache continua respondendo; o resto recebe 503 `service_paused`. */
     LLM_KILL_SWITCH: z.stringbool().default(false),
