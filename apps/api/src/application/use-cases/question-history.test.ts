@@ -1,6 +1,29 @@
+import { CONVERSATIONS_PAGE_SIZE } from '@teko/shared/contracts'
 import { describe, expect, it, vi } from 'vitest'
-import type { QuestionRecord, QuestionRepository } from '../ports/question-repository.ts'
-import { createQuestionHistory, toDetail } from './question-history.ts'
+import type {
+  ConversationRecord,
+  QuestionRecord,
+  QuestionRepository,
+} from '../ports/question-repository.ts'
+import {
+  conversationTitle,
+  createQuestionHistory,
+  decodeConversationCursor,
+  encodeConversationCursor,
+  toDetail,
+} from './question-history.ts'
+
+const CONVERSATION_ID = '0192f1c4-7a2b-7c3d-8e4f-000000000001'
+
+function conversation(index: number): ConversationRecord {
+  return {
+    conversationId: `0192f1c4-7a2b-7c3d-8e4f-${String(index).padStart(12, '0')}`,
+    firstQuestion: `Pergunta ${index}`,
+    questionCount: index + 1,
+    lastAskedAt: '2026-11-10T15:00:00.123456Z',
+    lastReferenceDate: '2008-05-01',
+  }
+}
 
 const RECORD: QuestionRecord = {
   id: 'q1',
@@ -22,10 +45,15 @@ const RECORD: QuestionRecord = {
   createdAt: new Date('2026-11-10T15:00:00Z'),
 }
 
-function setup(record: QuestionRecord | null = RECORD, feedbackSaved = true) {
+function setup(
+  record: QuestionRecord | null = RECORD,
+  feedbackSaved = true,
+  conversations: ConversationRecord[] = [],
+) {
   const questions = {
     get: vi.fn(async () => record),
     listByConversation: vi.fn(async () => (record === null ? [] : [record])),
+    listConversations: vi.fn(async () => conversations),
     recordFeedback: vi.fn(async () => feedbackSaved),
     usage: vi.fn(async () => ({
       globalRequests: 12,
@@ -82,5 +110,85 @@ describe('createQuestionHistory', () => {
       global: { used: 12, limit: 300 },
       resetAt: '2026-11-11T03:00:00.000Z',
     })
+  })
+})
+
+describe('lista de conversas', () => {
+  it('última página: sem cursor seguinte, título e instante no formato do contrato', async () => {
+    const { history, questions } = setup(RECORD, true, [conversation(1)])
+    await expect(history.conversations('u1')).resolves.toEqual({
+      items: [
+        {
+          conversationId: conversation(1).conversationId,
+          title: 'Pergunta 1',
+          questionCount: 2,
+          updatedAt: '2026-11-10T15:00:00.123Z',
+          lastReferenceDate: '2008-05-01',
+        },
+      ],
+      nextCursor: null,
+    })
+    expect(questions.listConversations).toHaveBeenCalledWith(
+      'u1',
+      null,
+      CONVERSATIONS_PAGE_SIZE + 1,
+    )
+  })
+
+  it('pede um a mais que a página e devolve o cursor da última conversa mostrada', async () => {
+    const rows = Array.from({ length: CONVERSATIONS_PAGE_SIZE + 1 }, (_, index) =>
+      conversation(index),
+    )
+    const { history, questions } = setup(RECORD, true, rows)
+    const page = await history.conversations('u1')
+    expect(page.items).toHaveLength(CONVERSATIONS_PAGE_SIZE)
+    const last = rows[CONVERSATIONS_PAGE_SIZE - 1] as ConversationRecord
+    expect(page.nextCursor).not.toBeNull()
+    expect(decodeConversationCursor(page.nextCursor ?? '')).toEqual({
+      lastAskedAt: last.lastAskedAt,
+      conversationId: last.conversationId,
+    })
+
+    await history.conversations('u1', page.nextCursor ?? undefined)
+    expect(questions.listConversations).toHaveBeenLastCalledWith(
+      'u1',
+      { lastAskedAt: last.lastAskedAt, conversationId: last.conversationId },
+      CONVERSATIONS_PAGE_SIZE + 1,
+    )
+  })
+
+  it('cursor que a API não emitiu → validation_error, sem tocar o banco', async () => {
+    const { history, questions } = setup()
+    for (const cursor of [
+      'lixo',
+      Buffer.from(`2026-11-10T15:00:00Z|${CONVERSATION_ID}`).toString('base64url'),
+      Buffer.from('2026-11-10T15:00:00.123456Z|nao-e-uuid').toString('base64url'),
+      Buffer.from(`2026-11-10T15:00:00.123456Z|${CONVERSATION_ID}|x`).toString('base64url'),
+    ]) {
+      await expect(history.conversations('u1', cursor)).rejects.toMatchObject({
+        problem: { code: 'validation_error' },
+      })
+    }
+    expect(questions.listConversations).not.toHaveBeenCalled()
+  })
+})
+
+describe('cursor e título', () => {
+  it('o cursor vai e volta', () => {
+    const cursor = { lastAskedAt: '2026-11-10T15:00:00.000001Z', conversationId: CONVERSATION_ID }
+    const encoded = encodeConversationCursor(cursor)
+    expect(encoded).toMatch(/^[A-Za-z0-9_-]+$/)
+    expect(decodeConversationCursor(encoded)).toEqual(cursor)
+  })
+
+  it('título em uma linha, cortado na palavra com reticências', () => {
+    expect(conversationTitle('  Qual o\n prazo?  ')).toBe('Qual o prazo?')
+    expect(conversationTitle('   ')).toBe('…')
+    const long = `${'palavra '.repeat(12)}fim`
+    const title = conversationTitle(long)
+    expect(title.length).toBeLessThanOrEqual(80)
+    expect(title.endsWith('palavra…')).toBe(true)
+    expect(conversationTitle('a'.repeat(80))).toBe('a'.repeat(80))
+    expect(conversationTitle('a'.repeat(200))).toBe(`${'a'.repeat(79)}…`)
   })
 })

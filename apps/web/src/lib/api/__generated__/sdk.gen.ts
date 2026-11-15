@@ -3,7 +3,7 @@
 
 import { client } from './client.gen.js';
 import type { Client, ClientMeta, Options as Options2, RequestResult, TDataShape } from './client/index.js';
-import type { AskQuestionData, AskQuestionErrors, AskQuestionResponses, CompleteOnboardingData, CompleteOnboardingErrors, CompleteOnboardingResponses, DeleteMyDataData, DeleteMyDataErrors, DeleteMyDataResponses, ExportMyDataData, ExportMyDataErrors, ExportMyDataResponses, GetCoverageData, GetCoverageErrors, GetCoverageResponses, GetHealthData, GetHealthErrors, GetHealthResponses, GetMeData, GetMeErrors, GetMeResponses, GetProvisionDiffData, GetProvisionDiffErrors, GetProvisionDiffResponses, GetProvisionTimelineData, GetProvisionTimelineErrors, GetProvisionTimelineResponses, GetQuestionData, GetQuestionErrors, GetQuestionResponses, GetQuotaData, GetQuotaErrors, GetQuotaResponses, ListHistoryData, ListHistoryErrors, ListHistoryResponses, RecordFeedbackData, RecordFeedbackErrors, RecordFeedbackResponses, SearchProvisionsData, SearchProvisionsErrors, SearchProvisionsResponses, StreamAnswerData, StreamAnswerResponses } from './types.gen.js';
+import type { AskQuestionData, AskQuestionErrors, AskQuestionResponses, CompleteOnboardingData, CompleteOnboardingErrors, CompleteOnboardingResponses, DeleteMyDataData, DeleteMyDataErrors, DeleteMyDataResponses, ExportMyDataData, ExportMyDataErrors, ExportMyDataResponses, GetCoverageData, GetCoverageErrors, GetCoverageResponses, GetHealthData, GetHealthErrors, GetHealthResponses, GetMeData, GetMeErrors, GetMeResponses, GetProvisionDiffData, GetProvisionDiffErrors, GetProvisionDiffResponses, GetProvisionTimelineData, GetProvisionTimelineErrors, GetProvisionTimelineResponses, GetQuestionData, GetQuestionErrors, GetQuestionResponses, GetQuotaData, GetQuotaErrors, GetQuotaResponses, ListConversationsData, ListConversationsErrors, ListConversationsResponses, ListHistoryData, ListHistoryErrors, ListHistoryResponses, RecordFeedbackData, RecordFeedbackErrors, RecordFeedbackResponses, SearchProvisionsData, SearchProvisionsErrors, SearchProvisionsResponses, StreamAnswerData, StreamAnswerResponses } from './types.gen.js';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -23,6 +23,13 @@ export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends 
  * Liveness (prefixo da API)
  */
 export const getHealth = <ThrowOnError extends boolean = false>(options?: Options<GetHealthData, ThrowOnError>): RequestResult<GetHealthResponses, GetHealthErrors, ThrowOnError> => (options?.client ?? client).get<GetHealthResponses, GetHealthErrors, ThrowOnError>({ url: '/healthz', ...options });
+
+/**
+ * Conversas do usuário, da mais recente para a mais antiga
+ *
+ * Paginação por cursor: repita o `nextCursor` da página anterior em `cursor`; `null` marca a última página.
+ */
+export const listConversations = <ThrowOnError extends boolean = false>(options?: Options<ListConversationsData, ThrowOnError>): RequestResult<ListConversationsResponses, ListConversationsErrors, ThrowOnError> => (options?.client ?? client).get<ListConversationsResponses, ListConversationsErrors, ThrowOnError>({ url: '/v1/conversations', ...options });
 
 /**
  * Cobertura efetiva do corpus por família
