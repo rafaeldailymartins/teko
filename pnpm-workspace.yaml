@@ -41,6 +41,9 @@ overrides:
   # promptfoo (usa glob/globSync, idem).
   archiver-utils>glob: 14.0.3
   promptfoo>glob: 14.0.3
+  # GHSA-52cp-r559-cp3m, GHSA-5p4m-2wfm-xmqj e GHSA-2883-xcg3-v3hh (high, CPU quadrática). Via
+  # @hey-api/openapi-ts > @hey-api/json-schema-ref-parser (js-yaml 4.2.0); só no codegen do web.
+  "@hey-api/json-schema-ref-parser>js-yaml": 4.3.2
   # Negação de serviço no parser de listagem do basic-ftp <=6.2.0 (high). Via promptfoo > proxy-agent >
   # pac-proxy-agent > get-uri (só eval; o Tekó não usa FTP nem PAC).
   get-uri>basic-ftp: 6.2.5
