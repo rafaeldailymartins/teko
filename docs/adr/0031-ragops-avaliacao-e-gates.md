@@ -164,8 +164,9 @@ Decisão do mantenedor em 2026-11-14:
 
 - **Conjunto `ajuste`** (`apps/api/evals/datasets/ajuste.yaml`): os 13 casos, sem mudança no
   esperado (id `ajuste-` no lugar de `hold-`, tag `ex-holdout`). Orientam parâmetros, como o dev, e
-  rodam só no `corpus-eval`, com a seção `retrieval-ajuste` do `thresholds.json`: vigência, recusa,
-  clarificação, data de referência e sem resposta em 1,00; recall@10 e MRR informativos. O registro
+  rodam só no `corpus-eval`, com a seção `retrieval-ajuste` do `thresholds.json`: vigência e data de
+  referência em 1,00 (só há casos com resposta; recusa, clarificação e sem resposta ficam fora, porque
+  sem caso a média é 0 e o gate reprova); recall@10 e MRR informativos. O registro
   do `corpus-eval` ganha o conjunto (opcional, para o histórico anterior continuar legível).
 - **Gates do dev sem mudança** (`retrieval-corpus`: recall@10 0,90 e MRR 0,65).
 - **Holdout com 13 casos novos** no lugar, de dispositivos que nenhum caso usava, com `source_quote`

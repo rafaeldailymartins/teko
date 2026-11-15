@@ -3,6 +3,8 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { loadFixtureDocuments } from '../../src/adapters/in/cli/seed-fixtures/seed-fixtures.ts'
 import { tempDir } from '../../test/setup/temp-dir.ts'
+import type { MetricName } from '../asserts/metrics.ts'
+import { loadThresholds } from '../scripts/check-thresholds.ts'
 import { ajusteTests, devTests, holdoutTests, metricsFor, toPromptfooTest } from './golden-tests.ts'
 import { GoldenSplit, goldenPath, loadGolden } from './load-golden.ts'
 import { type GoldenCase, goldenCaseSchema, goldenDatasetSchema } from './schema.ts'
@@ -148,6 +150,24 @@ describe('ajuste versionado (ADR 0031, adendo de 2026-11-14)', () => {
   it('o gerador do ajuste cobre o arquivo inteiro', async () => {
     const tests = await ajusteTests()
     expect(tests.map((test) => test.description)).toEqual(ajuste.map((golden) => golden.id))
+  })
+})
+
+describe('gates de cada seção do thresholds.json', () => {
+  // Métrica com gate e sem nenhum caso no conjunto dá média 0 e reprova o corpus-eval (aconteceu
+  // com recusa, clarificação e sem resposta no ajuste, que só tem casos com resposta).
+  it.each([
+    ['retrieval', GoldenSplit.Dev],
+    ['retrieval-corpus', GoldenSplit.Dev],
+    ['retrieval-holdout', GoldenSplit.Holdout],
+    ['retrieval-ajuste', GoldenSplit.Ajuste],
+  ] as const)('%s: toda métrica com gate tem caso no conjunto', (suite, split) => {
+    const thresholds = loadThresholds().suites[suite] ?? {}
+    const measured = new Set(loadGolden(goldenPath(split)).flatMap(metricsFor))
+    const gated = Object.entries(thresholds)
+      .filter(([, limit]) => limit !== null)
+      .map(([metric]) => metric)
+    expect(gated.filter((metric) => !measured.has(metric as MetricName))).toEqual([])
   })
 })
 

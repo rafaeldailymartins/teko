@@ -240,7 +240,7 @@ corpus_eval_dev_and_holdout() {
     grep -Eq 'eval:retrieval:ajuste( |$)' <<<"$runs" &&
     grep -q -- '--holdout reports/retrieval-evals-holdout.json' <<<"$runs" &&
     grep -q -- '--ajuste reports/retrieval-evals-ajuste.json' <<<"$runs" &&
-    jq -e '."retrieval-ajuste".vigencia == 1 and ."retrieval-ajuste".recusa == 1' \
+    jq -e '."retrieval-ajuste".vigencia == 1 and ."retrieval-ajuste".data_referencia == 1' \
       apps/api/evals/thresholds.json >/dev/null
 }
 check "ingest: corpus-eval roda os conjuntos dev, holdout e ajuste e grava o registro" corpus_eval_dev_and_holdout

@@ -239,7 +239,7 @@ O harden-runner do `ingest.yml` fica em `block`.
 - **`ajuste`** (`ajuste.yaml`, ADR 0031, adendo de 2026-11-14): os 13 casos do holdout que
   orientaram os ajustes da busca na F4. Orientam parâmetros, como o dev, mas rodam só no
   `corpus-eval` (quase todos os dispositivos estão fora da fixture), com gate próprio
-  (`retrieval-ajuste`): determinísticas em 1,00, recall@10 e MRR informativos.
+  (`retrieval-ajuste`): vigência e data de referência em 1,00, recall@10 e MRR informativos.
 - Todo caso tem `source_quote` real, conferida no texto da fonte. **Mudar o esperado de um caso
   exige `source_quote` novo.**
 
