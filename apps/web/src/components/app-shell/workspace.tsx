@@ -23,6 +23,9 @@ interface WorkspaceProps {
   readonly citation: ReactNode
   /** A conversa: o painel central, que nunca é desmontado ao trocar de layout. */
   readonly children: ReactNode
+  /** Drawer da citação controlado por fora (abaixo de 768 px), para abrir ao clicar num chip. */
+  readonly citationOpen?: boolean
+  readonly onCitationOpenChange?: (open: boolean) => void
 }
 
 const noop = () => {}
@@ -67,12 +70,20 @@ function SidePanel({ title, children }: SidePanelProps) {
  * O HTML estático sai com o layout de desktop, e uma regra CSS esconde os painéis laterais no
  * celular até a hidratação; a conversa fica sempre no mesmo lugar da árvore e não perde estado.
  */
-export function Workspace({ history, citation, children }: WorkspaceProps) {
+export function Workspace({
+  history,
+  citation,
+  children,
+  citationOpen: controlledCitationOpen,
+  onCitationOpenChange,
+}: WorkspaceProps) {
   const t = useTranslations('shell.panels')
   const tCommon = useTranslations('common')
   const isDesktop = useMediaQuery(DESKTOP_MEDIA_QUERY, true)
   const [historyOpen, setHistoryOpen] = useState(false)
-  const [citationOpen, setCitationOpen] = useState(false)
+  const [uncontrolledCitationOpen, setUncontrolledCitationOpen] = useState(false)
+  const citationOpen = controlledCitationOpen ?? uncontrolledCitationOpen
+  const setCitationOpen = onCitationOpenChange ?? setUncontrolledCitationOpen
   const closeHistory = () => setHistoryOpen(false)
 
   return (

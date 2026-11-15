@@ -596,5 +596,156 @@
     "invalidRange": "Fill in both dates, with the start before the end.",
     "result": "Difference between the wordings",
     "openProvision": "Open the provision"
+  },
+  "chat": {
+    "loading": "Loading the conversation…",
+    "composer": {
+      "label": "Your question",
+      "placeholder": "Ask about EFD ICMS/IPI, EFD-Reinf or Goiás tax law…",
+      "send": "Send",
+      "stop": "Stop",
+      "hint": "{shortcut} sends · Esc stops",
+      "blockedQuota": "The daily question limit was reached. Questions are back {reset}.",
+      "blockedPaused": "The service is paused. Try again {reset}.",
+      "resetAt": "at {time}",
+      "resetSoon": "later"
+    },
+    "pii": {
+      "title": "Your question seems to contain personal data",
+      "body": "We found {kinds}. They do not help the answer and are replaced by placeholders before saving.",
+      "remove": "Remove the data",
+      "sendAnyway": "Send anyway",
+      "kinds": {
+        "email": "an email address",
+        "nfe_key": "an access key",
+        "cnpj": "a CNPJ",
+        "cpf": "a CPF",
+        "phone": "a phone number"
+      }
+    },
+    "reference": {
+      "chipPeriodo": "Tax period: {value}",
+      "chipDate": "Reference date: {value}",
+      "defaultHint": "default: previous month",
+      "open": "Change the reference date",
+      "title": "Reference date",
+      "modePeriodo": "Period",
+      "modeDate": "Exact date",
+      "previousYear": "Previous year",
+      "nextYear": "Next year",
+      "presets": "Shortcuts",
+      "presetPrevious": "Previous month",
+      "presetCurrent": "Current month",
+      "presetLastClosed": "Last closed period",
+      "useDefault": "Back to default",
+      "dateLabel": "Date",
+      "apply": "Apply",
+      "inferred": "Date inferred from the text: {value}",
+      "confirm": "Confirm"
+    },
+    "coverage": {
+      "label": "Coverage on this date",
+      "grounded": "Grounded",
+      "partial": "Partial coverage",
+      "out": "Out of coverage",
+      "bannerPartial": "On this date, Tekó has no sources for {families}. The answer may be incomplete.",
+      "bannerOut": "No Tekó source covers this date. The question may be refused."
+    },
+    "thread": {
+      "label": "Conversation",
+      "you": "You",
+      "assistant": "Tekó",
+      "liveStart": "Generating the answer.",
+      "liveDone": "Answer ready.",
+      "liveStopped": "Answer stopped.",
+      "liveError": "The answer failed.",
+      "noAnswer": "This question has no saved answer.",
+      "blockError": "This part could not be shown.",
+      "retry": "Try again",
+      "reread": "Reload the answer"
+    },
+    "answer": {
+      "referencePeriodo": "Tax period {value}",
+      "referenceDate": "Reference date {value}",
+      "source": {
+        "explicit": "chosen by you",
+        "periodo_apuracao": "chosen by you",
+        "question_text": "inferred from the text",
+        "default": "default: previous month",
+        "clarified": "clarified by you"
+      },
+      "validity": "Validity of the cited wording: {range}",
+      "boundaryInside": "The wording changes within this period: check the exact date.",
+      "citations": "Sources",
+      "degraded": {
+        "lexicalOnly": "Lexical search only",
+        "fallback": "Fallback model",
+        "cached": "Cached answer"
+      }
+    },
+    "intervals": {
+      "range": "{from} to {to}",
+      "since": "since {from}",
+      "until": "until {to}",
+      "always": "no limit"
+    },
+    "refusal": {
+      "title": "No grounded answer",
+      "reasons": {
+        "out_of_coverage": "The date or the topic is outside Tekó coverage.",
+        "no_evidence": "We found no provision that answers the question on this date.",
+        "model_insufficient": "The sources found are not enough to answer safely.",
+        "citation_invalid": "The answer cited sources that could not be confirmed."
+      },
+      "covered": "{family} coverage: {ranges}"
+    },
+    "clarification": {
+      "title": "Which date applies to the question?",
+      "reasons": {
+        "explicit_conflict": "The date in the text differs from the one chosen in the chip.",
+        "ambiguous_text": "The text mentions more than one date."
+      },
+      "choose": "Use {value}"
+    },
+    "feedback": {
+      "label": "Rate the answer",
+      "up": "Helpful answer",
+      "down": "Answer with a problem",
+      "thanks": "Thanks for the feedback."
+    },
+    "citation": {
+      "chip": "Source {number}: {label}",
+      "position": "Citation {current} of {total}",
+      "previous": "Previous citation",
+      "next": "Next citation",
+      "document": "Document",
+      "version": "Version",
+      "family": "Family",
+      "jurisdiction": "Jurisdiction",
+      "key": "Provision",
+      "fields": "Citation fields",
+      "text": "Cited text",
+      "source": "Open the official source",
+      "copy": "Copy citation",
+      "copied": "Citation copied.",
+      "report": "Report wrong citation",
+      "reported": "Thanks: the citation was reported.",
+      "timeline": "Timeline and what changed",
+      "invalid": "This citation was not confirmed by the validator.",
+      "status": {
+        "current": "In force",
+        "superseded": "Superseded",
+        "future": "Future"
+      },
+      "validity": "Validity: {range}"
+    },
+    "suggestions": {
+      "title": "Try it",
+      "body": "The same question on two dates shows different wordings.",
+      "questions": {
+        "rcte76": "What does art. 76, § 6 of the RCTE say?"
+      },
+      "ask": "Ask for {period}"
+    }
   }
 }

@@ -9,6 +9,7 @@ import {
   useProvisionSearch,
   useProvisionTimeline,
   useQuestion,
+  useQuota,
 } from './hooks.ts'
 import {
   coverageQuery,
@@ -18,6 +19,7 @@ import {
   provisionSearchQuery,
   provisionTimelineQuery,
   questionQuery,
+  quotaQuery,
 } from './queries.ts'
 import { createQueryClient } from './query-client.ts'
 
@@ -42,6 +44,7 @@ function seed(client: QueryClient): void {
   put(client, coverageQuery().queryKey, { corpusVersion: 7 })
   put(client, historyQuery(ID).queryKey, { items: [] })
   put(client, questionQuery(ID).queryKey, { status: 'answered' })
+  put(client, quotaQuery().queryKey, { day: '2026-11-15' })
   put(client, provisionTimelineQuery(KEY).queryKey, { versions: [] })
   put(client, provisionDiffQuery(KEY, MARCH, NEXT_YEAR).queryKey, { segments: [] })
   put(client, provisionSearchQuery('art. 76', MARCH).queryKey, { at: '2024-03-01' })
@@ -59,6 +62,7 @@ function Probe({
     coverage: useCoverage(),
     history: useHistory(id),
     question: useQuestion(id),
+    quota: useQuota(id !== null),
     timeline: useProvisionTimeline(stableKey),
     diff: useProvisionDiff(stableKey, MARCH, NEXT_YEAR),
     search: useProvisionSearch(stableKey === null ? '' : 'art. 76', MARCH),
@@ -88,6 +92,7 @@ describe('hooks da API', () => {
       coverage: ['success', { corpusVersion: 7 }],
       history: ['success', { items: [] }],
       question: ['success', { status: 'answered' }],
+      quota: ['success', { day: '2026-11-15' }],
       timeline: ['success', { versions: [] }],
       diff: ['success', { segments: [] }],
       search: ['success', { at: '2024-03-01' }],

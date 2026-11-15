@@ -199,6 +199,10 @@ O que o deploy exige do mantenedor está em [Antes da F7](#antes-da-f7-o-que-o-m
   configurações (conta, cota, passkeys, exportação, exclusão, tema, idioma e densidade) e o e2e
   `auth.spec.ts`; sem o cliente do Better Auth no web. Bundle de primeiro acesso em 354,0 KiB gz (as
   configurações saem dele por `import()`).
+- `add-chat-experience` (arquivada em 2026-11-15): `TekoChatTransport` same-origin com `useChat`,
+  thread e composer acessíveis, Streamdown com `rehype-harden`, chips e painel de citação, data de
+  referência na URL, cobertura, degradação, cota, PII e `fetch(` só em `src/lib/api`; o chat carrega
+  sob demanda (first-load de 327,3 para 343,5 KiB gz) e o e2e `chat.spec.ts` cobre o 05/2008 → 01/2010.
 
 ## Antes da F7: o que o mantenedor faz
 

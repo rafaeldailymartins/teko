@@ -156,4 +156,9 @@ catalog:
   "@tanstack/react-query": 5.107.1 # cache de dados do web (F5): hooks sobre o cliente gerado do OpenAPI
   nuqs: 2.10.2 # estado em query string no export estático (q, c, ref); 2.10.3 tinha menos de 7 dias
   "@hey-api/openapi-ts": 0.99.0 # CLI que gera o cliente fetch, o SDK e as queries do OpenAPI da API
+  # Chat (F5): useChat sobre o transporte próprio (mesma linha do `ai`: 4.0.168 depende do ai 7.0.164).
+  "@ai-sdk/react": 4.0.168
+  streamdown: 2.7.1 # markdown em streaming das respostas (carregado sob demanda só no chat)
+  "@streamdown/code": 2.0.0 # blocos de código do Streamdown (Shiki)
+  rehype-harden: 1.1.9 # links só para a própria origem e fontes oficiais; sem imagens nem data:
   "@simplewebauthn/browser": 13.3.0 # cerimônia WebAuthn da passkey no web (a mesma do plugin do Better Auth), carregada sob demanda
