@@ -184,6 +184,10 @@ O que o deploy exige do mantenedor está em [Antes da F7](#antes-da-f7-o-que-o-m
   copiados do registry, tokens OKLCH novos no teste de contraste, seletor de tema, Geist Mono, app
   shell no grupo `(app)` com paleta `Ctrl/⌘+K` e aviso fixo, área de trabalho do chat em três
   painéis (Sheet e Drawer abaixo de 768 px), páginas-esqueleto nos dois locales e a landing revista.
+- `add-chat-experience` (arquivada em 2026-11-15): `TekoChatTransport` same-origin com `useChat`,
+  thread e composer acessíveis, Streamdown com `rehype-harden`, chips e painel de citação, data de
+  referência na URL, cobertura, degradação, cota, PII e `fetch(` só em `src/lib/api`; o chat carrega
+  sob demanda (first-load de 327,3 para 343,5 KiB gz) e o e2e `chat.spec.ts` cobre o 05/2008 → 01/2010.
 
 ## Antes da F7: o que o mantenedor faz
 

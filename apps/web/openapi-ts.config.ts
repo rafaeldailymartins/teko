@@ -12,12 +12,17 @@ import { defineConfig } from '@hey-api/openapi-ts'
  * `exactOptionalPropertyTypes` do `tsconfig.base.json`. Os tipos exportados continuam valendo para
  * quem importa (o `src/lib/api` e a UI são checados normalmente); só os erros internos do gerado
  * ficam de fora.
+ *
+ * Imports com `.ts` (`module.extension`), como o resto do código: o padrão (`.js`, herdado do
+ * `nodenext` do `tsconfig.base.json`) não resolve no build do Turbopack, e o build quebrava no
+ * primeiro import do SDK por uma página (o chat).
  */
 export default defineConfig({
   input: './openapi.json',
   output: {
     path: './src/lib/api/__generated__',
     header: (ctx) => ['// @ts-nocheck', ...ctx.defaultValue],
+    module: { extension: '.ts' },
   },
   plugins: [
     '@hey-api/client-fetch',

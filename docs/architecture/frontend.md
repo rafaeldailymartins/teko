@@ -50,8 +50,9 @@ URLs: ele dá às páginas do app um layout comum, que fica montado na navegaç�
 públicas usam o cabeçalho e o rodapé do site, como a landing. Os providers de cliente ficam em
 `src/components/providers.tsx`, montado no layout de locale dentro do `NextIntlClientProvider`.
 
-O Biome restringe `fetch(` a `src/lib/api`. A fronteira com a API é o contrato de `@teko/shared` e o
-cliente gerado.
+O Biome restringe `fetch(` a `src/lib/api` (`noRestrictedGlobals` no `apps/web/biome.json`, com
+override para `src/lib/api/**` e teste em `test/biome-boundary.test.ts`). A fronteira com a API é o
+contrato de `@teko/shared` e o cliente gerado.
 
 ## Design system
 
@@ -83,7 +84,8 @@ cliente gerado.
   CLI da API (`pnpm --filter @teko/api openapi:export`, sem servidor nem banco): caminhos relativos a
   `servers: [{ url: '/api' }]`, versão fixa e ordem estável. `pnpm --filter @teko/web api:generate`
   regenera os dois; o `pnpm api:check` (no `verify` e no job `lint` do CI) falha se algum deles
-  difere do git.
+  difere do git. Os imports do gerado levam `.ts` (`output.module.extension`): o `.js` herdado do
+  `nodenext` não resolve no Turbopack.
 - Erros: um interceptor do cliente converte Problem Details em `ApiError` (`code: ErrorCode`,
   `retryable`, `traceId`, cota), e a UI mostra `t(error.messageKey)` (`errors.<code>`).
 - TanStack Query (`staleTime: 60_000`, retry só de erro transitório; keys com a data efetiva de
@@ -119,11 +121,19 @@ export class TekoChatTransport implements ChatTransport<TekoUIMessage> {
 }
 ```
 
-Os schemas dos data parts ficam em `@teko/shared/contracts`. Sem ticket, sem segunda origem e sem
-CORS: o stream leva o cookie de sessão, e a API confere o `Origin`.
-- **Markdown:** Streamdown + `@streamdown/code`, sem mermaid nem math; `rehype-harden` com
-  `allowedLinkPrefixes` (a própria origem, `sped.rfb.gov.br`, `www.gov.br`,
-  `appasp.economia.go.gov.br`), sem imagens e sem `data:`. O link `cite:<id>` vira `CitationChip`.
+Os schemas dos data parts ficam em `@teko/shared/contracts`; o `data-clarification` (candidatas do
+`needs_clarification`) é só do cliente, em `src/lib/chat/parts.ts`, e a escolha volta por
+`sendMessage(..., { body: { clarifiedDate } })` com `source: 'clarified'`. A mensagem do assistente
+tem o id da pergunta (feedback, "reportar", releitura). Sem ticket, sem segunda origem e sem CORS: o
+stream leva o cookie de sessão, e a API confere o `Origin`.
+- **Markdown:** Streamdown + `@streamdown/code` (Shiki com o motor de regex em JavaScript: sem WASM
+  nem `eval`), sem mermaid nem math e sem `rehype-raw` (HTML cru sai como texto); `rehype-harden`
+  com `allowedLinkPrefixes` (a própria origem, `sped.rfb.gov.br`, `www.gov.br`,
+  `appasp.economia.go.gov.br`), sem imagens e sem `data:`, e o componente de link confere o prefixo
+  de novo. O link `cite:<id>` vira `#cite-<id>` antes do parse e depois `CitationChip`.
+- **Carregamento:** a conversa (AI SDK, `useChat`), o painel de citação e o markdown (Streamdown,
+  Shiki) são `lazy(() => import(...))` dentro de um `ClientOnly`, fora do primeiro carregamento; o
+  HTML estático do `/chat/` leva o esqueleto da conversa.
 
 ## Segurança no navegador
 

@@ -17,6 +17,14 @@
         },
         "rules": {
           "style": {
+            "noRestrictedGlobals": {
+              "level": "error",
+              "options": {
+                "deniedGlobals": {
+                  "fetch": "Chamadas à API só em src/lib/api: use o cliente gerado (ou o transporte do chat), que converte erros em ApiError."
+                }
+              }
+            },
             "noRestrictedImports": {
               "level": "error",
               "options": {
@@ -35,6 +43,16 @@
                 ]
               }
             }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["src/lib/api/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedGlobals": "off"
           }
         }
       }

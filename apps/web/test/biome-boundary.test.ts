@@ -12,7 +12,8 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
  * `apps/web/**` no config raiz nunca casa com arquivos daqui (e o lint passava calado).
  *
  * O teste roda o Biome do repositório numa cópia isolada dos dois configs (vcs desligado, sem
- * tocar na árvore real) com arquivos-sonda que precisam ser barrados.
+ * tocar na árvore real) com arquivos-sonda que precisam ser barrados (e um `fetch(` dentro de
+ * `src/lib/api`, que precisa passar).
  */
 
 const WEB_DIR = fileURLToPath(new URL('..', import.meta.url))
@@ -27,6 +28,18 @@ const PROBES = {
     "import { betterAuth } from 'better-auth'",
     '',
     'export const probes = [NextResponse, drizzle, Pool, betterAuth]',
+    '',
+  ].join('\n'),
+  'src/components/fetch-probe.ts': [
+    'export async function probe(): Promise<Response> {',
+    "  return fetch('/api/v1/coverage')",
+    '}',
+    '',
+  ].join('\n'),
+  'src/lib/api/fetch-allowed.ts': [
+    'export async function allowed(): Promise<Response> {',
+    "  return fetch('/api/v1/coverage')",
+    '}',
     '',
   ].join('\n'),
   'src/components/img-probe.tsx': [
@@ -95,6 +108,14 @@ describe('apps/web/biome.json', () => {
         diagnosticPath(diagnostic).endsWith('server-probe.ts'),
     )
     expect(restricted).toHaveLength(4)
+  })
+
+  it('restringe fetch( a src/lib/api (a fronteira com a API é o cliente gerado)', () => {
+    const restricted = diagnostics
+      .filter((diagnostic) => diagnostic.category === 'lint/style/noRestrictedGlobals')
+      .map(diagnosticPath)
+    expect(restricted.some((path) => path.endsWith('components/fetch-probe.ts'))).toBe(true)
+    expect(restricted.some((path) => path.endsWith('api/fetch-allowed.ts'))).toBe(false)
   })
 
   it('liga os domínios react e next (noImgElement do domínio next)', () => {

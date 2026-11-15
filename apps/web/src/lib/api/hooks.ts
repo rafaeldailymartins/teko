@@ -6,6 +6,7 @@ import type {
   GetProvisionDiffResponse,
   GetProvisionTimelineResponse,
   GetQuestionResponse,
+  GetQuotaResponse,
   ListHistoryResponse,
   SearchProvisionsResponse,
 } from './__generated__/types.gen.ts'
@@ -18,6 +19,7 @@ import {
   provisionSearchQuery,
   provisionTimelineQuery,
   questionQuery,
+  quotaQuery,
 } from './queries.ts'
 
 /**
@@ -33,6 +35,11 @@ export function useMe(): ApiQuery<GetMeResponse> {
 
 export function useCoverage(): ApiQuery<GetCoverageResponse> {
   return useQuery(coverageQuery())
+}
+
+/** Cota do dia; só consulta quando `enabled` (o composer bloqueado mostra o reset). */
+export function useQuota(enabled: boolean): ApiQuery<GetQuotaResponse> {
+  return useQuery(quotaQuery(enabled))
 }
 
 /** Histórico de uma conversa (a API lista por conversa; não há lista de conversas). */

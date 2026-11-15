@@ -208,6 +208,157 @@
     "description": "O endereço não existe ou foi movido.",
     "backHome": "Voltar para a página inicial"
   },
+  "chat": {
+    "loading": "Carregando a conversa…",
+    "composer": {
+      "label": "Sua pergunta",
+      "placeholder": "Pergunte sobre a EFD ICMS/IPI, a EFD-Reinf ou a legislação de Goiás…",
+      "send": "Enviar",
+      "stop": "Parar",
+      "hint": "{shortcut} envia · Esc para",
+      "blockedQuota": "O limite diário de perguntas foi atingido. As perguntas voltam {reset}.",
+      "blockedPaused": "O serviço está pausado. Tente de novo {reset}.",
+      "resetAt": "em {time}",
+      "resetSoon": "mais tarde"
+    },
+    "pii": {
+      "title": "Sua pergunta parece ter dados pessoais",
+      "body": "Encontramos {kinds}. Eles não ajudam na resposta e são trocados por marcadores antes de gravar.",
+      "remove": "Remover os dados",
+      "sendAnyway": "Enviar assim mesmo",
+      "kinds": {
+        "email": "e-mail",
+        "nfe_key": "chave de acesso",
+        "cnpj": "CNPJ",
+        "cpf": "CPF",
+        "phone": "telefone"
+      }
+    },
+    "reference": {
+      "chipPeriodo": "Período de apuração: {value}",
+      "chipDate": "Data de referência: {value}",
+      "defaultHint": "padrão: mês anterior",
+      "open": "Alterar a data de referência",
+      "title": "Data de referência",
+      "modePeriodo": "Período",
+      "modeDate": "Data exata",
+      "previousYear": "Ano anterior",
+      "nextYear": "Próximo ano",
+      "presets": "Atalhos",
+      "presetPrevious": "Mês anterior",
+      "presetCurrent": "Mês atual",
+      "presetLastClosed": "Último período fechado",
+      "useDefault": "Voltar ao padrão",
+      "dateLabel": "Data",
+      "apply": "Aplicar",
+      "inferred": "Data inferida do texto: {value}",
+      "confirm": "Confirmar"
+    },
+    "coverage": {
+      "label": "Cobertura na data",
+      "grounded": "Fundamentada",
+      "partial": "Cobertura parcial",
+      "out": "Fora de cobertura",
+      "bannerPartial": "Nesta data, o Tekó não tem fontes de {families}. A resposta pode ficar incompleta.",
+      "bannerOut": "Nenhuma fonte do Tekó cobre esta data. A pergunta pode ser recusada."
+    },
+    "thread": {
+      "label": "Conversa",
+      "you": "Você",
+      "assistant": "Tekó",
+      "liveStart": "Gerando a resposta.",
+      "liveDone": "Resposta pronta.",
+      "liveStopped": "Resposta interrompida.",
+      "liveError": "A resposta falhou.",
+      "noAnswer": "Esta pergunta não tem resposta gravada.",
+      "blockError": "Não foi possível mostrar este trecho.",
+      "retry": "Tentar de novo",
+      "reread": "Recarregar a resposta"
+    },
+    "answer": {
+      "referencePeriodo": "Período de apuração {value}",
+      "referenceDate": "Data de referência {value}",
+      "source": {
+        "explicit": "escolhida por você",
+        "periodo_apuracao": "escolhida por você",
+        "question_text": "inferida do texto",
+        "default": "padrão: mês anterior",
+        "clarified": "esclarecida por você"
+      },
+      "validity": "Vigência das redações citadas: {range}",
+      "boundaryInside": "A redação muda dentro deste período: confira a data exata.",
+      "citations": "Fontes",
+      "degraded": {
+        "lexicalOnly": "Somente busca lexical",
+        "fallback": "Modelo de reserva",
+        "cached": "Resposta em cache"
+      }
+    },
+    "intervals": {
+      "range": "{from} a {to}",
+      "since": "desde {from}",
+      "until": "até {to}",
+      "always": "sem limite"
+    },
+    "refusal": {
+      "title": "Sem resposta fundamentada",
+      "reasons": {
+        "out_of_coverage": "A data ou o tema estão fora da cobertura do Tekó.",
+        "no_evidence": "Não encontramos dispositivo que responda à pergunta nesta data.",
+        "model_insufficient": "As fontes encontradas não bastam para responder com segurança.",
+        "citation_invalid": "A resposta citou fontes que não puderam ser confirmadas."
+      },
+      "covered": "Cobertura de {family}: {ranges}"
+    },
+    "clarification": {
+      "title": "Qual data vale para a pergunta?",
+      "reasons": {
+        "explicit_conflict": "A data citada no texto é diferente da escolhida no chip.",
+        "ambiguous_text": "O texto cita mais de uma data."
+      },
+      "choose": "Usar {value}"
+    },
+    "feedback": {
+      "label": "Avaliar a resposta",
+      "up": "Resposta útil",
+      "down": "Resposta com problema",
+      "thanks": "Obrigado pelo retorno."
+    },
+    "citation": {
+      "chip": "Fonte {number}: {label}",
+      "position": "Citação {current} de {total}",
+      "previous": "Citação anterior",
+      "next": "Próxima citação",
+      "document": "Documento",
+      "version": "Versão",
+      "family": "Família",
+      "jurisdiction": "Jurisdição",
+      "key": "Dispositivo",
+      "fields": "Campos da citação",
+      "text": "Texto citado",
+      "source": "Abrir a fonte oficial",
+      "copy": "Copiar citação",
+      "copied": "Citação copiada.",
+      "report": "Reportar citação errada",
+      "reported": "Obrigado: a citação foi reportada.",
+      "timeline": "Linha do tempo e o que mudou",
+      "invalid": "Esta citação não foi confirmada pelo validador.",
+      "status": {
+        "current": "Vigente",
+        "superseded": "Superada",
+        "future": "Futura"
+      },
+      "validity": "Vigência: {range}"
+    },
+    "suggestions": {
+      "title": "Experimente",
+      "body": "A mesma pergunta em duas datas mostra redações diferentes.",
+      "questions": {
+        "rcte76": "O que diz o art. 76, § 6º do RCTE?"
+      },
+      "ask": "Perguntar em {period}"
+    }
+  },
   "errors": {
     "validation_error": "Alguns dados da pergunta são inválidos. Revise e tente de novo.",
     "unauthenticated": "Sua sessão expirou. Entre novamente para continuar.",

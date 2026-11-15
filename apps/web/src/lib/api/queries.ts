@@ -11,6 +11,7 @@ import {
   getProvisionDiffOptions,
   getProvisionTimelineOptions,
   getQuestionOptions,
+  getQuotaOptions,
   listHistoryOptions,
   searchProvisionsOptions,
 } from './__generated__/@tanstack/react-query.gen.ts'
@@ -51,6 +52,11 @@ export function meQuery() {
 /** Cobertura efetiva do corpus por família (`GET /v1/coverage`, pública). */
 export function coverageQuery() {
   return apiQuery(getCoverageOptions({ client: apiClient }))
+}
+
+/** Cota de perguntas do dia e horário do reset (`GET /v1/me/quota`); `false` = desligada. */
+export function quotaQuery(enabled = true) {
+  return apiQuery(getQuotaOptions({ client: apiClient }), enabled)
 }
 
 /** Perguntas de uma conversa (`GET /v1/questions?conversationId=`); `null` = desligada. */

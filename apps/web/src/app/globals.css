@@ -1,6 +1,10 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+/* Classes do Streamdown e do plugin de código (markdown das respostas do chat). */
+@source "../../node_modules/streamdown/dist/*.js";
+@source "../../node_modules/@streamdown/code/dist/*.js";
+
 /*
  * Design tokens do Tekó (OKLCH). Cada token traz o par claro/escuro em `light-dark()`, resolvido
  * pelo `color-scheme` do elemento:
