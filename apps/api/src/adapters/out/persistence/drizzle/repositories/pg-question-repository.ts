@@ -120,6 +120,35 @@ ON CONFLICT (question_id) DO UPDATE SET rating = EXCLUDED.rating, reason = EXCLU
   created_at = now()
 RETURNING question_id`
 
+/**
+ * Conversas do usuário agregadas das perguntas (índice `questions_user_created`). O instante da
+ * última pergunta sai em texto UTC com microssegundos, para o cursor não perder precisão; a
+ * comparação de linha `(last_asked_at, conversation_id) < (…)` segue a mesma ordem do `ORDER BY`.
+ */
+const CONVERSATIONS_SQL = `WITH conversations AS (
+  SELECT conversation_id,
+    count(*)::int AS question_count,
+    max(created_at) AS last_asked_at,
+    (array_agg(left(question_redacted, 400) ORDER BY created_at, id))[1] AS first_question,
+    (array_agg(reference_date::text ORDER BY created_at DESC, id DESC))[1] AS last_reference_date
+  FROM app.questions WHERE user_id = $1::uuid
+  GROUP BY conversation_id
+)
+SELECT conversation_id, question_count, first_question, last_reference_date,
+  to_char(last_asked_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS last_asked_at
+FROM conversations
+WHERE $2::timestamptz IS NULL OR (last_asked_at, conversation_id) < ($2::timestamptz, $3::uuid)
+ORDER BY conversations.last_asked_at DESC, conversation_id DESC
+LIMIT $4`
+
+interface ConversationRow {
+  readonly conversation_id: string
+  readonly question_count: number
+  readonly first_question: string
+  readonly last_reference_date: string
+  readonly last_asked_at: string
+}
+
 function parseOrNull<T>(
   schema: { safeParse(value: unknown): { success: boolean; data?: T } },
   value: unknown,
@@ -344,6 +373,24 @@ export function createPgQuestionRepository(pool: pg.Pool): QuestionRepository {
         ),
       )
       return rows.map(toRecord)
+    },
+
+    async listConversations(userId, after, limit) {
+      const { rows } = await retryTransientRead(() =>
+        pool.query<ConversationRow>(CONVERSATIONS_SQL, [
+          userId,
+          after?.lastAskedAt ?? null,
+          after?.conversationId ?? null,
+          limit,
+        ]),
+      )
+      return rows.map((row) => ({
+        conversationId: row.conversation_id,
+        firstQuestion: row.first_question,
+        questionCount: row.question_count,
+        lastAskedAt: row.last_asked_at,
+        lastReferenceDate: row.last_reference_date,
+      }))
     },
 
     async recordFeedback(questionId, userId, rating, reason) {

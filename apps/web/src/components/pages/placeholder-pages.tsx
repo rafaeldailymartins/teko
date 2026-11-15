@@ -1,4 +1,4 @@
-import { BookOpenTextIcon, GitCompareArrowsIcon, type LucideIcon } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import { getTranslations } from 'next-intl/server'
 import type { ReactNode } from 'react'
 import { PAGE_ICONS } from '@/components/app-shell/page-icons'
@@ -10,19 +10,13 @@ import { MAIN_CONTENT_ID } from '@/lib/site'
 import { type LocalePageProps, pageMetadata, resolvePageLocale } from './page-route.ts'
 
 /**
- * Páginas que ainda são esqueleto (entrada e configurações têm tela própria; as legais e o "Sobre"
- * ficam em `legal-pages.tsx`).
+ * Páginas que ainda são esqueleto (só a cobertura; as outras têm tela própria, e as legais e o
+ * "Sobre" ficam em `legal-pages.tsx`).
  */
-type PlaceholderPage = Exclude<
-  Page,
-  'chat' | 'settings' | 'sign-in' | 'about' | 'privacy' | 'terms'
->
+type PlaceholderPage = Extract<Page, 'coverage'>
 
 const ICONS: Readonly<Record<PlaceholderPage, LucideIcon>> = {
-  history: PAGE_ICONS.history,
   coverage: PAGE_ICONS.coverage,
-  provision: BookOpenTextIcon,
-  compare: GitCompareArrowsIcon,
 }
 
 interface PlaceholderPageViewProps extends LocalePageProps {
@@ -65,21 +59,6 @@ async function PlaceholderPageView({ page, params }: PlaceholderPageViewProps) {
     </>
   )
 }
-
-export function HistoryPage({ params }: LocalePageProps) {
-  return <PlaceholderPageView page="history" params={params} />
-}
-export const generateHistoryMetadata = pageMetadata('history')
-
-export function ProvisionPage({ params }: LocalePageProps) {
-  return <PlaceholderPageView page="provision" params={params} />
-}
-export const generateProvisionMetadata = pageMetadata('provision')
-
-export function ComparePage({ params }: LocalePageProps) {
-  return <PlaceholderPageView page="compare" params={params} />
-}
-export const generateCompareMetadata = pageMetadata('compare')
 
 export function CoveragePage({ params }: LocalePageProps) {
   return <PlaceholderPageView page="coverage" params={params} />

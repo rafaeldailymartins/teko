@@ -1,6 +1,9 @@
 import {
+  type InfiniteData,
+  type UseInfiniteQueryResult,
   type UseMutationResult,
   type UseQueryResult,
+  useInfiniteQuery,
   useMutation,
   useQuery,
   useQueryClient,
@@ -14,6 +17,7 @@ import type {
   GetProvisionTimelineResponse,
   GetQuestionResponse,
   GetQuotaResponse,
+  ListConversationsResponse,
   ListHistoryResponse,
   SearchProvisionsResponse,
 } from './__generated__/types.gen.ts'
@@ -21,6 +25,7 @@ import { deleteAccount, fetchMyDataExport, type MyDataExport, submitOnboarding }
 import { deletePasskey, type Passkey, registerPasskey, signOut } from './auth.ts'
 import type { ApiError } from './errors.ts'
 import {
+  conversationsQuery,
   coverageQuery,
   historyQuery,
   meQuery,
@@ -57,9 +62,17 @@ export function useCoverage(): ApiQuery<GetCoverageResponse> {
   return useQuery(coverageQuery())
 }
 
-/** Histórico de uma conversa (a API lista por conversa; não há lista de conversas). */
+/** Perguntas de uma conversa. */
 export function useHistory(conversationId: string | null): ApiQuery<ListHistoryResponse> {
   return useQuery(historyQuery(conversationId))
+}
+
+/** Conversas do usuário, página a página (`fetchNextPage` enquanto `hasNextPage`). */
+export function useConversations(): UseInfiniteQueryResult<
+  InfiniteData<ListConversationsResponse, unknown>,
+  ApiError
+> {
+  return useInfiniteQuery(conversationsQuery())
 }
 
 export function useQuestion(id: string | null): ApiQuery<GetQuestionResponse> {

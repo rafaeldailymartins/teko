@@ -2,6 +2,8 @@ import { PassThrough } from 'node:stream'
 import {
   askQuestionRequestSchema,
   askQuestionResponseSchema,
+  conversationListQuerySchema,
+  conversationListResponseSchema,
   encodeSseChunk,
   feedbackRequestSchema,
   historyQuerySchema,
@@ -21,7 +23,8 @@ import type { QuestionUseCases } from '#app/container.ts'
 import { requireOnboardedSession, requireSession } from '../plugins/auth.ts'
 
 /**
- * Perguntas (`/api/v1/questions*`) e a cota do dia (`/api/v1/me/quota`). O stream sai em SSE com os
+ * Perguntas (`/api/v1/questions*`), a lista de conversas (`/api/v1/conversations`) e a cota do
+ * dia (`/api/v1/me/quota`). O stream sai em SSE com os
  * cabeçalhos do UI Message Stream v1, um heartbeat `: hb` a cada 15 s e o `[DONE]` no fim. A
  * desconexão do cliente aborta o sinal da resposta (e o LLM), e a iteração para.
  */
@@ -155,6 +158,26 @@ export const questionRoutes: FastifyPluginAsyncZod = async (app) => {
     async (request) => {
       const session = await requireSession(request)
       return questions().history.list(session.user.id, request.query.conversationId)
+    },
+  )
+
+  app.get(
+    '/api/v1/conversations',
+    {
+      config: { rateLimit: {} },
+      schema: {
+        operationId: 'listConversations',
+        summary: 'Conversas do usuário, da mais recente para a mais antiga',
+        description:
+          'Paginação por cursor: repita o `nextCursor` da página anterior em `cursor`; `null` marca a última página.',
+        tags: ['questions'],
+        querystring: conversationListQuerySchema,
+        response: { 200: conversationListResponseSchema, ...ERRORS },
+      },
+    },
+    async (request) => {
+      const session = await requireSession(request)
+      return questions().history.conversations(session.user.id, request.query.cursor)
     },
   )
 

@@ -2,6 +2,7 @@ import { MessageSquareTextIcon } from 'lucide-react'
 import { getTranslations } from 'next-intl/server'
 import { Workspace } from '@/components/app-shell/workspace'
 import { EmptyState } from '@/components/empty-state'
+import { ConversationList } from '@/components/history/conversation-list'
 import { type LocalePageProps, pageMetadata, resolvePageLocale } from './page-route.ts'
 
 export const generateChatMetadata = pageMetadata('chat')
@@ -17,7 +18,7 @@ export async function ChatPage({ params }: LocalePageProps) {
 
   return (
     <Workspace
-      history={<p className="px-4 pb-4 text-muted-foreground text-sm">{tPanels('historyEmpty')}</p>}
+      history={<ConversationList variant="panel" />}
       citation={
         <p className="px-4 pb-4 text-muted-foreground text-sm">{tPanels('citationEmpty')}</p>
       }

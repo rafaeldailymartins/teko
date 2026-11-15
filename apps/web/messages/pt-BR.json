@@ -51,9 +51,7 @@
     },
     "history": {
       "title": "Histórico",
-      "description": "Suas perguntas anteriores, com a data de referência de cada uma.",
-      "emptyTitle": "Nenhuma conversa ainda",
-      "emptyBody": "Suas perguntas e respostas ficam aqui, com a data de referência e as citações usadas."
+      "description": "Suas perguntas anteriores, com a data de referência de cada uma."
     },
     "settings": {
       "title": "Configurações",
@@ -61,15 +59,11 @@
     },
     "provision": {
       "title": "Dispositivo",
-      "description": "Texto, versões e linha do tempo de um dispositivo citado.",
-      "emptyTitle": "Nenhum dispositivo aberto",
-      "emptyBody": "Abra um dispositivo a partir de uma citação para ver o texto, a versão e o intervalo de vigência."
+      "description": "Texto, versões e linha do tempo de um dispositivo citado."
     },
     "compare": {
       "title": "Comparar versões",
-      "description": "O que mudou entre duas versões de um dispositivo.",
-      "emptyTitle": "Nenhuma comparação aberta",
-      "emptyBody": "Escolha duas versões de um dispositivo a partir de uma citação para ver o que mudou entre elas."
+      "description": "O que mudou entre duas versões de um dispositivo."
     },
     "coverage": {
       "title": "Cobertura",
@@ -516,5 +510,91 @@
       "rejectAll": "Recusar tudo"
     },
     "footerLink": "Preferências de cookies"
+  },
+  "history": {
+    "listLabel": "Conversas",
+    "loading": "Carregando as conversas…",
+    "emptyTitle": "Nenhuma conversa ainda",
+    "emptyBody": "Suas conversas aparecem aqui, cada uma com a data de referência da última pergunta.",
+    "error": "Não foi possível carregar o histórico.",
+    "retry": "Tentar de novo",
+    "signIn": "Entrar",
+    "reference": "Ref. {date}",
+    "questionCount": "{count, plural, one {# pergunta} other {# perguntas}}",
+    "viewAll": "Ver todo o histórico",
+    "loadMore": "Carregar mais",
+    "loadingMore": "Carregando…",
+    "retention": "As conversas ficam guardadas por 90 dias e podem ser apagadas nas configurações."
+  },
+  "provision": {
+    "title": "Dispositivos",
+    "intro": "Busque um dispositivo pelo rótulo, pela chave ou por um trecho do texto e veja a redação vigente na data, a linha do tempo e o que mudou.",
+    "loading": "Carregando o dispositivo…",
+    "retry": "Tentar de novo",
+    "backToSearch": "Buscar outro dispositivo",
+    "dateLabel": "Data de referência",
+    "shownAt": "Redação vigente em {date}.",
+    "absentAt": "O dispositivo não tinha redação vigente em {date}; mostramos a mais próxima anterior.",
+    "text": "Texto do dispositivo",
+    "act": "Redação dada por: {act}",
+    "fields": "Campos",
+    "fieldName": "Campo",
+    "fieldValue": "Valor",
+    "whatChanged": "O que mudou",
+    "showDiff": "Ver o que mudou em relação à redação anterior",
+    "hideDiff": "Esconder as mudanças",
+    "firstVersion": "Esta é a primeira redação do dispositivo.",
+    "compareLink": "Comparar outras datas",
+    "validity": {
+      "current": "Vigente",
+      "superseded": "Encerrada",
+      "future": "Futura",
+      "between": "{from} a {to}",
+      "since": "desde {from}",
+      "until": "até {to}",
+      "always": "sem limite de datas"
+    },
+    "timeline": {
+      "title": "Linha do tempo",
+      "label": "Redações do dispositivo",
+      "count": "{count, plural, one {# redação} other {# redações}}"
+    },
+    "diff": {
+      "loading": "Comparando as redações…",
+      "retry": "Tentar de novo",
+      "at": "Em {date}",
+      "absent": "O dispositivo não existia nesta data.",
+      "unchanged": "O texto é o mesmo nas duas datas.",
+      "legend": "Sublinhado em verde, o que entrou; riscado em vermelho, o que saiu.",
+      "insertedStart": "[incluído:",
+      "insertedEnd": "]",
+      "deletedStart": "[removido:",
+      "deletedEnd": "]",
+      "fieldChanges": "Campos alterados",
+      "field": "Campo",
+      "before": "Antes",
+      "after": "Depois"
+    },
+    "search": {
+      "label": "Buscar dispositivo",
+      "placeholder": "Ex.: art. 76, C170 ou um trecho do texto",
+      "hint": "Mostra os dispositivos vigentes em {date}; digite ao menos 2 caracteres.",
+      "searching": "Buscando…",
+      "empty": "Nenhum dispositivo vigente na data casa com a busca.",
+      "results": "Dispositivos encontrados"
+    }
+  },
+  "compare": {
+    "title": "Comparar versões",
+    "intro": "Escolha um dispositivo e duas datas para ver o que mudou entre as redações vigentes em cada uma.",
+    "example": "Exemplo: RCTE, art. 76, § 6º, em 05/2008 contra 01/2010",
+    "keyLabel": "Chave do dispositivo",
+    "fromLabel": "Data inicial",
+    "toLabel": "Data final",
+    "submit": "Comparar",
+    "invalidKey": "Chave inválida. Use o formato go:rcte:art:76:par:6.",
+    "invalidRange": "Informe as duas datas, com a inicial antes da final.",
+    "result": "Diferença entre as redações",
+    "openProvision": "Abrir o dispositivo"
   }
 }

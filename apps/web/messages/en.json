@@ -51,9 +51,7 @@
     },
     "history": {
       "title": "History",
-      "description": "Your previous questions, each with its reference date.",
-      "emptyTitle": "No conversations yet",
-      "emptyBody": "Your questions and answers are kept here, with the reference date and the citations used."
+      "description": "Your previous questions, each with its reference date."
     },
     "settings": {
       "title": "Settings",
@@ -61,15 +59,11 @@
     },
     "provision": {
       "title": "Provision",
-      "description": "Text, versions and timeline of a cited provision.",
-      "emptyTitle": "No provision open",
-      "emptyBody": "Open a provision from a citation to see its text, version and validity interval."
+      "description": "Text, versions and timeline of a cited provision."
     },
     "compare": {
       "title": "Compare versions",
-      "description": "What changed between two versions of a provision.",
-      "emptyTitle": "No comparison open",
-      "emptyBody": "Pick two versions of a provision from a citation to see what changed between them."
+      "description": "What changed between two versions of a provision."
     },
     "coverage": {
       "title": "Coverage",
@@ -516,5 +510,91 @@
       "rejectAll": "Reject all"
     },
     "footerLink": "Cookie preferences"
+  },
+  "history": {
+    "listLabel": "Conversations",
+    "loading": "Loading conversations…",
+    "emptyTitle": "No conversations yet",
+    "emptyBody": "Your conversations show up here, each with the reference date of its last question.",
+    "error": "We could not load your history.",
+    "retry": "Try again",
+    "signIn": "Sign in",
+    "reference": "Ref. {date}",
+    "questionCount": "{count, plural, one {# question} other {# questions}}",
+    "viewAll": "See the full history",
+    "loadMore": "Load more",
+    "loadingMore": "Loading…",
+    "retention": "Conversations are kept for 90 days and can be deleted in the settings."
+  },
+  "provision": {
+    "title": "Provisions",
+    "intro": "Search a provision by label, key or a piece of its text and see the wording in force on the date, its timeline and what changed.",
+    "loading": "Loading the provision…",
+    "retry": "Try again",
+    "backToSearch": "Search another provision",
+    "dateLabel": "Reference date",
+    "shownAt": "Wording in force on {date}.",
+    "absentAt": "The provision had no wording in force on {date}; showing the closest earlier one.",
+    "text": "Provision text",
+    "act": "Wording given by: {act}",
+    "fields": "Fields",
+    "fieldName": "Field",
+    "fieldValue": "Value",
+    "whatChanged": "What changed",
+    "showDiff": "See what changed from the previous wording",
+    "hideDiff": "Hide the changes",
+    "firstVersion": "This is the first wording of the provision.",
+    "compareLink": "Compare other dates",
+    "validity": {
+      "current": "In force",
+      "superseded": "Ended",
+      "future": "Upcoming",
+      "between": "{from} to {to}",
+      "since": "since {from}",
+      "until": "until {to}",
+      "always": "no date limits"
+    },
+    "timeline": {
+      "title": "Timeline",
+      "label": "Wordings of the provision",
+      "count": "{count, plural, one {# wording} other {# wordings}}"
+    },
+    "diff": {
+      "loading": "Comparing the wordings…",
+      "retry": "Try again",
+      "at": "On {date}",
+      "absent": "The provision did not exist on this date.",
+      "unchanged": "The text is the same on both dates.",
+      "legend": "Underlined in green, what was added; struck through in red, what was removed.",
+      "insertedStart": "[added:",
+      "insertedEnd": "]",
+      "deletedStart": "[removed:",
+      "deletedEnd": "]",
+      "fieldChanges": "Changed fields",
+      "field": "Field",
+      "before": "Before",
+      "after": "After"
+    },
+    "search": {
+      "label": "Search provisions",
+      "placeholder": "E.g. art. 76, C170 or a piece of the text",
+      "hint": "Shows provisions in force on {date}; type at least 2 characters.",
+      "searching": "Searching…",
+      "empty": "No provision in force on that date matches the search.",
+      "results": "Provisions found"
+    }
+  },
+  "compare": {
+    "title": "Compare versions",
+    "intro": "Pick a provision and two dates to see what changed between the wordings in force on each.",
+    "example": "Example: RCTE, art. 76, § 6, in 05/2008 versus 01/2010",
+    "keyLabel": "Provision key",
+    "fromLabel": "Start date",
+    "toLabel": "End date",
+    "submit": "Compare",
+    "invalidKey": "Invalid key. Use the format go:rcte:art:76:par:6.",
+    "invalidRange": "Fill in both dates, with the start before the end.",
+    "result": "Difference between the wordings",
+    "openProvision": "Open the provision"
   }
 }

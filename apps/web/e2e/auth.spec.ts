@@ -77,7 +77,10 @@ test.describe('sem sessão', () => {
 
   test('o erro do callback vira mensagem, e region_restricted vira aviso', async ({ page }) => {
     await page.goto('/pt-BR/sign-in/?error=access_denied')
-    await expect(page.getByRole('alert')).toContainText(ptBR.auth.errors.cancelled)
+    // O Next também tem um `role="alert"` (o anunciador de rotas, vazio): filtra pelo texto.
+    await expect(
+      page.getByRole('alert').filter({ hasText: ptBR.auth.errors.cancelled }),
+    ).toBeVisible()
     await page.goto('/pt-BR/sign-in/?error=region_restricted')
     await expect(
       page.getByRole('heading', { level: 1, name: ptBR.auth.region.title }),
