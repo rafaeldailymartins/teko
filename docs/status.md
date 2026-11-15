@@ -168,7 +168,6 @@ proveniência) no lugar do `@google/genai` (sem proveniência em nenhuma versão
 
 Pendências do mantenedor:
 
-- revisar os 13 casos novos do holdout (`reviewed_at` nulo, tag `novo-2026-11-14`);
 - **cota gratuita da cadeia de LLM** (medida em 2026-11-14): Gemini 3.6 Flash com 5 pedidos por
   minuto e 20 por dia, Gemini 3.5 Flash Lite com 15 e 500, `gpt-oss-120b` no Groq com 8 mil tokens
   por minuto. O primário não sustenta o volume previsto; rever a ordem da cadeia (ADR 0007) antes da

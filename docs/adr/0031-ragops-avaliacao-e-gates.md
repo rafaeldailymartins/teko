@@ -170,7 +170,7 @@ Decisão do mantenedor em 2026-11-14:
 - **Gates do dev sem mudança** (`retrieval-corpus`: recall@10 0,90 e MRR 0,65).
 - **Holdout com 13 casos novos** no lugar, de dispositivos que nenhum caso usava, com `source_quote`
   conferida (RCTE, CTE e Tabelas nas fontes baixadas em 2026-11-14; EFD ICMS/IPI, EFD de Goiás e
-  EFD-Reinf no texto do corpus) e revisão do mantenedor pendente (`reviewed_at` nulo).
+  EFD-Reinf no texto do corpus), revisados pelo mantenedor em 2026-11-15.
 - **Meta da F4:** o MRR do holdout ficou em 0,654 (0,668 com a reescrita só no léxico, desligada),
   abaixo do 0,70. O mantenedor aceitou o nível medido e fechou a F4; com 42 casos, o intervalo de 95%
   (cerca de 0,54 a 0,79) contém a meta.

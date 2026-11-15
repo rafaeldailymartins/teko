@@ -23,9 +23,9 @@
 # esperada dependeria da reconciliação.
 #
 # Troca de 2026-11-14 (ADR 0031, adendo): os 13 casos que orientaram os ajustes da busca na F4 foram
-# para o conjunto ajuste (datasets/ajuste.yaml), e 13 casos novos entraram na última seção, com a
-# revisão do mantenedor pendente (reviewed_at nulo). As contagens das seções abaixo já descontam os
-# casos que saíram.
+# para o conjunto ajuste (datasets/ajuste.yaml), e 13 casos novos entraram na última seção,
+# revisados pelo mantenedor em 2026-11-15. As contagens das seções abaixo já descontam os casos que
+# saíram.
 #
 # Revisão independente assistida por LLM em 2026-11-13, contra as fontes baixadas de novo e os
 # parsers locais, depois do primeiro corpus-eval (run 43403700598): 4 casos corrigidos (etanol,
@@ -763,8 +763,8 @@
 
 # ---------------------------------------------------------------------------------------------
 # Casos novos (13) de 2026-11-14, no lugar dos que orientaram os ajustes da F4 e foram para o
-# conjunto ajuste (datasets/ajuste.yaml, ADR 0031). Curadoria assistida por LLM, sem revisão do
-# mantenedor ainda (reviewed_at nulo). Dispositivos que nenhum caso do golden usava, escolhidos entre
+# conjunto ajuste (datasets/ajuste.yaml, ADR 0031). Curadoria assistida por LLM, revisada pelo
+# mantenedor em 2026-11-15 (reviewed_at). Dispositivos que nenhum caso do golden usava, escolhidos entre
 # os que o staging (corpus_version 14) devolveu nos corpus-eval de 2026-11-14, em famílias variadas.
 # source_quote: RCTE e CTE conferidos no RCTE.htm e no CTE.htm baixados em 2026-11-14 (cp1252,
 # espaços colapsados) e a Tabela 5.1.1 no WS de Tabelas Externas (v151); EFD ICMS/IPI, EFD de Goiás
@@ -785,8 +785,8 @@
   tags: [rcte-cte, rcte, fora-da-fixture, novo-2026-11-14]
   source_url: https://appasp.economia.go.gov.br/Legislacao/arquivos/Rcte/RCTE.htm
   source_quote: § 1º A empresa de que trata caput deste artigo fica autorizada a efetuar o pagamento do ICMS, incidente na prestação de serviço de transporte que realizar, com início em municípios diversos daquele em que tenha a inscrição centralizada, no mesmo documento utilizado para o pagamento do ICMS devido pelas demais prestações que realizar, no prazo previsto no calendário fiscal.
-  curated_by: claude-opus-5.5 (curadoria assistida por LLM)
-  reviewed_at: null
+  curated_by: claude-opus-5.5 (curadoria assistida por LLM; revisada pelo mantenedor)
+  reviewed_at: "2026-11-15"
 
 - id: hold-rcte-pagamento-em-outra-data
   question: O Secretário da Fazenda pode mudar a data de pagamento do ICMS prevista no regulamento? Existe algum limite para isso?
@@ -804,8 +804,8 @@
   tags: [rcte-cte, rcte, novo-2026-11-14]
   source_url: https://appasp.economia.go.gov.br/Legislacao/arquivos/Rcte/RCTE.htm
   source_quote: "Art. 77. Ato do Secretário da Fazenda pode estabelecer que o imposto possa ser pago em data diversa da fixada nesta subseção, desde que observados os seguintes limites, contados do encerramento do período de apuração, para os estabelecimentos:"
-  curated_by: claude-opus-5.5 (curadoria assistida por LLM)
-  reviewed_at: null
+  curated_by: claude-opus-5.5 (curadoria assistida por LLM; revisada pelo mantenedor)
+  reviewed_at: "2026-11-15"
 
 - id: hold-rcte-regime-simplificado-en
   question: Back in 2005, could a small retailer that only sells to final consumers register in Goiás under a simplified tax regime?
@@ -822,8 +822,8 @@
   tags: [rcte-cte, rcte, en, fora-da-fixture, novo-2026-11-14]
   source_url: https://appasp.economia.go.gov.br/Legislacao/arquivos/Rcte/RCTE.htm
   source_quote: § 3º Ato do Secretário da Fazenda pode determinar e disciplinar o cadastramento em regime tributário simplificado do contribuinte que realiza pequena atividade mercantil e promova a saída de mercadoria destinada exclusivamente a consumidor final.
-  curated_by: claude-opus-5.5 (curadoria assistida por LLM)
-  reviewed_at: null
+  curated_by: claude-opus-5.5 (curadoria assistida por LLM; revisada pelo mantenedor)
+  reviewed_at: "2026-11-15"
 
 - id: hold-rcte-parcela-estimada
   question: Para definir o prazo de pagamento da parcela estimada do ICMS, qual período de apuração se considera?
@@ -840,8 +840,8 @@
   tags: [rcte-cte, rcte, novo-2026-11-14]
   source_url: https://appasp.economia.go.gov.br/Legislacao/arquivos/Rcte/RCTE.htm
   source_quote: "Art. 70. Para a fixação do prazo de pagamento da parcela estimada do ICMS, considera-se mensal o período de apuração do imposto, devendo ser observado que:"
-  curated_by: claude-opus-5.5 (curadoria assistida por LLM)
-  reviewed_at: null
+  curated_by: claude-opus-5.5 (curadoria assistida por LLM; revisada pelo mantenedor)
+  reviewed_at: "2026-11-15"
 
 - id: hold-cte-st-opcional-2020
   question: Em 2020, o contribuinte substituído podia abrir mão da substituição tributária nas operações anteriores e ficar no regime normal? Isso valia também para o álcool carburante?
@@ -858,8 +858,8 @@
   tags: [rcte-cte, cte, novo-2026-11-14]
   source_url: https://appasp.economia.go.gov.br/Legislacao/arquivos/Cte/CTE.htm
   source_quote: § 4º Excetuada a aquisição de álcool carburante, a substituição tributária é opcional, podendo o contribuinte substituído adotar o regime normal de tributação.
-  curated_by: claude-opus-5.5 (curadoria assistida por LLM)
-  reviewed_at: null
+  curated_by: claude-opus-5.5 (curadoria assistida por LLM; revisada pelo mantenedor)
+  reviewed_at: "2026-11-15"
 
 - id: hold-cte-energia-eletrica-en
   question: For electricity distributors acting as tax substitutes in Goiás, when is the ICMS paid and on what price is it calculated?
@@ -876,8 +876,8 @@
   tags: [rcte-cte, cte, en, novo-2026-11-14]
   source_url: https://appasp.economia.go.gov.br/Legislacao/arquivos/Cte/CTE.htm
   source_quote: § 1º O imposto a que se refere o caput deste artigo será pago na ocasião da saída do produto do estabelecimento da distribuidora e calculado sobre o preço então praticado na operação final.
-  curated_by: claude-opus-5.5 (curadoria assistida por LLM)
-  reviewed_at: null
+  curated_by: claude-opus-5.5 (curadoria assistida por LLM; revisada pelo mantenedor)
+  reviewed_at: "2026-11-15"
 
 - id: hold-efd-c175-cnpj-concessionaria
   question: Ao escriturar operações com veículos novos na EFD ICMS/IPI, em que situação o CNPJ da concessionária passa a ser obrigatório?
@@ -893,8 +893,8 @@
   tags: [efd-icms-ipi, fora-da-fixture, novo-2026-11-14]
   source_url: https://www.gov.br/sped/pt-br/assuntos/escrituracoes-digitais/efd-icms-ipi/manuais-e-documentos-tecnicos/guia-pratico-efd-versao-3-1-9.pdf
   source_quote: 'Validação: se o valor no campo IND_VEIC_OPER for igual a "1" (um), o campo CNPJ é obrigatório.'
-  curated_by: claude-opus-5.5 (curadoria assistida por LLM)
-  reviewed_at: null
+  curated_by: claude-opus-5.5 (curadoria assistida por LLM; revisada pelo mantenedor)
+  reviewed_at: "2026-11-15"
 
 - id: hold-efd-0150-participante-exterior
   question: No cadastro de participantes da EFD ICMS/IPI, preciso informar CNPJ para um fornecedor do exterior?
@@ -910,8 +910,8 @@
   tags: [efd-icms-ipi, fora-da-fixture, novo-2026-11-14]
   source_url: https://www.gov.br/sped/pt-br/assuntos/escrituracoes-digitais/efd-icms-ipi/manuais-e-documentos-tecnicos/guia-pratico-efd-versao-3-1-9.pdf
   source_quote: Se COD_PAIS diferente de Brasil, o campo não deve ser preenchido.
-  curated_by: claude-opus-5.5 (curadoria assistida por LLM)
-  reviewed_at: null
+  curated_by: claude-opus-5.5 (curadoria assistida por LLM; revisada pelo mantenedor)
+  reviewed_at: "2026-11-15"
 
 - id: hold-efdgo-cheque-moradia-destinatario
   question: Recebi uma nota fiscal de transferência de crédito do Cheque Moradia. O que preciso lançar na EFD?
@@ -930,8 +930,8 @@
   tags: [efd-go, fora-da-fixture, novo-2026-11-14]
   source_url: https://goias.gov.br/economia/wp-content/uploads/sites/45/2026/03/Guia_pratico_5.9.pdf
   source_quote: 15.2 PROCEDIMENTOS PARA O CONTRIBUINTE DESTINATÁRIO DA NOTA FISCAL DE TRANSFERÊNCIA DE CRÉDITO ORIUNDO DO CHEQUE MORADIA.
-  curated_by: claude-opus-5.5 (curadoria assistida por LLM)
-  reviewed_at: null
+  curated_by: claude-opus-5.5 (curadoria assistida por LLM; revisada pelo mantenedor)
+  reviewed_at: "2026-11-15"
 
 - id: hold-tabgo-regulariza-credito-recebido
   question: Qual código de ajuste da apuração uso quando recebo crédito de ICMS de outra empresa para pagar dívidas pelo programa Regulariza?
@@ -948,8 +948,8 @@
   tags: [tabelas-go, fora-da-fixture, novo-2026-11-14]
   source_url: https://www.sped.fazenda.gov.br/spedtabelas/WsConsulta/obterTabela.ashx?idTabela=37&versao=151
   source_quote: Crédito do ICMS recebido em transferência para a quitação de débitos relacionados com o ICMS, conforme Programa Incentivo à Regularização Fiscal de Empresas no Estado de Goiás – Regulariza. Lei nº 18.459/14 e Art. 15 IN nº 1182/14-GSF.
-  curated_by: claude-opus-5.5 (curadoria assistida por LLM)
-  reviewed_at: null
+  curated_by: claude-opus-5.5 (curadoria assistida por LLM; revisada pelo mantenedor)
+  reviewed_at: "2026-11-15"
 
 - id: hold-reinf-r2010-retencao-liminar
   question: No R-2010, onde informo a retenção previdenciária que deixou de ser feita por causa de uma liminar?
@@ -965,8 +965,8 @@
   tags: [efd-reinf, novo-2026-11-14]
   source_url: https://www.gov.br/sped/pt-br/assuntos/escrituracoes-digitais/efd-reinf/documento-tecnicos/versao-atual/esquemas-xsd/xsd-eventos
   source_quote: Valor da retencao nao efetuada ou depositada em juizo em decorrencia da decisao judicial/administrativa
-  curated_by: claude-opus-5.5 (curadoria assistida por LLM)
-  reviewed_at: null
+  curated_by: claude-opus-5.5 (curadoria assistida por LLM; revisada pelo mantenedor)
+  reviewed_at: "2026-11-15"
 
 - id: hold-reinf-r2010-adicional-total-en
   question: In the EFD-Reinf event for services taken, which field holds the total additional withholding across a provider's invoices?
@@ -982,8 +982,8 @@
   tags: [efd-reinf, en, novo-2026-11-14]
   source_url: https://www.gov.br/sped/pt-br/assuntos/escrituracoes-digitais/efd-reinf/documento-tecnicos/versao-atual/esquemas-xsd/xsd-eventos
   source_quote: Soma do valor do adicional de retencao das notas fiscais
-  curated_by: claude-opus-5.5 (curadoria assistida por LLM)
-  reviewed_at: null
+  curated_by: claude-opus-5.5 (curadoria assistida por LLM; revisada pelo mantenedor)
+  reviewed_at: "2026-11-15"
 
 - id: hold-reinf-r2010-base-de-calculo
   question: No R-2010, onde informo a base de cálculo da retenção previdenciária, tanto por tipo de serviço quanto no total do prestador?
@@ -1001,5 +1001,5 @@
   tags: [efd-reinf, varios-dispositivos, novo-2026-11-14]
   source_url: https://www.gov.br/sped/pt-br/assuntos/escrituracoes-digitais/efd-reinf/documento-tecnicos/versao-atual/esquemas-xsd/xsd-eventos
   source_quote: Valor da base de calculo da retencao da contribuicao previdenciaria.
-  curated_by: claude-opus-5.5 (curadoria assistida por LLM)
-  reviewed_at: null
+  curated_by: claude-opus-5.5 (curadoria assistida por LLM; revisada pelo mantenedor)
+  reviewed_at: "2026-11-15"
