@@ -61,6 +61,16 @@ export function ReferencePicker({
   ).year
   const [year, setYear] = useState(shownYear)
   const [draftDate, setDraftDate] = useState(display.kind === 'date' ? display.date : today)
+  // Ao abrir (pelo chip ou pelo Alt+D, que abre de fora), o seletor volta ao modo e ao ano da data
+  // escolhida. Ajuste de estado durante o render, sem efeito: só quando `open` muda.
+  const [wasOpen, setWasOpen] = useState(open)
+  if (open !== wasOpen) {
+    setWasOpen(open)
+    if (open) {
+      setMode(display.kind)
+      setYear(shownYear)
+    }
+  }
 
   const label =
     display.kind === 'periodo'
@@ -73,16 +83,8 @@ export function ReferencePicker({
     onOpenChange(false)
   }
 
-  function handleOpenChange(next: boolean): void {
-    if (next) {
-      setMode(display.kind)
-      setYear(shownYear)
-    }
-    onOpenChange(next)
-  }
-
   return (
-    <Popover open={open} onOpenChange={handleOpenChange}>
+    <Popover open={open} onOpenChange={onOpenChange}>
       <PopoverTrigger
         render={<Button variant="outline" size="sm" />}
         disabled={disabled}

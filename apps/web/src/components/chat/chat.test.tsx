@@ -489,6 +489,27 @@ describe('chat', () => {
     expect(urlUpdates.at(-1)?.queryString).toMatch(/ref=\d{4}-03/)
   })
 
+  it('reaberto pelo Alt+D, o seletor volta ao ano da data escolhida', async () => {
+    await render(<ChatWorkspace />)
+    await waitFor(() => document.querySelector('textarea:not(:disabled)'))
+    const openPicker = async () => {
+      await press({ key: 'd', code: 'KeyD', altKey: true })
+      return waitFor(() => byText('[data-slot="popover-content"]', 'Data de referência'))
+    }
+    const shownYear = (dialog: HTMLElement) =>
+      dialog.querySelector('[aria-live="polite"]')?.textContent ?? ''
+
+    let dialog = await openPicker()
+    const chosenYear = shownYear(dialog)
+    await click(dialog.querySelector('button[aria-label="Ano anterior"]'))
+    expect(shownYear(dialog)).toBe(String(Number(chosenYear) - 1))
+    await press({ key: 'Escape' })
+    await waitFor(() => !byText('[data-slot="popover-content"]', 'Data de referência'))
+
+    dialog = await openPicker()
+    expect(shownYear(dialog)).toBe(chosenYear)
+  })
+
   it('o seletor alterna para data exata e tem atalhos', async () => {
     await render(<ChatWorkspace />, '?ref=2024-03')
     const chip = await waitFor(() => document.querySelector('[data-reference-chip]'))
