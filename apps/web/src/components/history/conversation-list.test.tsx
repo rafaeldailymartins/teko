@@ -122,19 +122,26 @@ describe('ConversationList', () => {
   })
 
   it('sem sessão: a mensagem do erro e o caminho para entrar', async () => {
+    // A resposta só sai depois de conferido o estado de carregamento (sem corrida com o fetch).
+    let release: () => void = () => undefined
+    const gate = new Promise<void>((resolve) => {
+      release = resolve
+    })
     vi.stubGlobal(
       'fetch',
-      vi.fn(async () =>
-        Response.json(createProblem({ code: ErrorCode.Unauthenticated, traceId: 't' }), {
+      vi.fn(async () => {
+        await gate
+        return Response.json(createProblem({ code: ErrorCode.Unauthenticated, traceId: 't' }), {
           status: 401,
           headers: { 'content-type': 'application/problem+json' },
-        }),
-      ),
+        })
+      }),
     )
     rendered = await renderClient(<ConversationList variant="panel" />)
     expect(rendered.container.querySelector('[role="status"]')?.textContent).toContain(
       'Carregando as conversas',
     )
+    release()
     await settle(50)
     const alert = rendered.container.querySelector('[role="alert"]')
     expect(alert?.textContent).toContain('Sua sessão expirou')

@@ -105,8 +105,13 @@ test.describe('dispositivo e comparação', () => {
     const toggle = page.getByRole('button', {
       name: 'Ver o que mudou em relação à redação anterior',
     })
+    await expect(toggle).toHaveAttribute('aria-expanded', 'false')
     await toggle.click()
-    await expect(toggle).toHaveAttribute('aria-expanded', 'true')
+    // Aberto, o mesmo botão passa a se chamar "Esconder as mudanças".
+    await expect(page.getByRole('button', { name: 'Esconder as mudanças' })).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    )
     await expect(page.locator('main ins, main del').first()).toBeVisible()
 
     // A última redação da linha do tempo passa a ser a mostrada, pela URL.
