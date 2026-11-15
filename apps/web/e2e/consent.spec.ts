@@ -29,7 +29,7 @@ async function browserStorage(page: Page): Promise<BrowserStorage> {
 
 /** Chaves do PostHog (`ph_<chave>_posthog`, `__ph_opt_in_out_…`, `posthog…`). */
 function posthogKeys(storage: Record<string, string>): string[] {
-  return Object.keys(storage).filter((key) => /^(__)?ph_|posthog/i.test(key))
+  return Object.keys(storage).filter((key) => /^(?:__)?ph_/i.test(key) || /posthog/i.test(key))
 }
 
 /** Pedidos a qualquer host do PostHog (SDK, ingestão ou configuração remota). */

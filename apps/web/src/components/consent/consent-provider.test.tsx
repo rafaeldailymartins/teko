@@ -92,7 +92,7 @@ async function click(element: HTMLElement): Promise<void> {
 
 /** Chaves do PostHog que o SDK gravaria (`ph_<chave>_posthog`, `__ph_opt_in_out_…`). */
 function posthogKeys(storage: Storage): string[] {
-  return Object.keys(storage).filter((key) => /^(__)?ph_|posthog/i.test(key))
+  return Object.keys(storage).filter((key) => /^(?:__)?ph_/i.test(key) || /posthog/i.test(key))
 }
 
 function stored() {
