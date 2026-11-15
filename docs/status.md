@@ -184,6 +184,11 @@ O que o deploy exige do mantenedor está em [Antes da F7](#antes-da-f7-o-que-o-m
   copiados do registry, tokens OKLCH novos no teste de contraste, seletor de tema, Geist Mono, app
   shell no grupo `(app)` com paleta `Ctrl/⌘+K` e aviso fixo, área de trabalho do chat em três
   painéis (Sheet e Drawer abaixo de 768 px), páginas-esqueleto nos dois locales e a landing revista.
+- `add-auth-ui` (arquivada em 2026-11-15): entrada com GitHub, Google e passkey (retorno só da
+  própria origem, erros do callback e aviso de `region_restricted`), sessão no cabeçalho e na
+  paleta, guarda do grupo `(app)`, onboarding bloqueante (e novo aceite a cada versão dos Termos),
+  configurações (conta, cota, passkeys, exportação, exclusão, tema, idioma e densidade) e o e2e
+  `auth.spec.ts`; sem o cliente do Better Auth no web. Bundle de primeiro acesso em 361,4 KiB gz.
 
 ## Antes da F7: o que o mantenedor faz
 

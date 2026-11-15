@@ -47,9 +47,12 @@ export function resolveTheme(
  * É um literal fixo, sem interpolação: código-fonte não se monta a partir de valores. As chaves
  * (`THEME_STORAGE_KEY`, `THEME_ATTRIBUTE`) e os valores de `ThemePreference` aparecem nele
  * literalmente, e o teste do módulo falha se um lado mudar sem o outro.
+ *
+ * O mesmo script aplica a densidade compacta (`data-density`, `src/lib/density.ts`): um único
+ * script inline de bootstrap, uma única exceção na regra do Semgrep e um hash só na CSP.
  */
 export const THEME_BOOTSTRAP_SCRIPT =
-  '(function(){try{var t=localStorage.getItem("teko-theme");if(t==="light"||t==="dark"){document.documentElement.setAttribute("data-theme",t)}}catch(e){}})()'
+  '(function(){try{var d=document.documentElement,t=localStorage.getItem("teko-theme");if(t==="light"||t==="dark"){d.setAttribute("data-theme",t)}if(localStorage.getItem("teko-density")==="compact"){d.setAttribute("data-density","compact")}}catch(e){}})()'
 
 /** Evento disparado na `window` quando a preferência muda nesta aba (o `storage` cobre as outras). */
 export const THEME_CHANGE_EVENT = 'teko-theme-change'

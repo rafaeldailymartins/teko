@@ -17,6 +17,9 @@ export default defineConfig({
   input: './openapi.json',
   output: {
     path: './src/lib/api/__generated__',
+    // Imports com `.ts`, como o resto do repositório: o Turbopack do `next build` não troca o `.js`
+    // que o gerador põe por padrão pelo arquivo `.ts`, e o build falha ao importar o cliente.
+    module: { extension: '.ts' },
     header: (ctx) => ['// @ts-nocheck', ...ctx.defaultValue],
   },
   plugins: [

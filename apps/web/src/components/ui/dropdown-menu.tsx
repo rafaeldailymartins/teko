@@ -74,10 +74,56 @@ function DropdownMenuRadioItem({ className, children, ...props }: MenuPrimitive.
   )
 }
 
+function DropdownMenuGroup(props: MenuPrimitive.Group.Props) {
+  return <MenuPrimitive.Group data-slot="dropdown-menu-group" {...props} />
+}
+
+function DropdownMenuLabel({ className, ...props }: MenuPrimitive.GroupLabel.Props) {
+  return (
+    <MenuPrimitive.GroupLabel
+      data-slot="dropdown-menu-label"
+      className={cn('px-2 py-1.5 font-medium text-muted-foreground text-xs', className)}
+      {...props}
+    />
+  )
+}
+
+function DropdownMenuItem({
+  className,
+  variant = 'default',
+  ...props
+}: MenuPrimitive.Item.Props & { variant?: 'default' | 'destructive' }) {
+  return (
+    <MenuPrimitive.Item
+      data-slot="dropdown-menu-item"
+      data-variant={variant}
+      className={cn(
+        "relative flex min-h-8 cursor-default select-none items-center gap-2 rounded-md px-2 py-1 text-sm outline-hidden data-disabled:pointer-events-none data-highlighted:bg-muted data-highlighted:text-foreground data-[variant=destructive]:text-destructive data-disabled:opacity-50 [&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0",
+        className,
+      )}
+      {...props}
+    />
+  )
+}
+
+function DropdownMenuSeparator({ className, ...props }: MenuPrimitive.Separator.Props) {
+  return (
+    <MenuPrimitive.Separator
+      data-slot="dropdown-menu-separator"
+      className={cn('-mx-1 my-1 h-px bg-border', className)}
+      {...props}
+    />
+  )
+}
+
 export {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 }

@@ -41,7 +41,7 @@ function browserStorage(): Storage | null {
  * Preferência atual. No HTML estático vale `system` (o servidor não conhece o storage); depois da
  * hidratação vale a salva, sem divergência de hidratação.
  */
-function useThemePreference(): ThemePreference {
+export function useThemePreference(): ThemePreference {
   return useSyncExternalStore(
     (onChange) => subscribeThemePreference(window, onChange),
     () => readThemePreference(browserStorage()),

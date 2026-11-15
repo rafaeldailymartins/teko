@@ -57,9 +57,7 @@
     },
     "settings": {
       "title": "Settings",
-      "description": "Account preferences, data export and deletion.",
-      "emptyTitle": "Nothing to configure yet",
-      "emptyBody": "Account preferences, data export and deletion will live here. Theme and language are already in the header."
+      "description": "Account preferences, data export and deletion."
     },
     "provision": {
       "title": "Provision",
@@ -99,9 +97,7 @@
     },
     "sign-in": {
       "title": "Sign in",
-      "description": "Sign in to Tekó to ask questions.",
-      "emptyTitle": "Sign-in coming soon",
-      "emptyBody": "Signing in with GitHub and with a passkey is still under construction."
+      "description": "Sign in to Tekó to ask questions."
     }
   },
   "landing": {
@@ -207,6 +203,130 @@
     "title": "Page not found",
     "description": "This address does not exist or has moved.",
     "backHome": "Back to the home page"
+  },
+  "auth": {
+    "signIn": {
+      "lead": "Sign in with your GitHub or Google account. After your first visit, you can add a passkey in the settings.",
+      "github": "Sign in with GitHub",
+      "google": "Sign in with Google",
+      "passkey": "Sign in with a passkey",
+      "noPassword": "Tekó does not use email and password.",
+      "alreadySignedIn": "You are already signed in as {name}.",
+      "continue": "Continue",
+      "legal": "By signing in, you agree to the <terms>Terms of use</terms> and the <privacy>Privacy policy</privacy>."
+    },
+    "errors": {
+      "title": "Could not sign you in",
+      "cancelled": "Sign-in was cancelled. Try again whenever you like.",
+      "blocked": "This account is blocked and cannot sign in to Tekó.",
+      "accountNotLinked": "This provider account could not be linked to your Tekó account. Sign in with the provider you used the first time.",
+      "emailMissing": "The provider did not share a verified email. Check your account's privacy settings and try again.",
+      "generic": "Something went wrong while signing in. Try again."
+    },
+    "passkey": {
+      "cancelled": "The passkey was not used. Try again whenever you like.",
+      "unsupported": "This browser does not support passkeys.",
+      "alreadyRegistered": "This device already has a passkey for this account.",
+      "reauthenticate": "For security, sign out and sign in again to add a passkey.",
+      "failed": "The passkey could not be used. Try again."
+    },
+    "region": {
+      "title": "Unavailable in your region",
+      "body": "For your region, Tekó only uses an AI provider that does not keep the questions, and it is unavailable right now.",
+      "hint": "Try again later. If your country of residence is wrong, it shows in your account settings.",
+      "back": "Back to the home page"
+    },
+    "menu": {
+      "label": "{name}'s account",
+      "settings": "Settings",
+      "signIn": "Sign in",
+      "signOut": "Sign out"
+    },
+    "palette": {
+      "group": "Account",
+      "signIn": "Sign in",
+      "signOut": "Sign out"
+    }
+  },
+  "onboarding": {
+    "title": "Before you start",
+    "titleTermsUpdate": "The Terms of use have changed",
+    "lead": "Confirm these points to ask Tekó questions.",
+    "leadTermsUpdate": "A new version of the Terms of use is in effect. Confirm to continue.",
+    "training": {
+      "title": "Free AI provider",
+      "body": "Questions go through a free AI provider, which may use them to train its own models. Do not include personal data or confidential information."
+    },
+    "adult": "I declare that I am 18 or older.",
+    "terms": "I have read and accept the <terms>Terms of use</terms> (version {version}) and the <privacy>Privacy policy</privacy>.",
+    "country": "Country of residence",
+    "countryHint": "Decides which AI providers may answer your questions.",
+    "submit": "Continue",
+    "submitting": "Saving…",
+    "signOut": "Sign out"
+  },
+  "settings": {
+    "loading": "Loading your account…",
+    "unavailable": "Your account could not be loaded right now. Try again in a moment.",
+    "account": {
+      "title": "Account",
+      "name": "Name",
+      "email": "Email",
+      "country": "Country of residence",
+      "onboardingPending": "Finish the initial setup to ask questions.",
+      "completeOnboarding": "Finish now",
+      "signOut": "Sign out"
+    },
+    "quota": {
+      "title": "Today's quota",
+      "lead": "Tekó runs on free services, so there is a daily limit of questions.",
+      "loading": "Loading the quota…",
+      "user": "{used} of {limit} questions today",
+      "global": "Service ceiling today: {used} of {limit} questions",
+      "resets": "Resets at {time}."
+    },
+    "passkeys": {
+      "title": "Passkeys",
+      "lead": "Sign in without a password, using your device's biometrics or screen lock. Each passkey only works on this Tekó address.",
+      "loading": "Loading passkeys…",
+      "empty": "No passkeys yet.",
+      "unnamed": "Unnamed passkey",
+      "createdAt": "Added on {date}",
+      "removeLabel": "Remove the passkey {name}",
+      "nameLabel": "Passkey name (optional)",
+      "namePlaceholder": "E.g. work laptop",
+      "add": "Add a passkey",
+      "adding": "Waiting for the device…",
+      "added": "Passkey added.",
+      "removed": "Passkey removed."
+    },
+    "data": {
+      "title": "Your data",
+      "lead": "Download everything Tekó keeps about you or delete your account. Questions are deleted automatically after 90 days.",
+      "export": "Export my data",
+      "exporting": "Preparing the file…",
+      "exported": "JSON file downloaded."
+    },
+    "delete": {
+      "button": "Delete account",
+      "title": "Delete your account?",
+      "body": "The account, passkeys, questions and feedback are deleted for good, and the session ends. This cannot be undone.",
+      "confirmLabel": "Type {word} to confirm",
+      "word": "DELETE",
+      "confirm": "Delete for good",
+      "deleting": "Deleting…",
+      "cancel": "Cancel"
+    },
+    "preferences": {
+      "title": "Preferences",
+      "theme": "Theme",
+      "density": "Density",
+      "densityOptions": {
+        "comfortable": "Comfortable",
+        "compact": "Compact"
+      },
+      "language": "Language"
+    }
   },
   "errors": {
     "validation_error": "Some details of the question are invalid. Please review and try again.",

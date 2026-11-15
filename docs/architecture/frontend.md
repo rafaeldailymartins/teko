@@ -40,7 +40,7 @@ apps/web/
   src/app/[locale]/(app)/{chat,provision,compare,history,settings}/page.tsx
   src/app/[locale]/{sign-in,coverage,about,privacy,terms,[...rest]}/page.tsx
   src/components/              # ui/ (shadcn), app-shell/, pages/, providers.tsx e componentes de tela
-  src/lib/                     # site, i18n/, theme, contrast, utils, navigation, hotkeys; depois api/, validity/, analytics/
+  src/lib/                     # site, i18n/, theme, density, contrast, utils, navigation, hotkeys, api/, auth/; depois validity/, analytics/
   messages/{en,pt-BR}.json
 ```
 
@@ -67,7 +67,9 @@ cliente gerado.
   `--secondary`, `--destructive`). Um teste (`src/lib/contrast.ts`, sem dependência) exige contraste
   ≥ 4,5:1 em texto e ≥ 3:1 em UI e foco, nos dois temas.
 - Tema in-house (script inline com hash na CSP, `localStorage['teko-theme']`, `color-scheme`), com
-  seletor no cabeçalho (claro, escuro, igual ao sistema) e na paleta.
+  seletor no cabeçalho (claro, escuro, igual ao sistema), na paleta e nas configurações. O mesmo
+  script aplica a densidade compacta (`data-density`, `localStorage['teko-density']`, escolhida nas
+  configurações), que reduz o `--spacing` do Tailwind: um script inline só, uma exceção só no Semgrep.
 - O Base UI não injeta `<style>` em runtime (`CSPProvider disableStyleElements`); a regra da scroll
   area fica em `globals.css`.
 - Tipografia self-hosted pelo `next/font/google` (arquivos baixados no build e servidos da própria
@@ -83,7 +85,13 @@ cliente gerado.
   CLI da API (`pnpm --filter @teko/api openapi:export`, sem servidor nem banco): caminhos relativos a
   `servers: [{ url: '/api' }]`, versão fixa e ordem estável. `pnpm --filter @teko/web api:generate`
   regenera os dois; o `pnpm api:check` (no `verify` e no job `lint` do CI) falha se algum deles
-  difere do git.
+  difere do git. Os imports do gerado levam `.ts` (`output.module.extension`): o Turbopack do
+  `next build` não resolve o `.js` para o arquivo `.ts`.
+- **Better Auth sem o cliente dele:** as rotas que o web usa (`/api/auth/sign-in/social`,
+  `/sign-out` e as do plugin de passkey) passam pelo mesmo `apiClient` em `src/lib/api/auth.ts`; a
+  cerimônia WebAuthn usa o `@simplewebauthn/browser`, carregado por `import()` no clique. O cliente
+  do Better Auth com o plugin de passkey somaria ~15 KiB gz, e o Biome segue proibindo
+  `better-auth` no web.
 - Erros: um interceptor do cliente converte Problem Details em `ApiError` (`code: ErrorCode`,
   `retryable`, `traceId`, cota), e a UI mostra `t(error.messageKey)` (`errors.<code>`).
 - TanStack Query (`staleTime: 60_000`, retry só de erro transitório; keys com a data efetiva de
@@ -173,8 +181,15 @@ Content-Security-Policy: default-src 'self'; script-src 'self' 'sha256-…'; sty
 - **Citações:** chips numerados durante o stream, hover card e painel com documento, versão, badge
   de intervalo, texto (`lang="pt-BR"`), tabela de campos, link para a fonte, "copiar citação",
   "reportar", linha do tempo e "O que mudou" (diff lazy).
-- **Privacidade:** aviso de treino do provedor gratuito, 18+ e versão dos Termos no primeiro uso;
-  detector de PII no composer; `region_restricted` vira página de aviso.
+- **Privacidade:** aviso de treino do provedor gratuito, 18+, versão dos Termos e país de residência
+  no primeiro uso (diálogo bloqueante, de novo a cada versão dos Termos); detector de PII no composer;
+  `region_restricted` vira página de aviso (`/<locale>/sign-in/?error=region_restricted`).
+- **Conta:** entrada com GitHub, Google e passkey, com retorno (`callbackURL`) só para caminhos da
+  própria origem; o cabeçalho e a paleta mostram a sessão (iniciais no lugar da foto, que a CSP
+  barraria); a `SessionGate` do grupo `(app)` manda quem está sem sessão para a entrada (guarda de
+  experiência) e abre o onboarding pendente, e `useSession().composerBlocked` trava o composer.
+  Configurações com conta, cota do dia, passkeys, exportação (JSON), exclusão com confirmação
+  digitada, tema, idioma e densidade.
 - **Teclado:** `Ctrl/⌘+K` paleta, `/` composer, `Ctrl/⌘+Enter` envia, `Esc` para ou fecha,
   `[`/`]` citações, `Alt+D` data.
 - **Estados:** sugestões sensíveis à data (RCTE art. 76 § 6º em 05/2008 contra 01/2010 e 03/2004

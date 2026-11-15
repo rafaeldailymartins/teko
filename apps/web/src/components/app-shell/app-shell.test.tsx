@@ -82,7 +82,22 @@ function setViewportWidth(width: number): void {
   ).happyDOM.setViewport({ width })
 }
 
+/** Sem sessão: `GET /me` responde 401, como a API (nada sai da máquina nos testes). */
+function unauthenticated(): Response {
+  return Response.json(
+    {
+      type: 'about:blank',
+      title: 'Authentication required',
+      status: 401,
+      code: 'unauthenticated',
+      traceId: 'trace-teste',
+    },
+    { status: 401, headers: { 'content-type': 'application/problem+json' } },
+  )
+}
+
 beforeEach(() => {
+  vi.stubGlobal('fetch', async () => unauthenticated())
   navigation.pathname = '/pt-BR/chat'
   navigation.push.mockReset()
   localStorage.clear()
@@ -91,6 +106,7 @@ beforeEach(() => {
 })
 
 afterEach(async () => {
+  vi.unstubAllGlobals()
   await act(async () => root.unmount())
   container.remove()
   document.body.innerHTML = ''

@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@base-ui/react": "catalog:",
+    "@simplewebauthn/browser": "catalog:",
     "@tanstack/react-query": "catalog:",
     "@teko/shared": "workspace:*",
     "class-variance-authority": "catalog:",

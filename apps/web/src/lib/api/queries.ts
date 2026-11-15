@@ -11,9 +11,11 @@ import {
   getProvisionDiffOptions,
   getProvisionTimelineOptions,
   getQuestionOptions,
+  getQuotaOptions,
   listHistoryOptions,
   searchProvisionsOptions,
 } from './__generated__/@tanstack/react-query.gen.ts'
+import { listPasskeys } from './auth.ts'
 import { apiClient } from './client.ts'
 import type { ApiError } from './errors.ts'
 import { referenceKeyDate } from './reference.ts'
@@ -46,6 +48,16 @@ function apiQuery<TData, TKey extends QueryKey>(
 /** Usuário da sessão e onboarding (`GET /v1/me`); `unauthenticated` quando não há sessão. */
 export function meQuery() {
   return apiQuery(getMeOptions({ client: apiClient }))
+}
+
+/** Cota de perguntas do dia (`GET /v1/me/quota`); `false` = desligada (sem sessão). */
+export function quotaQuery(enabled = true) {
+  return apiQuery(getQuotaOptions({ client: apiClient }), enabled)
+}
+
+/** Passkeys da conta (`GET /auth/passkey/list-user-passkeys`, fora do OpenAPI). */
+export function passkeysQuery(enabled = true) {
+  return apiQuery({ queryKey: ['auth', 'passkeys'] as const, queryFn: listPasskeys }, enabled)
 }
 
 /** Cobertura efetiva do corpus por família (`GET /v1/coverage`, pública). */
