@@ -109,6 +109,9 @@ seguimento que troca `develop` por `main` no código.
 
 ## F7: Deploy de staging e produção
 
+- **Primeiro passo:** apresentar ao mantenedor a lista
+  [Antes da F7](status.md#antes-da-f7-o-que-o-mantenedor-faz) do status, com o que já está feito e o
+  que falta do lado dele (contas, OAuth apps, chaves e segredos).
 - **Mudanças previstas:** `add-vercel-deployment`, `add-deploy-pipelines`, `add-smoke-tests`,
   `add-usage-guard`.
 - **Entregas:** WAF aplicado (`infra/vercel/firewall-rules.json`), sync de env, deploy único do

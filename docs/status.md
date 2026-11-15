@@ -170,15 +170,31 @@ Cota gratuita da cadeia de LLM (medida em 2026-11-14, resolvida em 2026-11-15): 
 a primário, com o Flash de reserva, e o breaker do 429 distingue a cota diária do limite por minuto
 (ADR 0007, adendo).
 
-Exigidas pelo deploy da F7 (fora do repositório):
+O que o deploy exige do mantenedor está em [Antes da F7](#antes-da-f7-o-que-o-mantenedor-faz).
 
-- OAuth apps do GitHub e do Google de staging e produção (callbacks em
-  `<WEB_ORIGIN>/api/auth/callback/{github,google}`) e as env vars Sensitive `BETTER_AUTH_SECRET`,
-  `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, `GOOGLE_CLIENT_ID` e `GOOGLE_CLIENT_SECRET` nos dois
-  projetos da Vercel;
-- `GEMINI_API_KEY` e `GROQ_API_KEY` (Sensitive) nos dois projetos, com o ZDR ligado no console do
-  Groq. As chaves do Gemini do staging e da produção vêm de projetos diferentes do Google Cloud: a
-  cota é por projeto.
+## Antes da F7: o que o mantenedor faz
+
+Lista única das ações fora do repositório que o deploy da F7 exige. O agente que começa a F7
+apresenta esta lista ao mantenedor, confere o que já foi feito (nomes de segredos com
+`gh secret list --env <env>`; env vars da Vercel com `vercel env ls`, sem ler valores) e marca cada
+item aqui. Segredos nunca passam pelo chat: o mantenedor grava cada um.
+
+- [ ] **OAuth apps** do GitHub e do Google, uma de staging e uma de produção, com callback em
+  `<WEB_ORIGIN>/api/auth/callback/{github,google}`.
+- [ ] **Env vars Sensitive da autenticação** nos dois projetos da Vercel: `BETTER_AUTH_SECRET`,
+  `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, `GOOGLE_CLIENT_ID` e `GOOGLE_CLIENT_SECRET`.
+- [ ] **Chaves de LLM** (Sensitive) nos dois projetos da Vercel: `GEMINI_API_KEY` e `GROQ_API_KEY`.
+  As chaves do Gemini do staging e da produção vêm de projetos diferentes do Google Cloud, porque a
+  cota é por projeto (ADR 0007, adendo de 2026-11-15); o ZDR fica ligado no console do Groq. O
+  environment `staging` do GitHub já tem as duas chaves (usadas pelo `corpus-eval`).
+- [ ] **Environment `production` do GitHub**, hoje sem segredo nem variável: `VERCEL_TOKEN` próprio,
+  `VERCEL_AUTOMATION_BYPASS_SECRET` do `tekoia`, as vars `VERCEL_ORG_ID` e `VERCEL_PROJECT_ID` e
+  `NEON_PROD_MIGRATE_URL` (tabela de environments em
+  [`ci-cd-e-ambientes.md`](architecture/ci-cd-e-ambientes.md)).
+- [ ] **Passkey do system test** no environment `staging` (mesma tabela).
+- [ ] **Checklist dos projetos e do time da Vercel** em
+  [`infra/vercel/README.md`](../infra/vercel/README.md) (Build and Deployment, Deployment
+  Protection, Firewall e "Time e conta"): conferir no dashboard e marcar lá.
 
 ## Revisão antes da F4 (2026-11-12)
 
