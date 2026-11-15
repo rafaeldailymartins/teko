@@ -6,10 +6,7 @@ import { GatewayPage, gatewayMetadata } from './gateway-page.tsx'
 import { generateGlobalNotFoundMetadata } from './global-not-found-page.tsx'
 
 // `next/font` só existe no build do Next (transformação SWC); aqui basta a variável CSS.
-vi.mock('next/font/google', () => ({
-  Geist: () => ({ variable: 'font-var-sans', className: 'font-sans-class', style: {} }),
-  Source_Serif_4: () => ({ variable: 'font-var-serif', className: 'font-serif-class', style: {} }),
-}))
+vi.mock('next/font/google', () => import('../../../test/next-font-google.ts'))
 
 describe('BareDocument', () => {
   const html = renderToStaticMarkup(
@@ -19,7 +16,7 @@ describe('BareDocument', () => {
   )
 
   it('aplica as variáveis das fontes no <html>, como o layout de locale', () => {
-    expect(html).toMatch(/<html lang="pt-BR" class="font-var-sans font-var-serif"/)
+    expect(html).toMatch(/<html lang="pt-BR" class="font-var-sans font-var-mono font-var-serif"/)
   })
 
   it('roda o bootstrap de tema como primeiro filho do <body>', () => {

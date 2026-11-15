@@ -14,11 +14,18 @@
     "test:e2e": "playwright test"
   },
   "dependencies": {
+    "@base-ui/react": "catalog:",
     "@teko/shared": "workspace:*",
+    "class-variance-authority": "catalog:",
+    "clsx": "catalog:",
+    "cmdk": "catalog:",
+    "lucide-react": "catalog:",
     "next": "catalog:",
     "next-intl": "catalog:",
     "react": "catalog:",
-    "react-dom": "catalog:"
+    "react-dom": "catalog:",
+    "react-resizable-panels": "catalog:",
+    "tailwind-merge": "catalog:"
   },
   "devDependencies": {
     "@playwright/test": "catalog:",
@@ -29,8 +36,10 @@
     "@typescript/native": "catalog:",
     "@vitest/coverage-v8": "catalog:",
     "babel-plugin-react-compiler": "catalog:",
+    "happy-dom": "catalog:",
     "postcss": "catalog:",
     "tailwindcss": "catalog:",
+    "tw-animate-css": "catalog:",
     "type-coverage": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"
