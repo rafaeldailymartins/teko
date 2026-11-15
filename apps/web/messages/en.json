@@ -2,7 +2,7 @@
   "app": {
     "name": "Tekó",
     "tagline": "Brazilian tax law, as of the right date",
-    "description": "Open-source assistant that answers questions about Brazilian tax law, citing the source and the wording in force on the reference date. Under construction."
+    "description": "An open-source assistant that answers questions about Brazilian tax law, citing the source and the wording in force on your reference date. Under construction."
   },
   "common": {
     "skipToContent": "Skip to content",
@@ -51,9 +51,7 @@
     },
     "history": {
       "title": "History",
-      "description": "Your previous questions, each with its reference date.",
-      "emptyTitle": "No conversations yet",
-      "emptyBody": "Your questions and answers are kept here, with the reference date and the citations used."
+      "description": "Your previous questions, each with its reference date."
     },
     "settings": {
       "title": "Settings",
@@ -63,39 +61,29 @@
     },
     "provision": {
       "title": "Provision",
-      "description": "Text, versions and timeline of a cited provision.",
-      "emptyTitle": "No provision open",
-      "emptyBody": "Open a provision from a citation to see its text, version and validity interval."
+      "description": "Text, versions and timeline of a cited provision."
     },
     "compare": {
       "title": "Compare versions",
-      "description": "What changed between two versions of a provision.",
-      "emptyTitle": "No comparison open",
-      "emptyBody": "Pick two versions of a provision from a citation to see what changed between them."
+      "description": "What changed between two versions of a provision."
     },
     "coverage": {
       "title": "Coverage",
-      "description": "The rules and periods Tekó knows.",
+      "description": "The laws and periods Tekó covers.",
       "emptyTitle": "Coverage coming soon",
-      "emptyBody": "The list of covered rules and periods, with the date the sources were last checked, shows up here."
+      "emptyBody": "The covered laws and periods, with the date the sources were last checked, will appear here."
     },
     "about": {
       "title": "About",
-      "description": "What Tekó is and how it is built.",
-      "emptyTitle": "Page being written",
-      "emptyBody": "Tekó is an open-source project under the MIT license. This page will explain how it is built and who maintains it."
+      "description": "What Tekó is, how it works and who maintains it."
     },
     "privacy": {
       "title": "Privacy",
-      "description": "How Tekó handles your data.",
-      "emptyTitle": "Policy being written",
-      "emptyBody": "The privacy policy will be published here before the service opens."
+      "description": "How Tekó handles your data."
     },
     "terms": {
       "title": "Terms of use",
-      "description": "Conditions for using Tekó.",
-      "emptyTitle": "Terms being written",
-      "emptyBody": "The terms of use will be published here before the service opens."
+      "description": "Conditions for using Tekó."
     },
     "sign-in": {
       "title": "Sign in",
@@ -133,12 +121,12 @@
       },
       "coverage": {
         "title": "Declared coverage",
-        "body": "Tekó states which rules and periods it knows. Outside that coverage, it declines instead of guessing."
+        "body": "Tekó tells you which laws and periods it covers. Outside that coverage, it declines to answer instead of guessing."
       }
     },
     "corpus": {
       "title": "Covered corpus",
-      "lead": "Official sources, versioned and regularly checked against the original websites.",
+      "lead": "Official sources, versioned and checked regularly against the official websites.",
       "efdIcmsIpi": {
         "name": "EFD ICMS/IPI",
         "body": "The Digital Tax Bookkeeping practical guide and its technical notes."
@@ -167,7 +155,7 @@
         "body": "Every statement in the answer points to a passage of the corpus. Without a passage to back it, it stays out."
       },
       "refusal": {
-        "title": "Says when it does not know",
+        "title": "Admits when it does not know",
         "body": "A question outside the coverage gets a clear refusal, with the reason, instead of a guess."
       },
       "advice": {
@@ -205,7 +193,7 @@
   },
   "notFound": {
     "title": "Page not found",
-    "description": "This address does not exist or has moved.",
+    "description": "This page does not exist or has moved.",
     "backHome": "Back to the home page"
   },
   "chat": {
@@ -362,7 +350,7 @@
   "errors": {
     "validation_error": "Some details of the question are invalid. Please review and try again.",
     "unauthenticated": "Your session has expired. Sign in again to continue.",
-    "forbidden": "You are not allowed to do this.",
+    "forbidden": "You do not have permission to do this.",
     "not_found": "We could not find what you were looking for.",
     "onboarding_required": "Finish the initial setup to ask questions.",
     "quota_exceeded": "The daily question limit has been reached.",
@@ -372,5 +360,272 @@
     "upstream_unavailable": "The AI provider is unavailable right now. Please try again later.",
     "region_restricted": "Tekó is not available in your region.",
     "internal": "Something went wrong. Please try again."
+  },
+  "legal": {
+    "toc": "On this page",
+    "updated": "Version {version} · last updated {date}",
+    "inForce": "Version {version} · in force since {date}",
+    "privacy": {
+      "title": "Privacy policy",
+      "lead": "How Tekó handles your personal data under Brazil’s General Data Protection Law, the <ptBR>Lei Geral de Proteção de Dados Pessoais</ptBR> (LGPD, Law No. 13,709/2018). It covers the Tekó website and API.",
+      "sections": {
+        "summary": {
+          "title": "Summary",
+          "body": "<ul><li>Tekó keeps only what your account and history need: your sign-in details, your statement that you are an adult, your acceptance of the Terms, your country of residence and your questions, with identifying personal data already removed.</li><li>Before a question is stored or sent to any provider, Tekó replaces CPF and CNPJ numbers, email addresses, phone numbers and NF-e access keys with placeholders.</li><li>Questions and answers are kept for 90 days and then deleted.</li><li>Answers are generated by AI providers in the United States. <strong>The free provider may use the text it receives to train its models</strong>, so do not write personal data or confidential information.</li><li>You can export or delete everything at any time in <settings>Settings</settings>.</li><li>No data is sold, there is no advertising and no third-party tracking.</li></ul>"
+        },
+        "controller": {
+          "title": "Who is responsible for your data",
+          "body": "<p>The data controller is the Tekó maintainer, an individual who develops the project on a non-commercial basis, with its source code open under the MIT license. Tekó has no company, office or domain of its own; you can reach the maintainer through the <repo>public GitHub repository</repo> (see “Contact”).</p><p>As a small-scale processing agent, the project does not appoint a data protection officer (ANPD Resolution CD/ANPD No. 2/2022, art. 11); requests from data subjects go through the contact channel in this policy.</p>"
+        },
+        "data": {
+          "title": "Data we process, why and on what legal basis",
+          "body": "<ul><li><strong>Account:</strong> the name, email address and picture GitHub or Google send when you sign in, to identify your account. Legal basis: performance of a contract (LGPD, art. 7, V).</li><li><strong>Initial setup:</strong> your statement that you are 18 or older, the version of the Terms you accepted and when, and your country of residence, which determines which AI providers can serve you. Legal bases: performance of a contract (art. 7, V) and compliance with a legal obligation (art. 7, II).</li><li><strong>Session:</strong> session token, IP address, browser (user agent) and expiry, to keep you signed in and limit abuse. Legal basis: legitimate interest (art. 7, IX).</li><li><strong>Passkeys:</strong> the public key and a counter, if you sign in with a passkey. Legal basis: performance of a contract.</li><li><strong>Questions and answers:</strong> the redacted question, with identifying data removed, and the answer, to answer you and show your history. Legal basis: performance of a contract.</li><li><strong>Feedback:</strong> the thumbs up or down and the reason picked from a list, with no free text, to improve the answers. Legal basis: legitimate interest.</li><li><strong>Usage and protection:</strong> daily question counters, for the quotas of the free service, and the IP address and account in the rate-limit windows, against abuse. Legal basis: legitimate interest.</li></ul><p>Tekó does not ask for documents and does not knowingly process sensitive personal data.</p>"
+        },
+        "questions": {
+          "title": "Your questions",
+          "body": "<p>The question you type is never stored or sent as is. Before any use, Tekó replaces CPF and CNPJ numbers, email addresses, phone numbers and NF-e access keys with placeholders, and only this redacted version reaches the database, the providers and your history. The server’s technical logs do not keep the original question either.</p><p>Automatic redaction does not catch every piece of personal data (a name or an address, for example). So <strong>do not include personal data, other people’s data or confidential information in your question</strong>; describe the situation in general terms.</p>"
+        },
+        "providers": {
+          "title": "Who we share data with",
+          "body": "<p>Tekó relies on these processors, which handle data on the project’s behalf:</p><ul><li><strong>Vercel:</strong> hosting for the website and the API, in São Paulo. Runtime logs last 1 hour and do not include the original question, and Vercel’s use of the data for model training is turned off.</li><li><strong>Neon:</strong> database, on AWS in São Paulo. It stores the data described above.</li><li><strong>Cloudflare (Workers AI):</strong> embeddings and search reranking, on a global network. It receives the redacted question.</li><li><strong>Google (Gemini, free tier):</strong> answer generation, in the United States. It receives the redacted question and excerpts of the law. <strong>On the free tier, Google may use this content to improve its own models.</strong></li><li><strong>Groq:</strong> answer generation, in the United States, with zero data retention. It receives the redacted question and excerpts of the law.</li><li><strong>GitHub and Google (sign-in):</strong> authentication, in the United States, only during a sign-in you start.</li></ul><p>If you live in or connect from the European Economic Area, the United Kingdom or Switzerland, you are served only by Groq, with zero retention, and never by the free Gemini tier.</p><p>Sending data to providers in the United States is an international data transfer (LGPD, art. 33), made to deliver the service you ask for and limited to the already redacted text. No data is sold or used for advertising.</p>"
+        },
+        "storage": {
+          "title": "Cookies and browser storage",
+          "body": "<p>Tekó uses only what it needs to work, and that does not depend on consent:</p><ul><li>the sign-in session cookie (HttpOnly and sent only over secure connections), which stops working after 7 days without use;</li><li>your theme preference (light, dark or system), stored in your browser;</li><li>your consent choice, stored in your browser along with the version of this policy.</li></ul><p>Usage measurement (PostHog, with servers in the European Union) and short in-app surveys depend on your consent, which the banner asks for on your first visit. They are not switched on yet; when they are, the choice you already made will apply, and this policy will be updated to describe what is collected. Before you consent, no cookie or measurement data is stored. You can change your choice at any time through the “Cookie preferences” link in the footer.</p>"
+        },
+        "retention": {
+          "title": "How long we keep data",
+          "body": "<ul><li>Questions, answers and feedback: 90 days. A weekly job deletes older ones.</li><li>Account, initial setup, passkeys and usage counters: until you delete your account.</li><li>Sessions: 7 days without use. Expired ones are removed by the weekly job.</li><li>Rate-limit windows: 60 seconds. Expired ones are removed by the weekly job.</li><li>Hosting runtime logs: 1 hour.</li></ul>"
+        },
+        "rights": {
+          "title": "Your rights",
+          "body": "<p>The LGPD (art. 18) gives you the right to confirm that your data is processed and to access it, to have it corrected, anonymized, blocked or deleted when unnecessary, to data portability, to know who it is shared with and to withdraw your consent.</p><ul><li><strong>Access and portability:</strong> in <settings>Settings</settings>, the export downloads a JSON file with your profile, linked accounts (without tokens), the number of passkeys, your questions and your feedback.</li><li><strong>Deletion:</strong> also in <settings>Settings</settings>, deleting your account removes it and everything tied to it: sessions, linked accounts, passkeys, questions, feedback, usage counters and rate-limit windows. Session cookies are cleared right away.</li><li><strong>Correction:</strong> your name, email address and picture come from GitHub or Google; update them there. For anything else, use the contact below.</li><li><strong>Consent:</strong> change or withdraw it at any time under “Cookie preferences” in the footer.</li></ul><p>Anything that is not automatic is handled within 15 days. You can also file a complaint with Brazil’s data protection authority, the <anpd>Autoridade Nacional de Proteção de Dados (ANPD)</anpd>.</p>"
+        },
+        "security": {
+          "title": "Security",
+          "body": "<p>The session cookie is HttpOnly, SameSite=Lax and protected by the __Secure- prefix; every change checks where the request comes from; the database is accessed by a user that cannot alter its structure; secrets are kept in protected hosting variables; and dependencies go through provenance and vulnerability checks. The code is open, so anyone can audit it.</p><p>A session ended on another device may still be accepted for up to 5 minutes on screens that do not read personal data. Export, deletion and questions check the database and reject the ended session immediately.</p><p>Found a vulnerability? Report it privately through <privateReport>GitHub’s private vulnerability reporting</privateReport>.</p>"
+        },
+        "age": {
+          "title": "Adults only",
+          "body": "<p>Tekó is intended for people aged 18 or older, and the initial setup asks you to confirm it. The project does not knowingly process data from children or teenagers. If you know of such an account, let us know through the contact below so it can be deleted.</p>"
+        },
+        "changes": {
+          "title": "Changes to this policy",
+          "body": "<p>The version in force and its date appear at the top of this page, and the change history is in the repository. A new version asks for your consent choice again.</p><p>This policy is available in Portuguese and English. If they differ, the Portuguese version prevails.</p>"
+        },
+        "contact": {
+          "title": "Contact",
+          "body": "<p>For privacy questions and requests, open an <issues>issue in the repository</issues> without including personal data. If your request needs to stay confidential, use <privateReport>GitHub’s private reporting</privateReport>, which only the maintainer can see.</p>"
+        }
+      }
+    },
+    "terms": {
+      "title": "Terms of use",
+      "lead": "The conditions for using Tekó, a free and open-source assistant for Brazilian tax law. By completing the initial setup, you accept this version of the Terms.",
+      "sections": {
+        "acceptance": {
+          "title": "Acceptance",
+          "body": "<p>These Terms are an agreement between you and the Tekó maintainer, an individual who runs the project on a non-commercial basis. To ask questions, you accept the version in force during the initial setup, and Tekó records which version you accepted and when. If you do not agree, do not use the service.</p><p>The <privacy>Privacy policy</privacy> explains how your data is handled and is part of these Terms.</p>"
+        },
+        "service": {
+          "title": "The service",
+          "body": "<p>Tekó answers questions about the tax law it covers, for a tax period or reference date, citing the provision and the version it used. The list of laws and periods is under <coverage>Coverage</coverage>. Outside it, Tekó declines instead of answering.</p><p>The service is free, experimental and run by one person. Features may change, be paused or be discontinued.</p>"
+        },
+        "advice": {
+          "title": "A research aid, not advice",
+          "body": "<p><strong>A research aid; not professional advice.</strong> The answers help you find and read the law, but they are not legal, accounting or tax advice and do not replace a qualified professional. Before you decide, check the cited text in the official source. The decision, and the responsibility for it, are yours.</p>"
+        },
+        "eligibility": {
+          "title": "Who can use it",
+          "body": "<ul><li>You must be 18 or older and confirm it during the initial setup.</li><li>Accounts are personal and sign in with GitHub, Google or a passkey. Keeping access to your account safe is up to you.</li><li>The country of residence you give must be accurate, because it determines which AI providers can serve you.</li></ul>"
+        },
+        "acceptableUse": {
+          "title": "Acceptable use",
+          "body": "<p>When you use Tekó, you agree not to:</p><ul><li>use the service for illegal purposes or to harm others;</li><li>include other people’s personal data or confidential information in your questions;</li><li>get around the quotas, rate limits or regional restrictions, for example with multiple accounts or automated access;</li><li>scrape answers or the corpus in bulk through the interface or the API;</li><li>try to access other people’s data, overload the infrastructure or test security outside the project’s <security>security policy</security>;</li><li>try to make the model produce unlawful content or ignore its own rules.</li></ul><p>The code and the corpus are public in the repository: for bulk use, work with them directly instead of the API.</p>"
+        },
+        "quota": {
+          "title": "Quotas and availability",
+          "body": "<p>Tekó runs on free hosting and AI plans. That is why there is a daily question limit per person and an overall limit; once either runs out, new questions are blocked until it resets, as shown on screen. The service may also be paused to protect the providers’ quotas.</p><p>There is no guarantee of availability, response time or support.</p>"
+        },
+        "answers": {
+          "title": "AI-generated answers",
+          "body": "<p>Answers are generated by language models from excerpts of the law. Even with citation checks, they may be incomplete, out of date or wrong, and the corpus coverage is limited. Each answer states the reference date and validity it used; make sure they match your case.</p><p>You can rate each answer. Ratings help fix mistakes but do not create any obligation to fix them.</p>"
+        },
+        "license": {
+          "title": "Open source and content",
+          "body": "<ul><li>Tekó’s code is open source under the <license>MIT license</license>. You may use, copy and modify it under that license.</li><li>The texts of laws, decrees and other official acts are not protected by copyright in Brazil (<ptBR>Lei nº 9.610/1998</ptBR>, art. 8, IV). The corpus reproduces these official sources and names where they come from.</li><li>You are free to use the answers you receive, always checking the source.</li></ul>"
+        },
+        "warranty": {
+          "title": "No warranty",
+          "body": "<p>Tekó is provided as is, without warranty of any kind, express or implied, including accuracy, being up to date, fitness for a particular purpose or uninterrupted operation, as the MIT license of the code also states.</p><p>To the fullest extent permitted by law, the maintainer is not liable for damages arising from using or being unable to use the service, or for decisions made based on the answers. Nothing in these Terms limits rights that the law guarantees and that cannot be waived.</p>"
+        },
+        "privacy": {
+          "title": "Privacy",
+          "body": "<p>Your data is handled as described in the <privacy>Privacy policy</privacy>. In short: questions are redacted before any use and kept for 90 days, and you can export or delete everything in <settings>Settings</settings>. The free AI provider may use the redacted text to train its models.</p>"
+        },
+        "termination": {
+          "title": "Ending your use",
+          "body": "<p>You can stop using Tekó and delete your account at any time in <settings>Settings</settings>. The maintainer may suspend or delete accounts that break these Terms and may shut the service down, giving notice on the website in advance whenever possible.</p>"
+        },
+        "changes": {
+          "title": "Changes to the Terms",
+          "body": "<p>The version in force is shown at the top of this page. When the Terms change in a meaningful way, the version changes and Tekó asks you to accept it again before your next question. The history is in the repository.</p><p>These Terms are available in Portuguese and English. If they differ, the Portuguese version prevails.</p>"
+        },
+        "law": {
+          "title": "Governing law",
+          "body": "<p>These Terms are governed by the laws of the Federative Republic of Brazil.</p>"
+        },
+        "contact": {
+          "title": "Contact",
+          "body": "<p>Questions about these Terms: open an <issues>issue in the repository</issues>. Security issues: use <privateReport>GitHub’s private reporting</privateReport>.</p>"
+        }
+      }
+    }
+  },
+  "about": {
+    "title": "About Tekó",
+    "lead": "Tekó is an open-source assistant for questions about Brazilian tax law. Every answer applies to a date: the tax period you set.",
+    "sections": {
+      "what": {
+        "title": "What it is",
+        "body": "<p>Tax law changes all the time, and the same question can have different answers in 2008 and in 2010. Tekó starts from the reference date: you set the tax period (for example, 03/2024), and it answers with the wording in force at that time, citing the provision, the version and the validity interval it used.</p><p>If the rule changed within the period, Tekó tells you. If the question falls outside its coverage, it declines and says why.</p>"
+      },
+      "corpus": {
+        "title": "Covered corpus",
+        "body": "<p>Tekó knows these official sources, versioned and checked regularly against the official websites:</p><ul><li><strong>EFD ICMS/IPI:</strong> the Digital Tax Bookkeeping practical guide (<ptBR>Guia Prático da Escrituração Fiscal Digital</ptBR>) and its technical notes.</li><li><strong>EFD-Reinf:</strong> the event layouts and technical notes.</li><li><strong>RCTE (Goiás):</strong> the Regulation of the Goiás State Tax Code (<ptBR>Regulamento do Código Tributário do Estado de Goiás</ptBR>, Decree No. 4,852/1997).</li><li><strong>CTE (Goiás):</strong> the Goiás State Tax Code (<ptBR>Código Tributário do Estado de Goiás</ptBR>, Law No. 11,651/1991).</li><li><strong>EFD (Goiás):</strong> the state practical guide for EFD ICMS/IPI and the adjustment code tables.</li></ul><p>The periods covered for each source are listed under <coverage>Coverage</coverage>.</p>"
+      },
+      "how": {
+        "title": "How it works",
+        "body": "<ul><li><strong>Reference date first:</strong> the date goes into every search, and only passages in force on that date count.</li><li><strong>Hybrid search:</strong> keyword and semantic search at the same time, with the most relevant passages reranked.</li><li><strong>Answers with citations:</strong> a language model writes the answer only from the passages found, and every statement points to the citation it came from. A citation that does not match a passage is dropped.</li><li><strong>Clear refusals:</strong> a question outside the coverage, or with no passage to back it, gets a refusal with the reason instead of a guess.</li><li><strong>Data protection:</strong> CPF and CNPJ numbers, email addresses, phone numbers and NF-e keys are removed from the question before any use.</li></ul>"
+      },
+      "limits": {
+        "title": "Limits",
+        "body": "<ul><li><strong>A research aid, not advice:</strong> Tekó helps you look up the law; the decision stays with you and your accountant or lawyer.</li><li><strong>Limited coverage:</strong> only the laws and periods listed under <coverage>Coverage</coverage>.</li><li><strong>It can be wrong:</strong> language models make mistakes. Always check the cited source.</li><li><strong>Free service:</strong> it runs on free plans, with a daily question limit, and may be paused.</li><li><strong>Free provider:</strong> the AI provider may use the redacted text of your question to train its models. Do not include personal data or confidential information.</li></ul>"
+      },
+      "openSource": {
+        "title": "Open source",
+        "body": "<p>All the code, including the corpus ingestion, is public under the <license>MIT license</license> in the <repo>GitHub repository</repo>. Bug reports, suggestions and contributions are welcome: see the <contributing>contributing guide</contributing>.</p>"
+      },
+      "maintainer": {
+        "title": "Who maintains it",
+        "body": "<p>Tekó is an individual, non-commercial project, with no ads and no data sales, and it runs entirely on free services. How data is handled is described in the <privacy>Privacy policy</privacy>, and the conditions of use in the <terms>Terms of use</terms>.</p>"
+      }
+    }
+  },
+  "consent": {
+    "banner": {
+      "title": "Privacy in this browser",
+      "body": "Tekó only uses the storage it needs to work (sign-in, theme and this choice). With your permission, it may also measure usage in aggregate and show short surveys. Learn more in the <privacy>privacy policy</privacy>.",
+      "accept": "Accept",
+      "reject": "Reject",
+      "customize": "Customize"
+    },
+    "preferences": {
+      "title": "Cookie preferences",
+      "description": "Choose what Tekó may use beyond what it needs to work. Your choice is saved in this browser, and you can change it at any time.",
+      "necessary": {
+        "title": "Strictly necessary",
+        "body": "Sign-in, theme and this choice. Tekó does not work without them.",
+        "status": "Always on"
+      },
+      "analytics": {
+        "title": "Usage measurement",
+        "body": "Aggregate usage statistics (PostHog, with servers in the European Union), never the text of your questions."
+      },
+      "surveys": {
+        "title": "Surveys",
+        "body": "Short, occasional questions about your experience."
+      },
+      "save": "Save choices",
+      "acceptAll": "Accept all",
+      "rejectAll": "Reject all"
+    },
+    "footerLink": "Cookie preferences"
+  },
+  "history": {
+    "listLabel": "Conversations",
+    "loading": "Loading conversations…",
+    "emptyTitle": "No conversations yet",
+    "emptyBody": "Your conversations show up here, each with the reference date of its last question.",
+    "error": "We could not load your history.",
+    "retry": "Try again",
+    "signIn": "Sign in",
+    "reference": "Ref. {date}",
+    "questionCount": "{count, plural, one {# question} other {# questions}}",
+    "viewAll": "See the full history",
+    "loadMore": "Load more",
+    "loadingMore": "Loading…",
+    "retention": "Conversations are kept for 90 days and can be deleted in the settings."
+  },
+  "provision": {
+    "title": "Provisions",
+    "intro": "Search a provision by label, key or a piece of its text and see the wording in force on the date, its timeline and what changed.",
+    "loading": "Loading the provision…",
+    "retry": "Try again",
+    "backToSearch": "Search another provision",
+    "dateLabel": "Reference date",
+    "shownAt": "Wording in force on {date}.",
+    "absentAt": "The provision had no wording in force on {date}; showing the closest earlier one.",
+    "text": "Provision text",
+    "act": "Wording given by: {act}",
+    "fields": "Fields",
+    "fieldName": "Field",
+    "fieldValue": "Value",
+    "whatChanged": "What changed",
+    "showDiff": "See what changed from the previous wording",
+    "hideDiff": "Hide the changes",
+    "firstVersion": "This is the first wording of the provision.",
+    "compareLink": "Compare other dates",
+    "validity": {
+      "current": "In force",
+      "superseded": "Ended",
+      "future": "Upcoming",
+      "between": "{from} to {to}",
+      "since": "since {from}",
+      "until": "until {to}",
+      "always": "no date limits"
+    },
+    "timeline": {
+      "title": "Timeline",
+      "label": "Wordings of the provision",
+      "count": "{count, plural, one {# wording} other {# wordings}}"
+    },
+    "diff": {
+      "loading": "Comparing the wordings…",
+      "retry": "Try again",
+      "at": "On {date}",
+      "absent": "The provision did not exist on this date.",
+      "unchanged": "The text is the same on both dates.",
+      "legend": "Underlined in green, what was added; struck through in red, what was removed.",
+      "insertedStart": "[added:",
+      "insertedEnd": "]",
+      "deletedStart": "[removed:",
+      "deletedEnd": "]",
+      "fieldChanges": "Changed fields",
+      "field": "Field",
+      "before": "Before",
+      "after": "After"
+    },
+    "search": {
+      "label": "Search provisions",
+      "placeholder": "E.g. art. 76, C170 or a piece of the text",
+      "hint": "Shows provisions in force on {date}; type at least 2 characters.",
+      "searching": "Searching…",
+      "empty": "No provision in force on that date matches the search.",
+      "results": "Provisions found"
+    }
+  },
+  "compare": {
+    "title": "Compare versions",
+    "intro": "Pick a provision and two dates to see what changed between the wordings in force on each.",
+    "example": "Example: RCTE, art. 76, § 6, in 05/2008 versus 01/2010",
+    "keyLabel": "Provision key",
+    "fromLabel": "Start date",
+    "toLabel": "End date",
+    "submit": "Compare",
+    "invalidKey": "Invalid key. Use the format go:rcte:art:76:par:6.",
+    "invalidRange": "Fill in both dates, with the start before the end.",
+    "result": "Difference between the wordings",
+    "openProvision": "Open the provision"
   }
 }

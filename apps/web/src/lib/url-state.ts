@@ -1,5 +1,7 @@
-import { idSchema } from '@teko/shared/contracts'
-import { createParser } from 'nuqs'
+import { idSchema, stableKeySchema } from '@teko/shared/contracts'
+import type { Locale } from '@teko/shared/i18n'
+import type { ReferenceInput } from '@teko/shared/vigencia'
+import { createParser, createSerializer } from 'nuqs'
 import { parseReference, serializeReference } from './api/reference.ts'
 
 /**
@@ -32,3 +34,55 @@ export const chatSearchParams = {
   /** Data de referência escolhida; ausente = `source: 'default'` na API. */
   ref: parseAsReference,
 } as const
+
+/** `k`: chave estável do dispositivo (`go:rcte:art:76:par:6`), no formato do shared. */
+const parseAsStableKey = createParser({
+  parse: (value) => {
+    const result = stableKeySchema.safeParse(value)
+    return result.success ? result.data : null
+  },
+  serialize: (value: string) => value,
+})
+
+/** Página de dispositivo: `/pt-BR/provision/?k=<stableKey>&ref=2008-05`. */
+export const provisionSearchParams = {
+  /** Dispositivo aberto. */
+  k: parseAsStableKey,
+  /** Data em que a redação é mostrada; ausente = hoje. */
+  ref: parseAsReference,
+} as const
+
+/** Comparação entre datas: `/pt-BR/compare/?k=<stableKey>&from=2008-05&to=2010-01`. */
+export const compareSearchParams = {
+  k: parseAsStableKey,
+  from: parseAsReference,
+  to: parseAsReference,
+} as const
+
+const serializeChat = createSerializer(chatSearchParams)
+const serializeProvision = createSerializer(provisionSearchParams)
+const serializeCompare = createSerializer(compareSearchParams)
+
+/** Conversa aberta no chat (`/pt-BR/chat/?c=<id>`). */
+export function chatConversationHref(locale: Locale, conversationId: string): string {
+  return `/${locale}/chat/${serializeChat({ c: conversationId })}`
+}
+
+/** Dispositivo numa data (`ref` ausente = hoje). */
+export function provisionHref(
+  locale: Locale,
+  stableKey: string,
+  ref: ReferenceInput | null = null,
+): string {
+  return `/${locale}/provision/${serializeProvision({ k: stableKey, ref })}`
+}
+
+/** Comparação entre as redações de duas datas. */
+export function compareHref(
+  locale: Locale,
+  stableKey: string,
+  from: ReferenceInput | null,
+  to: ReferenceInput | null,
+): string {
+  return `/${locale}/compare/${serializeCompare({ k: stableKey, from, to })}`
+}

@@ -184,6 +184,15 @@ O que o deploy exige do mantenedor está em [Antes da F7](#antes-da-f7-o-que-o-m
   copiados do registry, tokens OKLCH novos no teste de contraste, seletor de tema, Geist Mono, app
   shell no grupo `(app)` com paleta `Ctrl/⌘+K` e aviso fixo, área de trabalho do chat em três
   painéis (Sheet e Drawer abaixo de 768 px), páginas-esqueleto nos dois locales e a landing revista.
+- `add-history-and-provisions` (arquivada em 2026-11-15): `GET /api/v1/conversations` (cursor com
+  microssegundos), histórico no painel do chat e em `/history/`, página de dispositivo com badge de
+  vigência, linha do tempo e "O que mudou" sob demanda, busca de dispositivos, comparação entre
+  datas (RCTE, art. 76, § 6º, 05/2008 contra 01/2010) e o e2e `history.spec.ts`.
+- `add-i18n-en-ptbr` (arquivada em 2026-11-15): `/privacy`, `/terms` e `/about` com texto real nos
+  dois idiomas (revisão jurídica do mantenedor pendente, lista no PR), `TERMS_VERSION` em
+  `@teko/shared/legal`, banner LGPD com preferências e adapter de analytics no-op (o `posthog-js`
+  fica para a F6), paridade com diff, helper de datas e e2e de consentimento e páginas legais. O item
+  "zero cookies e zero chaves do PostHog antes do consentimento" do DoD fica coberto pelo e2e.
 - `add-chat-experience` (arquivada em 2026-11-15): `TekoChatTransport` same-origin com `useChat`,
   thread e composer acessíveis, Streamdown com `rehype-harden`, chips e painel de citação, data de
   referência na URL, cobertura, degradação, cota, PII e `fetch(` só em `src/lib/api`; o chat carrega

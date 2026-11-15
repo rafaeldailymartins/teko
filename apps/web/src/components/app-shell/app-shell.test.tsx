@@ -5,10 +5,11 @@ import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Providers } from '@/components/providers'
+import { REJECT_ALL, writeConsent } from '@/lib/consent/storage'
 import { THEME_ATTRIBUTE, THEME_STORAGE_KEY } from '@/lib/theme'
 import ptBR from '../../../messages/pt-BR.json'
 import { AppHeader } from './app-header.tsx'
-import { Workspace } from './workspace.tsx'
+import { useCloseHistoryPanel, Workspace } from './workspace.tsx'
 
 const navigation = vi.hoisted(() => ({ pathname: '/pt-BR/chat', push: vi.fn() }))
 
@@ -86,6 +87,8 @@ beforeEach(() => {
   navigation.pathname = '/pt-BR/chat'
   navigation.push.mockReset()
   localStorage.clear()
+  // Escolha de consentimento já feita: o banner (testado em consent-provider.test.tsx) fica fora.
+  writeConsent(localStorage, REJECT_ALL)
   document.documentElement.removeAttribute(THEME_ATTRIBUTE)
   setViewportWidth(1280)
 })
@@ -147,6 +150,16 @@ describe('AppHeader', () => {
   })
 })
 
+/** Conteúdo de histórico que fecha o Sheet, como a lista de conversas faz ao abrir uma. */
+function OpenConversation() {
+  const closeHistory = useCloseHistoryPanel()
+  return (
+    <button type="button" onClick={closeHistory}>
+      abrir conversa
+    </button>
+  )
+}
+
 describe('Workspace', () => {
   const workspace = (
     <Workspace history={<p>lista vazia</p>} citation={<p>sem citação</p>}>
@@ -179,6 +192,20 @@ describe('Workspace', () => {
     const dialog = document.querySelector('[role="dialog"]')
     expect(dialog?.textContent).toContain('lista vazia')
     expect(dialog?.querySelector('button')?.textContent).toContain('Fechar')
+  })
+
+  it('o conteúdo do histórico fecha o sheet ao abrir uma conversa', async () => {
+    setViewportWidth(375)
+    await render(
+      <Workspace history={<OpenConversation />} citation={<p>sem citação</p>}>
+        <p id="thread">conversa</p>
+      </Workspace>,
+    )
+    await click(byText('button', 'Histórico'))
+    expect(document.querySelector('[role="dialog"]')).not.toBeNull()
+    await click(byText('button', 'abrir conversa'))
+    await settle()
+    expect(document.querySelector('[role="dialog"]')).toBeNull()
   })
 
   it('no celular abre a citação num drawer', async () => {

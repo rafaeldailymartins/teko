@@ -1,6 +1,13 @@
 import { isParserBijective } from 'nuqs/testing'
 import { describe, expect, it } from 'vitest'
-import { chatSearchParams } from './url-state.ts'
+import {
+  chatConversationHref,
+  chatSearchParams,
+  compareHref,
+  compareSearchParams,
+  provisionHref,
+  provisionSearchParams,
+} from './url-state.ts'
 
 const QUESTION_ID = '0193a3b0-7c1e-7b3a-9f00-4c2d1e5f6a7b'
 
@@ -34,5 +41,28 @@ describe('chatSearchParams', () => {
     expect(
       chatSearchParams.ref.eq({ periodoApuracao: '2024-03' }, { referenceDate: '2024-03-01' }),
     ).toBe(false)
+  })
+})
+
+describe('dispositivo e comparação', () => {
+  const KEY = 'go:rcte:art:76:par:6'
+
+  it('k aceita só chave estável no formato do shared', () => {
+    expect(isParserBijective(provisionSearchParams.k, KEY, KEY)).toBe(true)
+    expect(provisionSearchParams.k.parse('rcte:art-76')).toBeNull()
+    expect(compareSearchParams.k.parse('go:rcte art 76')).toBeNull()
+    expect(compareSearchParams.from.parse('2008-05')).toEqual({ periodoApuracao: '2008-05' })
+  })
+
+  it('links do chat, do dispositivo e da comparação', () => {
+    expect(chatConversationHref('pt-BR', QUESTION_ID)).toBe(`/pt-BR/chat/?c=${QUESTION_ID}`)
+    expect(provisionHref('en', KEY)).toBe(`/en/provision/?k=${KEY}`)
+    expect(provisionHref('pt-BR', KEY, { referenceDate: '2008-05-01' })).toBe(
+      `/pt-BR/provision/?k=${KEY}&ref=2008-05-01`,
+    )
+    expect(
+      compareHref('pt-BR', KEY, { periodoApuracao: '2008-05' }, { periodoApuracao: '2010-01' }),
+    ).toBe(`/pt-BR/compare/?k=${KEY}&from=2008-05&to=2010-01`)
+    expect(compareHref('pt-BR', KEY, null, null)).toBe(`/pt-BR/compare/?k=${KEY}`)
   })
 })

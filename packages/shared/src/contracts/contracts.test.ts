@@ -6,6 +6,8 @@ import {
   askQuestionResponseSchema,
   type Citation,
   citationSchema,
+  conversationListQuerySchema,
+  conversationListResponseSchema,
   coverageResponseSchema,
   createStreamErrorChunk,
   encodeSseChunk,
@@ -337,5 +339,39 @@ describe('UI Message Stream', () => {
     })
     expect(parseStreamError('{"code":"teapot","retryable":true}')).toBeNull()
     expect(parseStreamError('An error occurred.')).toBeNull()
+  })
+})
+
+describe('GET /api/v1/conversations', () => {
+  it('aceita só o cursor opaco na query', () => {
+    expect(conversationListQuerySchema.safeParse({}).success).toBe(true)
+    expect(conversationListQuerySchema.safeParse({ cursor: 'MjAyNi0xMS0x_-' }).success).toBe(true)
+    expect(conversationListQuerySchema.safeParse({ cursor: 'a b' }).success).toBe(false)
+    expect(conversationListQuerySchema.safeParse({ limit: '5' }).success).toBe(false)
+  })
+
+  it('valida a página de conversas', () => {
+    const item = {
+      conversationId: CONVERSATION_ID,
+      title: 'Qual o prazo do art. 76?',
+      questionCount: 2,
+      updatedAt: '2026-11-10T15:00:00.000Z',
+      lastReferenceDate: '2008-05-01',
+    }
+    expect(
+      conversationListResponseSchema.safeParse({ items: [item], nextCursor: null }).success,
+    ).toBe(true)
+    expect(
+      conversationListResponseSchema.safeParse({
+        items: [{ ...item, questionCount: 0 }],
+        nextCursor: null,
+      }).success,
+    ).toBe(false)
+    expect(
+      conversationListResponseSchema.safeParse({
+        items: [{ ...item, title: 'x'.repeat(81) }],
+        nextCursor: null,
+      }).success,
+    ).toBe(false)
   })
 })

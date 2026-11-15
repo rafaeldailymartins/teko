@@ -42,6 +42,20 @@ const PROBES = {
     '}',
     '',
   ].join('\n'),
+  'src/components/posthog-probe.ts': [
+    "import posthog from 'posthog-js'",
+    "import { PostHog } from '@posthog/core'",
+    '',
+    'export const probes = [posthog, PostHog]',
+    '',
+  ].join('\n'),
+  'src/lib/analytics/posthog-probe.ts': [
+    "import posthog from 'posthog-js'",
+    "import { Pool } from 'pg'",
+    '',
+    'export const probes = [posthog, Pool]',
+    '',
+  ].join('\n'),
   'src/components/img-probe.tsx': [
     'export function ImgProbe() {',
     '  return <img src="/probe.png" alt="sonda" />',
@@ -116,6 +130,20 @@ describe('apps/web/biome.json', () => {
       .map(diagnosticPath)
     expect(restricted.some((path) => path.endsWith('components/fetch-probe.ts'))).toBe(true)
     expect(restricted.some((path) => path.endsWith('api/fetch-allowed.ts'))).toBe(false)
+  })
+
+  it('o SDK de analytics só pode ser importado em src/lib/analytics (que segue sem servidor)', () => {
+    const restricted = (suffix: string) =>
+      diagnostics
+        .filter(
+          (diagnostic) =>
+            diagnostic.category === 'lint/style/noRestrictedImports' &&
+            diagnosticPath(diagnostic).endsWith(suffix),
+        )
+        .map(diagnosticPath)
+    expect(restricted('components/posthog-probe.ts')).toHaveLength(2)
+    // No adapter, o posthog-js passa e o `pg` continua barrado.
+    expect(restricted('lib/analytics/posthog-probe.ts')).toHaveLength(1)
   })
 
   it('liga os domínios react e next (noImgElement do domínio next)', () => {

@@ -5,6 +5,7 @@ import type { IsoDate } from '@teko/shared/vigencia'
 import { useTranslations } from 'next-intl'
 import { lazy, useCallback, useEffect, useState } from 'react'
 import { Workspace } from '@/components/app-shell/workspace'
+import { ConversationList } from '@/components/history/conversation-list'
 import { Skeleton } from '@/components/ui/skeleton'
 import { type CitationSelection, selectedCitation, stepSelection } from '@/lib/chat/selection'
 import { citationStep, isEditableTarget } from '@/lib/hotkeys'
@@ -87,7 +88,7 @@ export function ChatWorkspace() {
 
   return (
     <Workspace
-      history={<p className="px-4 pb-4 text-muted-foreground text-sm">{tPanels('historyEmpty')}</p>}
+      history={<ConversationList variant="panel" />}
       citation={
         selection === null ? (
           <p className="px-4 pb-4 text-muted-foreground text-sm">{tPanels('citationEmpty')}</p>

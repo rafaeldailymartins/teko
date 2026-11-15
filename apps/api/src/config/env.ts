@@ -1,4 +1,5 @@
 import { AppEnv, appEnvSchema, LlmProvider, llmProviderSchema } from '@teko/shared/contracts'
+import { TERMS_VERSION } from '@teko/shared/legal'
 import { z } from 'zod'
 import { gitShaSchema, releaseVersionSchema, UNKNOWN_GIT_SHA } from '#domain/shared/build-info.ts'
 import { compareCodeUnits } from '#domain/shared/compare-code-units.ts'
@@ -108,8 +109,12 @@ const MIN_SHUTDOWN_GRACE_MS = 30_000
 /** Tempo para o proxy da frente ver o 503 do `/healthz` antes de a porta fechar. */
 export const DEFAULT_DRAIN_DELAY_MS = 5000
 
-/** Versão dos Termos em vigor quando nada é configurado. */
-export const DEFAULT_TERMS_VERSION = '2026-11-14'
+/**
+ * Versão dos Termos em vigor quando nada é configurado: a mesma constante que a web exibe em
+ * `/terms` (`@teko/shared/legal`). Sobrescrever `TERMS_VERSION` no ambiente só faz sentido junto
+ * com um texto novo publicado na web.
+ */
+export const DEFAULT_TERMS_VERSION = TERMS_VERSION
 
 /**
  * Variáveis que o Better Auth lê sozinho do ambiente e que ligariam a telemetria dele (dados do

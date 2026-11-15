@@ -21,8 +21,10 @@ export default defineConfig({
   input: './openapi.json',
   output: {
     path: './src/lib/api/__generated__',
-    header: (ctx) => ['// @ts-nocheck', ...ctx.defaultValue],
+    // Imports relativos com `.ts`, como no resto do repositório: o Turbopack do `next build` não
+    // resolve o `.js` que o gerador põe por padrão para um arquivo `.ts`.
     module: { extension: '.ts' },
+    header: (ctx) => ['// @ts-nocheck', ...ctx.defaultValue],
   },
   plugins: [
     '@hey-api/client-fetch',

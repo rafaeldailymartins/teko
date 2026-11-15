@@ -1,5 +1,6 @@
-import { expect, type Page, test } from '@playwright/test'
+import { expect, test } from '@playwright/test'
 import en from '../messages/en.json' with { type: 'json' }
+import { enforcedViolations, recordViolations } from './support/csp.ts'
 
 /**
  * Rotas de plataforma e segurança do estático na stack de CI (Caddy com os snippets de
@@ -7,35 +8,6 @@ import en from '../messages/en.json' with { type: 'json' }
  * locale, redirect da raiz, `/_next/static/*` imutável, headers de segurança e a CSP por documento,
  * com os hashes do HTML exportado. A CSP não pode barrar nada do próprio export.
  */
-
-interface Violation {
-  readonly directive: string
-  readonly blocked: string
-  readonly disposition: string
-}
-
-/** Junta as violações de CSP da página (`securitypolicyviolation`) desde o primeiro byte. */
-async function recordViolations(page: Page): Promise<void> {
-  await page.addInitScript(() => {
-    const target = window as unknown as { __cspViolations: Violation[] }
-    target.__cspViolations = []
-    document.addEventListener('securitypolicyviolation', (event) => {
-      target.__cspViolations.push({
-        directive: event.effectiveDirective,
-        blocked: event.blockedURI,
-        disposition: event.disposition,
-      })
-    })
-  })
-}
-
-async function enforcedViolations(page: Page): Promise<Violation[]> {
-  const all = await page.evaluate(
-    () => (window as unknown as { __cspViolations: Violation[] }).__cspViolations,
-  )
-  // O Trusted Types está em report-only até a v0.1.0: só as violações aplicadas reprovam.
-  return all.filter((violation) => violation.disposition === 'enforce')
-}
 
 test.describe('rotas de plataforma', () => {
   test('caminho inexistente em /en/ responde 404 com a página em inglês', async ({ page }) => {

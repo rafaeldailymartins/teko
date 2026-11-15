@@ -1,7 +1,7 @@
 import type { ComponentProps } from 'react'
 import { cn } from '@/lib/utils'
 
-/** Skeleton do shadcn: bloco pulsante no lugar do conteúdo que ainda carrega (decorativo). */
+/** Bloco de carregamento (registry `base-nova`); decorativo, quem o usa anuncia o estado. */
 function Skeleton({ className, ...props }: ComponentProps<'div'>) {
   return (
     <div

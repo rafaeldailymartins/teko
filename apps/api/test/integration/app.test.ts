@@ -285,6 +285,7 @@ describe('OpenAPI + Scalar', () => {
         [
           '/api/healthz',
           '/healthz',
+          '/api/v1/conversations',
           '/api/v1/coverage',
           '/api/v1/me',
           '/api/v1/me/export',
@@ -301,6 +302,9 @@ describe('OpenAPI + Scalar', () => {
         ].sort(),
       )
       expect(document.paths['/api/healthz']?.['get']?.operationId).toBe('getHealth')
+      expect(document.paths['/api/v1/conversations']?.['get']?.operationId).toBe(
+        'listConversations',
+      )
       expect(Object.keys(document.paths['/healthz']?.['get']?.responses ?? {}).sort()).toEqual([
         '200',
         '503',

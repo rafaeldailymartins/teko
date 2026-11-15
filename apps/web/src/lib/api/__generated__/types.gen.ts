@@ -40,6 +40,332 @@ export type GetHealthResponses = {
 
 export type GetHealthResponse = GetHealthResponses[keyof GetHealthResponses];
 
+export type ListConversationsData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Cursor opaco da próxima página (`nextCursor` da anterior)
+         */
+        cursor?: string;
+    };
+    url: '/v1/conversations';
+};
+
+export type ListConversationsErrors = {
+    /**
+     * RFC 9457 problem details (application/problem+json)
+     */
+    400: {
+        type: string;
+        title: string;
+        status: number;
+        detail?: string;
+        instance?: string;
+        traceId: string;
+        code: 'quota_exceeded';
+        meta: {
+            scope: 'user_daily' | 'global_daily';
+            resetAt: string;
+        };
+    } | {
+        type: string;
+        title: string;
+        status: number;
+        detail?: string;
+        instance?: string;
+        traceId: string;
+        code: 'validation_error';
+        errors?: Array<{
+            path: string;
+            message: string;
+        }>;
+    } | {
+        type: string;
+        title: string;
+        status: number;
+        detail?: string;
+        instance?: string;
+        traceId: string;
+        code: 'unauthenticated' | 'forbidden' | 'not_found' | 'onboarding_required' | 'rate_limited' | 'service_paused' | 'stream_busy' | 'upstream_unavailable' | 'region_restricted' | 'internal';
+    };
+    /**
+     * RFC 9457 problem details (application/problem+json)
+     */
+    401: {
+        type: string;
+        title: string;
+        status: number;
+        detail?: string;
+        instance?: string;
+        traceId: string;
+        code: 'quota_exceeded';
+        meta: {
+            scope: 'user_daily' | 'global_daily';
+            resetAt: string;
+        };
+    } | {
+        type: string;
+        title: string;
+        status: number;
+        detail?: string;
+        instance?: string;
+        traceId: string;
+        code: 'validation_error';
+        errors?: Array<{
+            path: string;
+            message: string;
+        }>;
+    } | {
+        type: string;
+        title: string;
+        status: number;
+        detail?: string;
+        instance?: string;
+        traceId: string;
+        code: 'unauthenticated' | 'forbidden' | 'not_found' | 'onboarding_required' | 'rate_limited' | 'service_paused' | 'stream_busy' | 'upstream_unavailable' | 'region_restricted' | 'internal';
+    };
+    /**
+     * RFC 9457 problem details (application/problem+json)
+     */
+    403: {
+        type: string;
+        title: string;
+        status: number;
+        detail?: string;
+        instance?: string;
+        traceId: string;
+        code: 'quota_exceeded';
+        meta: {
+            scope: 'user_daily' | 'global_daily';
+            resetAt: string;
+        };
+    } | {
+        type: string;
+        title: string;
+        status: number;
+        detail?: string;
+        instance?: string;
+        traceId: string;
+        code: 'validation_error';
+        errors?: Array<{
+            path: string;
+            message: string;
+        }>;
+    } | {
+        type: string;
+        title: string;
+        status: number;
+        detail?: string;
+        instance?: string;
+        traceId: string;
+        code: 'unauthenticated' | 'forbidden' | 'not_found' | 'onboarding_required' | 'rate_limited' | 'service_paused' | 'stream_busy' | 'upstream_unavailable' | 'region_restricted' | 'internal';
+    };
+    /**
+     * RFC 9457 problem details (application/problem+json)
+     */
+    404: {
+        type: string;
+        title: string;
+        status: number;
+        detail?: string;
+        instance?: string;
+        traceId: string;
+        code: 'quota_exceeded';
+        meta: {
+            scope: 'user_daily' | 'global_daily';
+            resetAt: string;
+        };
+    } | {
+        type: string;
+        title: string;
+        status: number;
+        detail?: string;
+        instance?: string;
+        traceId: string;
+        code: 'validation_error';
+        errors?: Array<{
+            path: string;
+            message: string;
+        }>;
+    } | {
+        type: string;
+        title: string;
+        status: number;
+        detail?: string;
+        instance?: string;
+        traceId: string;
+        code: 'unauthenticated' | 'forbidden' | 'not_found' | 'onboarding_required' | 'rate_limited' | 'service_paused' | 'stream_busy' | 'upstream_unavailable' | 'region_restricted' | 'internal';
+    };
+    /**
+     * RFC 9457 problem details (application/problem+json)
+     */
+    409: {
+        type: string;
+        title: string;
+        status: number;
+        detail?: string;
+        instance?: string;
+        traceId: string;
+        code: 'quota_exceeded';
+        meta: {
+            scope: 'user_daily' | 'global_daily';
+            resetAt: string;
+        };
+    } | {
+        type: string;
+        title: string;
+        status: number;
+        detail?: string;
+        instance?: string;
+        traceId: string;
+        code: 'validation_error';
+        errors?: Array<{
+            path: string;
+            message: string;
+        }>;
+    } | {
+        type: string;
+        title: string;
+        status: number;
+        detail?: string;
+        instance?: string;
+        traceId: string;
+        code: 'unauthenticated' | 'forbidden' | 'not_found' | 'onboarding_required' | 'rate_limited' | 'service_paused' | 'stream_busy' | 'upstream_unavailable' | 'region_restricted' | 'internal';
+    };
+    /**
+     * RFC 9457 problem details (application/problem+json)
+     */
+    429: {
+        type: string;
+        title: string;
+        status: number;
+        detail?: string;
+        instance?: string;
+        traceId: string;
+        code: 'quota_exceeded';
+        meta: {
+            scope: 'user_daily' | 'global_daily';
+            resetAt: string;
+        };
+    } | {
+        type: string;
+        title: string;
+        status: number;
+        detail?: string;
+        instance?: string;
+        traceId: string;
+        code: 'validation_error';
+        errors?: Array<{
+            path: string;
+            message: string;
+        }>;
+    } | {
+        type: string;
+        title: string;
+        status: number;
+        detail?: string;
+        instance?: string;
+        traceId: string;
+        code: 'unauthenticated' | 'forbidden' | 'not_found' | 'onboarding_required' | 'rate_limited' | 'service_paused' | 'stream_busy' | 'upstream_unavailable' | 'region_restricted' | 'internal';
+    };
+    /**
+     * RFC 9457 problem details (application/problem+json)
+     */
+    451: {
+        type: string;
+        title: string;
+        status: number;
+        detail?: string;
+        instance?: string;
+        traceId: string;
+        code: 'quota_exceeded';
+        meta: {
+            scope: 'user_daily' | 'global_daily';
+            resetAt: string;
+        };
+    } | {
+        type: string;
+        title: string;
+        status: number;
+        detail?: string;
+        instance?: string;
+        traceId: string;
+        code: 'validation_error';
+        errors?: Array<{
+            path: string;
+            message: string;
+        }>;
+    } | {
+        type: string;
+        title: string;
+        status: number;
+        detail?: string;
+        instance?: string;
+        traceId: string;
+        code: 'unauthenticated' | 'forbidden' | 'not_found' | 'onboarding_required' | 'rate_limited' | 'service_paused' | 'stream_busy' | 'upstream_unavailable' | 'region_restricted' | 'internal';
+    };
+    /**
+     * RFC 9457 problem details (application/problem+json)
+     */
+    503: {
+        type: string;
+        title: string;
+        status: number;
+        detail?: string;
+        instance?: string;
+        traceId: string;
+        code: 'quota_exceeded';
+        meta: {
+            scope: 'user_daily' | 'global_daily';
+            resetAt: string;
+        };
+    } | {
+        type: string;
+        title: string;
+        status: number;
+        detail?: string;
+        instance?: string;
+        traceId: string;
+        code: 'validation_error';
+        errors?: Array<{
+            path: string;
+            message: string;
+        }>;
+    } | {
+        type: string;
+        title: string;
+        status: number;
+        detail?: string;
+        instance?: string;
+        traceId: string;
+        code: 'unauthenticated' | 'forbidden' | 'not_found' | 'onboarding_required' | 'rate_limited' | 'service_paused' | 'stream_busy' | 'upstream_unavailable' | 'region_restricted' | 'internal';
+    };
+};
+
+export type ListConversationsError = ListConversationsErrors[keyof ListConversationsErrors];
+
+export type ListConversationsResponses = {
+    /**
+     * Conversas do usuário, da mais recente para a mais antiga
+     */
+    200: {
+        items: Array<{
+            conversationId: string;
+            title: string;
+            questionCount: number;
+            updatedAt: string;
+            /**
+             * Data de calendário ISO 8601 (AAAA-MM-DD)
+             */
+            lastReferenceDate: string;
+        }>;
+        nextCursor: string | null;
+    };
+};
+
+export type ListConversationsResponse = ListConversationsResponses[keyof ListConversationsResponses];
+
 export type GetCoverageData = {
     body?: never;
     path?: never;

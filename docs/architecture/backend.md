@@ -37,7 +37,7 @@ em `domain/corpus/provision-id.ts`.
 
 **Casos de uso:** `ResolveReferenceDate`, `CheckCoverage`, `AskQuestion`, `StreamAnswer`,
 `HybridSearch`, `SearchProvisions`, `GetProvisionTimeline`, `GetProvisionDiff`, `RecordFeedback`,
-`GetQuestion`, `ListHistory`, `CompleteOnboarding`, `ExportMyData`, `DeleteMyData`,
+`GetQuestion`, `ListHistory` (perguntas de uma conversa e lista de conversas), `CompleteOnboarding`, `ExportMyData`, `DeleteMyData`,
 `PurgeExpiredData`. A ingestão usa `IngestDocumentVersion`, `EmbedPending`, `RefreshCoverage` e os
 de snapshot e watch ([ingestão](ingestao-e-avaliacao.md)); o `seed-fixtures` passa pelo mesmo
 `IngestDocumentVersion` do staging, sem caminho de escrita paralelo.
@@ -125,6 +125,7 @@ Contrato canônico em `packages/shared/src/contracts` e no OpenAPI. Tudo na mesm
 | `POST /api/v1/questions`                                                                        | `answered \| refused \| needs_clarification \| accepted{questionId, resolved}`; query string → 400 `validation_error` |
 | `POST /api/v1/questions/:id/stream`                                                             | Cookie de sessão + `Origin`; UI Message Stream v1; um stream por pergunta (claim atômico)                             |
 | `GET /api/v1/questions`, `GET /api/v1/questions/:id`                                            | Histórico por `conversationId`                                                                                        |
+| `GET /api/v1/conversations?cursor=`                                                             | Conversas do usuário (título da primeira pergunta, contagem, última data); páginas de 20 por cursor opaco             |
 | `POST /api/v1/questions/:id/feedback`                                                           | Polegar e motivo, inclusive "citação errada"                                                                          |
 | `GET /api/v1/provisions?q=&family=&at=`, `…/:stableKey/timeline`, `…/:stableKey/diff?from=&to=` | Paleta (chave, rótulo ou texto), linha do tempo e diff por palavra e por campo; rate limit da aplicação               |
 | `POST /api/v1/_eval/answer`, `GET /api/v1/_eval/search`                                         | Só com `APP_ENV=ci`, em plugin separado; com `APP_ENV=staging` dão 404 (teste de integração)                          |
@@ -200,6 +201,11 @@ Drizzle 1.0, schemas `corpus`, `app` e `auth`, IDs `uuidv7()`, casing por tabela
 | `app.questions`                                       | `user_id`, `conversation_id`, `question_redacted`, `locale`, `families`, `reference_date`, `reference_source`, `status` (`pending/streaming/answered/refused/failed/aborted/expired`), `refusal_reason`, `answer_md`, `citations`, `retrieval`, `retrieval_mode`, `provider`, `model`, `prompt_version`, `corpus_version`, `cache_key`, tokens, `shadow_cost_usd`, `ttft_ms`, `latency_ms`, `langfuse_trace_id`, `stream_started_at` |
 | `app.feedback`, `app.answer_cache`, `app.usage_daily` | `usage_daily` (PK `day, scope`): `requests`, tokens, `neurons`, `langfuse_units`, `stream_seconds`                                                                                                                                                                                                                                                                                                                                   |
 | `app.rate_limits`                                     | PK `(key, window_start)`, `count`, `expires_at`; janelas vencidas apagadas pela manutenção semanal                                                                                                                                                                                                                                                                                                                                   |
+
+**Conversas** não têm tabela: `GET /conversations` agrega `app.questions` do usuário por
+`conversation_id` (índice `questions_user_created`), ordenada pela última pergunta, com o cursor no
+instante dela em texto UTC com microssegundos (um `Date` perderia a precisão e a página seguinte
+repetiria ou pularia conversas).
 
 **Roles.** `teko_app` (runtime e manutenção: DML em `app`/`auth`, SELECT em `corpus`,
 `statement_timeout` e `idle_in_transaction_session_timeout` de 5 s no role) e `teko_watch` (só

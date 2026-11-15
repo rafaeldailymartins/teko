@@ -2,6 +2,8 @@ import { randomUUID } from 'node:crypto'
 import type { AddressInfo } from 'node:net'
 import {
   askQuestionResponseSchema,
+  CONVERSATIONS_PAGE_SIZE,
+  conversationListResponseSchema,
   historyResponseSchema,
   parseStreamError,
   questionDetailSchema,
@@ -509,6 +511,112 @@ describe('histórico, feedback e cota', () => {
       (await app.inject({ url: '/api/v1/me/quota', headers: { cookie: alice.cookie } })).json(),
     )
     expect(quota.user).toEqual({ used: 1, limit: 30 })
+  })
+})
+
+describe('GET /api/v1/conversations', () => {
+  /** Grava perguntas direto no banco, com instantes separados por microssegundos. */
+  async function seedConversations(userId: string): Promise<{ twoQuestions: string }> {
+    const base = "timestamptz '2026-11-10 12:00:00+00'"
+    const series = (title: string, count: number, at: string) =>
+      owner.query(
+        `INSERT INTO app.questions (user_id, conversation_id, question_redacted, locale, families,
+           reference_date, reference_source, status, created_at)
+         SELECT $1::uuid, gen_random_uuid(), $2 || i, 'pt-BR', '{rcte}', '2008-05-01', 'explicit',
+           'answered', ${at}
+         FROM generate_series(1, $3::int) AS i`,
+        [userId, title, count],
+      )
+    await series('Pergunta ', 22, `${base} + i * interval '1 microsecond'`)
+    await series('Empate ', 2, `${base} + interval '30 microseconds'`)
+    const twoQuestions = randomUUID()
+    await owner.query(
+      `INSERT INTO app.questions (user_id, conversation_id, question_redacted, locale, families,
+         reference_date, reference_source, status, created_at)
+       VALUES ($1, $2, E'Primeira\\n  pergunta da conversa', 'pt-BR', '{rcte}', '2008-05-01',
+                'periodo_apuracao', 'answered', ${base} + interval '40 microseconds'),
+              ($1, $2, 'Segunda', 'pt-BR', '{rcte}', '2010-01-01', 'periodo_apuracao', 'pending',
+                ${base} + interval '50 microseconds')`,
+      [userId, twoQuestions],
+    )
+    return { twoQuestions }
+  }
+
+  it('exige sessão; lista só as conversas do usuário, em páginas por cursor, sem repetir', async () => {
+    const { app } = await startApp()
+    expect((await app.inject({ url: '/api/v1/conversations' })).statusCode).toBe(401)
+
+    const alice = await newUser()
+    const bob = await newUser()
+    const { twoQuestions } = await seedConversations(alice.userId)
+    await seedConversations(bob.userId)
+
+    const first = await app.inject({
+      url: '/api/v1/conversations',
+      headers: { cookie: alice.cookie },
+    })
+    expect(first.statusCode).toBe(200)
+    expect(first.headers['cache-control']).toBe('private, no-store')
+    const page1 = conversationListResponseSchema.parse(first.json())
+    expect(page1.items).toHaveLength(CONVERSATIONS_PAGE_SIZE)
+    expect(page1.items[0]).toEqual({
+      conversationId: twoQuestions,
+      title: 'Primeira pergunta da conversa',
+      questionCount: 2,
+      updatedAt: '2026-11-10T12:00:00.000Z',
+      lastReferenceDate: '2010-01-01',
+    })
+    // O empate no instante sai pelo id da conversa, decrescente.
+    const ties = page1.items.slice(1, 3)
+    expect(ties.map((item) => item.title).sort()).toEqual(['Empate 1', 'Empate 2'])
+    expect([...ties].sort((a, b) => (a.conversationId < b.conversationId ? 1 : -1))).toEqual(ties)
+
+    // A fronteira da página cai entre instantes que só diferem nos microssegundos.
+    const cursor = page1.nextCursor ?? ''
+    expect(cursor).not.toBe('')
+    const page2 = conversationListResponseSchema.parse(
+      (
+        await app.inject({
+          url: `/api/v1/conversations?cursor=${cursor}`,
+          headers: { cookie: alice.cookie },
+        })
+      ).json(),
+    )
+    expect(page2.nextCursor).toBeNull()
+    const titles = [...page1.items, ...page2.items].map((item) => item.title)
+    expect(titles).toHaveLength(25)
+    expect(new Set(titles).size).toBe(25)
+    expect(titles.slice(3)).toEqual(
+      Array.from({ length: 22 }, (_, index) => `Pergunta ${22 - index}`),
+    )
+    const all = [...page1.items, ...page2.items].map((item) => item.conversationId)
+    const bobs = conversationListResponseSchema.parse(
+      (await app.inject({ url: '/api/v1/conversations', headers: { cookie: bob.cookie } })).json(),
+    )
+    expect(bobs.items.some((item) => all.includes(item.conversationId))).toBe(false)
+  })
+
+  it('cursor inválido ou parâmetro desconhecido → 400 validation_error', async () => {
+    const { app } = await startApp()
+    const alice = await newUser()
+    for (const query of ['cursor=bad', 'cursor=a%20b', 'limit=5']) {
+      const res = await app.inject({
+        url: `/api/v1/conversations?${query}`,
+        headers: { cookie: alice.cookie },
+      })
+      expect(res.statusCode, query).toBe(400)
+      expect(res.json()).toMatchObject({ code: 'validation_error' })
+    }
+  })
+
+  it('usuário sem perguntas → lista vazia', async () => {
+    const { app } = await startApp()
+    const alice = await newUser()
+    const res = await app.inject({
+      url: '/api/v1/conversations',
+      headers: { cookie: alice.cookie },
+    })
+    expect(res.json()).toEqual({ items: [], nextCursor: null })
   })
 })
 

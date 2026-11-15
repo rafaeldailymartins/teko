@@ -51,9 +51,7 @@
     },
     "history": {
       "title": "Histórico",
-      "description": "Suas perguntas anteriores, com a data de referência de cada uma.",
-      "emptyTitle": "Nenhuma conversa ainda",
-      "emptyBody": "Suas perguntas e respostas ficam aqui, com a data de referência e as citações usadas."
+      "description": "Suas perguntas anteriores, com a data de referência de cada uma."
     },
     "settings": {
       "title": "Configurações",
@@ -63,15 +61,11 @@
     },
     "provision": {
       "title": "Dispositivo",
-      "description": "Texto, versões e linha do tempo de um dispositivo citado.",
-      "emptyTitle": "Nenhum dispositivo aberto",
-      "emptyBody": "Abra um dispositivo a partir de uma citação para ver o texto, a versão e o intervalo de vigência."
+      "description": "Texto, versões e linha do tempo de um dispositivo citado."
     },
     "compare": {
       "title": "Comparar versões",
-      "description": "O que mudou entre duas versões de um dispositivo.",
-      "emptyTitle": "Nenhuma comparação aberta",
-      "emptyBody": "Escolha duas versões de um dispositivo a partir de uma citação para ver o que mudou entre elas."
+      "description": "O que mudou entre duas versões de um dispositivo."
     },
     "coverage": {
       "title": "Cobertura",
@@ -81,21 +75,15 @@
     },
     "about": {
       "title": "Sobre",
-      "description": "O que é o Tekó e como ele é feito.",
-      "emptyTitle": "Página em redação",
-      "emptyBody": "O Tekó é um projeto de código aberto sob a licença MIT. Esta página vai explicar como ele é feito e quem mantém."
+      "description": "O que é o Tekó, como funciona e quem mantém."
     },
     "privacy": {
       "title": "Privacidade",
-      "description": "Como o Tekó trata os seus dados.",
-      "emptyTitle": "Política em redação",
-      "emptyBody": "A política de privacidade será publicada aqui antes da abertura do serviço."
+      "description": "Como o Tekó trata os seus dados."
     },
     "terms": {
       "title": "Termos de uso",
-      "description": "Condições de uso do Tekó.",
-      "emptyTitle": "Termos em redação",
-      "emptyBody": "Os termos de uso serão publicados aqui antes da abertura do serviço."
+      "description": "Condições de uso do Tekó."
     },
     "sign-in": {
       "title": "Entrar",
@@ -372,5 +360,272 @@
     "upstream_unavailable": "O provedor de IA está indisponível no momento. Tente mais tarde.",
     "region_restricted": "O Tekó não está disponível na sua região.",
     "internal": "Ocorreu um erro inesperado. Tente de novo."
+  },
+  "legal": {
+    "toc": "Nesta página",
+    "updated": "Versão {version} · atualizada em {date}",
+    "inForce": "Versão {version} · em vigor desde {date}",
+    "privacy": {
+      "title": "Política de privacidade",
+      "lead": "Como o Tekó trata os seus dados pessoais, nos termos da <ptBR>Lei Geral de Proteção de Dados Pessoais</ptBR> (LGPD, Lei nº 13.709/2018). Vale para o site e para a API do Tekó.",
+      "sections": {
+        "summary": {
+          "title": "Resumo",
+          "body": "<ul><li>O Tekó guarda só o necessário para a sua conta e o seu histórico: os dados do login, a declaração de maioridade, o aceite dos Termos, o país de residência e as perguntas, já sem dados pessoais identificáveis.</li><li>Antes de gravar uma pergunta ou de enviá-la a qualquer provedor, o Tekó troca CPF, CNPJ, e-mail, telefone e chave de NF-e por marcadores.</li><li>Perguntas e respostas ficam 90 dias e depois são apagadas.</li><li>As respostas são geradas por provedores de IA nos Estados Unidos. <strong>O provedor gratuito pode usar o texto enviado para treinar modelos</strong>: não escreva dados pessoais nem informações sigilosas.</li><li>Você exporta ou apaga tudo a qualquer momento em <settings>Configurações</settings>.</li><li>Não há venda de dados, publicidade nem rastreamento por terceiros.</li></ul>"
+        },
+        "controller": {
+          "title": "Quem é o controlador",
+          "body": "<p>O controlador dos dados é o mantenedor do Tekó, pessoa física, que desenvolve o projeto sem fins comerciais e com o código aberto sob a licença MIT. O Tekó não tem empresa, sede nem domínio próprio; o contato é pelo <repo>repositório público no GitHub</repo> (veja “Contato”).</p><p>Como agente de tratamento de pequeno porte, o projeto não designa encarregado (Resolução CD/ANPD nº 2/2022, art. 11); os pedidos dos titulares seguem pelo canal de contato desta política.</p>"
+        },
+        "data": {
+          "title": "Dados tratados, finalidades e bases legais",
+          "body": "<ul><li><strong>Conta:</strong> nome, e-mail e foto que o GitHub ou o Google enviam no login, para identificar a sua conta. Base legal: execução de contrato (LGPD, art. 7º, V).</li><li><strong>Cadastro inicial:</strong> a declaração de que você tem 18 anos ou mais, a versão dos Termos aceita e a data do aceite, e o país de residência, que define quais provedores de IA podem atender você. Bases legais: execução de contrato (art. 7º, V) e cumprimento de obrigação legal (art. 7º, II).</li><li><strong>Sessão:</strong> token de sessão, endereço IP, navegador (user agent) e validade, para manter o login e limitar abusos. Base legal: legítimo interesse (art. 7º, IX).</li><li><strong>Passkeys:</strong> a chave pública e um contador, se você entrar com passkey. Base legal: execução de contrato.</li><li><strong>Perguntas e respostas:</strong> a pergunta já redigida, sem dados identificáveis, e a resposta, para responder e mostrar o seu histórico. Base legal: execução de contrato.</li><li><strong>Avaliações:</strong> o polegar para cima ou para baixo e o motivo escolhido numa lista, sem texto livre, para melhorar as respostas. Base legal: legítimo interesse.</li><li><strong>Uso e proteção:</strong> contadores diários de perguntas, para as cotas do serviço gratuito, e o IP e a conta nas janelas de limite de requisições, contra abusos. Base legal: legítimo interesse.</li></ul><p>O Tekó não pede documentos e não trata dados sensíveis de propósito.</p>"
+        },
+        "questions": {
+          "title": "Suas perguntas",
+          "body": "<p>A pergunta que você digita nunca é gravada nem enviada como está. Antes de qualquer uso, o Tekó troca CPF, CNPJ, e-mail, telefone e chave de acesso de NF-e por marcadores, e só essa versão redigida vai para o banco, para os provedores e para o histórico. Os registros técnicos do servidor também não guardam a pergunta original.</p><p>A redação automática não reconhece todo dado pessoal (um nome ou um endereço, por exemplo). Por isso, <strong>não escreva na pergunta dados pessoais, dados de outras pessoas nem informações sigilosas</strong>; descreva a situação de forma genérica.</p>"
+        },
+        "providers": {
+          "title": "Com quem os dados são compartilhados",
+          "body": "<p>O Tekó usa estes operadores, que tratam dados em nome do projeto:</p><ul><li><strong>Vercel:</strong> hospedagem do site e da API, em São Paulo. Os registros de execução duram 1 hora e não incluem a pergunta original, e o uso dos dados para treinar modelos da Vercel está desligado.</li><li><strong>Neon:</strong> banco de dados, na AWS em São Paulo. Guarda os dados descritos acima.</li><li><strong>Cloudflare (Workers AI):</strong> cálculo de embeddings e reordenação da busca, em rede global. Recebe a pergunta redigida.</li><li><strong>Google (Gemini, camada gratuita):</strong> geração da resposta, nos Estados Unidos. Recebe a pergunta redigida e trechos da legislação. <strong>Na camada gratuita, o Google pode usar esse conteúdo para melhorar os próprios modelos.</strong></li><li><strong>Groq:</strong> geração da resposta, nos Estados Unidos, com retenção zero. Recebe a pergunta redigida e trechos da legislação.</li><li><strong>GitHub e Google (login):</strong> autenticação, nos Estados Unidos, só durante o login que você inicia.</li></ul><p>Quem declara residência ou acessa do Espaço Econômico Europeu, do Reino Unido ou da Suíça é atendido só pelo Groq, com retenção zero, e nunca pelo Gemini gratuito.</p><p>O envio aos provedores nos Estados Unidos é uma transferência internacional de dados (LGPD, art. 33), feita para executar o serviço que você pede e limitada ao texto já redigido. Nenhum dado é vendido nem usado para publicidade.</p>"
+        },
+        "storage": {
+          "title": "Cookies e armazenamento no navegador",
+          "body": "<p>O Tekó usa só o necessário para funcionar, e isso não depende de consentimento:</p><ul><li>o cookie de sessão do login (HttpOnly e só em conexão segura), que deixa de valer depois de 7 dias sem uso;</li><li>a sua preferência de tema (claro, escuro ou igual ao sistema), guardada no navegador;</li><li>a sua escolha de consentimento, guardada no navegador com a versão desta política.</li></ul><p>A medição de uso (PostHog, com servidores na União Europeia) e as pesquisas curtas dentro do app dependem do seu consentimento, pedido no banner da primeira visita. Elas ainda não estão ligadas; quando forem, valerá a escolha que você já fez, e esta política será atualizada com o que for coletado. Antes do consentimento, nenhum cookie nem dado de medição é gravado. Você muda a escolha quando quiser pelo link “Preferências de cookies”, no rodapé.</p>"
+        },
+        "retention": {
+          "title": "Por quanto tempo os dados ficam",
+          "body": "<ul><li>Perguntas, respostas e avaliações: 90 dias. Uma rotina semanal apaga as mais antigas.</li><li>Conta, cadastro inicial, passkeys e contadores de uso: até você apagar a conta.</li><li>Sessões: 7 dias sem uso. As expiradas saem na rotina semanal.</li><li>Janelas de limite de requisições: 60 segundos. As vencidas saem na rotina semanal.</li><li>Registros de execução da hospedagem: 1 hora.</li></ul>"
+        },
+        "rights": {
+          "title": "Seus direitos",
+          "body": "<p>A LGPD (art. 18) garante a você a confirmação do tratamento e o acesso aos dados, a correção, a anonimização, o bloqueio ou a eliminação do que for desnecessário, a portabilidade, a informação sobre com quem os dados são compartilhados e a revogação do consentimento.</p><ul><li><strong>Acesso e portabilidade:</strong> em <settings>Configurações</settings>, a exportação baixa um arquivo JSON com o seu perfil, as contas ligadas (sem tokens), o número de passkeys, as perguntas e as avaliações.</li><li><strong>Eliminação:</strong> também em <settings>Configurações</settings>, a exclusão apaga a conta e tudo o que é dela: sessões, contas ligadas, passkeys, perguntas, avaliações, contadores de uso e janelas de limite. Os cookies de sessão são apagados na mesma hora.</li><li><strong>Correção:</strong> nome, e-mail e foto vêm do GitHub ou do Google; atualize-os lá. Para outros dados, use o contato abaixo.</li><li><strong>Consentimento:</strong> mude ou retire quando quiser em “Preferências de cookies”, no rodapé.</li></ul><p>O que não for automático é atendido em até 15 dias. Você também pode apresentar reclamação à <anpd>Autoridade Nacional de Proteção de Dados (ANPD)</anpd>.</p>"
+        },
+        "security": {
+          "title": "Segurança",
+          "body": "<p>O cookie de sessão é HttpOnly, SameSite=Lax e protegido pelo prefixo __Secure-; toda alteração confere a origem da requisição; o banco é acessado por um usuário sem permissão para mudar a estrutura; os segredos ficam em variáveis protegidas da hospedagem; e as dependências passam por verificação de proveniência e de vulnerabilidades. O código é aberto e qualquer pessoa pode auditá-lo.</p><p>Uma sessão encerrada em outro dispositivo pode continuar aceita por até 5 minutos em telas que não leem dados pessoais. Exportação, exclusão e perguntas consultam o banco e recusam a sessão encerrada na hora.</p><p>Encontrou uma falha? Relate de forma privada pelo <privateReport>relato de vulnerabilidade do GitHub</privateReport>.</p>"
+        },
+        "age": {
+          "title": "Maiores de 18 anos",
+          "body": "<p>O Tekó é destinado a maiores de 18 anos, e o cadastro inicial pede essa declaração. O projeto não trata de propósito dados de crianças ou adolescentes. Se souber de uma conta nessa situação, avise pelo contato abaixo para que ela seja apagada.</p>"
+        },
+        "changes": {
+          "title": "Mudanças nesta política",
+          "body": "<p>A versão em vigor e a data dela aparecem no topo desta página, e o histórico de mudanças fica no repositório. Uma versão nova pede de novo a sua escolha de consentimento.</p><p>Esta política existe em português e em inglês. Em caso de divergência, vale a versão em português.</p>"
+        },
+        "contact": {
+          "title": "Contato",
+          "body": "<p>Para dúvidas e pedidos sobre privacidade, abra uma <issues>issue no repositório</issues> sem incluir dados pessoais. Se o pedido precisar de sigilo, use o <privateReport>relato privado do GitHub</privateReport>, que só o mantenedor vê.</p>"
+        }
+      }
+    },
+    "terms": {
+      "title": "Termos de uso",
+      "lead": "Condições para usar o Tekó, um assistente gratuito e de código aberto sobre legislação fiscal brasileira. Ao concluir o cadastro inicial, você aceita esta versão dos Termos.",
+      "sections": {
+        "acceptance": {
+          "title": "Aceitação",
+          "body": "<p>Estes Termos valem entre você e o mantenedor do Tekó, pessoa física que mantém o projeto sem fins comerciais. Para fazer perguntas, você aceita a versão em vigor no cadastro inicial, e o Tekó registra a versão e a data do aceite. Se não concordar, não use o serviço.</p><p>A <privacy>Política de privacidade</privacy> explica como os seus dados são tratados e faz parte destes Termos.</p>"
+        },
+        "service": {
+          "title": "O serviço",
+          "body": "<p>O Tekó responde perguntas sobre a legislação fiscal que ele cobre, para um período de apuração ou uma data de referência, citando o dispositivo e a versão usados. A lista de normas e períodos fica em <coverage>Cobertura</coverage>. Fora dela, o Tekó recusa em vez de responder.</p><p>O serviço é gratuito, experimental e mantido por uma pessoa. Funcionalidades podem mudar, ser pausadas ou deixar de existir.</p>"
+        },
+        "advice": {
+          "title": "Apoio à consulta, não parecer",
+          "body": "<p><strong>Apoio à consulta; não constitui parecer.</strong> As respostas ajudam a localizar e a ler a legislação, mas não são consultoria jurídica, contábil nem tributária e não substituem um profissional habilitado. Antes de decidir, confira o texto citado na fonte oficial. A decisão e a responsabilidade por ela são suas.</p>"
+        },
+        "eligibility": {
+          "title": "Quem pode usar",
+          "body": "<ul><li>Você precisa ter 18 anos ou mais e declarar isso no cadastro inicial.</li><li>A conta é pessoal e entra pelo GitHub, pelo Google ou por passkey. Cuidar do acesso a ela é responsabilidade sua.</li><li>O país de residência informado precisa ser verdadeiro, porque ele define quais provedores de IA podem atender você.</li></ul>"
+        },
+        "acceptableUse": {
+          "title": "Uso aceitável",
+          "body": "<p>Ao usar o Tekó, você se compromete a não:</p><ul><li>usar o serviço para fins ilegais ou para prejudicar outras pessoas;</li><li>incluir nas perguntas dados pessoais de outras pessoas ou informações sigilosas;</li><li>contornar as cotas, os limites de requisições ou as restrições regionais, por exemplo com várias contas ou com acesso automatizado;</li><li>coletar em massa, de forma automatizada, as respostas ou o corpus pela interface ou pela API;</li><li>tentar acessar dados de outras pessoas, sobrecarregar a infraestrutura ou testar a segurança fora da <security>política de segurança</security> do projeto;</li><li>tentar fazer o modelo produzir conteúdo ilícito ou ignorar as próprias regras.</li></ul><p>O código e o corpus são públicos no repositório: para uso em volume, use-os diretamente em vez da API.</p>"
+        },
+        "quota": {
+          "title": "Cotas e disponibilidade",
+          "body": "<p>O Tekó roda em planos gratuitos de hospedagem e de IA. Por isso há um limite diário de perguntas por pessoa e um limite global; quando um deles acaba, novas perguntas ficam bloqueadas até a renovação, indicada na tela. O serviço também pode ser pausado para proteger as cotas dos provedores.</p><p>Não há garantia de disponibilidade, de prazo de resposta nem de suporte.</p>"
+        },
+        "answers": {
+          "title": "Respostas geradas por IA",
+          "body": "<p>As respostas são geradas por modelos de linguagem a partir de trechos da legislação. Mesmo com a verificação das citações, elas podem estar incompletas, desatualizadas ou erradas, e a cobertura do corpus é limitada. Cada resposta indica a data de referência e a vigência usadas; confira se elas correspondem ao seu caso.</p><p>Você pode avaliar cada resposta. A avaliação ajuda a corrigir erros, mas não cria obrigação de correção.</p>"
+        },
+        "license": {
+          "title": "Código aberto e conteúdo",
+          "body": "<ul><li>O código do Tekó é aberto sob a <license>licença MIT</license>. Você pode usá-lo, copiá-lo e modificá-lo nos termos dessa licença.</li><li>Textos de leis, decretos e demais atos oficiais não são protegidos por direito autoral (<ptBR>Lei nº 9.610/1998</ptBR>, art. 8º, IV). O corpus reproduz essas fontes oficiais com a indicação de origem.</li><li>Você pode usar livremente as respostas que receber, sempre conferindo a fonte.</li></ul>"
+        },
+        "warranty": {
+          "title": "Sem garantia",
+          "body": "<p>O Tekó é oferecido no estado em que se encontra, sem garantia de nenhum tipo, expressa ou implícita, inclusive de exatidão, de atualização, de adequação a uma finalidade específica ou de funcionamento contínuo, como prevê também a licença MIT do código.</p><p>Na medida máxima permitida pela lei, o mantenedor não responde por danos decorrentes do uso ou da impossibilidade de uso do serviço, nem por decisões tomadas com base nas respostas. Nada nestes Termos afasta direitos que a lei garante e que não podem ser renunciados.</p>"
+        },
+        "privacy": {
+          "title": "Privacidade",
+          "body": "<p>O tratamento dos seus dados segue a <privacy>Política de privacidade</privacy>. Em resumo: as perguntas são redigidas antes de qualquer uso e ficam 90 dias, e você exporta ou apaga tudo em <settings>Configurações</settings>. O provedor de IA gratuito pode usar o texto redigido para treinar modelos.</p>"
+        },
+        "termination": {
+          "title": "Encerramento",
+          "body": "<p>Você pode parar de usar o Tekó e apagar a conta a qualquer momento em <settings>Configurações</settings>. O mantenedor pode suspender ou apagar contas que violem estes Termos e pode encerrar o serviço, avisando no site com antecedência sempre que possível.</p>"
+        },
+        "changes": {
+          "title": "Mudanças nos Termos",
+          "body": "<p>A versão em vigor aparece no topo desta página. Quando os Termos mudam de forma relevante, a versão muda e o Tekó pede um novo aceite antes da próxima pergunta. O histórico fica no repositório.</p><p>Estes Termos existem em português e em inglês. Em caso de divergência, vale a versão em português.</p>"
+        },
+        "law": {
+          "title": "Lei aplicável",
+          "body": "<p>Estes Termos são regidos pelas leis da República Federativa do Brasil.</p>"
+        },
+        "contact": {
+          "title": "Contato",
+          "body": "<p>Dúvidas sobre estes Termos: abra uma <issues>issue no repositório</issues>. Problemas de segurança: use o <privateReport>relato privado do GitHub</privateReport>.</p>"
+        }
+      }
+    }
+  },
+  "about": {
+    "title": "Sobre o Tekó",
+    "lead": "O Tekó é um assistente de código aberto para dúvidas sobre legislação fiscal brasileira. Cada resposta vale para uma data: a do período de apuração que você informa.",
+    "sections": {
+      "what": {
+        "title": "O que é",
+        "body": "<p>A legislação fiscal muda o tempo todo, e a mesma pergunta pode ter respostas diferentes em 2008 e em 2010. O Tekó parte da data de referência: você informa o período de apuração (por exemplo, 03/2024), e ele responde com a redação que valia naquele momento, citando o dispositivo, a versão e o intervalo de vigência usados.</p><p>Se a norma mudou dentro do período, o Tekó avisa. Se a pergunta sai da cobertura, ele recusa e diz o motivo.</p>"
+      },
+      "corpus": {
+        "title": "Corpus coberto",
+        "body": "<p>O Tekó conhece estas fontes oficiais, versionadas e verificadas periodicamente contra os sites de origem:</p><ul><li><strong>EFD ICMS/IPI:</strong> o <ptBR>Guia Prático da Escrituração Fiscal Digital</ptBR> e as notas técnicas.</li><li><strong>EFD-Reinf:</strong> os leiautes dos eventos e as notas técnicas.</li><li><strong>RCTE de Goiás:</strong> o <ptBR>Regulamento do Código Tributário do Estado de Goiás</ptBR> (Decreto nº 4.852/1997).</li><li><strong>CTE de Goiás:</strong> o <ptBR>Código Tributário do Estado de Goiás</ptBR> (Lei nº 11.651/1991).</li><li><strong>EFD de Goiás:</strong> o guia prático estadual da EFD ICMS/IPI e as tabelas de códigos de ajuste.</li></ul><p>Os períodos cobertos de cada norma estão em <coverage>Cobertura</coverage>.</p>"
+      },
+      "how": {
+        "title": "Como funciona",
+        "body": "<ul><li><strong>Data de referência primeiro:</strong> a data entra em toda busca, e só valem os trechos vigentes nela.</li><li><strong>Busca híbrida:</strong> por palavras e por significado ao mesmo tempo, com reordenação dos trechos mais relevantes.</li><li><strong>Resposta com citações:</strong> um modelo de linguagem escreve a resposta só a partir dos trechos encontrados, e cada afirmação aponta para a citação de onde saiu. Citação que não corresponde a um trecho é descartada.</li><li><strong>Recusa clara:</strong> pergunta fora da cobertura, ou sem trecho que a sustente, recebe uma recusa com o motivo em vez de um palpite.</li><li><strong>Proteção dos dados:</strong> CPF, CNPJ, e-mail, telefone e chave de NF-e saem da pergunta antes de qualquer uso.</li></ul>"
+      },
+      "limits": {
+        "title": "Limites",
+        "body": "<ul><li><strong>Apoio, não parecer:</strong> o Tekó ajuda a consultar a legislação; a decisão continua com você e com o seu contador ou advogado.</li><li><strong>Cobertura limitada:</strong> só as normas e os períodos listados em <coverage>Cobertura</coverage>.</li><li><strong>Pode errar:</strong> modelos de linguagem erram. Confira sempre a fonte citada.</li><li><strong>Serviço gratuito:</strong> roda em planos gratuitos, com limite diário de perguntas, e pode ser pausado.</li><li><strong>Provedor gratuito:</strong> o provedor de IA pode usar o texto redigido da pergunta para treinar modelos. Não inclua dados pessoais nem informações sigilosas.</li></ul>"
+      },
+      "openSource": {
+        "title": "Código aberto",
+        "body": "<p>Todo o código, inclusive o da ingestão do corpus, é público sob a <license>licença MIT</license> no <repo>repositório do GitHub</repo>. Relatos de erro, sugestões e contribuições são bem-vindos: veja o <contributing>guia de contribuição</contributing>.</p>"
+      },
+      "maintainer": {
+        "title": "Quem mantém",
+        "body": "<p>O Tekó é um projeto individual, sem fins comerciais, sem anúncios e sem venda de dados, e roda inteiramente em serviços gratuitos. O tratamento dos dados está na <privacy>Política de privacidade</privacy>, e as condições de uso, nos <terms>Termos de uso</terms>.</p>"
+      }
+    }
+  },
+  "consent": {
+    "banner": {
+      "title": "Privacidade neste navegador",
+      "body": "O Tekó usa só o armazenamento necessário para funcionar (login, tema e esta escolha). Com a sua permissão, também poderá medir o uso de forma agregada e mostrar pesquisas curtas. Saiba mais na <privacy>política de privacidade</privacy>.",
+      "accept": "Aceitar",
+      "reject": "Recusar",
+      "customize": "Personalizar"
+    },
+    "preferences": {
+      "title": "Preferências de cookies",
+      "description": "Escolha o que o Tekó pode usar além do necessário. A escolha fica salva neste navegador, e você pode mudá-la quando quiser.",
+      "necessary": {
+        "title": "Necessários",
+        "body": "Login, tema e esta escolha. Sem eles, o Tekó não funciona.",
+        "status": "Sempre ativos"
+      },
+      "analytics": {
+        "title": "Medição de uso",
+        "body": "Estatísticas de uso agregadas (PostHog, com servidores na União Europeia), sem o texto das perguntas."
+      },
+      "surveys": {
+        "title": "Pesquisas",
+        "body": "Perguntas curtas e ocasionais sobre a sua experiência."
+      },
+      "save": "Salvar escolhas",
+      "acceptAll": "Aceitar tudo",
+      "rejectAll": "Recusar tudo"
+    },
+    "footerLink": "Preferências de cookies"
+  },
+  "history": {
+    "listLabel": "Conversas",
+    "loading": "Carregando as conversas…",
+    "emptyTitle": "Nenhuma conversa ainda",
+    "emptyBody": "Suas conversas aparecem aqui, cada uma com a data de referência da última pergunta.",
+    "error": "Não foi possível carregar o histórico.",
+    "retry": "Tentar de novo",
+    "signIn": "Entrar",
+    "reference": "Ref. {date}",
+    "questionCount": "{count, plural, one {# pergunta} other {# perguntas}}",
+    "viewAll": "Ver todo o histórico",
+    "loadMore": "Carregar mais",
+    "loadingMore": "Carregando…",
+    "retention": "As conversas ficam guardadas por 90 dias e podem ser apagadas nas configurações."
+  },
+  "provision": {
+    "title": "Dispositivos",
+    "intro": "Busque um dispositivo pelo rótulo, pela chave ou por um trecho do texto e veja a redação vigente na data, a linha do tempo e o que mudou.",
+    "loading": "Carregando o dispositivo…",
+    "retry": "Tentar de novo",
+    "backToSearch": "Buscar outro dispositivo",
+    "dateLabel": "Data de referência",
+    "shownAt": "Redação vigente em {date}.",
+    "absentAt": "O dispositivo não tinha redação vigente em {date}; mostramos a mais próxima anterior.",
+    "text": "Texto do dispositivo",
+    "act": "Redação dada por: {act}",
+    "fields": "Campos",
+    "fieldName": "Campo",
+    "fieldValue": "Valor",
+    "whatChanged": "O que mudou",
+    "showDiff": "Ver o que mudou em relação à redação anterior",
+    "hideDiff": "Esconder as mudanças",
+    "firstVersion": "Esta é a primeira redação do dispositivo.",
+    "compareLink": "Comparar outras datas",
+    "validity": {
+      "current": "Vigente",
+      "superseded": "Encerrada",
+      "future": "Futura",
+      "between": "{from} a {to}",
+      "since": "desde {from}",
+      "until": "até {to}",
+      "always": "sem limite de datas"
+    },
+    "timeline": {
+      "title": "Linha do tempo",
+      "label": "Redações do dispositivo",
+      "count": "{count, plural, one {# redação} other {# redações}}"
+    },
+    "diff": {
+      "loading": "Comparando as redações…",
+      "retry": "Tentar de novo",
+      "at": "Em {date}",
+      "absent": "O dispositivo não existia nesta data.",
+      "unchanged": "O texto é o mesmo nas duas datas.",
+      "legend": "Sublinhado em verde, o que entrou; riscado em vermelho, o que saiu.",
+      "insertedStart": "[incluído:",
+      "insertedEnd": "]",
+      "deletedStart": "[removido:",
+      "deletedEnd": "]",
+      "fieldChanges": "Campos alterados",
+      "field": "Campo",
+      "before": "Antes",
+      "after": "Depois"
+    },
+    "search": {
+      "label": "Buscar dispositivo",
+      "placeholder": "Ex.: art. 76, C170 ou um trecho do texto",
+      "hint": "Mostra os dispositivos vigentes em {date}; digite ao menos 2 caracteres.",
+      "searching": "Buscando…",
+      "empty": "Nenhum dispositivo vigente na data casa com a busca.",
+      "results": "Dispositivos encontrados"
+    }
+  },
+  "compare": {
+    "title": "Comparar versões",
+    "intro": "Escolha um dispositivo e duas datas para ver o que mudou entre as redações vigentes em cada uma.",
+    "example": "Exemplo: RCTE, art. 76, § 6º, em 05/2008 contra 01/2010",
+    "keyLabel": "Chave do dispositivo",
+    "fromLabel": "Data inicial",
+    "toLabel": "Data final",
+    "submit": "Comparar",
+    "invalidKey": "Chave inválida. Use o formato go:rcte:art:76:par:6.",
+    "invalidRange": "Informe as duas datas, com a inicial antes da final.",
+    "result": "Diferença entre as redações",
+    "openProvision": "Abrir o dispositivo"
   }
 }

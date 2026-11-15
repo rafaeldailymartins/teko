@@ -1,4 +1,6 @@
 import {
+  type InfiniteData,
+  infiniteQueryOptions,
   type QueryFunction,
   type QueryKey,
   skipToken,
@@ -12,9 +14,11 @@ import {
   getProvisionTimelineOptions,
   getQuestionOptions,
   getQuotaOptions,
+  listConversationsInfiniteOptions,
   listHistoryOptions,
   searchProvisionsOptions,
 } from './__generated__/@tanstack/react-query.gen.ts'
+import type { ListConversationsResponse } from './__generated__/types.gen.ts'
 import { apiClient } from './client.ts'
 import type { ApiError } from './errors.ts'
 import { referenceKeyDate } from './reference.ts'
@@ -65,6 +69,33 @@ export function historyQuery(conversationId: string | null) {
     listHistoryOptions({ client: apiClient, query: { conversationId: conversationId ?? '' } }),
     conversationId !== null,
   )
+}
+
+/** Página da lista de conversas: sem cursor, a primeira (`{}` = nenhum parâmetro a mais). */
+type ConversationPageParam = string | Record<string, never>
+
+/**
+ * Lista de conversas (`GET /v1/conversations`), infinita por cursor: cada página traz o
+ * `nextCursor` da seguinte, e `null` encerra (`hasNextPage: false`).
+ */
+export function conversationsQuery() {
+  const { queryKey, queryFn } = listConversationsInfiniteOptions({ client: apiClient })
+  return infiniteQueryOptions<
+    ListConversationsResponse,
+    ApiError,
+    InfiniteData<ListConversationsResponse, ConversationPageParam>,
+    typeof queryKey,
+    ConversationPageParam
+  >({
+    queryKey,
+    queryFn: queryFn as QueryFunction<
+      ListConversationsResponse,
+      typeof queryKey,
+      ConversationPageParam
+    >,
+    initialPageParam: {},
+    getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
+  })
 }
 
 /** Uma pergunta com a resposta ou a recusa (`GET /v1/questions/:id`); `null` = desligada. */
