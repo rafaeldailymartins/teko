@@ -20,6 +20,7 @@
       "!packages/*/coverage",
       "!**/reports",
       "!**/__generated__",
+      "!**/openapi.json",
       "!**/drizzle/migrations",
       "!pnpm-lock.yaml",
       "!openspec/changes/archive",

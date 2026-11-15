@@ -134,6 +134,12 @@ jobs:
         if: env.HAS_CODE == 'true'
         run: pnpm typecheck:scripts
 
+      # Regenera o OpenAPI versionado (apps/web/openapi.json, sem servidor nem banco) e o cliente
+      # gerado do web, e falha se algum dos dois difere do que está no git.
+      - name: Cliente da API em dia (OpenAPI e código gerado do web)
+        if: env.HAS_CODE == 'true'
+        run: pnpm api:check
+
       # node:test nativo (Node 24): os scripts ficam fora dos pacotes do workspace.
       - name: Testes dos scripts da raiz
         if: env.HAS_CODE == 'true'

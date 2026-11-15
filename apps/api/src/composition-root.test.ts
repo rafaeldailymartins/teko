@@ -8,6 +8,7 @@ import {
   createHttpOptions,
   createReranker,
   createRuntime,
+  exportWebOpenApi,
   logBackgroundFailure,
   reviewStatusesFor,
 } from './composition-root.ts'
@@ -260,5 +261,28 @@ describe('serviços do corpus (F2)', () => {
     expect(typeof seeder.seedFixtureCorpus).toBe('function')
     await expect(seeder.close()).resolves.toBeUndefined()
     expect(() => createFixtureSeeder(parseEnv(BASE), ownerUrl)).toThrow(/EMBEDDINGS_PROVIDER/)
+  })
+})
+
+describe('exportWebOpenApi', () => {
+  it('gera o OpenAPI da web sem banco, sem env do processo e sempre igual', async () => {
+    const first = await exportWebOpenApi()
+    vi.stubEnv('APP_VERSION', '9.9.9')
+    try {
+      expect(await exportWebOpenApi()).toBe(first)
+    } finally {
+      vi.unstubAllEnvs()
+    }
+    const document = JSON.parse(first) as {
+      info: { version: string }
+      servers: unknown
+      paths: Record<string, unknown>
+    }
+    expect(document.info.version).toBe('v1')
+    expect(document.servers).toEqual([{ url: '/api' }])
+    expect(Object.keys(document.paths)).toContain('/v1/questions/{id}')
+    // Sem rotas de eval (só no CI) nem caminhos fora de /api.
+    expect(Object.keys(document.paths).some((path) => path.includes('_eval'))).toBe(false)
+    expect(first.endsWith('}\n')).toBe(true)
   })
 })

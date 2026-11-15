@@ -173,8 +173,13 @@ a primário, com o Flash de reserva, e o breaker do 429 distingue a cota diária
 
 O que o deploy exige do mantenedor está em [Antes da F7](#antes-da-f7-o-que-o-mantenedor-faz).
 
-## F5: frontend completo
+## F5: frontend completo (em andamento)
 
+- `add-web-data-layer`: OpenAPI versionado em `apps/web/openapi.json` (exportado pela CLI da API,
+  sem servidor nem banco), cliente `@hey-api/openapi-ts` com gate de drift (`pnpm api:check`, no
+  `verify` e no job `lint`), TanStack Query, `ApiError` a partir de Problem Details, parsers do nuqs
+  (`q`, `c`, `ref`) e hooks de leitura. O item "cliente gerado sem drift" do DoD fica coberto pelo
+  gate.
 - `add-web-shell-and-design-system` (arquivada em 2026-11-15): componentes do shadcn sobre Base UI
   copiados do registry, tokens OKLCH novos no teste de contraste, seletor de tema, Geist Mono, app
   shell no grupo `(app)` com paleta `Ctrl/⌘+K` e aviso fixo, área de trabalho do chat em três
