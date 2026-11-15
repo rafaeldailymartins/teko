@@ -13,6 +13,8 @@ next-env.d.ts
 # Testes e relatórios
 coverage/
 coverage-integration/
+# A rota /coverage/ do web (página de cobertura do corpus) não é relatório de testes.
+!/apps/web/src/app/**/coverage/
 reports/
 .stryker-tmp/
 test-results/

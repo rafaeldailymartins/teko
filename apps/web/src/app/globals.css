@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "tw-animate-css";
 
 /*
  * Design tokens do Tekó (OKLCH). Cada token traz o par claro/escuro em `light-dark()`, resolvido
@@ -39,6 +40,18 @@
   --muted-foreground: light-dark(oklch(0.46 0.02 220), oklch(0.76 0.015 205));
   --border: light-dark(oklch(0.87 0.012 205), oklch(0.33 0.02 220));
   --border-strong: light-dark(oklch(0.56 0.02 220), oklch(0.6 0.02 205));
+  /* Fundo de hover e de item selecionado (menus, paleta) e o painel lateral */
+  --muted: light-dark(oklch(0.945 0.01 205), oklch(0.27 0.02 220));
+  /* Popups (menu, diálogo, paleta, drawer): um degrau acima do fundo */
+  --popover: light-dark(oklch(1 0 0), oklch(0.23 0.018 220));
+  --popover-foreground: light-dark(oklch(0.22 0.02 220), oklch(0.95 0.008 205));
+  /* Borda de campos de formulário: componente de UI, então ≥ 3:1 (WCAG 1.4.11) */
+  --input: light-dark(oklch(0.56 0.02 220), oklch(0.6 0.02 205));
+  /* Botão secundário */
+  --secondary: light-dark(oklch(0.93 0.015 205), oklch(0.28 0.02 220));
+  --secondary-foreground: light-dark(oklch(0.22 0.02 220), oklch(0.95 0.008 205));
+  /* Ações destrutivas e erros de campo (texto sobre --background e --popover) */
+  --destructive: light-dark(oklch(0.52 0.18 27), oklch(0.75 0.14 27));
 
   /* Primária: petróleo */
   --primary: light-dark(oklch(0.5 0.09 205), oklch(0.74 0.1 200));
@@ -56,6 +69,9 @@
   --validity-future: light-dark(oklch(0.5 0.13 260), oklch(0.78 0.1 260));
   --coverage-out: light-dark(oklch(0.52 0.18 27), oklch(0.75 0.14 27));
   --degraded: light-dark(oklch(0.5 0.11 65), oklch(0.8 0.13 80));
+
+  /* Raio base dos componentes (o shadcn deriva --radius-sm a --radius-xl dele) */
+  --radius: 0.625rem;
 }
 
 :root[data-theme="light"] {
@@ -73,6 +89,13 @@
   --color-muted-foreground: var(--muted-foreground);
   --color-border: var(--border);
   --color-border-strong: var(--border-strong);
+  --color-muted: var(--muted);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-input: var(--input);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-destructive: var(--destructive);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
   --color-ring: var(--ring);
@@ -87,6 +110,12 @@
 
   --font-sans: var(--font-geist-sans, ui-sans-serif), system-ui, sans-serif;
   --font-serif: var(--font-source-serif, ui-serif), Georgia, serif;
+  --font-mono: var(--font-geist-mono, ui-monospace), SFMono-Regular, Menlo, monospace;
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
 }
 
 @layer base {
@@ -96,10 +125,19 @@
     text-size-adjust: 100%;
   }
 
+  /* Sem isto a borda padrão do Tailwind 4 é currentColor; os componentes usam `border` puro. */
+  *,
+  ::before,
+  ::after {
+    @apply border-border;
+  }
+
   body {
     @apply bg-background font-sans text-foreground antialiased;
     min-height: 100dvh;
     text-rendering: optimizeLegibility;
+    /* Base UI: o backdrop dos diálogos usa position: absolute no Safari do iOS 26+. */
+    position: relative;
   }
 
   :focus-visible {
@@ -113,5 +151,17 @@
   /* O destino do skip link não pode ficar sob cabeçalhos fixos (WCAG 2.4.11). */
   [id] {
     scroll-margin-top: 5rem;
+  }
+
+  /*
+   * Regra que o Base UI injetaria num <style> em runtime (ScrollArea): o `CSPProvider` desliga a
+   * injeção (o CSP só aceita <style> inline com hash do pós-build) e a regra mora aqui.
+   */
+  .base-ui-disable-scrollbar {
+    scrollbar-width: none;
+  }
+
+  .base-ui-disable-scrollbar::-webkit-scrollbar {
+    display: none;
   }
 }

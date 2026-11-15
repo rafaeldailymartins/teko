@@ -29,32 +29,45 @@ Sem Feature-Sliced Design (o steiger saiu, ADR 0032):
 apps/web/
   src/app/                     # rotas do App Router (só reexportam) e globals.css
   src/app/[locale]/{layout,page,not-found}.tsx
-  src/app/[locale]/{chat,provision,compare,history,settings,sign-in,coverage,about,privacy,terms,[...rest]}/page.tsx
-  src/components/              # ui/ (shadcn), páginas e componentes de tela
-  src/lib/                     # site, i18n/, theme, contrast; depois api/, validity/, analytics/
+  src/app/[locale]/(app)/layout.tsx                  # app shell (cabeçalho, paleta, aviso fixo)
+  src/app/[locale]/(app)/{chat,provision,compare,history,settings}/page.tsx
+  src/app/[locale]/{sign-in,coverage,about,privacy,terms,[...rest]}/page.tsx
+  src/components/              # ui/ (shadcn), app-shell/, pages/, providers.tsx e componentes de tela
+  src/lib/                     # site, i18n/, theme, contrast, utils, navigation, hotkeys; depois api/, validity/, analytics/
   messages/{en,pt-BR}.json
 ```
 
 As rotas ficam em `src/app` (o Next aceita o App Router dentro de `src/`) e só reexportam de
-`src/components`; não há mais `app/` nem `pages/` na raiz de `apps/web`.
+`src/components`; não há mais `app/` nem `pages/` na raiz de `apps/web`. O grupo `(app)` não muda as
+URLs: ele dá às páginas do app um layout comum, que fica montado na navegação entre elas. As páginas
+públicas usam o cabeçalho e o rodapé do site, como a landing. Os providers de cliente ficam em
+`src/components/providers.tsx`, montado no layout de locale dentro do `NextIntlClientProvider`.
 
 O Biome restringe `fetch(` a `src/lib/api`. A fronteira com a API é o contrato de `@teko/shared` e o
 cliente gerado.
 
 ## Design system
 
-- Tailwind 4 CSS-first, `tw-animate-css`; shadcn sobre Base UI (`init -b base`), aliases em
-  `@/components/ui`. Componentes: message-scroller, message, bubble, code-block, command, resizable,
+- Tailwind 4 CSS-first, `tw-animate-css`; shadcn sobre Base UI, com os componentes copiados do
+  registry `base-nova` para `@/components/ui` (sem o CLI do shadcn no lockfile) e `cn` em
+  `src/lib/utils.ts`. Cada componente entra com a mudança que o usa (o knip reprova arquivo e export
+  mortos); o destaque de menus e da paleta usa `--muted`, não o âmbar. Componentes: message-scroller, message, bubble, code-block, command, resizable,
   drawer, calendar, popover, hover-card, sheet, tabs, table, skeleton, sonner, dialog, mais padrões
   de AI Elements (inline-citation, sources, suggestion, prompt-input).
 - Cores em OKLCH: primária petróleo `oklch(0.50 0.09 205)`, acento âmbar para data e vigência,
   tokens de domínio `--validity-current`, `--validity-superseded`, `--validity-future`,
-  `--coverage-out` e `--degraded`. Um teste com `culori` exige contraste ≥ 4,5:1 em texto e ≥ 3:1 em
-  UI e foco, nos dois temas.
-- Tema in-house (script inline com hash na CSP, `localStorage['teko-theme']`, `color-scheme`).
-- Tipografia self-hosted: Geist Sans (UI), Geist Mono (registros e campos, `tabular-nums`), Source
-  Serif 4 (texto legal e headlines). Base 14 px; respostas 15 px/1,6; `data-density`.
-- Motion com `LazyMotion domAnimation strict` e `reducedMotion="user"`; `<ViewTransition>` nas rotas.
+  `--coverage-out` e `--degraded`, mais os do shadcn (`--muted`, `--popover`, `--input`,
+  `--secondary`, `--destructive`). Um teste (`src/lib/contrast.ts`, sem dependência) exige contraste
+  ≥ 4,5:1 em texto e ≥ 3:1 em UI e foco, nos dois temas.
+- Tema in-house (script inline com hash na CSP, `localStorage['teko-theme']`, `color-scheme`), com
+  seletor no cabeçalho (claro, escuro, igual ao sistema) e na paleta.
+- O Base UI não injeta `<style>` em runtime (`CSPProvider disableStyleElements`); a regra da scroll
+  area fica em `globals.css`.
+- Tipografia self-hosted pelo `next/font/google` (arquivos baixados no build e servidos da própria
+  origem; os pacotes npm das fontes são OFL-1.1, fora da allowlist de licenças): Geist Sans (UI),
+  Geist Mono (registros e campos, `tabular-nums`), Source Serif 4 (texto legal e headlines). Base 14 px; respostas 15 px/1,6; `data-density`.
+- Motion com `LazyMotion domAnimation strict` e `reducedMotion="user"`, só quando alguma tela animar
+  de fato (o shell usa só as transições CSS dos popups); `<ViewTransition>` nas rotas.
 
 ## Dados e streaming
 
@@ -130,8 +143,9 @@ Content-Security-Policy: default-src 'self'; script-src 'self' 'sha256-…'; sty
 
 ## UX
 
-- **App shell** em três painéis redimensionáveis (histórico, thread, citação), operáveis por teclado;
-  abaixo de 768 px, a citação vira Drawer.
+- **App shell** com cabeçalho (navegação, paleta, idioma e tema) e aviso fixo; no chat, três painéis
+  redimensionáveis (histórico, thread, citação), operáveis por teclado; abaixo de 768 px, o histórico
+  vira Sheet e a citação vira Drawer, sem desmontar a conversa.
 - **Data de referência:** chip fixo no composer ("Período de apuração: 03/2024"), month picker com
   alternância para data exata, presets (mês anterior, mês atual, último período fechado); enquanto o
   usuário não mexe, envia `source:'default'`; inferida do texto fica âmbar ("confirmar");

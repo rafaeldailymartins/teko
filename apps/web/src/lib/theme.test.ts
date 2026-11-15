@@ -1,12 +1,110 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import {
+  applyThemePreference,
   parseThemePreference,
+  readThemePreference,
   resolveTheme,
+  subscribeThemePreference,
   THEME_ATTRIBUTE,
   THEME_BOOTSTRAP_SCRIPT,
+  THEME_CHANGE_EVENT,
   THEME_STORAGE_KEY,
   ThemePreference,
 } from './theme.ts'
+
+/** Storage e `<html>` falsos, para observar o que `applyThemePreference` escreve. */
+function fakeTarget(initial: Record<string, string> = {}) {
+  const store = new Map(Object.entries(initial))
+  const attributes = new Map<string, string>()
+  return {
+    store,
+    attributes,
+    storage: {
+      getItem: (key: string) => store.get(key) ?? null,
+      setItem: (key: string, value: string) => void store.set(key, value),
+      removeItem: (key: string) => void store.delete(key),
+    },
+    root: {
+      setAttribute: (name: string, value: string) => void attributes.set(name, value),
+      removeAttribute: (name: string) => void attributes.delete(name),
+    },
+  }
+}
+
+describe('readThemePreference', () => {
+  it('lê a preferência salva', () => {
+    expect(readThemePreference(fakeTarget({ [THEME_STORAGE_KEY]: 'dark' }).storage)).toBe('dark')
+  })
+
+  it('cai em system sem storage, com valor inválido ou com storage bloqueado', () => {
+    expect(readThemePreference(null)).toBe('system')
+    expect(readThemePreference(fakeTarget({ [THEME_STORAGE_KEY]: 'sepia' }).storage)).toBe('system')
+    const blocked = {
+      getItem: () => {
+        throw new DOMException('blocked', 'SecurityError')
+      },
+    }
+    expect(readThemePreference(blocked)).toBe('system')
+  })
+})
+
+describe('applyThemePreference', () => {
+  it('grava a preferência explícita no storage e no data-theme', () => {
+    const target = fakeTarget()
+    applyThemePreference('dark', target)
+    expect(target.store.get(THEME_STORAGE_KEY)).toBe('dark')
+    expect(target.attributes.get(THEME_ATTRIBUTE)).toBe('dark')
+  })
+
+  it('system apaga a chave e o atributo (o CSS volta a seguir o sistema)', () => {
+    const target = fakeTarget({ [THEME_STORAGE_KEY]: 'light' })
+    target.attributes.set(THEME_ATTRIBUTE, 'light')
+    applyThemePreference('system', target)
+    expect(target.store.has(THEME_STORAGE_KEY)).toBe(false)
+    expect(target.attributes.has(THEME_ATTRIBUTE)).toBe(false)
+  })
+
+  it('troca o tema da página mesmo sem storage ou com storage que falha', () => {
+    const withoutStorage = fakeTarget()
+    applyThemePreference('light', { storage: null, root: withoutStorage.root })
+    expect(withoutStorage.attributes.get(THEME_ATTRIBUTE)).toBe('light')
+
+    const failing = fakeTarget()
+    const quota = () => {
+      throw new DOMException('quota', 'QuotaExceededError')
+    }
+    applyThemePreference('dark', {
+      storage: { getItem: () => null, setItem: quota, removeItem: quota },
+      root: failing.root,
+    })
+    expect(failing.attributes.get(THEME_ATTRIBUTE)).toBe('dark')
+  })
+})
+
+describe('subscribeThemePreference', () => {
+  function storageEvent(key: string | null): Event {
+    return Object.assign(new Event('storage'), { key })
+  }
+
+  it('avisa nas trocas desta aba e nas de outras abas, até cancelar', () => {
+    const target = new EventTarget()
+    const onChange = vi.fn()
+    const unsubscribe = subscribeThemePreference(target, onChange)
+
+    target.dispatchEvent(new Event(THEME_CHANGE_EVENT))
+    target.dispatchEvent(storageEvent(THEME_STORAGE_KEY))
+    target.dispatchEvent(storageEvent(null))
+    expect(onChange).toHaveBeenCalledTimes(3)
+
+    target.dispatchEvent(storageEvent('outra-chave'))
+    expect(onChange).toHaveBeenCalledTimes(3)
+
+    unsubscribe()
+    target.dispatchEvent(new Event(THEME_CHANGE_EVENT))
+    target.dispatchEvent(storageEvent(THEME_STORAGE_KEY))
+    expect(onChange).toHaveBeenCalledTimes(3)
+  })
+})
 
 describe('parseThemePreference', () => {
   it.each(['light', 'dark'] as const)('aceita %s', (value) => {

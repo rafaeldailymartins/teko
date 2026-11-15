@@ -1,0 +1,112 @@
+import { expect, test } from '@playwright/test'
+
+/**
+ * Jornadas do app shell e do design system (mudança `add-web-shell-and-design-system`): páginas
+ * estáticas nos dois locales, paleta de comandos, tema persistido, painéis no desktop e Sheet e
+ * Drawer no celular, landing sem chamada à API.
+ */
+const PAGES = [
+  'chat',
+  'history',
+  'settings',
+  'provision',
+  'compare',
+  'coverage',
+  'about',
+  'privacy',
+  'terms',
+  'sign-in',
+] as const
+
+test.describe('páginas', () => {
+  test('as dez páginas existem nos dois locales, com título e idioma', async ({ page }) => {
+    for (const locale of ['pt-BR', 'en'] as const) {
+      for (const path of PAGES) {
+        const response = await page.goto(`/${locale}/${path}/`)
+        expect(response?.ok(), `/${locale}/${path}/`).toBe(true)
+        await expect(page.locator('html')).toHaveAttribute('lang', locale)
+        await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
+        await expect(page).toHaveTitle(/Tekó/)
+      }
+    }
+  })
+
+  test('o app shell mostra o aviso fixo e troca o idioma sem perder a página', async ({ page }) => {
+    await page.goto('/pt-BR/settings/')
+    await expect(page.getByText('Apoio à consulta; não constitui parecer.')).toBeInViewport()
+    await page.getByRole('link', { name: 'English' }).click()
+    await expect(page).toHaveURL(/\/en\/settings\/$/)
+  })
+
+  test('a landing não chama a API', async ({ page }) => {
+    const apiCalls: string[] = []
+    page.on('request', (request) => {
+      if (new URL(request.url()).pathname.startsWith('/api/')) apiCalls.push(request.url())
+    })
+    await page.goto('/pt-BR/')
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
+    await page.getByText('O Tekó substitui um contador ou um advogado?').click()
+    await expect(page.getByText('Não. Ele é um apoio à consulta')).toBeVisible()
+    expect(apiCalls).toEqual([])
+  })
+})
+
+test.describe('paleta e tema', () => {
+  test('Ctrl+K abre a paleta, que navega para a página escolhida', async ({ page }) => {
+    await page.goto('/pt-BR/chat/')
+    await page.keyboard.press('Control+K')
+    const dialog = page.getByRole('dialog', { name: 'Paleta de comandos' })
+    await expect(dialog).toBeVisible()
+    await page.keyboard.type('Histórico')
+    await page.keyboard.press('Enter')
+    await expect(page).toHaveURL(/\/pt-BR\/history\/$/)
+    await expect(dialog).toBeHidden()
+  })
+
+  test('o tema escolhido vale depois de recarregar', async ({ page }) => {
+    await page.goto('/pt-BR/about/')
+    await page.getByRole('button', { name: 'Tema' }).click()
+    await page.getByRole('menuitemradio', { name: 'Escuro' }).click()
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
+    await page.reload()
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
+  })
+})
+
+test.describe('área de trabalho do chat', () => {
+  test('desktop: três painéis com separadores operáveis por teclado', async ({
+    page,
+    isMobile,
+  }) => {
+    test.skip(isMobile, 'layout de desktop')
+    await page.goto('/pt-BR/chat/')
+    await expect(page.getByRole('region', { name: 'Histórico' })).toBeVisible()
+    await expect(page.getByRole('region', { name: 'Citação' })).toBeVisible()
+    const separator = page.getByRole('separator', { name: 'Redimensionar o histórico' })
+    const before = Number(await separator.getAttribute('aria-valuenow'))
+    await separator.focus()
+    await page.keyboard.press('ArrowRight')
+    await expect
+      .poll(async () => Number(await separator.getAttribute('aria-valuenow')))
+      .toBeGreaterThan(before)
+  })
+
+  test('celular: só a conversa, com histórico e citação em overlays', async ({
+    page,
+    isMobile,
+  }) => {
+    test.skip(!isMobile, 'layout de celular')
+    await page.goto('/pt-BR/chat/')
+    await expect(page.getByRole('region', { name: 'Histórico' })).toBeHidden()
+    await expect(page.getByRole('separator')).toHaveCount(0)
+
+    await page.getByRole('button', { name: 'Citação' }).click()
+    const drawer = page.getByRole('dialog', { name: 'Citação' })
+    await expect(drawer).toBeVisible()
+    await page.keyboard.press('Escape')
+    await expect(drawer).toBeHidden()
+
+    await page.getByRole('button', { name: 'Histórico' }).click()
+    await expect(page.getByRole('dialog', { name: 'Histórico' })).toBeVisible()
+  })
+})

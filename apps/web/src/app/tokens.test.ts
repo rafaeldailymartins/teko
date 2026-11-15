@@ -26,6 +26,15 @@ function color(name: string, scheme: Scheme): string {
   return token[scheme]
 }
 
+const DOMAIN_TOKENS = [
+  'validity-current',
+  'validity-superseded',
+  'validity-future',
+  'coverage-out',
+  'degraded',
+] as const
+const DOMAIN_SURFACES = ['background', 'surface', 'popover', 'muted'] as const
+
 /** Pares [primeiro plano, fundo, mínimo] que a UI usa. */
 const PAIRS: readonly (readonly [string, string, number])[] = [
   ['foreground', 'background', WCAG_AA.text],
@@ -35,15 +44,31 @@ const PAIRS: readonly (readonly [string, string, number])[] = [
   ['primary-foreground', 'primary', WCAG_AA.text],
   ['primary', 'background', WCAG_AA.text],
   ['accent-foreground', 'accent', WCAG_AA.text],
-  ['validity-current', 'background', WCAG_AA.text],
-  ['validity-superseded', 'background', WCAG_AA.text],
-  ['validity-future', 'background', WCAG_AA.text],
-  ['coverage-out', 'background', WCAG_AA.text],
-  ['degraded', 'background', WCAG_AA.text],
+  // Os tokens de domínio aparecem como texto no fundo, no painel lateral, nos popups e
+  // nos blocos de resposta (--muted).
+  ...DOMAIN_TOKENS.flatMap((token) =>
+    DOMAIN_SURFACES.map((surface) => [token, surface, WCAG_AA.text] as const),
+  ),
   ['ring', 'background', WCAG_AA.nonText],
   ['ring', 'surface', WCAG_AA.nonText],
   ['border-strong', 'background', WCAG_AA.nonText],
   ['accent-border', 'accent', WCAG_AA.nonText],
+  // Componentes do shadcn: popups, hover e item selecionado, campos, secundária e destrutiva.
+  ['foreground', 'muted', WCAG_AA.text],
+  ['muted-foreground', 'muted', WCAG_AA.text],
+  ['primary', 'muted', WCAG_AA.text],
+  ['popover-foreground', 'popover', WCAG_AA.text],
+  ['muted-foreground', 'popover', WCAG_AA.text],
+  ['secondary-foreground', 'secondary', WCAG_AA.text],
+  ['destructive', 'background', WCAG_AA.text],
+  ['destructive', 'popover', WCAG_AA.text],
+  ['accent-foreground', 'background', WCAG_AA.text],
+  ['primary', 'surface', WCAG_AA.text],
+  ['input', 'background', WCAG_AA.nonText],
+  ['input', 'popover', WCAG_AA.nonText],
+  ['ring', 'muted', WCAG_AA.nonText],
+  ['ring', 'popover', WCAG_AA.nonText],
+  ['border-strong', 'surface', WCAG_AA.nonText],
 ]
 
 describe('design tokens (globals.css)', () => {

@@ -13,7 +13,8 @@ no [roteiro](roadmap.md); o desenho, em [`architecture/`](architecture/README.md
 | F3 ingestão C1 e C2, embeddings e watch | fechada em 2026-11-13                        |
 | Revisão antes da F4                     | concluída em 2026-11-13                      |
 | F4 API completa                         | concluída em 2026-11-14                      |
-| F5 em diante                            | depois da F4                                 |
+| F5 frontend completo                    | em andamento                                 |
+| F6 em diante                            | a fazer                                      |
 
 ## F0: contas e governança
 
@@ -179,6 +180,10 @@ O que o deploy exige do mantenedor está em [Antes da F7](#antes-da-f7-o-que-o-m
   `verify` e no job `lint`), TanStack Query, `ApiError` a partir de Problem Details, parsers do nuqs
   (`q`, `c`, `ref`) e hooks de leitura. O item "cliente gerado sem drift" do DoD fica coberto pelo
   gate.
+- `add-web-shell-and-design-system` (arquivada em 2026-11-15): componentes do shadcn sobre Base UI
+  copiados do registry, tokens OKLCH novos no teste de contraste, seletor de tema, Geist Mono, app
+  shell no grupo `(app)` com paleta `Ctrl/⌘+K` e aviso fixo, área de trabalho do chat em três
+  painéis (Sheet e Drawer abaixo de 768 px), páginas-esqueleto nos dois locales e a landing revista.
 
 ## Antes da F7: o que o mantenedor faz
 

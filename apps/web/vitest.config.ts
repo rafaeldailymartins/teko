@@ -33,6 +33,8 @@ export default defineConfig({
         'src/components/site-header.tsx',
         'src/components/site-footer.tsx',
         'src/components/locale-gateway/**',
+        'src/components/pages/**',
+        'src/components/app-shell/app-shell-layout.tsx',
         'src/lib/i18n/request.ts',
       ],
       reporter: ['text-summary', 'lcov', 'json-summary'],

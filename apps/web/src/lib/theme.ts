@@ -50,3 +50,66 @@ export function resolveTheme(
  */
 export const THEME_BOOTSTRAP_SCRIPT =
   '(function(){try{var t=localStorage.getItem("teko-theme");if(t==="light"||t==="dark"){document.documentElement.setAttribute("data-theme",t)}}catch(e){}})()'
+
+/** Evento disparado na `window` quando a preferência muda nesta aba (o `storage` cobre as outras). */
+export const THEME_CHANGE_EVENT = 'teko-theme-change'
+
+type ThemeStorage = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>
+
+interface ThemeTarget {
+  /** `localStorage`, ou `null` quando o navegador o bloqueia. */
+  readonly storage: ThemeStorage | null
+  /** O `<html>`, que recebe `data-theme`. */
+  readonly root: Pick<Element, 'setAttribute' | 'removeAttribute'>
+}
+
+/** Preferência salva; storage ausente ou bloqueado vale `system`, como no script inicial. */
+export function readThemePreference(storage: Pick<Storage, 'getItem'> | null): ThemePreference {
+  try {
+    return parseThemePreference(storage?.getItem(THEME_STORAGE_KEY))
+  } catch {
+    return ThemePreference.System
+  }
+}
+
+/**
+ * Aplica e grava a preferência. `system` apaga a chave e o atributo, e o CSS volta a seguir o
+ * `prefers-color-scheme`. Falha de storage não impede a troca na página atual.
+ */
+export function applyThemePreference(
+  preference: ThemePreference,
+  { storage, root }: ThemeTarget,
+): void {
+  const isSystem = preference === ThemePreference.System
+  if (isSystem) {
+    root.removeAttribute(THEME_ATTRIBUTE)
+  } else {
+    root.setAttribute(THEME_ATTRIBUTE, preference)
+  }
+  try {
+    if (isSystem) {
+      storage?.removeItem(THEME_STORAGE_KEY)
+    } else {
+      storage?.setItem(THEME_STORAGE_KEY, preference)
+    }
+  } catch {
+    // Modo privado ou cookies bloqueados: o tema vale só até a página recarregar.
+  }
+}
+
+/** Assina as mudanças de preferência (desta aba e das outras); devolve o cancelamento. */
+export function subscribeThemePreference(target: EventTarget, onChange: () => void): () => void {
+  const onStorage = (event: Event) => {
+    // O navegador só entrega `StorageEvent` em `storage`; `key: null` é um `clear()` de outra aba.
+    const { key } = event as StorageEvent
+    if (key === null || key === THEME_STORAGE_KEY) {
+      onChange()
+    }
+  }
+  target.addEventListener(THEME_CHANGE_EVENT, onChange)
+  target.addEventListener('storage', onStorage)
+  return () => {
+    target.removeEventListener(THEME_CHANGE_EVENT, onChange)
+    target.removeEventListener('storage', onStorage)
+  }
+}
