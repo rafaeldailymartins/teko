@@ -158,6 +158,13 @@ async function waitFor<T>(find: () => T | null | undefined, timeout = 4000): Pro
   }
 }
 
+/** Botão habilitado com o texto (sugestões e composer travam até a sessão carregar). */
+function enabledButton(text: string): HTMLButtonElement | undefined {
+  return [...document.querySelectorAll<HTMLButtonElement>('button:not(:disabled)')].find(
+    (element) => element.textContent?.includes(text),
+  )
+}
+
 function byText(selector: string, text: string): HTMLElement | undefined {
   return [...document.querySelectorAll<HTMLElement>(selector)].find((element) =>
     element.textContent?.includes(text),
@@ -171,7 +178,10 @@ async function click(element: Element | null | undefined): Promise<void> {
 }
 
 async function type(text: string): Promise<HTMLTextAreaElement> {
-  const textarea = await waitFor(() => document.querySelector('textarea'))
+  // O composer só destrava com a sessão pronta (`GET /me`); antes disso ele fica desabilitado.
+  const textarea = await waitFor(() =>
+    document.querySelector<HTMLTextAreaElement>('textarea:not(:disabled)'),
+  )
   const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')?.set
   await act(async () => {
     setter?.call(textarea, text)
@@ -240,7 +250,7 @@ describe('chat', () => {
   it('sugestão sensível à data: pergunta em 05/2008, resposta com data, vigência e chips', async () => {
     transport.scenarios.push(answered)
     await render(<ChatWorkspace />)
-    await click(await waitFor(() => byText('button', 'Perguntar em 05/2008')))
+    await click(await waitFor(() => enabledButton('Perguntar em 05/2008')))
 
     expect(transport.calls[0]).toMatchObject({
       question: 'O que diz o art. 76, § 6º do RCTE?',
@@ -265,7 +275,7 @@ describe('chat', () => {
   it('o chip abre o painel da citação, e ] e [ navegam entre as citações', async () => {
     transport.scenarios.push(answered)
     await render(<ChatWorkspace />)
-    await click(await waitFor(() => byText('button', 'Perguntar em 05/2008')))
+    await click(await waitFor(() => enabledButton('Perguntar em 05/2008')))
     await click(await waitFor(() => document.querySelector('button[data-citation-id="S1"]')))
 
     const panel = await waitFor(() => byText('article', 'Citação 1 de 2'))
@@ -292,7 +302,7 @@ describe('chat', () => {
   it('feedback 👍 grava a avaliação da resposta', async () => {
     transport.scenarios.push(answered)
     await render(<ChatWorkspace />)
-    await click(await waitFor(() => byText('button', 'Perguntar em 05/2008')))
+    await click(await waitFor(() => enabledButton('Perguntar em 05/2008')))
     await click(await waitFor(() => document.querySelector('button[aria-label="Resposta útil"]')))
     await waitFor(() => byText('[role="status"]', 'Obrigado pelo retorno'))
     const feedback = fetchCalls.find((request) => request.url.endsWith('/feedback'))
