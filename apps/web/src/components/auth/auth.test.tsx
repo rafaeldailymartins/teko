@@ -337,8 +337,9 @@ describe('UserMenu', () => {
     api.on('GET /api/v1/me', ME)
     api.on('POST /api/auth/sign-out', { success: true })
     await render(<UserMenu />)
-    const trigger = document.querySelector('button[aria-label="Conta de Ana Souza"]')
-    expect(trigger?.textContent).toBe('AS')
+    const trigger = document.querySelector('button[data-slot="dropdown-menu-trigger"]')
+    // As iniciais visíveis abrem o nome acessível (WCAG 2.5.3).
+    expect(trigger?.textContent).toBe('AS Conta de Ana Souza')
     await click(trigger)
     const menu = document.querySelector('[role="menu"]')
     expect(menu?.textContent).toContain('ana@teko.localhost')
@@ -346,7 +347,7 @@ describe('UserMenu', () => {
     await click(items.find((item) => item.textContent === 'Configurações'))
     expect(navigation.push).toHaveBeenCalledWith('/pt-BR/settings/')
 
-    await click(document.querySelector('button[aria-label="Conta de Ana Souza"]'))
+    await click(document.querySelector('button[data-slot="dropdown-menu-trigger"]'))
     await click(
       [...document.querySelectorAll('[role="menuitem"]')].find(
         (item) => item.textContent === 'Sair',

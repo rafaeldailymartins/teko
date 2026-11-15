@@ -203,6 +203,10 @@ O que o deploy exige do mantenedor está em [Antes da F7](#antes-da-f7-o-que-o-m
   thread e composer acessíveis, Streamdown com `rehype-harden`, chips e painel de citação, data de
   referência na URL, cobertura, degradação, cota, PII e `fetch(` só em `src/lib/api`; o chat carrega
   sob demanda (first-load de 327,3 para 343,5 KiB gz) e o e2e `chat.spec.ts` cobre o 05/2008 → 01/2010.
+- `add-web-a11y-gate` (arquivada em 2026-11-15): axe WCAG 2.2 AA no e2e (`a11y.spec.ts`, 112 testes:
+  14 telas em en/pt-BR, claro/escuro, desktop/mobile), correções do nome acessível do botão da conta
+  e do `h1` do chat, e a [prova do DoD da F5](evals/dod-f5-2026-11-15.md) item por item (sete
+  jornadas, bundle em 402,7 KiB gz).
 
 ## Antes da F7: o que o mantenedor faz
 

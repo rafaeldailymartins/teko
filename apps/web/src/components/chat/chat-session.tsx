@@ -282,6 +282,10 @@ export default function ChatSession({
             />
           </div>
         )}
+        {/* Com a conversa na tela, o título da página continua lá para quem navega por títulos. */}
+        {(messages.length > 0 || restore.isFetching) && (
+          <h1 className="sr-only">{tPage('title')}</h1>
+        )}
         {messages.length === 0 && restore.isFetching && <AnswerSkeleton />}
         {messages.map((message, index) => (
           <BlockErrorBoundary key={message.id} fallback={t('thread.blockError')}>

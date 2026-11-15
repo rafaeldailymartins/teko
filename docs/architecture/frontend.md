@@ -236,6 +236,11 @@ Content-Security-Policy: default-src 'self'; script-src 'self' 'sha256-…'; sty
 - WCAG 2.2 AA: região `aria-live="polite"` anuncia início e fim da resposta, `aria-busy` no stream,
   foco no composer, skip link, critérios 2.4.11, 2.5.8, 2.5.7 e 3.3.8; trechos legais com
   `lang="pt-BR"` também na UI em inglês (tag `<ptBR>` nos catálogos).
+- **Gate do axe** (`e2e/a11y.spec.ts`, job `e2e`): `@axe-core/playwright` com `wcag2a`, `wcag2aa`,
+  `wcag21a`, `wcag21aa` e `wcag22aa` nas rotas principais (inclusive o chat com o painel de citação
+  aberto e o banner LGPD), em en e pt-BR, claro e escuro, desktop e mobile. Zero violações; exceção
+  só por seletor, com o motivo na lista `EXCEPTIONS`. Prova do DoD em
+  [`docs/evals/dod-f5-2026-11-15.md`](../evals/dod-f5-2026-11-15.md).
 
 ## Analytics e orçamentos
 
