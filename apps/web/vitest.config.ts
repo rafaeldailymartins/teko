@@ -5,7 +5,8 @@ import { defineConfig } from 'vitest/config'
  * Testes unitários de `@teko/web` (ambiente node na F1; o projeto de componentes em browser mode
  * chega com o Storybook). Thresholds do plano: `src/lib/**` 90/85 e global 80/75 (linhas/branches),
  * sem `src/app/**` (rotas do Next só reexportam), stories e `__generated__`. Estrutura (ADR 0029):
- * `src/app` (rotas), `src/components` (UI) e `src/lib` (lógica sem React).
+ * `src/app` (rotas), `src/components` (UI) e `src/lib` (lógica sem React). Os passos do pós-build
+ * (`scripts/lib`: guard do estático, CSP e orçamento de bundle) entram na mesma suíte e cobertura.
  */
 export default defineConfig({
   resolve: {
@@ -13,14 +14,15 @@ export default defineConfig({
   },
   test: {
     name: 'web',
-    include: ['src/**/*.test.{ts,tsx}', 'test/**/*.test.ts'],
+    include: ['src/**/*.test.{ts,tsx}', 'test/**/*.test.ts', 'scripts/**/*.test.ts'],
     environment: 'node',
     reporters: ['default', ['junit', { outputFile: 'reports/junit.xml' }]],
     coverage: {
       provider: 'v8',
-      include: ['src/**/*.{ts,tsx}'],
+      include: ['src/**/*.{ts,tsx}', 'scripts/lib/**/*.ts'],
       exclude: [
         'src/**/*.test.{ts,tsx}',
+        'scripts/**/*.test.ts',
         'src/**/*.stories.tsx',
         'src/**/*.d.ts',
         'src/**/__generated__/**',

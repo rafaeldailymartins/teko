@@ -42,8 +42,9 @@ de cobrar.
   `X-Request-Id` do cliente.
 - **Web na mesma origem**: com `WEB_STATIC_DIR`, o plugin `static-site` serve o export com a mesma
   política das rotas do `config.json` da Vercel (`static-site/policy.ts`): redirect da raiz pelo
-  `Accept-Language`, `/pt-br/` → `/pt-BR/`, headers de segurança do estático, `/_next/static/*`
-  imutável e 404 por locale. A API continua só em `/api/*` e `/healthz`.
+  `Accept-Language`, `/pt-br/` → `/pt-BR/`, headers de segurança do estático, a CSP de cada HTML
+  (do manifesto `apps/web/out/.teko-headers.json` que o build do web grava; sem ele a API não
+  sobe), `/_next/static/*` imutável e 404 por locale. A API continua só em `/api/*` e `/healthz`.
 - **Sem WAF**: o limite por IP passa ao `@fastify/rate-limit` com store em Postgres (10 req/60 s por
   IP do `ClientIp` medido no ensaio), ligado só com `RUNTIME_TARGET=render` (F4). O claim
   `pending → streaming` e 1 stream ativo por usuário continuam valendo.

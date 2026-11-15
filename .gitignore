@@ -48,3 +48,6 @@ Thumbs.db
 
 # Cookie da sessão de teste da stack de CI (infra/ci/up.sh, local)
 /infra/ci/.e2e.env
+
+# Snippets do Caddy da stack de CI (gerados por scripts/caddy-static-site.ts)
+/infra/ci/.static-site.caddy

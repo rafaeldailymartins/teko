@@ -7,7 +7,7 @@
   "type": "module",
   "scripts": {
     "dev": "next dev --port 3000",
-    "build": "next build",
+    "build": "next build && node scripts/postbuild.ts",
     "typecheck": "tsc -p tsconfig.json --incremental false",
     "test:unit": "vitest run --coverage",
     "type-coverage": "type-coverage --at-least 99 --strict --ignore-catch",
@@ -29,6 +29,7 @@
     "@typescript/native": "catalog:",
     "@vitest/coverage-v8": "catalog:",
     "babel-plugin-react-compiler": "catalog:",
+    "htmlparser2": "catalog:",
     "postcss": "catalog:",
     "tailwindcss": "catalog:",
     "type-coverage": "catalog:",

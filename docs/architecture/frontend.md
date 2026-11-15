@@ -11,12 +11,19 @@ Export estático do Next.js servido pela CDN da Vercel, no mesmo projeto e na me
   não há adapter de plataforma nem functions do Next.
 - **Ficam de fora:** `proxy.ts`/middleware, route handlers, Server Actions, `next/image` otimizado e
   rotas dinâmicas (viram query params via nuqs: `/pt-BR/chat/?q=<questionId>&c=<conversationId>&ref=2024-03`).
-- **Guards de CI:** falha se existir `app/**/route.ts(x)`, `'use server'` ou
-  `dynamic = 'force-dynamic'`, ou se o build gerar algo fora do estático.
+- **Pós-build** (`apps/web/scripts/postbuild.ts`, parte do `pnpm --filter @teko/web build` e
+  repetido no job `build` do CI depois de um cache hit do turbo): falha se o código tiver
+  `src/app/**/route.ts(x)`, `'use server'`, `dynamic = 'force-dynamic'`, middleware/`proxy.ts` ou
+  rota de API do Pages Router, ou se o build gerar algo fora do estático (middleware, functions ou
+  Server Actions nos manifestos do `.next`, export sem sucesso, arquivo de tipo não estático no
+  `out/`). A metade do código-fonte também roda no `test:unit`. Depois grava o manifesto de
+  headers (abaixo) e confere o orçamento de bundle.
 - **Rotas de plataforma** (no `config.json` do Build Output, não no Next): `/` redireciona para
   `/pt-BR/` ou `/en/` por `Accept-Language`; 404 por locale (`app/[locale]/[...rest]/page.tsx` com
   `generateStaticParams → {rest:['404']}`); `/_next/static/*` com
-  `Cache-Control: public, max-age=31536000, immutable`. Um e2e acessa `/en/xyz`.
+  `Cache-Control: public, max-age=31536000, immutable`. A mesma semântica vale no Plano B
+  (`static-site.ts`) e no Caddy da stack de CI (snippets de `scripts/caddy-static-site.ts`); o
+  `apps/web/e2e/platform.spec.ts` acessa `/en/xyz` e confere headers e CSP.
 - **Dev local:** `pnpm dev` sobe web (`:3000`) e API (`:4000`); em desenvolvimento, `rewrites()` do
   Next manda `/api/*` para a API, e o navegador vê uma origem só. Não há proxy assinado nem segredo
   de dev para o caminho web → API. O login local usa `pnpm --filter @teko/api seed:dev-session`.
@@ -99,19 +106,28 @@ CORS: o stream leva o cookie de sessão, e a API confere o `Origin`.
 
 ## Segurança no navegador
 
-Um passo de pós-build (htmlparser2) percorre `out/**/*.html`, calcula o sha256 dos `<script>` e
-`<style>` inline e gera os headers por caminho, que vão para o `config.json` do Build Output
-(falha se o CSP passar de 6 KB):
+O pós-build (htmlparser2) percorre `out/**/*.html`, calcula o sha256 dos `<script>` e `<style>`
+inline e grava `out/.teko-headers.json`, o manifesto com a CSP e o Trusted Types report-only de
+cada documento (falha se uma CSP passar de 6 KB):
 
 ```text
 Content-Security-Policy: default-src 'self'; script-src 'self' 'sha256-…'; style-src-elem 'self' 'sha256-…';
   style-src-attr 'unsafe-inline'; img-src 'self' data:; font-src 'self'; worker-src 'self';
   connect-src 'self' https://eu.i.posthog.com; object-src 'none'; base-uri 'self'; form-action 'self';
-  frame-ancestors 'none'; upgrade-insecure-requests; report-to <endpoint de relatório de CSP>
+  frame-ancestors 'none'; upgrade-insecure-requests
 ```
 
+- Os três lugares que servem o export consomem o mesmo manifesto, validado por
+  `parseHeadersManifest` (`apps/api/src/adapters/in/http/static-site/policy.ts`, que também guarda
+  os headers comuns): o `build-vercel-output` vira cada documento numa rota do `config.json` (o
+  caminho exato que o serve, sensível à caixa, e as rotas de 404 com a CSP da página delas), o
+  Plano B aplica pelo caminho e o Caddy da stack de CI importa os snippets gerados. O manifesto
+  nunca é servido. Nenhuma rota da Vercel define o mesmo header que outra para a mesma resposta.
+- Só os documentos têm CSP; JS, CSS, fontes e payloads RSC recebem os demais headers.
 - Sem `'strict-dynamic'` (anularia o `'self'` dos scripts do Next); `style-src-attr 'unsafe-inline'`
   é concessão consciente (Motion e painéis redimensionáveis).
+- **`report-to` fica de fora até a F6**, que escolhe o destino dos relatórios (abaixo); até lá as
+  violações só aparecem no console.
 - PostHog com `disable_external_dependency_loading: true` e surveys no bundle.
 - HSTS, `nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy`
   restritiva, COOP/CORP `same-origin`.
@@ -159,7 +175,10 @@ Content-Security-Policy: default-src 'self'; script-src 'self' 'sha256-…'; sty
 - **PostHog** (EU), direto: `cookieless_mode:'on_reject'`, `person_profiles:'identified_only'`,
   replay desligado, desligado no staging, surveys só com consentimento, banner LGPD com Aceitar,
   Recusar e Personalizar de mesmo peso. Eventos em [observabilidade](observabilidade.md).
-- **Orçamento:** JS gz total do first-load (um orçamento de bundle total, checado no build). As
+- **Orçamento:** JS gz total do first-load, checado no pós-build: a soma do gzip da união dos chunks
+  que os HTML do export carregam (`<script src>` sem `nomodule` e preload de script), cada chunk uma
+  vez, contra `apps/web/bundle-budget.json` (400 KiB; a landing da F4 mede 132 KiB). Os
+  `import()` sob demanda ficam de fora. As
   metas de Web Vitals (LCP ≤ 2,0 s, INP ≤ 150 ms, CLS ≤ 0,05, primeiro token ≤ 1,5 s) são
   acompanhadas em produção pelo evento `web_vital`. Lighthouse CI e orçamentos por rota ficam para
   depois da v0.1.0.

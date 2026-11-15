@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Sobe a stack descartável de CI (infra/ci/compose.yaml) com a fixture única e uma sessão de teste:
 #
-#   1. imagem candidata da API (apps/api/Dockerfile) e export estático do web;
+#   1. imagem candidata da API (apps/api/Dockerfile), export estático do web e os snippets do Caddy
+#      (scripts/caddy-static-site.ts, em infra/ci/.static-site.caddy);
 #   2. Postgres, com os roles do Neon;
 #   3. migrações e fixture pelo mesmo caminho da ingestão (cli seed-fixtures, owner);
 #   4. API (APP_ENV=ci, LLM e embeddings fake) e Caddy em http://localhost:8080;
@@ -24,6 +25,8 @@ docker build -f apps/api/Dockerfile \
   --build-arg APP_VERSION=0.0.0 --build-arg "GIT_SHA=$(git rev-parse HEAD)" \
   -t teko-api:ci .
 pnpm --filter @teko/web build
+# Snippets do Caddy (headers, CSP por documento, 404 por locale) a partir do export recém-gerado.
+node scripts/caddy-static-site.ts
 echo "::endgroup::"
 
 echo "::group::Postgres, migrações e fixture"

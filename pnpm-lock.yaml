@@ -411,6 +411,9 @@ importers:
       babel-plugin-react-compiler:
         specifier: 'catalog:'
         version: 1.0.0
+      htmlparser2:
+        specifier: 'catalog:'
+        version: 12.0.0
       postcss:
         specifier: 'catalog:'
         version: 8.5.32
