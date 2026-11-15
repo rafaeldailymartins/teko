@@ -1,10 +1,16 @@
 import { expect, test } from '@playwright/test'
+import { signInWithTestSession } from './support/session.ts'
 
 /**
  * Jornadas do app shell e do design system (mudança `add-web-shell-and-design-system`): páginas
  * estáticas nos dois locales, paleta de comandos, tema persistido, painéis no desktop e Sheet e
- * Drawer no celular, landing sem chamada à API.
+ * Drawer no celular, landing sem chamada à API. As páginas do app pedem sessão (sem ela, a guarda
+ * manda para a entrada; `auth.spec.ts`), então as jornadas entram com a sessão de teste.
  */
+
+test.beforeEach(async ({ context, baseURL }) => {
+  await signInWithTestSession(context, baseURL)
+})
 const PAGES = [
   'chat',
   'history',
@@ -34,7 +40,10 @@ test.describe('páginas', () => {
   test('o app shell mostra o aviso fixo e troca o idioma sem perder a página', async ({ page }) => {
     await page.goto('/pt-BR/settings/')
     await expect(page.getByText('Apoio à consulta; não constitui parecer.')).toBeInViewport()
-    await page.getByRole('link', { name: 'English' }).click()
+    await page
+      .getByRole('navigation', { name: 'Idioma' })
+      .getByRole('link', { name: 'English' })
+      .click()
     await expect(page).toHaveURL(/\/en\/settings\/$/)
   })
 

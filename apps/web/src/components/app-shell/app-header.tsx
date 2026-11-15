@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useLocale, useTranslations } from 'next-intl'
+import { UserMenu } from '@/components/auth/user-menu'
 import { LanguageSwitch } from '@/components/language-switch'
 import { ThemeSelector } from '@/components/theme-selector'
 import { localeHomePath } from '@/lib/i18n/routing'
@@ -21,7 +22,7 @@ function withTrailingSlash(pathname: string): string {
 
 /**
  * Cabeçalho do app shell: marca, navegação principal (a partir de 768 px), paleta de comandos,
- * idioma e tema. No celular a navegação fica na paleta, que tem botão visível.
+ * idioma, tema e a sessão (entrar ou o menu da conta). No celular a navegação fica na paleta, que tem botão visível.
  */
 export function AppHeader() {
   const locale = useLocale()
@@ -68,6 +69,7 @@ export function AppHeader() {
         <CommandPalette />
         <LanguageSwitch />
         <ThemeSelector />
+        <UserMenu />
       </div>
     </header>
   )

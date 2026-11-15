@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation'
 import { hasLocale } from 'next-intl'
 import { getTranslations, setRequestLocale } from 'next-intl/server'
 import type { ReactNode } from 'react'
+import { SessionGate } from '@/components/auth/session-gate'
 import { ConsentPreferencesButton } from '@/components/consent/consent-provider'
 import { routing } from '@/lib/i18n/routing'
 import { MAIN_CONTENT_ID } from '@/lib/site'
@@ -15,7 +16,8 @@ interface AppShellLayoutProps {
 /**
  * Layout das páginas do app (grupo de rotas `(app)`): cabeçalho com paleta, conteúdo principal com
  * rolagem própria e o aviso fixo de que o Tekó não constitui parecer, sempre visível no rodapé.
- * Fica montado entre as páginas do grupo, então a navegação entre elas não recarrega o shell.
+ * Fica montado entre as páginas do grupo, então a navegação entre elas não recarrega o shell. A
+ * `SessionGate` manda quem está sem sessão para a entrada e abre o onboarding pendente.
  */
 export async function AppShellLayout({ children, params }: AppShellLayoutProps) {
   const { locale } = await params
@@ -28,6 +30,7 @@ export async function AppShellLayout({ children, params }: AppShellLayoutProps) 
   return (
     <div className="flex h-dvh flex-col">
       <AppHeader />
+      <SessionGate />
       <main
         id={MAIN_CONTENT_ID}
         tabIndex={-1}

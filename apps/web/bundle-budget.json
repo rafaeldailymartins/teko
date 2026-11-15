@@ -1,4 +1,4 @@
 {
-  "$comment": "Teto do JS do primeiro acesso (gzip, união das páginas do export, sem o polyfill nomodule), checado pelo scripts/postbuild.ts. Medido em 2026-11-15 com a landing da F4: 132 KiB. A folga cobre o chat e o design system da F5; ajuste aqui e registre a medição.",
-  "firstLoadJsGzipKiB": 400
+  "$comment": "Teto do JS do primeiro acesso (gzip, união das páginas do export, sem o polyfill nomodule), checado pelo scripts/postbuild.ts. A landing da F4 media 132 KiB; com o shell, o histórico, a autenticação e o chat da F5, a soma passou de 400 KiB, e o mantenedor subiu o teto para 500 KiB em 2026-11-15. Ajuste aqui e registre a medição.",
+  "firstLoadJsGzipKiB": 500
 }
