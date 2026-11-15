@@ -12,6 +12,9 @@ import { type BrowserContext, expect, type Locator, type Page, test } from '@pla
 
 const QUESTION = 'O que diz o art. 76, § 6º do RCTE?'
 
+/** Chip do § 6º (no texto ou na lista de fontes), sem os incisos ("§ 6º, I"). */
+const SIXTH_PARAGRAPH = /^Fonte \d+: RCTE, art\. 76, § 6º$/
+
 interface Violation {
   readonly directive: string
   readonly blocked: string
@@ -128,7 +131,7 @@ test.describe('chat', () => {
       '2008-05-01',
     )
     await expect(page.locator('[data-reference-chip]')).toContainText('05/2008')
-    const firstChip = first.locator('[data-answer-body] button[aria-label*="§ 6º"]').first()
+    const firstChip = first.getByRole('button', { name: SIXTH_PARAGRAPH }).first()
     await expect(firstChip).toBeVisible()
     const firstValidity = await first.locator('[data-answer-validity]').textContent()
 
@@ -154,7 +157,7 @@ test.describe('chat', () => {
       'data-reference-date',
       '2010-01-01',
     )
-    const secondChip = second.locator('[data-answer-body] button[aria-label*="§ 6º"]').first()
+    const secondChip = second.getByRole('button', { name: SIXTH_PARAGRAPH }).first()
     await expect(secondChip).toBeVisible()
     expect(await second.locator('[data-answer-validity]').textContent()).not.toBe(firstValidity)
 
