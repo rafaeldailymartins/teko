@@ -10,14 +10,119 @@
     "languageNav": "Language",
     "disclaimer": "A research aid; not professional advice.",
     "license": "Open source under the MIT license.",
-    "sourceCode": "Source code on GitHub"
+    "sourceCode": "Source code on GitHub",
+    "close": "Close",
+    "openApp": "Open Tekó",
+    "theme": {
+      "label": "Theme",
+      "light": "Light",
+      "dark": "Dark",
+      "system": "Match system"
+    }
+  },
+  "shell": {
+    "mainNav": "Main navigation",
+    "palette": {
+      "open": "Search",
+      "openLabel": "Open the command palette",
+      "title": "Command palette",
+      "description": "Search for a page or an action and press Enter.",
+      "placeholder": "Search pages or actions…",
+      "empty": "No results.",
+      "pages": "Pages",
+      "theme": "Theme",
+      "home": "Home page"
+    },
+    "panels": {
+      "history": "History",
+      "citation": "Citation",
+      "resizeHistory": "Resize history",
+      "resizeCitation": "Resize citation",
+      "historyEmpty": "Your conversations show up here, each with the reference date it used.",
+      "citationEmpty": "Pick a citation in the answer to see the provision, its version and its validity interval."
+    }
+  },
+  "pages": {
+    "chat": {
+      "title": "Chat",
+      "description": "Ask about tax law and get the answer in the wording in force on your date.",
+      "emptyTitle": "Ask a question",
+      "emptyBody": "Set the tax period and ask about EFD ICMS/IPI, EFD-Reinf or the ICMS legislation of Goiás. The chat is still under construction."
+    },
+    "history": {
+      "title": "History",
+      "description": "Your previous questions, each with its reference date.",
+      "emptyTitle": "No conversations yet",
+      "emptyBody": "Your questions and answers are kept here, with the reference date and the citations used."
+    },
+    "settings": {
+      "title": "Settings",
+      "description": "Account preferences, data export and deletion.",
+      "emptyTitle": "Nothing to configure yet",
+      "emptyBody": "Account preferences, data export and deletion will live here. Theme and language are already in the header."
+    },
+    "provision": {
+      "title": "Provision",
+      "description": "Text, versions and timeline of a cited provision.",
+      "emptyTitle": "No provision open",
+      "emptyBody": "Open a provision from a citation to see its text, version and validity interval."
+    },
+    "compare": {
+      "title": "Compare versions",
+      "description": "What changed between two versions of a provision.",
+      "emptyTitle": "No comparison open",
+      "emptyBody": "Pick two versions of a provision from a citation to see what changed between them."
+    },
+    "coverage": {
+      "title": "Coverage",
+      "description": "The rules and periods Tekó knows.",
+      "emptyTitle": "Coverage coming soon",
+      "emptyBody": "The list of covered rules and periods, with the date the sources were last checked, shows up here."
+    },
+    "about": {
+      "title": "About",
+      "description": "What Tekó is and how it is built.",
+      "emptyTitle": "Page being written",
+      "emptyBody": "Tekó is an open-source project under the MIT license. This page will explain how it is built and who maintains it."
+    },
+    "privacy": {
+      "title": "Privacy",
+      "description": "How Tekó handles your data.",
+      "emptyTitle": "Policy being written",
+      "emptyBody": "The privacy policy will be published here before the service opens."
+    },
+    "terms": {
+      "title": "Terms of use",
+      "description": "Conditions for using Tekó.",
+      "emptyTitle": "Terms being written",
+      "emptyBody": "The terms of use will be published here before the service opens."
+    },
+    "sign-in": {
+      "title": "Sign in",
+      "description": "Sign in to Tekó to ask questions.",
+      "emptyTitle": "Sign-in coming soon",
+      "emptyBody": "Signing in with GitHub and with a passkey is still under construction."
+    }
   },
   "landing": {
     "status": "Under construction",
     "title": "Tax law, in the wording that applied on your date.",
-    "lead": "Tekó is an open-source assistant for questions about Brazilian tax law. Every answer will be given for a tax period or reference date and will cite the provision and the version it used.",
+    "lead": "Tekó is an open-source assistant for questions about Brazilian tax law. Every answer is given for a tax period or reference date and cites the provision and the version it used.",
+    "cta": {
+      "ask": "Ask a question",
+      "coverage": "See the coverage"
+    },
+    "demo": {
+      "label": "Illustrative sample answer",
+      "referenceDate": "Tax period: 05/2008",
+      "question": "What did art. 76, § 6, of the RCTE say in my tax period?",
+      "answer": "The answer uses the wording in force in 05/2008 and tags every statement with the citation it came from.",
+      "citation": "RCTE, art. 76, § 6",
+      "citationNote": "wording in force in 05/2008",
+      "changed": "For 01/2010 the wording is different: the answer, the citation and the interval change together."
+    },
     "howItWorks": {
-      "title": "How it will work",
+      "title": "How it works",
       "referenceDate": {
         "title": "Reference date first",
         "body": "You set the tax period (for example, 03/2024) and the answer uses the wording in force at that time. If the rule changed within the period, Tekó tells you."
@@ -31,10 +136,67 @@
         "body": "Tekó states which rules and periods it knows. Outside that coverage, it declines instead of guessing."
       }
     },
-    "projectStatus": {
-      "title": "Project status",
-      "body": "We are laying the foundation: repository, contracts shared by the front end and the API, and this page. The assistant does not answer questions yet.",
-      "scope": "The planned initial corpus covers the SPED guides and the ICMS legislation of the state of Goiás."
+    "corpus": {
+      "title": "Covered corpus",
+      "lead": "Official sources, versioned and regularly checked against the original websites.",
+      "efdIcmsIpi": {
+        "name": "EFD ICMS/IPI",
+        "body": "The Digital Tax Bookkeeping practical guide and its technical notes."
+      },
+      "efdReinf": {
+        "name": "EFD-Reinf",
+        "body": "Event layouts and technical notes."
+      },
+      "rcte": {
+        "name": "RCTE (Goiás)",
+        "body": "Regulation of the Goiás State Tax Code (Decree No. 4,852/1997)."
+      },
+      "cte": {
+        "name": "CTE (Goiás)",
+        "body": "Goiás State Tax Code (Law No. 11,651/1991)."
+      },
+      "efdGo": {
+        "name": "EFD (Goiás)",
+        "body": "The state practical guide for EFD ICMS/IPI and the Goiás adjustment code tables."
+      }
+    },
+    "guarantees": {
+      "title": "Guarantees",
+      "sources": {
+        "title": "Nothing without a source",
+        "body": "Every statement in the answer points to a passage of the corpus. Without a passage to back it, it stays out."
+      },
+      "refusal": {
+        "title": "Says when it does not know",
+        "body": "A question outside the coverage gets a clear refusal, with the reason, instead of a guess."
+      },
+      "advice": {
+        "title": "A research aid, not advice",
+        "body": "Tekó helps you look up the law. The decision and the responsibility stay with you and your accountant or lawyer."
+      },
+      "openSource": {
+        "title": "Open source",
+        "body": "All the code, including the corpus ingestion, is public under the MIT license."
+      }
+    },
+    "faq": {
+      "title": "Frequently asked questions",
+      "advice": {
+        "question": "Does Tekó replace an accountant or a lawyer?",
+        "answer": "No. It is a research aid and not professional advice. Always check the cited source before deciding."
+      },
+      "referenceDate": {
+        "question": "Why do I need to set a date?",
+        "answer": "Because tax law changes often. The same question can have different answers in 2008 and in 2010, and Tekó answers with the wording in force on your date."
+      },
+      "cost": {
+        "question": "Is Tekó free?",
+        "answer": "Yes. The project is open source and runs on free services, so there is a daily question limit."
+      },
+      "data": {
+        "question": "What happens to my questions?",
+        "answer": "Questions go through a free AI provider, which may use them to improve its own models. Do not include personal data or confidential information."
+      }
     }
   },
   "gateway": {

@@ -15,13 +15,20 @@
     "api:generate": "pnpm --filter @teko/api openapi:export && openapi-ts"
   },
   "dependencies": {
+    "@base-ui/react": "catalog:",
     "@tanstack/react-query": "catalog:",
     "@teko/shared": "workspace:*",
+    "class-variance-authority": "catalog:",
+    "clsx": "catalog:",
+    "cmdk": "catalog:",
+    "lucide-react": "catalog:",
     "next": "catalog:",
     "next-intl": "catalog:",
     "nuqs": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
+    "react-resizable-panels": "catalog:",
+    "tailwind-merge": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {
@@ -34,9 +41,11 @@
     "@typescript/native": "catalog:",
     "@vitest/coverage-v8": "catalog:",
     "babel-plugin-react-compiler": "catalog:",
+    "happy-dom": "catalog:",
     "htmlparser2": "catalog:",
     "postcss": "catalog:",
     "tailwindcss": "catalog:",
+    "tw-animate-css": "catalog:",
     "type-coverage": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"

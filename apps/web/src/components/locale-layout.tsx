@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import { notFound } from 'next/navigation'
-import { hasLocale } from 'next-intl'
+import { hasLocale, NextIntlClientProvider } from 'next-intl'
 import { getTranslations, setRequestLocale } from 'next-intl/server'
 import type { ReactNode } from 'react'
 import { Providers } from '@/components/providers'
@@ -64,7 +64,13 @@ export async function LocaleLayout({ children, params }: LocaleLayoutProps) {
       <body>
         <ThemeScript />
         <SkipLink targetId={MAIN_CONTENT_ID}>{t('skipToContent')}</SkipLink>
-        <Providers>{children}</Providers>
+        {/* Herda locale, mensagens e fuso do `i18n/request.ts` para os componentes de cliente. */}
+        <NextIntlClientProvider>
+          <Providers>
+            {/* Contexto de empilhamento próprio: os popups do Base UI (portais) ficam por cima. */}
+            <div className="isolate">{children}</div>
+          </Providers>
+        </NextIntlClientProvider>
       </body>
     </html>
   )

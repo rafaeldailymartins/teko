@@ -10,14 +10,119 @@
     "languageNav": "Idioma",
     "disclaimer": "Apoio à consulta; não constitui parecer.",
     "license": "Código aberto sob a licença MIT.",
-    "sourceCode": "Código-fonte no GitHub"
+    "sourceCode": "Código-fonte no GitHub",
+    "close": "Fechar",
+    "openApp": "Abrir o Tekó",
+    "theme": {
+      "label": "Tema",
+      "light": "Claro",
+      "dark": "Escuro",
+      "system": "Igual ao sistema"
+    }
+  },
+  "shell": {
+    "mainNav": "Navegação principal",
+    "palette": {
+      "open": "Buscar",
+      "openLabel": "Abrir a paleta de comandos",
+      "title": "Paleta de comandos",
+      "description": "Busque uma página ou uma ação e tecle Enter.",
+      "placeholder": "Buscar página ou ação…",
+      "empty": "Nada encontrado.",
+      "pages": "Páginas",
+      "theme": "Tema",
+      "home": "Página inicial"
+    },
+    "panels": {
+      "history": "Histórico",
+      "citation": "Citação",
+      "resizeHistory": "Redimensionar o histórico",
+      "resizeCitation": "Redimensionar a citação",
+      "historyEmpty": "Suas conversas aparecem aqui, cada uma com a data de referência usada.",
+      "citationEmpty": "Escolha uma citação na resposta para ver o dispositivo, a versão e o intervalo de vigência."
+    }
+  },
+  "pages": {
+    "chat": {
+      "title": "Conversa",
+      "description": "Pergunte sobre legislação fiscal e receba a resposta com a redação vigente na sua data.",
+      "emptyTitle": "Faça uma pergunta",
+      "emptyBody": "Informe o período de apuração e pergunte sobre a EFD ICMS/IPI, a EFD-Reinf ou a legislação do ICMS de Goiás. A conversa ainda está em construção."
+    },
+    "history": {
+      "title": "Histórico",
+      "description": "Suas perguntas anteriores, com a data de referência de cada uma.",
+      "emptyTitle": "Nenhuma conversa ainda",
+      "emptyBody": "Suas perguntas e respostas ficam aqui, com a data de referência e as citações usadas."
+    },
+    "settings": {
+      "title": "Configurações",
+      "description": "Preferências da conta, exportação e exclusão de dados.",
+      "emptyTitle": "Nada para configurar ainda",
+      "emptyBody": "Aqui ficarão as preferências da conta, a exportação e a exclusão dos seus dados. O tema e o idioma já ficam no cabeçalho."
+    },
+    "provision": {
+      "title": "Dispositivo",
+      "description": "Texto, versões e linha do tempo de um dispositivo citado.",
+      "emptyTitle": "Nenhum dispositivo aberto",
+      "emptyBody": "Abra um dispositivo a partir de uma citação para ver o texto, a versão e o intervalo de vigência."
+    },
+    "compare": {
+      "title": "Comparar versões",
+      "description": "O que mudou entre duas versões de um dispositivo.",
+      "emptyTitle": "Nenhuma comparação aberta",
+      "emptyBody": "Escolha duas versões de um dispositivo a partir de uma citação para ver o que mudou entre elas."
+    },
+    "coverage": {
+      "title": "Cobertura",
+      "description": "Normas e períodos que o Tekó conhece.",
+      "emptyTitle": "Cobertura em breve",
+      "emptyBody": "A lista de normas e períodos cobertos, com a data da última verificação das fontes, aparece aqui."
+    },
+    "about": {
+      "title": "Sobre",
+      "description": "O que é o Tekó e como ele é feito.",
+      "emptyTitle": "Página em redação",
+      "emptyBody": "O Tekó é um projeto de código aberto sob a licença MIT. Esta página vai explicar como ele é feito e quem mantém."
+    },
+    "privacy": {
+      "title": "Privacidade",
+      "description": "Como o Tekó trata os seus dados.",
+      "emptyTitle": "Política em redação",
+      "emptyBody": "A política de privacidade será publicada aqui antes da abertura do serviço."
+    },
+    "terms": {
+      "title": "Termos de uso",
+      "description": "Condições de uso do Tekó.",
+      "emptyTitle": "Termos em redação",
+      "emptyBody": "Os termos de uso serão publicados aqui antes da abertura do serviço."
+    },
+    "sign-in": {
+      "title": "Entrar",
+      "description": "Acesse o Tekó para fazer perguntas.",
+      "emptyTitle": "Acesso em breve",
+      "emptyBody": "O acesso com GitHub e com passkey ainda está em construção."
+    }
   },
   "landing": {
     "status": "Em construção",
     "title": "Legislação fiscal, na redação que valia na sua data.",
-    "lead": "O Tekó é um assistente de código aberto para dúvidas sobre legislação fiscal brasileira. Cada resposta será dada para um período de apuração ou data de referência e citará o dispositivo e a versão usados.",
+    "lead": "O Tekó é um assistente de código aberto para dúvidas sobre legislação fiscal brasileira. Cada resposta é dada para um período de apuração ou data de referência e cita o dispositivo e a versão usados.",
+    "cta": {
+      "ask": "Fazer uma pergunta",
+      "coverage": "Ver a cobertura"
+    },
+    "demo": {
+      "label": "Exemplo ilustrativo de resposta",
+      "referenceDate": "Período de apuração: 05/2008",
+      "question": "O que o art. 76, § 6º, do RCTE dizia no meu período?",
+      "answer": "A resposta usa a redação vigente em 05/2008 e marca cada afirmação com a citação de onde ela saiu.",
+      "citation": "RCTE, art. 76, § 6º",
+      "citationNote": "redação vigente em 05/2008",
+      "changed": "Para 01/2010, a redação é outra: a resposta, a citação e o intervalo mudam juntos."
+    },
     "howItWorks": {
-      "title": "Como vai funcionar",
+      "title": "Como funciona",
       "referenceDate": {
         "title": "Data de referência primeiro",
         "body": "Você informa o período de apuração (por exemplo, 03/2024) e a resposta usa a redação vigente naquele momento. Se a norma mudou dentro do período, o Tekó avisa."
@@ -31,10 +136,67 @@
         "body": "O Tekó diz quais normas e períodos conhece. Fora dessa cobertura, ele recusa em vez de adivinhar."
       }
     },
-    "projectStatus": {
-      "title": "Situação do projeto",
-      "body": "Estamos montando a fundação: repositório, contratos compartilhados entre front e API e esta página. O assistente ainda não responde perguntas.",
-      "scope": "O corpus inicial previsto reúne os guias do SPED e a legislação do ICMS de Goiás."
+    "corpus": {
+      "title": "Corpus coberto",
+      "lead": "Fontes oficiais, versionadas e verificadas periodicamente contra os sites de origem.",
+      "efdIcmsIpi": {
+        "name": "EFD ICMS/IPI",
+        "body": "Guia Prático da Escrituração Fiscal Digital e as notas técnicas."
+      },
+      "efdReinf": {
+        "name": "EFD-Reinf",
+        "body": "Leiautes dos eventos e notas técnicas."
+      },
+      "rcte": {
+        "name": "RCTE de Goiás",
+        "body": "Regulamento do Código Tributário do Estado de Goiás (Decreto nº 4.852/1997)."
+      },
+      "cte": {
+        "name": "CTE de Goiás",
+        "body": "Código Tributário do Estado de Goiás (Lei nº 11.651/1991)."
+      },
+      "efdGo": {
+        "name": "EFD de Goiás",
+        "body": "Guia prático estadual da EFD ICMS/IPI e as tabelas de códigos de ajuste de Goiás."
+      }
+    },
+    "guarantees": {
+      "title": "Garantias",
+      "sources": {
+        "title": "Nada sem fonte",
+        "body": "Toda afirmação da resposta aponta para um trecho do corpus. Sem trecho que a sustente, ela não entra."
+      },
+      "refusal": {
+        "title": "Diz quando não sabe",
+        "body": "Pergunta fora da cobertura recebe uma recusa clara, com o motivo, em vez de um palpite."
+      },
+      "advice": {
+        "title": "Apoio, não parecer",
+        "body": "O Tekó ajuda a consultar a legislação. A decisão e a responsabilidade continuam com você e com o seu contador ou advogado."
+      },
+      "openSource": {
+        "title": "Código aberto",
+        "body": "Todo o código, inclusive o da ingestão do corpus, é público sob a licença MIT."
+      }
+    },
+    "faq": {
+      "title": "Perguntas frequentes",
+      "advice": {
+        "question": "O Tekó substitui um contador ou um advogado?",
+        "answer": "Não. Ele é um apoio à consulta e não constitui parecer. Confira sempre a fonte citada antes de decidir."
+      },
+      "referenceDate": {
+        "question": "Por que preciso informar uma data?",
+        "answer": "Porque a legislação fiscal muda com frequência. A mesma pergunta pode ter respostas diferentes em 2008 e em 2010, e o Tekó responde pela redação que valia na sua data."
+      },
+      "cost": {
+        "question": "O Tekó é gratuito?",
+        "answer": "Sim. O projeto é de código aberto e roda em serviços gratuitos, por isso há um limite diário de perguntas."
+      },
+      "data": {
+        "question": "O que acontece com as minhas perguntas?",
+        "answer": "As perguntas passam por um provedor de IA gratuito, que pode usá-las para melhorar os próprios modelos. Não inclua dados pessoais nem informações sigilosas."
+      }
     }
   },
   "gateway": {
