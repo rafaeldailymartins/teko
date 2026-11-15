@@ -463,22 +463,12 @@ jobs:
         if: fromJSON(needs.scope.outputs.json).web
         run: pnpm exec turbo run build --filter=@teko/web
 
-      - name: Guard do export estático (0 functions)
+      - name: Guards do export estático (só estático, CSP até 6 KB e orçamento de bundle)
+        # O pós-build já roda dentro do `build` do web; de novo aqui porque um cache hit do turbo
+        # restaura o out/ sem executar nada. Idempotente: regrava o mesmo manifesto de headers.
         if: fromJSON(needs.scope.outputs.json).web
         working-directory: apps/web
-        run: |
-          fail=0
-          if [[ ! -f out/index.html ]]; then
-            echo "::error title=static-export::apps/web/out/index.html não existe: o build não gerou export estático (output: 'export')."
-            fail=1
-          fi
-          manifest=.next/server/middleware-manifest.json
-          if [[ -f "$manifest" ]] && ! jq -e '((.middleware // {}) | length) == 0 and ((.functions // {}) | length) == 0' "$manifest" >/dev/null; then
-            echo "::error title=static-export::Há middleware/proxy ou edge functions em ${manifest}."
-            jq '{middleware: (.middleware | keys), functions: (.functions | keys)}' "$manifest"
-            fail=1
-          fi
-          exit "$fail"
+        run: node scripts/postbuild.ts
 
       - name: Salvar cache do Turbo
         if: github.event_name == 'push'

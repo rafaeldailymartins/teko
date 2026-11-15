@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
+import { createHash } from 'node:crypto'
 import {
   existsSync,
   lstatSync,
@@ -15,7 +16,11 @@ import {
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { afterEach, beforeEach, describe, it } from 'node:test'
-import { STATIC_HEADERS } from '../apps/api/src/adapters/in/http/static-site/policy.ts'
+import {
+  HEADERS_MANIFEST_FILE,
+  parseHeadersManifest,
+  STATIC_HEADERS,
+} from '../apps/api/src/adapters/in/http/static-site/policy.ts'
 import {
   BuildOutputError,
   buildVercelOutput,
@@ -23,7 +28,7 @@ import {
   FUNCTION_NAME,
   HANDLER,
   MAX_DURATION_S,
-  OUTPUT_CONFIG,
+  outputConfig,
   REQUIRED_STATIC_FILES,
 } from './build-vercel-output.ts'
 
@@ -64,13 +69,34 @@ function tree(root: string, relative = ''): string[] {
   return entries.sort()
 }
 
-/** Export de mentira com a forma do `next build` (`output: 'export'`, `trailingSlash: true`). */
+/** CSP de mentira de um documento, como o pós-build do web grava no manifesto. */
+function cspOf(file: string): string {
+  return `default-src 'self'; script-src 'self' 'sha256-${file}'`
+}
+
+function documentHeaders(file: string): Record<string, string> {
+  return {
+    'Content-Security-Policy': cspOf(file),
+    'Content-Security-Policy-Report-Only': "require-trusted-types-for 'script'",
+  }
+}
+
+function writeManifest(dir: string, files: readonly string[]): void {
+  const documents = Object.fromEntries(files.map((file) => [file, documentHeaders(file)]))
+  write(join(dir, HEADERS_MANIFEST_FILE), JSON.stringify({ version: 1, documents }))
+}
+
+/**
+ * Export de mentira com a forma do `next build` (`output: 'export'`, `trailingSlash: true`) e o
+ * manifesto de headers do pós-build do web.
+ */
 function writeStaticExport(dir: string): void {
   for (const file of REQUIRED_STATIC_FILES) {
     write(join(dir, file), `<!doctype html><title>${file}</title>`)
   }
   write(join(dir, 'pt-BR', 'index.txt'), 'rsc')
   write(join(dir, '_next', 'static', 'chunks', 'app.js'), 'js')
+  writeManifest(dir, REQUIRED_STATIC_FILES)
 }
 
 beforeEach(() => {
@@ -170,19 +196,49 @@ function substitute(template: string, match: RegExpExecArray): string {
   return template.replace(/\$(\d)/g, (_, index: string) => match[Number(index)] ?? '')
 }
 
+/** O arquivo existe com essa caixa exata (o filesystem do Windows e do macOS ignora a caixa). */
+function existsWithCase(root: string, file: string): boolean {
+  let dir = root
+  for (const segment of file.split('/')) {
+    if (!existsSync(dir) || !readdirSync(dir).includes(segment)) {
+      return false
+    }
+    dir = join(dir, segment)
+  }
+  return statSync(dir).isFile()
+}
+
 function fileFor(staticDir: string, path: string): string | null {
   const relative = decodeURIComponent(path).replace(/^\//, '')
   const candidates = path.endsWith('/') ? [`${relative}index.html`] : [relative]
-  return (
-    candidates.find((file) => {
-      const full = join(staticDir, file)
-      return file !== '' && existsSync(full) && statSync(full).isFile()
-    }) ?? null
-  )
+  return candidates.find((file) => file !== '' && existsWithCase(staticDir, file)) ?? null
+}
+
+/**
+ * Junta os headers de mais uma rota. Um header que já veio de outra rota com outro valor derruba o
+ * teste: as rotas não podem depender de como a Vercel combina headers repetidos.
+ */
+function mergeHeaders(
+  headers: Record<string, string>,
+  extra: Readonly<Record<string, string>>,
+  path: string,
+): void {
+  for (const [name, value] of Object.entries(extra)) {
+    const previous = Object.keys(headers).find((key) => key.toLowerCase() === name.toLowerCase())
+    if (previous !== undefined && headers[previous] !== value) {
+      throw new Error(`${path}: o header ${name} vem de duas rotas com valores diferentes`)
+    }
+    headers[name] = value
+  }
+}
+
+/** Rotas do `config.json` gravado ao lado do `static/`. */
+function routesNextTo(staticDir: string): readonly RouteLike[] {
+  return Reflect.get(Object(readJson(join(dirname(staticDir), 'config.json'))), 'routes')
 }
 
 function route(staticDir: string, request: Request): Outcome {
-  const routes: readonly RouteLike[] = OUTPUT_CONFIG.routes
+  const routes = routesNextTo(staticDir)
   const headers: Record<string, string> = {}
   const filesystemAt = routes.findIndex((r) => r.handle === 'filesystem')
   for (const [index, current] of routes.entries()) {
@@ -202,7 +258,7 @@ function route(staticDir: string, request: Request): Outcome {
     if (match === null || !hasMatches(current, request)) {
       continue
     }
-    Object.assign(headers, current.headers ?? {})
+    mergeHeaders(headers, current.headers ?? {}, request.path)
     if (current.continue === true) {
       continue
     }
@@ -237,8 +293,10 @@ describe('buildVercelOutput', () => {
   it('gera config.json v3 com as rotas da API antes do filesystem e os 404 depois', () => {
     buildVercelOutput(paths)
     const config = readJson(join(paths.outputDir, 'config.json'))
-    assert.deepEqual(config, JSON.parse(JSON.stringify(OUTPUT_CONFIG)))
-    const routes = OUTPUT_CONFIG.routes.map((r) => ('handle' in r ? `handle:${r.handle}` : r.src))
+    const documents = parseHeadersManifest(readJson(join(paths.staticDir, HEADERS_MANIFEST_FILE)))
+    const expected = outputConfig(documents)
+    assert.deepEqual(config, JSON.parse(JSON.stringify(expected)))
+    const routes = expected.routes.map((r) => ('handle' in r ? `handle:${r.handle}` : r.src))
     const api = routes.indexOf('^/(api(?:/.*)?|healthz)$')
     const filesystem = routes.indexOf('handle:filesystem')
     assert.ok(api >= 0 && filesystem > api, 'a API vem antes do filesystem')
@@ -354,6 +412,27 @@ describe('buildVercelOutput', () => {
     assert.throws(() => buildVercelOutput(paths), /arquivo proibido no export estático: _redirects/)
   })
 
+  it('falha sem o manifesto de headers do pós-build do web', () => {
+    rmSync(join(paths.staticDir, HEADERS_MANIFEST_FILE))
+    assert.throws(() => buildVercelOutput(paths), /\.teko-headers\.json/)
+  })
+
+  it('falha se um HTML do export não tem CSP no manifesto, ou se o manifesto cita HTML inexistente', () => {
+    write(join(paths.staticDir, 'en', 'novo', 'index.html'), '<!doctype html>')
+    assert.throws(() => buildVercelOutput(paths), /sem CSP: en\/novo\/index\.html/)
+    rmSync(join(paths.staticDir, 'en', 'novo'), { recursive: true })
+    writeManifest(paths.staticDir, [...REQUIRED_STATIC_FILES, 'velho/index.html'])
+    assert.throws(() => buildVercelOutput(paths), /inexistentes: velho\/index\.html/)
+  })
+
+  it('recusa manifesto com header fora da lista', () => {
+    const documents = Object.fromEntries(
+      REQUIRED_STATIC_FILES.map((file) => [file, { ...documentHeaders(file), 'Set-Cookie': 'a' }]),
+    )
+    write(join(paths.staticDir, HEADERS_MANIFEST_FILE), JSON.stringify({ version: 1, documents }))
+    assert.throws(() => buildVercelOutput(paths), /header não permitido/)
+  })
+
   it('recusa link simbólico nas dependências (linker isolado em vez de hoisted)', (t) => {
     try {
       symlinkSync(
@@ -405,12 +484,16 @@ describe('rotas do config.json', () => {
     }
   })
 
-  it('serve as páginas do export com os headers de segurança', () => {
+  it('serve as páginas do export com os headers de segurança e a CSP do documento', () => {
     buildVercelOutput(paths)
-    for (const [path, file] of [
-      ['/pt-BR/', 'pt-BR/index.html'],
-      ['/en/', 'en/index.html'],
-      ['/pt-BR/index.txt', 'pt-BR/index.txt'],
+    for (const [path, file, document] of [
+      ['/pt-BR/', 'pt-BR/index.html', 'pt-BR/index.html'],
+      ['/pt-BR/index.html', 'pt-BR/index.html', 'pt-BR/index.html'],
+      ['/en/', 'en/index.html', 'en/index.html'],
+      ['/en/404/', 'en/404/index.html', 'en/404/index.html'],
+      ['/404.html', '404.html', '404.html'],
+      ['/index.html', 'index.html', 'index.html'],
+      ['/pt-BR/index.txt', 'pt-BR/index.txt', null],
     ] as const) {
       const outcome = route(staticDir(), { path })
       assert.deepEqual(
@@ -418,8 +501,20 @@ describe('rotas do config.json', () => {
         { kind: 'static', file },
       )
       assert.equal(outcome.kind === 'static' && outcome.status, 200)
-      assert.deepEqual(outcome.headers, STATIC_HEADERS)
+      assert.deepEqual(outcome.headers, {
+        ...STATIC_HEADERS,
+        ...(document === null ? {} : documentHeaders(document)),
+      })
     }
+  })
+
+  it('a CSP de um documento não vaza para outra caixa nem para o redirect da raiz', () => {
+    buildVercelOutput(paths)
+    const upper = route(staticDir(), { path: '/EN/' })
+    assert.equal(upper.kind === 'static' && upper.status, 404)
+    assert.equal(upper.headers['Content-Security-Policy'], cspOf('en/404/index.html'))
+    const root = route(staticDir(), { path: '/' })
+    assert.equal(root.headers['Content-Security-Policy'], undefined)
   })
 
   it('/_next/static/* é imutável', () => {
@@ -448,18 +543,21 @@ describe('rotas do config.json', () => {
     assert.equal(outcome.kind === 'redirect' && outcome.location, '/pt-BR/')
   })
 
-  it('404 por locale e 404 da raiz para o resto', () => {
+  it('404 por locale e 404 da raiz para o resto, cada um com a CSP da sua página', () => {
     buildVercelOutput(paths)
     for (const [path, file] of [
       ['/en/xyz/', 'en/404/index.html'],
       ['/pt-BR/nada/', 'pt-BR/404/index.html'],
       ['/outra/', '404.html'],
       ['/favicon.ico', '404.html'],
+      ['/_next/static/chunks/sumiu.js', '404.html'],
     ] as const) {
       const outcome = route(staticDir(), { path })
       assert.equal(outcome.kind, 'static', path)
       assert.equal(outcome.kind === 'static' && outcome.status, 404, path)
       assert.equal(outcome.kind === 'static' && outcome.file, file, path)
+      assert.equal(outcome.headers['Content-Security-Policy'], cspOf(file), path)
+      assert.equal(outcome.headers['X-Content-Type-Options'], 'nosniff', path)
     }
   })
 
@@ -493,6 +591,24 @@ describe('rotas do config.json', () => {
     assert.equal(served.kind === 'static' && served.file, 'pt-BR/index.html')
     const enNotFound = route(staticDir(), { path: '/en/xyz/' })
     assert.equal(enNotFound.kind === 'static' && enNotFound.status, 404)
+    assert.equal(existsSync(join(staticDir(), HEADERS_MANIFEST_FILE)), false)
+    // Conferência independente do htmlparser2: o hash de cada `<script>` inline sem atributos,
+    // tirado do HTML por regex, está na CSP que a rota entrega.
+    for (const [path, file] of [
+      ['/pt-BR/', 'pt-BR/index.html'],
+      ['/en/xyz/', 'en/404/index.html'],
+    ] as const) {
+      const csp = route(staticDir(), { path }).headers['Content-Security-Policy'] ?? ''
+      assert.match(csp, /^default-src 'self'; script-src 'self' 'sha256-/)
+      assert.doesNotMatch(csp, /strict-dynamic|script-src[^;]*'unsafe-inline'/)
+      const html = readFileSync(join(realOut, file), 'utf8')
+      const inline = [...html.matchAll(/<script>([\s\S]*?)<\/script\s*>/gi)].map((m) => m[1] ?? '')
+      assert.ok(inline.length > 0, `${file} tem scripts inline (tema e payload do Next)`)
+      for (const content of inline) {
+        const hash = createHash('sha256').update(content, 'utf8').digest('base64')
+        assert.ok(csp.includes(`'sha256-${hash}'`), `${path}: hash de um script inline fora da CSP`)
+      }
+    }
     const asset = readdirSync(join(realOut, '_next', 'static', 'chunks')).find((name) =>
       name.endsWith('.js'),
     )

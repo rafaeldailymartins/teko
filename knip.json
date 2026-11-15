@@ -18,7 +18,7 @@
     },
     "apps/web": {
       "entry": ["src/app/**/*.{ts,tsx}!"],
-      "project": ["src/**/*.{ts,tsx}!", "e2e/**/*.ts"],
+      "project": ["src/**/*.{ts,tsx}!", "e2e/**/*.ts", "scripts/**/*.ts"],
       "ignore": ["src/lib/api/__generated__/**"]
     },
     "packages/shared": {

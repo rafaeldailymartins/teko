@@ -9,8 +9,10 @@
  * Saída:
  *
  *   .vercel/output/
- *     config.json                         version 3 + rotas escritas à mão (`OUTPUT_CONFIG`)
- *     static/                             cópia de `apps/web/out` (HTML, CSS, JS, fontes)
+ *     config.json                         version 3 + rotas escritas à mão (`outputConfig`), com a
+ *                                         CSP de cada documento do manifesto do export
+ *     static/                             cópia de `apps/web/out` (HTML, CSS, JS, fontes), sem o
+ *                                         manifesto `.teko-headers.json`
  *     functions/index.func/
  *       .vc-config.json                   nodejs24.x, launcher Nodejs, streaming, maxDuration
  *       server.mjs (+ chunks), *.map      `apps/api/dist` (tsdown): o handler e o que ele importa
@@ -56,7 +58,11 @@ import process from 'node:process'
 import { parseArgs } from 'node:util'
 import {
   ACCEPT_LANGUAGE_EN,
+  type DocumentHeaders,
+  documentPathPattern,
+  HEADERS_MANIFEST_FILE,
   IMMUTABLE_CACHE_CONTROL,
+  parseHeadersManifest,
   ROOT_REDIRECT_HEADERS,
   STATIC_HEADERS,
   STATIC_LOCALES,
@@ -120,65 +126,89 @@ const LOCALES = STATIC_LOCALES
  * 1. domínios antigos → canônico (308, antes de tudo, inclusive da API);
  * 2. `/api/*` e `/healthz` → Function `index`, com o caminho original restaurado (o mesmo que o
  *    zero-config do Fastify emitia); a rota não continua, então nada abaixo vale para a API;
- * 3. headers de segurança em todo o estático e `/_next/static/*` imutável (`continue`);
+ * 3. headers de segurança em todo o estático, a CSP de cada documento no caminho exato que o serve
+ *    (sensível à caixa) e `/_next/static/*` imutável (`continue`);
  * 4. `/` → `/en/` ou `/pt-BR/` pelo `Accept-Language` (302; o `index.html` da raiz fica como página
  *    de entrada para quem não segue redirect);
  * 5. `/pt-br/...` (a grafia que a Netlify gerava) → `/pt-BR/...`;
  * 6. `trailingSlash: true` do Next: caminho sem extensão e sem barra final ganha a barra (308);
  * 7. `filesystem`: o arquivo do `static/` (o diretório serve o `index.html`);
- * 8. o que sobrou é 404: a página do locale do caminho, ou o `404.html` da raiz.
+ * 8. o que sobrou é 404: a página do locale do caminho, ou o `404.html` da raiz, cada uma com a CSP
+ *    dela.
+ *
+ * Nenhuma resposta recebe o mesmo header de duas rotas: a CSP de um documento só casa caminhos que
+ * existem no `static/`, e as rotas de 404 só valem para o que o filesystem não achou. Assim o
+ * resultado não depende de como a Vercel combina headers repetidos.
  */
-export const OUTPUT_CONFIG = {
-  version: 3,
-  routes: [
-    ...LEGACY_HOST_REDIRECTS.map(({ from, to }) => ({
-      src: '^/(.*)$',
-      has: [{ type: 'host', value: from }],
-      status: 308,
-      headers: { Location: `${to}/$1` },
-    })),
-    {
-      src: API_PATH_PATTERN,
-      dest: '/',
-      transforms: [{ type: 'request.path', op: 'set', args: '/$1' }],
-    },
-    { src: '^/(.*)$', headers: STATIC_HEADERS, continue: true },
-    {
-      src: '^/_next/static/(.*)$',
-      headers: { 'Cache-Control': IMMUTABLE_CACHE_CONTROL },
-      continue: true,
-    },
-    {
-      src: '^/$',
-      has: [{ type: 'header', key: 'accept-language', value: { re: ACCEPT_LANGUAGE_EN } }],
-      status: 302,
-      headers: { Location: '/en/', ...ROOT_REDIRECT_HEADERS },
-    },
-    {
-      src: '^/$',
-      status: 302,
-      headers: { Location: `/${LOCALES[0]}/`, ...ROOT_REDIRECT_HEADERS },
-    },
-    {
-      src: '^/pt-br(/.*)?$',
-      caseSensitive: true,
-      status: 308,
-      headers: { Location: '/pt-BR$1' },
-    },
-    {
-      src: '^/((?!\\.well-known/)(?:[^/]+/)*[^/.]+)$',
-      status: 308,
-      headers: { Location: '/$1/' },
-    },
-    { handle: 'filesystem' },
-    ...LOCALES.map((locale) => ({
-      src: `^/${locale}(?:/.*)?$`,
-      dest: `/${locale}/404/index.html`,
-      status: 404,
-    })),
-    { src: '^/.*$', dest: '/404.html', status: 404 },
-  ],
-} as const
+export function outputConfig(documents: DocumentHeaders) {
+  const headersOf = (file: string): Readonly<Record<string, string>> => {
+    const headers = documents[file]
+    if (headers === undefined) {
+      throw new BuildOutputError(`${HEADERS_MANIFEST_FILE} não tem os headers de ${file}`)
+    }
+    return headers
+  }
+  return {
+    version: 3,
+    routes: [
+      ...LEGACY_HOST_REDIRECTS.map(({ from, to }) => ({
+        src: '^/(.*)$',
+        has: [{ type: 'host', value: from }],
+        status: 308,
+        headers: { Location: `${to}/$1` },
+      })),
+      {
+        src: API_PATH_PATTERN,
+        dest: '/',
+        transforms: [{ type: 'request.path', op: 'set', args: '/$1' }],
+      },
+      { src: '^/(.*)$', headers: STATIC_HEADERS, continue: true },
+      ...Object.keys(documents)
+        .sort(compareCodeUnits)
+        .map((file) => ({
+          src: documentPathPattern(file),
+          caseSensitive: true,
+          headers: headersOf(file),
+          continue: true,
+        })),
+      {
+        src: '^/_next/static/(.*)$',
+        headers: { 'Cache-Control': IMMUTABLE_CACHE_CONTROL },
+        continue: true,
+      },
+      {
+        src: '^/$',
+        has: [{ type: 'header', key: 'accept-language', value: { re: ACCEPT_LANGUAGE_EN } }],
+        status: 302,
+        headers: { Location: '/en/', ...ROOT_REDIRECT_HEADERS },
+      },
+      {
+        src: '^/$',
+        status: 302,
+        headers: { Location: `/${LOCALES[0]}/`, ...ROOT_REDIRECT_HEADERS },
+      },
+      {
+        src: '^/pt-br(/.*)?$',
+        caseSensitive: true,
+        status: 308,
+        headers: { Location: '/pt-BR$1' },
+      },
+      {
+        src: '^/((?!\\.well-known/)(?:[^/]+/)*[^/.]+)$',
+        status: 308,
+        headers: { Location: '/$1/' },
+      },
+      { handle: 'filesystem' },
+      ...LOCALES.map((locale) => ({
+        src: `^/${locale}(?:/.*)?$`,
+        dest: `/${locale}/404/index.html`,
+        status: 404,
+        headers: headersOf(`${locale}/404/index.html`),
+      })),
+      { src: '^/.*$', dest: '/404.html', status: 404, headers: headersOf('404.html') },
+    ],
+  } as const
+}
 
 /** Arquivos que o export precisa ter (a raiz de entrada e as páginas de 404). */
 export const REQUIRED_STATIC_FILES = [
@@ -248,8 +278,12 @@ function copyDependencies(from: string, to: string, topLevel = true, relative = 
   return files
 }
 
-/** Copia o export estático, recusando links simbólicos e arquivos de configuração de outro host. */
-function copyStatic(from: string, to: string, relative = ''): number {
+/**
+ * Copia o export estático, recusando links simbólicos e arquivos de configuração de outro host. O
+ * manifesto de headers da raiz fica de fora (ele vira rotas), e os HTML copiados vão para
+ * `documents`.
+ */
+function copyStatic(from: string, to: string, documents: string[], relative = ''): number {
   mkdirSync(to, { recursive: true })
   let files = 0
   for (const name of readdirSync(from).sort(compareCodeUnits)) {
@@ -263,10 +297,16 @@ function copyStatic(from: string, to: string, relative = ''): number {
     if (FORBIDDEN_STATIC_NAME.test(name)) {
       throw new BuildOutputError(`arquivo proibido no export estático: ${path}`)
     }
+    if (path === HEADERS_MANIFEST_FILE) {
+      continue
+    }
     if (stat.isDirectory()) {
-      files += copyStatic(source, target, path)
+      files += copyStatic(source, target, documents, path)
     } else if (stat.isFile()) {
       copyFileSync(source, target)
+      if (path.endsWith('.html')) {
+        documents.push(path)
+      }
       files += 1
     } else {
       throw new BuildOutputError(`tipo de arquivo não suportado no export estático: ${path}`)
@@ -331,10 +371,35 @@ function assertInputs(paths: BuildPaths, handler: string): void {
       `${paths.nodeModulesDir} não tem as dependências de produção da API; rode o \`pnpm deploy --prod\` antes`,
     )
   }
-  const missing = REQUIRED_STATIC_FILES.filter((file) => !existsSync(join(paths.staticDir, file)))
+  const missing = [...REQUIRED_STATIC_FILES, HEADERS_MANIFEST_FILE].filter(
+    (file) => !existsSync(join(paths.staticDir, file)),
+  )
   if (missing.length > 0) {
     throw new BuildOutputError(
       `${paths.staticDir} não tem ${missing.join(', ')}; rode \`pnpm --filter @teko/web build\` antes`,
+    )
+  }
+}
+
+/** Manifesto de headers por documento do export, validado. */
+function readDocumentHeaders(staticDir: string): DocumentHeaders {
+  try {
+    return parseHeadersManifest(
+      JSON.parse(readFileSync(join(staticDir, HEADERS_MANIFEST_FILE), 'utf8')),
+    )
+  } catch (error) {
+    throw new BuildOutputError(error instanceof Error ? error.message : String(error))
+  }
+}
+
+/** Todo HTML copiado tem CSP no manifesto, e o manifesto não cita HTML que não existe. */
+function assertDocumentsCovered(documents: DocumentHeaders, copied: readonly string[]): void {
+  const listed = new Set(Object.keys(documents))
+  const uncovered = copied.filter((file) => !listed.has(file))
+  const stale = [...listed].filter((file) => !copied.includes(file))
+  if (uncovered.length > 0 || stale.length > 0) {
+    throw new BuildOutputError(
+      `${HEADERS_MANIFEST_FILE} não bate com o export (sem CSP: ${uncovered.join(', ') || '-'}; inexistentes: ${stale.join(', ') || '-'}); rode \`pnpm --filter @teko/web build\` de novo`,
     )
   }
 }
@@ -343,11 +408,13 @@ function assertInputs(paths: BuildPaths, handler: string): void {
 export function buildVercelOutput(paths: BuildPaths): BuildResult {
   const handler = join(paths.bundleDir, HANDLER)
   assertInputs(paths, handler)
+  const documents = readDocumentHeaders(paths.staticDir)
+  const config = outputConfig(documents)
 
   rmSync(paths.outputDir, { recursive: true, force: true })
   const functionDir = join(paths.outputDir, 'functions', `${FUNCTION_NAME}.func`)
   mkdirSync(functionDir, { recursive: true })
-  writeJson(join(paths.outputDir, 'config.json'), OUTPUT_CONFIG)
+  writeJson(join(paths.outputDir, 'config.json'), config)
   writeJson(join(functionDir, '.vc-config.json'), VC_CONFIG)
   for (const file of bundleClosure(paths.bundleDir, HANDLER)) {
     copyFileSync(join(paths.bundleDir, file), join(functionDir, file))
@@ -357,7 +424,9 @@ export function buildVercelOutput(paths: BuildPaths): BuildResult {
     }
   }
   const dependencyFiles = copyDependencies(paths.nodeModulesDir, join(functionDir, 'node_modules'))
-  const staticFiles = copyStatic(paths.staticDir, join(paths.outputDir, 'static'))
+  const copied: string[] = []
+  const staticFiles = copyStatic(paths.staticDir, join(paths.outputDir, 'static'), copied)
+  assertDocumentsCovered(documents, copied)
   return { functionDir, dependencyFiles, staticFiles }
 }
 
