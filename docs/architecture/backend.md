@@ -280,9 +280,11 @@ direta (o staging também pelo `ingest load --migrate`). Sempre expand/contract:
 
 ## LLM, PII, prompt e tetos
 
-- **Cadeia:** `gemini-3.6-flash` → `gemini-3.5-flash-lite` → `openai/gpt-oss-120b` (Groq, ZDR), IDs
-  por env. Fallback só antes do primeiro token. Breaker por modelo: 429 abre até o `retry-after` ou
-  a meia-noite do Pacífico; 3 falhas de 5xx/timeout abrem por 60 s.
+- **Cadeia:** `gemini-3.5-flash-lite` → `gemini-3.6-flash` → `openai/gpt-oss-120b` (Groq, ZDR), IDs
+  por env (ADR 0007, adendo de 2026-11-15). Fallback só antes do primeiro token. Breaker por modelo:
+  429 da cota diária abre até a meia-noite do Pacífico; outro 429, pelo `retry-after` ou pelo
+  `retryDelay` do corpo do Gemini, e por 60 s sem nenhum dos dois; 3 falhas de 5xx/timeout abrem
+  por 60 s.
 - **Política regional:** EEE/UK/CH só no Groq. Origem: país declarado no onboarding **ou**
   `geolocation()` da Vercel (header de país da plataforma; sem base GeoIP no repositório). Fora da
   Vercel, só o país declarado.

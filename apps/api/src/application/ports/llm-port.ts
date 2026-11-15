@@ -41,7 +41,10 @@ export interface LlmModel {
 }
 
 export const LlmErrorKind = {
-  /** 429: cota do provedor esgotada (breaker aberto até o `retry-after` ou a meia-noite do Pacífico). */
+  /**
+   * 429: cota do provedor esgotada. O breaker abre até a meia-noite do Pacífico se a cota diária
+   * acabou; senão, pelo prazo que o provedor informou ou, sem prazo, por 60 s (ADR 0007, adendo).
+   */
   RateLimited: 'rate_limited',
   /** 5xx, rede ou timeout: conta para o breaker de 3 falhas. */
   Unavailable: 'unavailable',
@@ -50,15 +53,23 @@ export const LlmErrorKind = {
 } as const
 export type LlmErrorKind = (typeof LlmErrorKind)[keyof typeof LlmErrorKind]
 
+interface LlmErrorOptions {
+  readonly retryAfterMs?: number | null
+  readonly dailyQuota?: boolean
+}
+
 export class LlmError extends Error {
   readonly kind: LlmErrorKind
-  /** `retry-after` informado pelo provedor, em ms (`null` sem o header). */
+  /** Prazo informado pelo provedor para tentar de novo, em ms (`null` sem prazo). */
   readonly retryAfterMs: number | null
+  /** O 429 é da cota diária (só renova à meia-noite do Pacífico), não de um limite por minuto. */
+  readonly dailyQuota: boolean
 
-  constructor(kind: LlmErrorKind, message: string, retryAfterMs: number | null = null) {
+  constructor(kind: LlmErrorKind, message: string, options: LlmErrorOptions = {}) {
     super(message)
     this.name = 'LlmError'
     this.kind = kind
-    this.retryAfterMs = retryAfterMs
+    this.retryAfterMs = options.retryAfterMs ?? null
+    this.dailyQuota = options.dailyQuota ?? false
   }
 }

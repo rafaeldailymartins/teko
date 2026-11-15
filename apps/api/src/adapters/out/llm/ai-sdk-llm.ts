@@ -1,6 +1,7 @@
 import { createGoogle } from '@ai-sdk/google'
 import { createGroq } from '@ai-sdk/groq'
 import { APICallError, type LanguageModel, streamText } from 'ai'
+import { z } from 'zod'
 import {
   LlmError,
   LlmErrorKind,
@@ -54,6 +55,52 @@ export function retryAfterMs(value: string | undefined, nowMs: number): number |
   return Number.isNaN(date) ? null : Math.max(0, date - nowMs)
 }
 
+/**
+ * Corpo do 429 do Gemini (`google.rpc.Status`): o `QuotaFailure` diz qual cota estourou (o `quotaId`
+ * da diária termina em `PerDay…`) e o `RetryInfo` traz o prazo (`retryDelay`, como `"37s"`). O
+ * Gemini não manda `retry-after`; o Groq manda e não tem esse corpo.
+ */
+const googleErrorSchema = z.object({
+  error: z.object({
+    details: z.array(
+      z.object({
+        '@type': z.string(),
+        retryDelay: z.string().optional(),
+        violations: z.array(z.object({ quotaId: z.string().optional() })).optional(),
+      }),
+    ),
+  }),
+})
+const RETRY_DELAY = /^(\d+(?:\.\d+)?)s$/
+const DAILY_QUOTA_ID = /PerDay/
+
+interface QuotaHint {
+  readonly retryAfterMs: number | null
+  readonly dailyQuota: boolean
+}
+
+/** Lê do corpo do 429 se a cota é a diária e o prazo para tentar de novo; corpo estranho não diz nada. */
+export function quotaHint(responseBody: string | undefined): QuotaHint {
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(responseBody ?? '')
+  } catch {
+    return { retryAfterMs: null, dailyQuota: false }
+  }
+  const result = googleErrorSchema.safeParse(parsed)
+  const details = result.success ? result.data.error.details : []
+  const dailyQuota = details.some((detail) =>
+    (detail.violations ?? []).some((violation) => DAILY_QUOTA_ID.test(violation.quotaId ?? '')),
+  )
+  const delay = details
+    .map((detail) => RETRY_DELAY.exec(detail.retryDelay ?? ''))
+    .find((match) => match !== null)
+  return {
+    retryAfterMs: delay === undefined ? null : Math.round(Number(delay[1]) * 1000),
+    dailyQuota,
+  }
+}
+
 /** Converte a falha do SDK no erro da porta; o cancelamento passa intacto. */
 export function toLlmError(error: unknown, signal: AbortSignal, nowMs: number): unknown {
   if (signal.aborted) {
@@ -62,11 +109,12 @@ export function toLlmError(error: unknown, signal: AbortSignal, nowMs: number): 
   if (APICallError.isInstance(error)) {
     const status = error.statusCode
     if (status === 429) {
-      return new LlmError(
-        LlmErrorKind.RateLimited,
-        'provider rate limited',
-        retryAfterMs(error.responseHeaders?.['retry-after'], nowMs),
-      )
+      const hint = quotaHint(error.responseBody)
+      return new LlmError(LlmErrorKind.RateLimited, 'provider rate limited', {
+        retryAfterMs:
+          retryAfterMs(error.responseHeaders?.['retry-after'], nowMs) ?? hint.retryAfterMs,
+        dailyQuota: hint.dailyQuota,
+      })
     }
     if (status !== undefined && status >= 400 && status < 500 && !error.isRetryable) {
       return new LlmError(

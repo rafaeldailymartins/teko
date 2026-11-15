@@ -9,7 +9,15 @@ import {
 } from '../ports/llm-port.ts'
 import { BREAKER_OPEN_MS, createProviderRouter, type RoutedEvent } from './provider-router.ts'
 
-type Behavior = 'ok' | '429' | '429-no-header' | '5xx' | 'mid-stream' | 'abort' | 'boom'
+type Behavior =
+  | 'ok'
+  | '429'
+  | '429-no-header'
+  | '429-daily'
+  | '5xx'
+  | 'mid-stream'
+  | 'abort'
+  | 'boom'
 
 function model(
   name: string,
@@ -25,10 +33,16 @@ function model(
       const behavior = behaviors[result.calls] ?? 'ok'
       result.calls += 1
       if (behavior === '429') {
-        throw new LlmError(LlmErrorKind.RateLimited, '429', 30_000)
+        throw new LlmError(LlmErrorKind.RateLimited, '429', { retryAfterMs: 30_000 })
       }
       if (behavior === '429-no-header') {
         throw new LlmError(LlmErrorKind.RateLimited, '429')
+      }
+      if (behavior === '429-daily') {
+        throw new LlmError(LlmErrorKind.RateLimited, '429', {
+          retryAfterMs: 20_000,
+          dailyQuota: true,
+        })
       }
       if (behavior === '5xx') {
         throw new LlmError(LlmErrorKind.Unavailable, '503')
@@ -119,10 +133,23 @@ describe('createProviderRouter', () => {
     expect(router.available(ANY)).toEqual(['gemini-a', 'groq-c'])
   })
 
-  it('429 sem retry-after abre até a meia-noite do Pacífico', async () => {
+  it('429 sem prazo abre por 60 s: um limite por minuto não tira o modelo do dia', async () => {
     const { clock, advance } = clockAt('2026-11-10T15:00:00Z')
     const router = createProviderRouter({
       models: [model('gemini-a', ['429-no-header']), model('groq-c', [])],
+      clock,
+    })
+    await collect(router.stream(REQUEST, ANY))
+    advance(BREAKER_OPEN_MS - 1)
+    expect(router.available(ANY)).toEqual(['groq-c'])
+    advance(1)
+    expect(router.available(ANY)).toEqual(['gemini-a', 'groq-c'])
+  })
+
+  it('429 da cota diária abre até a meia-noite do Pacífico, mesmo com prazo curto', async () => {
+    const { clock, advance } = clockAt('2026-11-10T15:00:00Z')
+    const router = createProviderRouter({
+      models: [model('gemini-a', ['429-daily']), model('groq-c', [])],
       clock,
     })
     await collect(router.stream(REQUEST, ANY))
