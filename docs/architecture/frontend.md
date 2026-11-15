@@ -227,7 +227,7 @@ Content-Security-Policy: default-src 'self'; script-src 'self' 'sha256-…'; sty
   [observabilidade](observabilidade.md).
 - **Orçamento:** JS gz total do first-load, checado no pós-build: a soma do gzip da união dos chunks
   que os HTML do export carregam (`<script src>` sem `nomodule` e preload de script), cada chunk uma
-  vez, contra `apps/web/bundle-budget.json` (400 KiB; a landing da F4 mede 132 KiB). Os
+  vez, contra `apps/web/bundle-budget.json` (500 KiB desde 2026-11-15, por decisão do mantenedor, com as telas da F5; a landing da F4 media 132 KiB). Os
   `import()` sob demanda ficam de fora. As
   metas de Web Vitals (LCP ≤ 2,0 s, INP ≤ 150 ms, CLS ≤ 0,05, primeiro token ≤ 1,5 s) são
   acompanhadas em produção pelo evento `web_vital`. Lighthouse CI e orçamentos por rota ficam para
