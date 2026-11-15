@@ -8,6 +8,7 @@ import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Providers } from '@/components/providers'
 import { ApiError } from '@/lib/api/errors'
+import { REJECT_ALL, writeConsent } from '@/lib/consent/storage'
 import ptBR from '../../../messages/pt-BR.json'
 import { type FakeApi, installFakeApi, ME, problem } from '../../../test/fake-api.ts'
 import { SessionGate } from './session-gate.tsx'
@@ -117,6 +118,9 @@ beforeEach(() => {
   navigation.replace.mockReset()
   browser.navigateTo.mockReset()
   vi.stubGlobal('PublicKeyCredential', FakePublicKeyCredential)
+  localStorage.clear()
+  // Escolha de consentimento já feita: o banner (testado em consent-provider.test.tsx) fica fora.
+  writeConsent(localStorage, REJECT_ALL)
 })
 
 afterEach(async () => {
