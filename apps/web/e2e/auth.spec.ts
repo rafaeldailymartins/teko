@@ -1,7 +1,8 @@
 import { readFile } from 'node:fs/promises'
 import { expect, type Page, test } from '@playwright/test'
 import ptBR from '../messages/pt-BR.json' with { type: 'json' }
-import { enforcedViolations, recordViolations, signInWithTestSession } from './support.ts'
+import { enforcedViolations, recordViolations } from './support/csp.ts'
+import { signInWithTestSession } from './support/session.ts'
 
 /**
  * Jornadas de autenticação e conta (mudança `add-auth-ui`) na stack de CI. O OAuth real não roda

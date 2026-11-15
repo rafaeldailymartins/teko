@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { signInWithTestSession } from './support.ts'
+import { signInWithTestSession } from './support/session.ts'
 
 /**
  * Jornadas do app shell e do design system (mudança `add-web-shell-and-design-system`): páginas

@@ -188,7 +188,8 @@ O que o deploy exige do mantenedor está em [Antes da F7](#antes-da-f7-o-que-o-m
   própria origem, erros do callback e aviso de `region_restricted`), sessão no cabeçalho e na
   paleta, guarda do grupo `(app)`, onboarding bloqueante (e novo aceite a cada versão dos Termos),
   configurações (conta, cota, passkeys, exportação, exclusão, tema, idioma e densidade) e o e2e
-  `auth.spec.ts`; sem o cliente do Better Auth no web. Bundle de primeiro acesso em 361,4 KiB gz.
+  `auth.spec.ts`; sem o cliente do Better Auth no web. Bundle de primeiro acesso em 354,0 KiB gz (as
+  configurações saem dele por `import()`).
 
 ## Antes da F7: o que o mantenedor faz
 

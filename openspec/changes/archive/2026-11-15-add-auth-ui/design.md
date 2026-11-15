@@ -80,8 +80,8 @@ mudanças.
 - **E2E sem OAuth real.** A stack de CI não tem OAuth apps: a jornada intercepta
   `POST /api/auth/sign-in/social` (devolve uma URL de `/api/auth/...`) e para no redirect,
   conferindo o corpo (provedor, retorno e retorno de erro). A sessão de teste entra pelo cookie de
-  `E2E_SESSION_COOKIE` (`e2e/support.ts`, que também reúne o registro de violações de CSP antes
-  repetido no `platform.spec.ts`). Nenhuma jornada sai nem exclui a conta (a sessão é compartilhada
+  `E2E_SESSION_COOKIE` (`e2e/support/session.ts`; o registro de violações de CSP, antes só no
+  `platform.spec.ts`, fica em `e2e/support/csp.ts`). Nenhuma jornada sai nem exclui a conta (a sessão é compartilhada
   pelos workers); o onboarding pendente é simulado sobre o `/me` real.
 
 ## Risks / Trade-offs
@@ -89,9 +89,10 @@ mudanças.
 - Rotas do plugin de passkey chamadas sem o cliente oficial: uma mudança de protocolo numa versão
   nova do Better Auth quebraria a passkey em silêncio. Mitigação: versão fixa e os testes do
   `auth.ts`; a atualização do Better Auth confere as rotas.
-- O bundle de primeiro acesso subiu de ~327 para 361,4 KiB gz: o SDK e as options do cliente gerado
-  entram pela primeira vez numa página, mais o shell com sessão, a entrada e as configurações. Um
-  `next/dynamic` no diálogo de onboarding foi medido e piorou (363,7 KiB, pelo runtime do carregador),
+- O bundle de primeiro acesso subiu de ~327 para 354,0 KiB gz: o SDK e as options do cliente gerado
+  entram pela primeira vez numa página, mais o shell com sessão e a entrada. As seções das
+  configurações vão num `next/dynamic` (`LazySettingsView`), fora do primeiro acesso (sem ele, 361,4
+  KiB). O mesmo no diálogo de onboarding piorou (o diálogo e as dependências dele continuam no shell)
   e saiu.
 - As páginas do app sem sessão mostram o HTML estático por um instante antes do redirect. É a
   consequência de não haver middleware no export estático.

@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import { expect, test } from '@playwright/test'
-import { sessionCookie } from './support.ts'
+import { sessionCookie } from './support/session.ts'
 
 /**
  * Jornadas da F4 na stack de CI: a mesma origem serve o estático e a API, a sessão vem por cookie e

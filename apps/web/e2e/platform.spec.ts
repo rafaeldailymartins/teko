@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 import en from '../messages/en.json' with { type: 'json' }
-import { enforcedViolations, recordViolations } from './support.ts'
+import { enforcedViolations, recordViolations } from './support/csp.ts'
 
 /**
  * Rotas de plataforma e segurança do estático na stack de CI (Caddy com os snippets de

@@ -1,5 +1,5 @@
 import { getTranslations } from 'next-intl/server'
-import { SettingsView } from '@/components/settings/settings-view'
+import { LazySettingsView } from '@/components/settings/lazy-settings-view'
 import { type LocalePageProps, pageMetadata, resolvePageLocale } from './page-route.ts'
 
 export const generateSettingsMetadata = pageMetadata('settings')
@@ -15,7 +15,7 @@ export async function SettingsPage({ params }: LocalePageProps) {
         <h1 className="font-semibold font-serif text-3xl tracking-tight">{t('title')}</h1>
         <p className="text-pretty text-muted-foreground">{t('description')}</p>
       </div>
-      <SettingsView />
+      <LazySettingsView />
     </div>
   )
 }
