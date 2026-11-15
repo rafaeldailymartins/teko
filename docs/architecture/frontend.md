@@ -186,17 +186,30 @@ Content-Security-Policy: default-src 'self'; script-src 'self' 'sha256-…'; sty
 ## i18n e acessibilidade
 
 - next-intl com `localePrefix: 'always'`, `defaultLocale: 'pt-BR'`, `generateStaticParams` +
-  `setRequestLocale`, `timeZone: 'America/Sao_Paulo'`. Testes de paridade de chaves en/pt-BR e de uma
+  `setRequestLocale`, `timeZone: 'America/Sao_Paulo'`. Testes de paridade de chaves en/pt-BR (todos
+  os namespaces, com o diff do que falta e do que sobra, e as mesmas tags de rich text) e de uma
   chave `errors.<code>` por `ErrorCode`. Na mesma origem da Vercel, `/pt-BR/` mantém a caixa.
+- Datas por `src/lib/i18n/format.ts`: data de calendário sem deslocamento de fuso, instante no fuso
+  de exibição e período de apuração `MM/AAAA` (ou por extenso no idioma da UI).
+- Páginas legais e "Sobre" (`legal-pages.tsx`): texto em Source Serif, sumário com âncoras, versão
+  dos Termos de `@teko/shared/legal` (a mesma que a API exige). Os namespaces `legal` e `about` são
+  renderizados só no servidor e ficam fora das mensagens do `NextIntlClientProvider`.
 - WCAG 2.2 AA: região `aria-live="polite"` anuncia início e fim da resposta, `aria-busy` no stream,
   foco no composer, skip link, critérios 2.4.11, 2.5.8, 2.5.7 e 3.3.8; trechos legais com
-  `lang="pt-BR"` também na UI em inglês.
+  `lang="pt-BR"` também na UI em inglês (tag `<ptBR>` nos catálogos).
 
 ## Analytics e orçamentos
 
-- **PostHog** (EU), direto: `cookieless_mode:'on_reject'`, `person_profiles:'identified_only'`,
-  replay desligado, desligado no staging, surveys só com consentimento, banner LGPD com Aceitar,
-  Recusar e Personalizar de mesmo peso. Eventos em [observabilidade](observabilidade.md).
+- **Consentimento** (F5): banner LGPD com Aceitar, Recusar e Personalizar de mesmo peso,
+  preferências por categoria (medição de uso e pesquisas) em `localStorage['teko-consent']` com a
+  versão da política, e "Preferências de cookies" nos rodapés. Nada é gravado antes da escolha.
+- **Adapter** `src/lib/analytics/`: o único lugar que pode carregar o SDK (o Biome barra
+  `posthog-js` fora dele), por `import()`, só com `analytics: true` e `NEXT_PUBLIC_POSTHOG_KEY` no
+  build. Na F5 o cliente é no-op; o SDK entra na F6.
+- **PostHog** (EU, F6), direto: `disable_external_dependency_loading: true`,
+  `cookieless_mode:'on_reject'`, `person_profiles:'identified_only'`, replay desligado, desligado no
+  staging (sem a chave), surveys só com consentimento. Eventos em
+  [observabilidade](observabilidade.md).
 - **Orçamento:** JS gz total do first-load, checado no pós-build: a soma do gzip da união dos chunks
   que os HTML do export carregam (`<script src>` sem `nomodule` e preload de script), cada chunk uma
   vez, contra `apps/web/bundle-budget.json` (400 KiB; a landing da F4 mede 132 KiB). Os
