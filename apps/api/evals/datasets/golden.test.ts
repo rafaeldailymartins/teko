@@ -97,6 +97,7 @@ describe('holdout versionado (ADR 0031)', () => {
       expect(byStatus[status as keyof typeof byStatus]?.length ?? 0).toBeGreaterThan(0)
     }
     expect(holdout.filter((golden) => golden.locale === 'en').length).toBeGreaterThanOrEqual(5)
+    expect(holdout.filter((golden) => golden.reviewed_at === null)).toEqual([])
     expect(
       holdout.filter((golden) => golden.expected.provisions.length > 1).length,
     ).toBeGreaterThanOrEqual(5)
