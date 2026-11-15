@@ -1,4 +1,4 @@
 export {
   generateHistoryMetadata as generateMetadata,
   HistoryPage as default,
-} from '@/components/pages/placeholder-pages'
+} from '@/components/pages/history-page'

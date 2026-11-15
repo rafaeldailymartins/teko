@@ -1,4 +1,4 @@
 export {
   generateProvisionMetadata as generateMetadata,
   ProvisionPage as default,
-} from '@/components/pages/placeholder-pages'
+} from '@/components/pages/provision-page'

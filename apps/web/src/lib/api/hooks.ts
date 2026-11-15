@@ -1,4 +1,10 @@
-import { type UseQueryResult, useQuery } from '@tanstack/react-query'
+import {
+  type InfiniteData,
+  type UseInfiniteQueryResult,
+  type UseQueryResult,
+  useInfiniteQuery,
+  useQuery,
+} from '@tanstack/react-query'
 import type { ReferenceInput } from '@teko/shared/vigencia'
 import type {
   GetCoverageResponse,
@@ -6,11 +12,13 @@ import type {
   GetProvisionDiffResponse,
   GetProvisionTimelineResponse,
   GetQuestionResponse,
+  ListConversationsResponse,
   ListHistoryResponse,
   SearchProvisionsResponse,
 } from './__generated__/types.gen.ts'
 import type { ApiError } from './errors.ts'
 import {
+  conversationsQuery,
   coverageQuery,
   historyQuery,
   meQuery,
@@ -35,9 +43,17 @@ export function useCoverage(): ApiQuery<GetCoverageResponse> {
   return useQuery(coverageQuery())
 }
 
-/** Histórico de uma conversa (a API lista por conversa; não há lista de conversas). */
+/** Perguntas de uma conversa. */
 export function useHistory(conversationId: string | null): ApiQuery<ListHistoryResponse> {
   return useQuery(historyQuery(conversationId))
+}
+
+/** Conversas do usuário, página a página (`fetchNextPage` enquanto `hasNextPage`). */
+export function useConversations(): UseInfiniteQueryResult<
+  InfiniteData<ListConversationsResponse, unknown>,
+  ApiError
+> {
+  return useInfiniteQuery(conversationsQuery())
 }
 
 export function useQuestion(id: string | null): ApiQuery<GetQuestionResponse> {

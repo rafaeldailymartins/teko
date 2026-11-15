@@ -10,7 +10,8 @@ Export estático do Next.js servido pela CDN da Vercel, no mesmo projeto e na me
 - O `apps/web/out` é copiado para `.vercel/output/static` pelo `scripts/build-vercel-output.ts`;
   não há adapter de plataforma nem functions do Next.
 - **Ficam de fora:** `proxy.ts`/middleware, route handlers, Server Actions, `next/image` otimizado e
-  rotas dinâmicas (viram query params via nuqs: `/pt-BR/chat/?q=<questionId>&c=<conversationId>&ref=2024-03`).
+  rotas dinâmicas (viram query params via nuqs: `/pt-BR/chat/?q=<questionId>&c=<conversationId>&ref=2024-03`,
+  `/pt-BR/provision/?k=<stableKey>&ref=2008-05` e `/pt-BR/compare/?k=<stableKey>&from=2008-05&to=2010-01`).
 - **Pós-build** (`apps/web/scripts/postbuild.ts`, parte do `pnpm --filter @teko/web build` e
   repetido no job `build` do CI depois de um cache hit do turbo): falha se o código tiver
   `src/app/**/route.ts(x)`, `'use server'`, `dynamic = 'force-dynamic'`, middleware/`proxy.ts` ou
@@ -89,7 +90,10 @@ cliente gerado.
 - TanStack Query (`staleTime: 60_000`, retry só de erro transitório; keys com a data efetiva de
   referência quando a resposta depende dela), options em `src/lib/api/queries.ts` e hooks em
   `src/lib/api/hooks.ts`; provider em `src/components/providers.tsx`, com o adapter do nuqs (parsers
-  de `q`, `c` e `ref` em `src/lib/url-state.ts`). Form (schemas de `@teko/shared`), Table, Virtual,
+  de `q`, `c` e `ref` do chat, `k` e `ref` do dispositivo e `k`, `from` e `to` da comparação em
+  `src/lib/url-state.ts`, com os links montados pelo `createSerializer`). A lista de conversas é
+  infinita por cursor (`conversationsQuery`, `initialPageParam: {}`); componentes com
+  `useQueryStates` trazem o próprio `<Suspense>`. Form (schemas de `@teko/shared`), Table, Virtual,
   Pacer e Hotkeys (os dois últimos atrás de adapters em `src/lib`).
 - **Chat:** `useChat<TekoUIMessage>` com transporte próprio em `src/lib/api/chat-transport.ts`:
 
@@ -172,7 +176,18 @@ Content-Security-Policy: default-src 'self'; script-src 'self' 'sha256-…'; sty
 - **Cota:** `quota_exceeded` e `service_paused` desabilitam o composer e mostram o reset.
 - **Citações:** chips numerados durante o stream, hover card e painel com documento, versão, badge
   de intervalo, texto (`lang="pt-BR"`), tabela de campos, link para a fonte, "copiar citação",
-  "reportar", linha do tempo e "O que mudou" (diff lazy).
+  "reportar", linha do tempo e "O que mudou" (diff lazy). Badge, texto, linha do tempo e diff são os
+  componentes de `src/components/provision/` (`ValidityBadge`, `ProvisionText`, `ProvisionTimeline`,
+  `ProvisionDiff`), os mesmos da página de dispositivo.
+- **Histórico:** `ConversationList` (`GET /v1/conversations`) no painel esquerdo do chat (primeira
+  página, conversa aberta marcada, link para o resto; no Sheet, abrir uma conversa o fecha por
+  `useCloseHistoryPanel`) e em `/history/` com "Carregar mais"; abrir uma conversa vai para
+  `/chat/?c=<id>`.
+- **Dispositivo e comparação:** `/provision/?k=&ref=` mostra a redação vigente na data (ou a anterior
+  mais próxima, com aviso), o badge (vigente, encerrada ou futura, com o último dia incluído), "O que
+  mudou" montado só no clique e a linha do tempo, que troca o `ref`; sem `k`, a busca de dispositivos
+  (`useDeferredValue`). `/compare/?k=&from=&to=` compara duas datas, com o exemplo do roteiro. Datas
+  de calendário são formatadas em UTC (`calendarDate`), para o fuso não trocar o dia.
 - **Privacidade:** aviso de treino do provedor gratuito, 18+ e versão dos Termos no primeiro uso;
   detector de PII no composer; `region_restricted` vira página de aviso.
 - **Teclado:** `Ctrl/⌘+K` paleta, `/` composer, `Ctrl/⌘+Enter` envia, `Esc` para ou fecha,
