@@ -193,6 +193,12 @@ O que o deploy exige do mantenedor está em [Antes da F7](#antes-da-f7-o-que-o-m
   `@teko/shared/legal`, banner LGPD com preferências e adapter de analytics no-op (o `posthog-js`
   fica para a F6), paridade com diff, helper de datas e e2e de consentimento e páginas legais. O item
   "zero cookies e zero chaves do PostHog antes do consentimento" do DoD fica coberto pelo e2e.
+- `add-auth-ui` (arquivada em 2026-11-15): entrada com GitHub, Google e passkey (retorno só da
+  própria origem, erros do callback e aviso de `region_restricted`), sessão no cabeçalho e na
+  paleta, guarda do grupo `(app)`, onboarding bloqueante (e novo aceite a cada versão dos Termos),
+  configurações (conta, cota, passkeys, exportação, exclusão, tema, idioma e densidade) e o e2e
+  `auth.spec.ts`; sem o cliente do Better Auth no web. Bundle de primeiro acesso em 354,0 KiB gz (as
+  configurações saem dele por `import()`).
 - `add-chat-experience` (arquivada em 2026-11-15): `TekoChatTransport` same-origin com `useChat`,
   thread e composer acessíveis, Streamdown com `rehype-harden`, chips e painel de citação, data de
   referência na URL, cobertura, degradação, cota, PII e `fetch(` só em `src/lib/api`; o chat carrega

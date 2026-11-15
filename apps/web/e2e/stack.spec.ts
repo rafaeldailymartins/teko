@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import { expect, test } from '@playwright/test'
+import { sessionCookie } from './support/session.ts'
 
 /**
  * Jornadas da F4 na stack de CI: a mesma origem serve o estático e a API, a sessão vem por cookie e
@@ -8,14 +9,6 @@ import { expect, test } from '@playwright/test'
  */
 const GOYAZES =
   'Qual valor mínimo aplicado no GOYAZES ou no PROESPORTE permitia ao Secretário da Fazenda definir prazos diversos de pagamento do ICMS?'
-
-function sessionCookie(): string {
-  const cookie = process.env['E2E_SESSION_COOKIE']
-  if (cookie === undefined || cookie === '') {
-    throw new Error('E2E_SESSION_COOKIE ausente: suba a stack com `bash infra/ci/up.sh`')
-  }
-  return cookie
-}
 
 test.describe('mesma origem', () => {
   // A raiz redireciona por `Accept-Language` (platform.spec.ts); aqui o navegador fala pt-BR.

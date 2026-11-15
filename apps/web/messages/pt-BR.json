@@ -55,9 +55,7 @@
     },
     "settings": {
       "title": "Configurações",
-      "description": "Preferências da conta, exportação e exclusão de dados.",
-      "emptyTitle": "Nada para configurar ainda",
-      "emptyBody": "Aqui ficarão as preferências da conta, a exportação e a exclusão dos seus dados. O tema e o idioma já ficam no cabeçalho."
+      "description": "Preferências da conta, exportação e exclusão de dados."
     },
     "provision": {
       "title": "Dispositivo",
@@ -87,9 +85,7 @@
     },
     "sign-in": {
       "title": "Entrar",
-      "description": "Acesse o Tekó para fazer perguntas.",
-      "emptyTitle": "Acesso em breve",
-      "emptyBody": "O acesso com GitHub e com passkey ainda está em construção."
+      "description": "Acesse o Tekó para fazer perguntas."
     }
   },
   "landing": {
@@ -196,155 +192,128 @@
     "description": "O endereço não existe ou foi movido.",
     "backHome": "Voltar para a página inicial"
   },
-  "chat": {
-    "loading": "Carregando a conversa…",
-    "composer": {
-      "label": "Sua pergunta",
-      "placeholder": "Pergunte sobre a EFD ICMS/IPI, a EFD-Reinf ou a legislação de Goiás…",
-      "send": "Enviar",
-      "stop": "Parar",
-      "hint": "{shortcut} envia · Esc para",
-      "blockedQuota": "O limite diário de perguntas foi atingido. As perguntas voltam {reset}.",
-      "blockedPaused": "O serviço está pausado. Tente de novo {reset}.",
-      "resetAt": "em {time}",
-      "resetSoon": "mais tarde"
+  "auth": {
+    "signIn": {
+      "lead": "Entre com a sua conta do GitHub ou do Google. Depois do primeiro acesso, você pode cadastrar uma passkey nas configurações.",
+      "github": "Entrar com GitHub",
+      "google": "Entrar com Google",
+      "passkey": "Entrar com passkey",
+      "noPassword": "O Tekó não usa e-mail e senha.",
+      "alreadySignedIn": "Você já entrou como {name}.",
+      "continue": "Continuar",
+      "legal": "Ao entrar, você concorda com os <terms>Termos de uso</terms> e com a <privacy>Política de privacidade</privacy>."
     },
-    "pii": {
-      "title": "Sua pergunta parece ter dados pessoais",
-      "body": "Encontramos {kinds}. Eles não ajudam na resposta e são trocados por marcadores antes de gravar.",
-      "remove": "Remover os dados",
-      "sendAnyway": "Enviar assim mesmo",
-      "kinds": {
-        "email": "e-mail",
-        "nfe_key": "chave de acesso",
-        "cnpj": "CNPJ",
-        "cpf": "CPF",
-        "phone": "telefone"
-      }
+    "errors": {
+      "title": "Não foi possível entrar",
+      "cancelled": "O login foi cancelado. Tente de novo quando quiser.",
+      "blocked": "Esta conta está bloqueada e não pode entrar no Tekó.",
+      "accountNotLinked": "Esta conta do provedor não pôde ser ligada à sua conta do Tekó. Entre com o provedor que você usou da primeira vez.",
+      "emailMissing": "O provedor não compartilhou um e-mail verificado. Confira as configurações de privacidade da sua conta e tente de novo.",
+      "generic": "Algo deu errado no login. Tente de novo."
     },
-    "reference": {
-      "chipPeriodo": "Período de apuração: {value}",
-      "chipDate": "Data de referência: {value}",
-      "defaultHint": "padrão: mês anterior",
-      "open": "Alterar a data de referência",
-      "title": "Data de referência",
-      "modePeriodo": "Período",
-      "modeDate": "Data exata",
-      "previousYear": "Ano anterior",
-      "nextYear": "Próximo ano",
-      "presets": "Atalhos",
-      "presetPrevious": "Mês anterior",
-      "presetCurrent": "Mês atual",
-      "presetLastClosed": "Último período fechado",
-      "useDefault": "Voltar ao padrão",
-      "dateLabel": "Data",
-      "apply": "Aplicar",
-      "inferred": "Data inferida do texto: {value}",
-      "confirm": "Confirmar"
+    "passkey": {
+      "cancelled": "A passkey não foi usada. Tente de novo quando quiser.",
+      "unsupported": "Este navegador não aceita passkeys.",
+      "alreadyRegistered": "Este dispositivo já tem uma passkey desta conta.",
+      "reauthenticate": "Por segurança, saia e entre de novo para cadastrar uma passkey.",
+      "failed": "Não foi possível usar a passkey. Tente de novo."
     },
-    "coverage": {
-      "label": "Cobertura na data",
-      "grounded": "Fundamentada",
-      "partial": "Cobertura parcial",
-      "out": "Fora de cobertura",
-      "bannerPartial": "Nesta data, o Tekó não tem fontes de {families}. A resposta pode ficar incompleta.",
-      "bannerOut": "Nenhuma fonte do Tekó cobre esta data. A pergunta pode ser recusada."
+    "region": {
+      "title": "Indisponível na sua região",
+      "body": "Para a sua região, o Tekó só usa um provedor de IA que não guarda as perguntas, e ele está indisponível agora.",
+      "hint": "Tente de novo mais tarde. Se o país de residência estiver errado, ele aparece nas configurações da conta.",
+      "back": "Voltar para a página inicial"
     },
-    "thread": {
-      "label": "Conversa",
-      "you": "Você",
-      "assistant": "Tekó",
-      "liveStart": "Gerando a resposta.",
-      "liveDone": "Resposta pronta.",
-      "liveStopped": "Resposta interrompida.",
-      "liveError": "A resposta falhou.",
-      "noAnswer": "Esta pergunta não tem resposta gravada.",
-      "blockError": "Não foi possível mostrar este trecho.",
-      "retry": "Tentar de novo",
-      "reread": "Recarregar a resposta"
+    "menu": {
+      "label": "Conta de {name}",
+      "settings": "Configurações",
+      "signIn": "Entrar",
+      "signOut": "Sair"
     },
-    "answer": {
-      "referencePeriodo": "Período de apuração {value}",
-      "referenceDate": "Data de referência {value}",
-      "source": {
-        "explicit": "escolhida por você",
-        "periodo_apuracao": "escolhida por você",
-        "question_text": "inferida do texto",
-        "default": "padrão: mês anterior",
-        "clarified": "esclarecida por você"
+    "palette": {
+      "group": "Conta",
+      "signIn": "Entrar",
+      "signOut": "Sair da conta"
+    }
+  },
+  "onboarding": {
+    "title": "Antes de começar",
+    "titleTermsUpdate": "Os Termos de uso mudaram",
+    "lead": "Confirme estes pontos para fazer perguntas ao Tekó.",
+    "leadTermsUpdate": "Uma nova versão dos Termos de uso está em vigor. Confirme para continuar.",
+    "training": {
+      "title": "Provedor de IA gratuito",
+      "body": "As perguntas passam por um provedor de IA gratuito, que pode usá-las para treinar os próprios modelos. Não inclua dados pessoais nem informações sigilosas."
+    },
+    "adult": "Declaro que tenho 18 anos ou mais.",
+    "terms": "Li e aceito os <terms>Termos de uso</terms> (versão {version}) e a <privacy>Política de privacidade</privacy>.",
+    "country": "País de residência",
+    "countryHint": "Define quais provedores de IA podem responder às suas perguntas.",
+    "submit": "Continuar",
+    "submitting": "Salvando…",
+    "signOut": "Sair"
+  },
+  "settings": {
+    "loading": "Carregando a sua conta…",
+    "unavailable": "Não foi possível carregar a sua conta agora. Tente de novo em instantes.",
+    "account": {
+      "title": "Conta",
+      "name": "Nome",
+      "email": "E-mail",
+      "country": "País de residência",
+      "onboardingPending": "Conclua o cadastro inicial para fazer perguntas.",
+      "completeOnboarding": "Concluir agora",
+      "signOut": "Sair"
+    },
+    "quota": {
+      "title": "Cota do dia",
+      "lead": "O Tekó roda em serviços gratuitos, por isso há um limite diário de perguntas.",
+      "loading": "Carregando a cota…",
+      "user": "{used} de {limit} perguntas hoje",
+      "global": "Teto do serviço hoje: {used} de {limit} perguntas",
+      "resets": "Renova em {time}."
+    },
+    "passkeys": {
+      "title": "Passkeys",
+      "lead": "Entre sem senha, com a biometria ou o bloqueio de tela do seu dispositivo. Cada passkey vale só neste endereço do Tekó.",
+      "loading": "Carregando as passkeys…",
+      "empty": "Nenhuma passkey cadastrada.",
+      "unnamed": "Passkey sem nome",
+      "createdAt": "Cadastrada em {date}",
+      "removeLabel": "Remover a passkey {name}",
+      "nameLabel": "Nome da passkey (opcional)",
+      "namePlaceholder": "Ex.: notebook do trabalho",
+      "add": "Cadastrar passkey",
+      "adding": "Aguardando o dispositivo…",
+      "added": "Passkey cadastrada.",
+      "removed": "Passkey removida."
+    },
+    "data": {
+      "title": "Seus dados",
+      "lead": "Baixe tudo o que o Tekó guarda sobre você ou exclua a conta. As perguntas são apagadas automaticamente depois de 90 dias.",
+      "export": "Exportar meus dados",
+      "exporting": "Preparando o arquivo…",
+      "exported": "Arquivo JSON baixado."
+    },
+    "delete": {
+      "button": "Excluir conta",
+      "title": "Excluir a conta?",
+      "body": "A conta, as passkeys, as perguntas e o feedback são apagados de vez, e a sessão é encerrada. Não dá para desfazer.",
+      "confirmLabel": "Digite {word} para confirmar",
+      "word": "EXCLUIR",
+      "confirm": "Excluir de vez",
+      "deleting": "Excluindo…",
+      "cancel": "Cancelar"
+    },
+    "preferences": {
+      "title": "Preferências",
+      "theme": "Tema",
+      "density": "Densidade",
+      "densityOptions": {
+        "comfortable": "Confortável",
+        "compact": "Compacta"
       },
-      "validity": "Vigência das redações citadas: {range}",
-      "boundaryInside": "A redação muda dentro deste período: confira a data exata.",
-      "citations": "Fontes",
-      "degraded": {
-        "lexicalOnly": "Somente busca lexical",
-        "fallback": "Modelo de reserva",
-        "cached": "Resposta em cache"
-      }
-    },
-    "intervals": {
-      "range": "{from} a {to}",
-      "since": "desde {from}",
-      "until": "até {to}",
-      "always": "sem limite"
-    },
-    "refusal": {
-      "title": "Sem resposta fundamentada",
-      "reasons": {
-        "out_of_coverage": "A data ou o tema estão fora da cobertura do Tekó.",
-        "no_evidence": "Não encontramos dispositivo que responda à pergunta nesta data.",
-        "model_insufficient": "As fontes encontradas não bastam para responder com segurança.",
-        "citation_invalid": "A resposta citou fontes que não puderam ser confirmadas."
-      },
-      "covered": "Cobertura de {family}: {ranges}"
-    },
-    "clarification": {
-      "title": "Qual data vale para a pergunta?",
-      "reasons": {
-        "explicit_conflict": "A data citada no texto é diferente da escolhida no chip.",
-        "ambiguous_text": "O texto cita mais de uma data."
-      },
-      "choose": "Usar {value}"
-    },
-    "feedback": {
-      "label": "Avaliar a resposta",
-      "up": "Resposta útil",
-      "down": "Resposta com problema",
-      "thanks": "Obrigado pelo retorno."
-    },
-    "citation": {
-      "chip": "Fonte {number}: {label}",
-      "position": "Citação {current} de {total}",
-      "previous": "Citação anterior",
-      "next": "Próxima citação",
-      "document": "Documento",
-      "version": "Versão",
-      "family": "Família",
-      "jurisdiction": "Jurisdição",
-      "key": "Dispositivo",
-      "fields": "Campos da citação",
-      "text": "Texto citado",
-      "source": "Abrir a fonte oficial",
-      "copy": "Copiar citação",
-      "copied": "Citação copiada.",
-      "report": "Reportar citação errada",
-      "reported": "Obrigado: a citação foi reportada.",
-      "timeline": "Linha do tempo e o que mudou",
-      "invalid": "Esta citação não foi confirmada pelo validador.",
-      "status": {
-        "current": "Vigente",
-        "superseded": "Superada",
-        "future": "Futura"
-      },
-      "validity": "Vigência: {range}"
-    },
-    "suggestions": {
-      "title": "Experimente",
-      "body": "A mesma pergunta em duas datas mostra redações diferentes.",
-      "questions": {
-        "rcte76": "O que diz o art. 76, § 6º do RCTE?"
-      },
-      "ask": "Perguntar em {period}"
+      "language": "Idioma"
     }
   },
   "errors": {
@@ -627,5 +596,156 @@
     "invalidRange": "Informe as duas datas, com a inicial antes da final.",
     "result": "Diferença entre as redações",
     "openProvision": "Abrir o dispositivo"
+  },
+  "chat": {
+    "loading": "Carregando a conversa…",
+    "composer": {
+      "label": "Sua pergunta",
+      "placeholder": "Pergunte sobre a EFD ICMS/IPI, a EFD-Reinf ou a legislação de Goiás…",
+      "send": "Enviar",
+      "stop": "Parar",
+      "hint": "{shortcut} envia · Esc para",
+      "blockedQuota": "O limite diário de perguntas foi atingido. As perguntas voltam {reset}.",
+      "blockedPaused": "O serviço está pausado. Tente de novo {reset}.",
+      "resetAt": "em {time}",
+      "resetSoon": "mais tarde"
+    },
+    "pii": {
+      "title": "Sua pergunta parece ter dados pessoais",
+      "body": "Encontramos {kinds}. Eles não ajudam na resposta e são trocados por marcadores antes de gravar.",
+      "remove": "Remover os dados",
+      "sendAnyway": "Enviar assim mesmo",
+      "kinds": {
+        "email": "e-mail",
+        "nfe_key": "chave de acesso",
+        "cnpj": "CNPJ",
+        "cpf": "CPF",
+        "phone": "telefone"
+      }
+    },
+    "reference": {
+      "chipPeriodo": "Período de apuração: {value}",
+      "chipDate": "Data de referência: {value}",
+      "defaultHint": "padrão: mês anterior",
+      "open": "Alterar a data de referência",
+      "title": "Data de referência",
+      "modePeriodo": "Período",
+      "modeDate": "Data exata",
+      "previousYear": "Ano anterior",
+      "nextYear": "Próximo ano",
+      "presets": "Atalhos",
+      "presetPrevious": "Mês anterior",
+      "presetCurrent": "Mês atual",
+      "presetLastClosed": "Último período fechado",
+      "useDefault": "Voltar ao padrão",
+      "dateLabel": "Data",
+      "apply": "Aplicar",
+      "inferred": "Data inferida do texto: {value}",
+      "confirm": "Confirmar"
+    },
+    "coverage": {
+      "label": "Cobertura na data",
+      "grounded": "Fundamentada",
+      "partial": "Cobertura parcial",
+      "out": "Fora de cobertura",
+      "bannerPartial": "Nesta data, o Tekó não tem fontes de {families}. A resposta pode ficar incompleta.",
+      "bannerOut": "Nenhuma fonte do Tekó cobre esta data. A pergunta pode ser recusada."
+    },
+    "thread": {
+      "label": "Conversa",
+      "you": "Você",
+      "assistant": "Tekó",
+      "liveStart": "Gerando a resposta.",
+      "liveDone": "Resposta pronta.",
+      "liveStopped": "Resposta interrompida.",
+      "liveError": "A resposta falhou.",
+      "noAnswer": "Esta pergunta não tem resposta gravada.",
+      "blockError": "Não foi possível mostrar este trecho.",
+      "retry": "Tentar de novo",
+      "reread": "Recarregar a resposta"
+    },
+    "answer": {
+      "referencePeriodo": "Período de apuração {value}",
+      "referenceDate": "Data de referência {value}",
+      "source": {
+        "explicit": "escolhida por você",
+        "periodo_apuracao": "escolhida por você",
+        "question_text": "inferida do texto",
+        "default": "padrão: mês anterior",
+        "clarified": "esclarecida por você"
+      },
+      "validity": "Vigência das redações citadas: {range}",
+      "boundaryInside": "A redação muda dentro deste período: confira a data exata.",
+      "citations": "Fontes",
+      "degraded": {
+        "lexicalOnly": "Somente busca lexical",
+        "fallback": "Modelo de reserva",
+        "cached": "Resposta em cache"
+      }
+    },
+    "intervals": {
+      "range": "{from} a {to}",
+      "since": "desde {from}",
+      "until": "até {to}",
+      "always": "sem limite"
+    },
+    "refusal": {
+      "title": "Sem resposta fundamentada",
+      "reasons": {
+        "out_of_coverage": "A data ou o tema estão fora da cobertura do Tekó.",
+        "no_evidence": "Não encontramos dispositivo que responda à pergunta nesta data.",
+        "model_insufficient": "As fontes encontradas não bastam para responder com segurança.",
+        "citation_invalid": "A resposta citou fontes que não puderam ser confirmadas."
+      },
+      "covered": "Cobertura de {family}: {ranges}"
+    },
+    "clarification": {
+      "title": "Qual data vale para a pergunta?",
+      "reasons": {
+        "explicit_conflict": "A data citada no texto é diferente da escolhida no chip.",
+        "ambiguous_text": "O texto cita mais de uma data."
+      },
+      "choose": "Usar {value}"
+    },
+    "feedback": {
+      "label": "Avaliar a resposta",
+      "up": "Resposta útil",
+      "down": "Resposta com problema",
+      "thanks": "Obrigado pelo retorno."
+    },
+    "citation": {
+      "chip": "Fonte {number}: {label}",
+      "position": "Citação {current} de {total}",
+      "previous": "Citação anterior",
+      "next": "Próxima citação",
+      "document": "Documento",
+      "version": "Versão",
+      "family": "Família",
+      "jurisdiction": "Jurisdição",
+      "key": "Dispositivo",
+      "fields": "Campos da citação",
+      "text": "Texto citado",
+      "source": "Abrir a fonte oficial",
+      "copy": "Copiar citação",
+      "copied": "Citação copiada.",
+      "report": "Reportar citação errada",
+      "reported": "Obrigado: a citação foi reportada.",
+      "timeline": "Linha do tempo e o que mudou",
+      "invalid": "Esta citação não foi confirmada pelo validador.",
+      "status": {
+        "current": "Vigente",
+        "superseded": "Superada",
+        "future": "Futura"
+      },
+      "validity": "Vigência: {range}"
+    },
+    "suggestions": {
+      "title": "Experimente",
+      "body": "A mesma pergunta em duas datas mostra redações diferentes.",
+      "questions": {
+        "rcte76": "O que diz o art. 76, § 6º do RCTE?"
+      },
+      "ask": "Perguntar em {period}"
+    }
   }
 }

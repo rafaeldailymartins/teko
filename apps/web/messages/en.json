@@ -55,9 +55,7 @@
     },
     "settings": {
       "title": "Settings",
-      "description": "Account preferences, data export and deletion.",
-      "emptyTitle": "Nothing to configure yet",
-      "emptyBody": "Account preferences, data export and deletion will live here. Theme and language are already in the header."
+      "description": "Account preferences, data export and deletion."
     },
     "provision": {
       "title": "Provision",
@@ -87,9 +85,7 @@
     },
     "sign-in": {
       "title": "Sign in",
-      "description": "Sign in to Tekó to ask questions.",
-      "emptyTitle": "Sign-in coming soon",
-      "emptyBody": "Signing in with GitHub and with a passkey is still under construction."
+      "description": "Sign in to Tekó to ask questions."
     }
   },
   "landing": {
@@ -196,155 +192,128 @@
     "description": "This page does not exist or has moved.",
     "backHome": "Back to the home page"
   },
-  "chat": {
-    "loading": "Loading the conversation…",
-    "composer": {
-      "label": "Your question",
-      "placeholder": "Ask about EFD ICMS/IPI, EFD-Reinf or Goiás tax law…",
-      "send": "Send",
-      "stop": "Stop",
-      "hint": "{shortcut} sends · Esc stops",
-      "blockedQuota": "The daily question limit was reached. Questions are back {reset}.",
-      "blockedPaused": "The service is paused. Try again {reset}.",
-      "resetAt": "at {time}",
-      "resetSoon": "later"
+  "auth": {
+    "signIn": {
+      "lead": "Sign in with your GitHub or Google account. After your first visit, you can add a passkey in the settings.",
+      "github": "Sign in with GitHub",
+      "google": "Sign in with Google",
+      "passkey": "Sign in with a passkey",
+      "noPassword": "Tekó does not use email and password.",
+      "alreadySignedIn": "You are already signed in as {name}.",
+      "continue": "Continue",
+      "legal": "By signing in, you agree to the <terms>Terms of use</terms> and the <privacy>Privacy policy</privacy>."
     },
-    "pii": {
-      "title": "Your question seems to contain personal data",
-      "body": "We found {kinds}. They do not help the answer and are replaced by placeholders before saving.",
-      "remove": "Remove the data",
-      "sendAnyway": "Send anyway",
-      "kinds": {
-        "email": "an email address",
-        "nfe_key": "an access key",
-        "cnpj": "a CNPJ",
-        "cpf": "a CPF",
-        "phone": "a phone number"
-      }
+    "errors": {
+      "title": "Could not sign you in",
+      "cancelled": "Sign-in was cancelled. Try again whenever you like.",
+      "blocked": "This account is blocked and cannot sign in to Tekó.",
+      "accountNotLinked": "This provider account could not be linked to your Tekó account. Sign in with the provider you used the first time.",
+      "emailMissing": "The provider did not share a verified email. Check your account's privacy settings and try again.",
+      "generic": "Something went wrong while signing in. Try again."
     },
-    "reference": {
-      "chipPeriodo": "Tax period: {value}",
-      "chipDate": "Reference date: {value}",
-      "defaultHint": "default: previous month",
-      "open": "Change the reference date",
-      "title": "Reference date",
-      "modePeriodo": "Period",
-      "modeDate": "Exact date",
-      "previousYear": "Previous year",
-      "nextYear": "Next year",
-      "presets": "Shortcuts",
-      "presetPrevious": "Previous month",
-      "presetCurrent": "Current month",
-      "presetLastClosed": "Last closed period",
-      "useDefault": "Back to default",
-      "dateLabel": "Date",
-      "apply": "Apply",
-      "inferred": "Date inferred from the text: {value}",
-      "confirm": "Confirm"
+    "passkey": {
+      "cancelled": "The passkey was not used. Try again whenever you like.",
+      "unsupported": "This browser does not support passkeys.",
+      "alreadyRegistered": "This device already has a passkey for this account.",
+      "reauthenticate": "For security, sign out and sign in again to add a passkey.",
+      "failed": "The passkey could not be used. Try again."
     },
-    "coverage": {
-      "label": "Coverage on this date",
-      "grounded": "Grounded",
-      "partial": "Partial coverage",
-      "out": "Out of coverage",
-      "bannerPartial": "On this date, Tekó has no sources for {families}. The answer may be incomplete.",
-      "bannerOut": "No Tekó source covers this date. The question may be refused."
+    "region": {
+      "title": "Unavailable in your region",
+      "body": "For your region, Tekó only uses an AI provider that does not keep the questions, and it is unavailable right now.",
+      "hint": "Try again later. If your country of residence is wrong, it shows in your account settings.",
+      "back": "Back to the home page"
     },
-    "thread": {
-      "label": "Conversation",
-      "you": "You",
-      "assistant": "Tekó",
-      "liveStart": "Generating the answer.",
-      "liveDone": "Answer ready.",
-      "liveStopped": "Answer stopped.",
-      "liveError": "The answer failed.",
-      "noAnswer": "This question has no saved answer.",
-      "blockError": "This part could not be shown.",
-      "retry": "Try again",
-      "reread": "Reload the answer"
+    "menu": {
+      "label": "{name}'s account",
+      "settings": "Settings",
+      "signIn": "Sign in",
+      "signOut": "Sign out"
     },
-    "answer": {
-      "referencePeriodo": "Tax period {value}",
-      "referenceDate": "Reference date {value}",
-      "source": {
-        "explicit": "chosen by you",
-        "periodo_apuracao": "chosen by you",
-        "question_text": "inferred from the text",
-        "default": "default: previous month",
-        "clarified": "clarified by you"
+    "palette": {
+      "group": "Account",
+      "signIn": "Sign in",
+      "signOut": "Sign out"
+    }
+  },
+  "onboarding": {
+    "title": "Before you start",
+    "titleTermsUpdate": "The Terms of use have changed",
+    "lead": "Confirm these points to ask Tekó questions.",
+    "leadTermsUpdate": "A new version of the Terms of use is in effect. Confirm to continue.",
+    "training": {
+      "title": "Free AI provider",
+      "body": "Questions go through a free AI provider, which may use them to train its own models. Do not include personal data or confidential information."
+    },
+    "adult": "I declare that I am 18 or older.",
+    "terms": "I have read and accept the <terms>Terms of use</terms> (version {version}) and the <privacy>Privacy policy</privacy>.",
+    "country": "Country of residence",
+    "countryHint": "Decides which AI providers may answer your questions.",
+    "submit": "Continue",
+    "submitting": "Saving…",
+    "signOut": "Sign out"
+  },
+  "settings": {
+    "loading": "Loading your account…",
+    "unavailable": "Your account could not be loaded right now. Try again in a moment.",
+    "account": {
+      "title": "Account",
+      "name": "Name",
+      "email": "Email",
+      "country": "Country of residence",
+      "onboardingPending": "Finish the initial setup to ask questions.",
+      "completeOnboarding": "Finish now",
+      "signOut": "Sign out"
+    },
+    "quota": {
+      "title": "Today's quota",
+      "lead": "Tekó runs on free services, so there is a daily limit of questions.",
+      "loading": "Loading the quota…",
+      "user": "{used} of {limit} questions today",
+      "global": "Service ceiling today: {used} of {limit} questions",
+      "resets": "Resets at {time}."
+    },
+    "passkeys": {
+      "title": "Passkeys",
+      "lead": "Sign in without a password, using your device's biometrics or screen lock. Each passkey only works on this Tekó address.",
+      "loading": "Loading passkeys…",
+      "empty": "No passkeys yet.",
+      "unnamed": "Unnamed passkey",
+      "createdAt": "Added on {date}",
+      "removeLabel": "Remove the passkey {name}",
+      "nameLabel": "Passkey name (optional)",
+      "namePlaceholder": "E.g. work laptop",
+      "add": "Add a passkey",
+      "adding": "Waiting for the device…",
+      "added": "Passkey added.",
+      "removed": "Passkey removed."
+    },
+    "data": {
+      "title": "Your data",
+      "lead": "Download everything Tekó keeps about you or delete your account. Questions are deleted automatically after 90 days.",
+      "export": "Export my data",
+      "exporting": "Preparing the file…",
+      "exported": "JSON file downloaded."
+    },
+    "delete": {
+      "button": "Delete account",
+      "title": "Delete your account?",
+      "body": "The account, passkeys, questions and feedback are deleted for good, and the session ends. This cannot be undone.",
+      "confirmLabel": "Type {word} to confirm",
+      "word": "DELETE",
+      "confirm": "Delete for good",
+      "deleting": "Deleting…",
+      "cancel": "Cancel"
+    },
+    "preferences": {
+      "title": "Preferences",
+      "theme": "Theme",
+      "density": "Density",
+      "densityOptions": {
+        "comfortable": "Comfortable",
+        "compact": "Compact"
       },
-      "validity": "Validity of the cited wording: {range}",
-      "boundaryInside": "The wording changes within this period: check the exact date.",
-      "citations": "Sources",
-      "degraded": {
-        "lexicalOnly": "Lexical search only",
-        "fallback": "Fallback model",
-        "cached": "Cached answer"
-      }
-    },
-    "intervals": {
-      "range": "{from} to {to}",
-      "since": "since {from}",
-      "until": "until {to}",
-      "always": "no limit"
-    },
-    "refusal": {
-      "title": "No grounded answer",
-      "reasons": {
-        "out_of_coverage": "The date or the topic is outside Tekó coverage.",
-        "no_evidence": "We found no provision that answers the question on this date.",
-        "model_insufficient": "The sources found are not enough to answer safely.",
-        "citation_invalid": "The answer cited sources that could not be confirmed."
-      },
-      "covered": "{family} coverage: {ranges}"
-    },
-    "clarification": {
-      "title": "Which date applies to the question?",
-      "reasons": {
-        "explicit_conflict": "The date in the text differs from the one chosen in the chip.",
-        "ambiguous_text": "The text mentions more than one date."
-      },
-      "choose": "Use {value}"
-    },
-    "feedback": {
-      "label": "Rate the answer",
-      "up": "Helpful answer",
-      "down": "Answer with a problem",
-      "thanks": "Thanks for the feedback."
-    },
-    "citation": {
-      "chip": "Source {number}: {label}",
-      "position": "Citation {current} of {total}",
-      "previous": "Previous citation",
-      "next": "Next citation",
-      "document": "Document",
-      "version": "Version",
-      "family": "Family",
-      "jurisdiction": "Jurisdiction",
-      "key": "Provision",
-      "fields": "Citation fields",
-      "text": "Cited text",
-      "source": "Open the official source",
-      "copy": "Copy citation",
-      "copied": "Citation copied.",
-      "report": "Report wrong citation",
-      "reported": "Thanks: the citation was reported.",
-      "timeline": "Timeline and what changed",
-      "invalid": "This citation was not confirmed by the validator.",
-      "status": {
-        "current": "In force",
-        "superseded": "Superseded",
-        "future": "Future"
-      },
-      "validity": "Validity: {range}"
-    },
-    "suggestions": {
-      "title": "Try it",
-      "body": "The same question on two dates shows different wordings.",
-      "questions": {
-        "rcte76": "What does art. 76, § 6 of the RCTE say?"
-      },
-      "ask": "Ask for {period}"
+      "language": "Language"
     }
   },
   "errors": {
@@ -627,5 +596,156 @@
     "invalidRange": "Fill in both dates, with the start before the end.",
     "result": "Difference between the wordings",
     "openProvision": "Open the provision"
+  },
+  "chat": {
+    "loading": "Loading the conversation…",
+    "composer": {
+      "label": "Your question",
+      "placeholder": "Ask about EFD ICMS/IPI, EFD-Reinf or Goiás tax law…",
+      "send": "Send",
+      "stop": "Stop",
+      "hint": "{shortcut} sends · Esc stops",
+      "blockedQuota": "The daily question limit was reached. Questions are back {reset}.",
+      "blockedPaused": "The service is paused. Try again {reset}.",
+      "resetAt": "at {time}",
+      "resetSoon": "later"
+    },
+    "pii": {
+      "title": "Your question seems to contain personal data",
+      "body": "We found {kinds}. They do not help the answer and are replaced by placeholders before saving.",
+      "remove": "Remove the data",
+      "sendAnyway": "Send anyway",
+      "kinds": {
+        "email": "an email address",
+        "nfe_key": "an access key",
+        "cnpj": "a CNPJ",
+        "cpf": "a CPF",
+        "phone": "a phone number"
+      }
+    },
+    "reference": {
+      "chipPeriodo": "Tax period: {value}",
+      "chipDate": "Reference date: {value}",
+      "defaultHint": "default: previous month",
+      "open": "Change the reference date",
+      "title": "Reference date",
+      "modePeriodo": "Period",
+      "modeDate": "Exact date",
+      "previousYear": "Previous year",
+      "nextYear": "Next year",
+      "presets": "Shortcuts",
+      "presetPrevious": "Previous month",
+      "presetCurrent": "Current month",
+      "presetLastClosed": "Last closed period",
+      "useDefault": "Back to default",
+      "dateLabel": "Date",
+      "apply": "Apply",
+      "inferred": "Date inferred from the text: {value}",
+      "confirm": "Confirm"
+    },
+    "coverage": {
+      "label": "Coverage on this date",
+      "grounded": "Grounded",
+      "partial": "Partial coverage",
+      "out": "Out of coverage",
+      "bannerPartial": "On this date, Tekó has no sources for {families}. The answer may be incomplete.",
+      "bannerOut": "No Tekó source covers this date. The question may be refused."
+    },
+    "thread": {
+      "label": "Conversation",
+      "you": "You",
+      "assistant": "Tekó",
+      "liveStart": "Generating the answer.",
+      "liveDone": "Answer ready.",
+      "liveStopped": "Answer stopped.",
+      "liveError": "The answer failed.",
+      "noAnswer": "This question has no saved answer.",
+      "blockError": "This part could not be shown.",
+      "retry": "Try again",
+      "reread": "Reload the answer"
+    },
+    "answer": {
+      "referencePeriodo": "Tax period {value}",
+      "referenceDate": "Reference date {value}",
+      "source": {
+        "explicit": "chosen by you",
+        "periodo_apuracao": "chosen by you",
+        "question_text": "inferred from the text",
+        "default": "default: previous month",
+        "clarified": "clarified by you"
+      },
+      "validity": "Validity of the cited wording: {range}",
+      "boundaryInside": "The wording changes within this period: check the exact date.",
+      "citations": "Sources",
+      "degraded": {
+        "lexicalOnly": "Lexical search only",
+        "fallback": "Fallback model",
+        "cached": "Cached answer"
+      }
+    },
+    "intervals": {
+      "range": "{from} to {to}",
+      "since": "since {from}",
+      "until": "until {to}",
+      "always": "no limit"
+    },
+    "refusal": {
+      "title": "No grounded answer",
+      "reasons": {
+        "out_of_coverage": "The date or the topic is outside Tekó coverage.",
+        "no_evidence": "We found no provision that answers the question on this date.",
+        "model_insufficient": "The sources found are not enough to answer safely.",
+        "citation_invalid": "The answer cited sources that could not be confirmed."
+      },
+      "covered": "{family} coverage: {ranges}"
+    },
+    "clarification": {
+      "title": "Which date applies to the question?",
+      "reasons": {
+        "explicit_conflict": "The date in the text differs from the one chosen in the chip.",
+        "ambiguous_text": "The text mentions more than one date."
+      },
+      "choose": "Use {value}"
+    },
+    "feedback": {
+      "label": "Rate the answer",
+      "up": "Helpful answer",
+      "down": "Answer with a problem",
+      "thanks": "Thanks for the feedback."
+    },
+    "citation": {
+      "chip": "Source {number}: {label}",
+      "position": "Citation {current} of {total}",
+      "previous": "Previous citation",
+      "next": "Next citation",
+      "document": "Document",
+      "version": "Version",
+      "family": "Family",
+      "jurisdiction": "Jurisdiction",
+      "key": "Provision",
+      "fields": "Citation fields",
+      "text": "Cited text",
+      "source": "Open the official source",
+      "copy": "Copy citation",
+      "copied": "Citation copied.",
+      "report": "Report wrong citation",
+      "reported": "Thanks: the citation was reported.",
+      "timeline": "Timeline and what changed",
+      "invalid": "This citation was not confirmed by the validator.",
+      "status": {
+        "current": "In force",
+        "superseded": "Superseded",
+        "future": "Future"
+      },
+      "validity": "Validity: {range}"
+    },
+    "suggestions": {
+      "title": "Try it",
+      "body": "The same question on two dates shows different wordings.",
+      "questions": {
+        "rcte76": "What does art. 76, § 6 of the RCTE say?"
+      },
+      "ask": "Ask for {period}"
+    }
   }
 }

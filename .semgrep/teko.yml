@@ -230,6 +230,8 @@ rules:
         - /apps/*/tests
         - /apps/*/perf
         - /apps/*/evals
+        # Helpers das jornadas do Playwright (e2e/support): rodam no runner, contra a stack de CI.
+        - /apps/*/e2e
         - "*.test.ts"
         - "*.test.tsx"
         - "*.spec.ts"

@@ -17,6 +17,7 @@
   "dependencies": {
     "@ai-sdk/react": "catalog:",
     "@base-ui/react": "catalog:",
+    "@simplewebauthn/browser": "catalog:",
     "@streamdown/code": "catalog:",
     "@tanstack/react-query": "catalog:",
     "@teko/shared": "workspace:*",

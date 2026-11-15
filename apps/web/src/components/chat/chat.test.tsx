@@ -15,6 +15,7 @@ import { createQueryClient } from '@/lib/api/query-client'
 import { answerParts, partsToChunks } from '@/lib/chat/parts'
 import ptBR from '../../../messages/pt-BR.json'
 import { ANSWER, QUESTION_ID, questionDetail, RESOLVED_2008 } from '../../../test/chat-fixtures.ts'
+import { ME } from '../../../test/fake-api.ts'
 import { ChatWorkspace } from './chat-workspace.tsx'
 
 /**
@@ -209,6 +210,8 @@ beforeEach(() => {
       fetchCalls.push(request)
       const { pathname } = new URL(request.url)
       if (pathname === '/api/v1/coverage') return json(COVERAGE)
+      // Sessão pronta (onboarding concluído): o composer só destrava com ela.
+      if (pathname === '/api/v1/me') return json(ME)
       // Painel de histórico (ConversationList): sem conversas, para não somar um alerta de erro.
       if (pathname === '/api/v1/conversations') return json({ items: [], nextCursor: null })
       if (pathname === '/api/v1/me/quota') {

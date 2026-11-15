@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
-import { type BrowserContext, expect, test } from '@playwright/test'
+import { expect, test } from '@playwright/test'
 import { enforcedViolations, recordViolations } from './support/csp.ts'
+import { sessionCookie, signInWithTestSession } from './support/session.ts'
 
 /**
  * Histórico, dispositivo e comparação na stack de CI: a conversa criada pela API aparece no
@@ -15,20 +16,6 @@ const LABEL = 'RCTE, art. 76, § 6º'
 const GOYAZES =
   'Qual valor mínimo aplicado no GOYAZES ou no PROESPORTE permitia ao Secretário da Fazenda definir prazos diversos de pagamento do ICMS?'
 
-function sessionCookie(): { name: string; value: string; header: string } {
-  const header = process.env['E2E_SESSION_COOKIE'] ?? ''
-  const separator = header.indexOf('=')
-  if (separator <= 0) {
-    throw new Error('E2E_SESSION_COOKIE ausente: suba a stack com `bash infra/ci/up.sh`')
-  }
-  return { name: header.slice(0, separator), value: header.slice(separator + 1), header }
-}
-
-async function signIn(context: BrowserContext, baseURL: string | undefined): Promise<void> {
-  const { name, value } = sessionCookie()
-  await context.addCookies([{ name, value, url: new URL(baseURL ?? '').origin }])
-}
-
 test.describe('histórico', () => {
   test('a conversa feita pela API aparece no histórico e abre no chat', async ({
     page,
@@ -42,7 +29,7 @@ test.describe('histórico', () => {
       headers: {
         origin: new URL(baseURL ?? '').origin,
         'content-type': 'application/json',
-        cookie: sessionCookie().header,
+        cookie: sessionCookie(),
       },
       data: {
         conversationId,
@@ -56,14 +43,14 @@ test.describe('histórico', () => {
     expect(asked.ok()).toBe(true)
 
     const list = await request.get<unknown>('/api/v1/conversations', {
-      headers: { cookie: sessionCookie().header },
+      headers: { cookie: sessionCookie() },
     })
     expect(list.headers()['cache-control']).toBe('private, no-store')
     const body = (await list.json()) as { items: { conversationId: string }[] }
     expect(body.items[0]?.conversationId).toBe(conversationId)
 
     await recordViolations(page)
-    await signIn(context, baseURL)
+    await signInWithTestSession(context, baseURL)
     await page.goto('/pt-BR/history/')
     const href = `/pt-BR/chat/?c=${conversationId}`
     const item = page.locator('main').locator(`a[href="${href}"]`)
@@ -81,14 +68,18 @@ test.describe('histórico', () => {
     expect(await enforcedViolations(page)).toEqual([])
   })
 
-  test('sem sessão, o histórico leva ao login', async ({ page }) => {
+  test('sem sessão, o histórico leva ao login com o retorno', async ({ page }) => {
     await page.goto('/pt-BR/history/')
-    await expect(page.locator('main [role="alert"]')).toContainText('Sua sessão expirou')
-    await expect(page.locator('main [role="alert"] a')).toHaveAttribute('href', '/pt-BR/sign-in/')
+    // A guarda do grupo `(app)` manda para a entrada, com o caminho de volta.
+    await expect(page).toHaveURL(/\/pt-BR\/sign-in\/\?callbackURL=%2Fpt-BR%2Fhistory%2F$/)
   })
 })
 
 test.describe('dispositivo e comparação', () => {
+  test.beforeEach(async ({ context, baseURL }) => {
+    await signInWithTestSession(context, baseURL)
+  })
+
   test('a página de dispositivo mostra a redação na data, a linha do tempo e o diff', async ({
     page,
   }) => {

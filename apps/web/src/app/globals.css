@@ -129,6 +129,11 @@
     text-size-adjust: 100%;
   }
 
+  /* Densidade compacta (configurações, `data-density`): o espaçamento base do Tailwind encolhe 1/8. */
+  html[data-density="compact"] {
+    --spacing: 0.21875rem;
+  }
+
   /* Sem isto a borda padrão do Tailwind 4 é currentColor; os componentes usam `border` puro. */
   *,
   ::before,

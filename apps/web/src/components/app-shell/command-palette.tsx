@@ -1,9 +1,10 @@
 'use client'
 
-import { HomeIcon, SearchIcon } from 'lucide-react'
-import { useRouter } from 'next/navigation'
+import { HomeIcon, LogInIcon, LogOutIcon, SearchIcon } from 'lucide-react'
+import { usePathname, useRouter } from 'next/navigation'
 import { useLocale, useTranslations } from 'next-intl'
 import { useEffect, useState, useSyncExternalStore } from 'react'
+import { useSession, useSignOutAction } from '@/components/auth/use-session'
 import { setThemePreference, THEME_OPTIONS } from '@/components/theme-selector'
 import { Button } from '@/components/ui/button'
 import {
@@ -17,6 +18,7 @@ import {
   CommandSeparator,
 } from '@/components/ui/command'
 import { Kbd } from '@/components/ui/kbd'
+import { signInPath } from '@/lib/auth/return-path'
 import {
   commandPaletteShortcutLabel,
   isApplePlatform,
@@ -40,7 +42,7 @@ function useShortcutLabel(): string {
 
 /**
  * Paleta de comandos (`Ctrl/⌘+K` ou o botão do cabeçalho): navegação entre as páginas e troca de
- * tema. Filtra pelo texto digitado; setas escolhem, `Enter` executa, `Esc` fecha e devolve o foco.
+ * tema, e entrar ou sair da conta. Filtra pelo texto digitado; setas escolhem, `Enter` executa, `Esc` fecha e devolve o foco.
  */
 export function CommandPalette() {
   const t = useTranslations('shell.palette')
@@ -49,6 +51,10 @@ export function CommandPalette() {
   const locale = useLocale()
   const router = useRouter()
   const shortcut = useShortcutLabel()
+  const tAccount = useTranslations('auth.palette')
+  const pathname = usePathname()
+  const { me } = useSession()
+  const { signOut } = useSignOutAction()
   const [open, setOpen] = useState(false)
 
   useEffect(() => {
@@ -116,6 +122,28 @@ export function CommandPalette() {
                   </CommandItem>
                 )
               })}
+            </CommandGroup>
+            <CommandSeparator />
+            <CommandGroup heading={tAccount('group')}>
+              {me === null ? (
+                <CommandItem
+                  value="sign-in"
+                  keywords={[tAccount('signIn')]}
+                  onSelect={() => run(() => router.push(signInPath(locale, pathname)))}
+                >
+                  <LogInIcon aria-hidden="true" />
+                  {tAccount('signIn')}
+                </CommandItem>
+              ) : (
+                <CommandItem
+                  value="sign-out"
+                  keywords={[tAccount('signOut')]}
+                  onSelect={() => run(signOut)}
+                >
+                  <LogOutIcon aria-hidden="true" />
+                  {tAccount('signOut')}
+                </CommandItem>
+              )}
             </CommandGroup>
             <CommandSeparator />
             <CommandGroup heading={t('theme')}>

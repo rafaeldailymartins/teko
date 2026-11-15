@@ -1,4 +1,4 @@
-import { LogInIcon, type LucideIcon } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import { getTranslations } from 'next-intl/server'
 import type { ReactNode } from 'react'
 import { PAGE_ICONS } from '@/components/app-shell/page-icons'
@@ -10,18 +10,13 @@ import { MAIN_CONTENT_ID } from '@/lib/site'
 import { type LocalePageProps, pageMetadata, resolvePageLocale } from './page-route.ts'
 
 /**
- * Páginas que ainda são esqueleto (chat, histórico, dispositivo e comparação já têm tela; as legais e
- * o "Sobre" ficam em `legal-pages.tsx`).
+ * Páginas que ainda são esqueleto (só a cobertura; as outras têm tela própria, e as legais e o
+ * "Sobre" ficam em `legal-pages.tsx`).
  */
-type PlaceholderPage = Exclude<
-  Page,
-  'chat' | 'history' | 'provision' | 'compare' | 'about' | 'privacy' | 'terms'
->
+type PlaceholderPage = Extract<Page, 'coverage'>
 
 const ICONS: Readonly<Record<PlaceholderPage, LucideIcon>> = {
-  settings: PAGE_ICONS.settings,
   coverage: PAGE_ICONS.coverage,
-  'sign-in': LogInIcon,
 }
 
 interface PlaceholderPageViewProps extends LocalePageProps {
@@ -30,7 +25,7 @@ interface PlaceholderPageViewProps extends LocalePageProps {
 
 /**
  * Página-esqueleto: título e estado vazio, estática e sem chamada à API. As próximas etapas da F5
- * trocam o conteúdo de cada uma (histórico, configurações, entrar, cobertura, páginas legais...).
+ * trocam o conteúdo de cada uma (histórico, cobertura, páginas legais...).
  * As do app shell ficam só com o conteúdo (o layout do grupo `(app)` põe cabeçalho, `<main>` e
  * aviso); as públicas trazem o cabeçalho e o rodapé do site, como a landing.
  */
@@ -65,17 +60,7 @@ async function PlaceholderPageView({ page, params }: PlaceholderPageViewProps) {
   )
 }
 
-export function SettingsPage({ params }: LocalePageProps) {
-  return <PlaceholderPageView page="settings" params={params} />
-}
-export const generateSettingsMetadata = pageMetadata('settings')
-
 export function CoveragePage({ params }: LocalePageProps) {
   return <PlaceholderPageView page="coverage" params={params} />
 }
 export const generateCoverageMetadata = pageMetadata('coverage')
-
-export function SignInPage({ params }: LocalePageProps) {
-  return <PlaceholderPageView page="sign-in" params={params} />
-}
-export const generateSignInMetadata = pageMetadata('sign-in')

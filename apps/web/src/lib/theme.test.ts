@@ -183,7 +183,7 @@ describe('THEME_BOOTSTRAP_SCRIPT', () => {
 
   it('é estável (o hash sha256 dele vai para o CSP)', () => {
     expect(THEME_BOOTSTRAP_SCRIPT).toMatchInlineSnapshot(
-      `"(function(){try{var t=localStorage.getItem("teko-theme");if(t==="light"||t==="dark"){document.documentElement.setAttribute("data-theme",t)}}catch(e){}})()"`,
+      `"(function(){try{var d=document.documentElement,t=localStorage.getItem("teko-theme");if(t==="light"||t==="dark"){d.setAttribute("data-theme",t)}if(localStorage.getItem("teko-density")==="compact"){d.setAttribute("data-density","compact")}}catch(e){}})()"`,
     )
   })
 })

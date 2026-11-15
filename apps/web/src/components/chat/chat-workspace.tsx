@@ -5,6 +5,7 @@ import type { IsoDate } from '@teko/shared/vigencia'
 import { useTranslations } from 'next-intl'
 import { lazy, useCallback, useEffect, useState } from 'react'
 import { Workspace } from '@/components/app-shell/workspace'
+import { useSession } from '@/components/auth/use-session'
 import { ConversationList } from '@/components/history/conversation-list'
 import { Skeleton } from '@/components/ui/skeleton'
 import { type CitationSelection, selectedCitation, stepSelection } from '@/lib/chat/selection'
@@ -51,10 +52,11 @@ const CitationPanel = lazy(() =>
 /**
  * Área de trabalho do chat: histórico | conversa | citação. Guarda a citação aberta (o painel e a
  * conversa são irmãos), abre o Drawer da citação no celular e navega entre citações com `[`/`]`.
- * O painel de histórico é do agente de histórico; aqui fica o estado vazio.
+ * O painel de histórico é a `ConversationList`.
  */
 export function ChatWorkspace() {
   const tPanels = useTranslations('shell.panels')
+  const { composerBlocked } = useSession()
   const tChat = useTranslations('chat.thread')
   const [selection, setSelection] = useState<CitationSelection | null>(null)
   const [citationOpen, setCitationOpen] = useState(false)
@@ -107,8 +109,8 @@ export function ChatWorkspace() {
         <ChatSession
           onOpenCitation={openCitation}
           selectedCitationId={selectedCitation(selection)?.id ?? null}
-          // Onboarding da autenticação: ligar aqui o `useSession().composerBlocked`.
-          composerLocked={false}
+          // Sem sessão confirmada ou com o onboarding pendente, o composer fica travado.
+          composerLocked={composerBlocked}
         />
       </ClientOnly>
     </Workspace>

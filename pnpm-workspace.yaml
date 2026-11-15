@@ -161,3 +161,4 @@ catalog:
   streamdown: 2.7.1 # markdown em streaming das respostas (carregado sob demanda só no chat)
   "@streamdown/code": 2.0.0 # blocos de código do Streamdown (Shiki)
   rehype-harden: 1.1.9 # links só para a própria origem e fontes oficiais; sem imagens nem data:
+  "@simplewebauthn/browser": 13.3.0 # cerimônia WebAuthn da passkey no web (a mesma do plugin do Better Auth), carregada sob demanda

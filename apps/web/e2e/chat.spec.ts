@@ -1,4 +1,6 @@
-import { type BrowserContext, expect, type Locator, type Page, test } from '@playwright/test'
+import { expect, type Locator, type Page, test } from '@playwright/test'
+import { enforcedViolations, recordViolations } from './support/csp.ts'
+import { signInWithTestSession } from './support/session.ts'
 
 /**
  * Jornadas do chat na stack de CI (estático e API na mesma origem, LLM e embeddings fake, sessão de
@@ -14,47 +16,6 @@ const QUESTION = 'O que diz o art. 76, § 6º do RCTE?'
 
 /** Chip do § 6º (no texto ou na lista de fontes), sem os incisos ("§ 6º, I"). */
 const SIXTH_PARAGRAPH = /^Fonte \d+: RCTE, art\. 76, § 6º$/
-
-interface Violation {
-  readonly directive: string
-  readonly blocked: string
-  readonly disposition: string
-}
-
-function sessionCookie(): { name: string; value: string } {
-  const cookie = process.env['E2E_SESSION_COOKIE']
-  if (cookie === undefined || cookie === '') {
-    throw new Error('E2E_SESSION_COOKIE ausente: suba a stack com `bash infra/ci/up.sh`')
-  }
-  const separator = cookie.indexOf('=')
-  return { name: cookie.slice(0, separator), value: cookie.slice(separator + 1) }
-}
-
-async function signIn(context: BrowserContext, baseURL: string | undefined): Promise<void> {
-  await context.addCookies([{ ...sessionCookie(), url: baseURL ?? 'http://localhost:8080' }])
-}
-
-/** Junta as violações de CSP desde o primeiro byte (o mesmo padrão do `platform.spec.ts`). */
-async function recordViolations(page: Page): Promise<void> {
-  await page.addInitScript(() => {
-    const target = window as unknown as { __cspViolations: Violation[] }
-    target.__cspViolations = []
-    document.addEventListener('securitypolicyviolation', (event) => {
-      target.__cspViolations.push({
-        directive: event.effectiveDirective,
-        blocked: event.blockedURI,
-        disposition: event.disposition,
-      })
-    })
-  })
-}
-
-async function enforcedViolations(page: Page): Promise<Violation[]> {
-  const all = await page.evaluate(
-    () => (window as unknown as { __cspViolations: Violation[] }).__cspViolations,
-  )
-  return all.filter((violation) => violation.disposition === 'enforce')
-}
 
 async function ask(page: Page, question: string): Promise<void> {
   const composer = page.getByRole('textbox', { name: 'Sua pergunta' })
@@ -82,7 +43,7 @@ test.use({ locale: 'pt-BR' })
 test.describe('chat', () => {
   test.beforeEach(async ({ context, page, baseURL }) => {
     // Sessão de teste no navegador; troca direta pelo helper comum de sessão dos e2e quando existir.
-    await signIn(context, baseURL)
+    await signInWithTestSession(context, baseURL)
     await recordViolations(page)
   })
 
