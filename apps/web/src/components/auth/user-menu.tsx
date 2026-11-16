@@ -48,22 +48,15 @@ export function UserMenu() {
   }
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger
-        render={
-          <Button
-            variant="ghost"
-            size="icon"
-            aria-label={t('label', { name: me.name })}
-            className="rounded-full"
-          />
-        }
-      >
-        <span
-          aria-hidden="true"
-          className="flex size-7 items-center justify-center rounded-full bg-primary font-medium text-primary-foreground text-xs"
-        >
+      {/*
+       * As iniciais visíveis abrem o nome acessível ("AS Conta de Ana Souza"): quem usa comando de
+       * voz diz o que vê (WCAG 2.5.3, regra label-content-name-mismatch do axe).
+       */}
+      <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="rounded-full" />}>
+        <span className="flex size-7 items-center justify-center rounded-full bg-primary font-medium text-primary-foreground text-xs">
           {initialsOf(me.name)}
-        </span>
+        </span>{' '}
+        <span className="sr-only">{t('label', { name: me.name })}</span>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="min-w-56">
         <DropdownMenuGroup>

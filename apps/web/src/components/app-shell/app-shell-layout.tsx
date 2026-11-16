@@ -40,7 +40,7 @@ export async function AppShellLayout({ children, params }: AppShellLayoutProps) 
       </main>
       <footer className="flex shrink-0 flex-wrap items-center justify-center gap-x-4 border-t bg-surface px-4 py-1.5 text-muted-foreground text-xs">
         <p>{t('disclaimer')}</p>
-        <ConsentPreferencesButton className="inline-flex min-h-6 cursor-pointer items-center underline-offset-4 hover:text-foreground hover:underline" />
+        <ConsentPreferencesButton className="inline-flex min-h-[24px] cursor-pointer items-center underline-offset-4 hover:text-foreground hover:underline" />
       </footer>
     </div>
   )

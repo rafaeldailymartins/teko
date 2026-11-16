@@ -17,8 +17,9 @@ interface CitationChipProps {
   readonly onOpen?: () => void
 }
 
+// Alvo de 24×24 px (WCAG 2.5.8) em pixels: com a raiz em 14 px (`globals.css`), `h-6` daria 21 px.
 const CHIP_CLASSES =
-  'mx-0.5 inline-flex h-6 min-w-6 items-center justify-center rounded-full border px-1.5 align-baseline font-medium font-mono text-xs tabular-nums outline-none transition-colors focus-visible:ring-3 focus-visible:ring-ring/50'
+  'mx-0.5 inline-flex h-[24px] min-w-[24px] items-center justify-center rounded-full border px-1.5 align-baseline font-medium font-mono text-xs tabular-nums outline-none transition-colors focus-visible:ring-3 focus-visible:ring-ring/50'
 
 /**
  * Chip numerado de uma citação: abre o painel de citação no clique e mostra uma prévia (dispositivo,

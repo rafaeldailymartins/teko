@@ -33,7 +33,7 @@ export async function SiteFooter({ locale }: SiteFooterProps) {
               </li>
             ))}
             <li>
-              <ConsentPreferencesButton className="inline-flex min-h-6 cursor-pointer items-center underline-offset-4 hover:text-foreground hover:underline" />
+              <ConsentPreferencesButton className="inline-flex min-h-[24px] cursor-pointer items-center underline-offset-4 hover:text-foreground hover:underline" />
             </li>
           </ul>
           <p>
