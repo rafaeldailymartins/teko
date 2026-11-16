@@ -577,7 +577,8 @@ describe('chat', () => {
 
   it('/ foca o composer e Alt+D abre a data de referência; o mês escolhido vai para a URL', async () => {
     await render(<ChatWorkspace />)
-    const textarea = await waitFor(() => document.querySelector('textarea'))
+    // O composer (e o chip de data) só destravam com a sessão pronta: antes, nem foco nem Alt+D.
+    const textarea = await waitFor(() => document.querySelector('textarea:not(:disabled)'))
     await press({ key: '/' })
     expect(document.activeElement).toBe(textarea)
 
@@ -613,7 +614,10 @@ describe('chat', () => {
 
   it('o seletor alterna para data exata e tem atalhos', async () => {
     await render(<ChatWorkspace />, '?ref=2024-03')
-    const chip = await waitFor(() => document.querySelector('[data-reference-chip]'))
+    // Desabilitado até a sessão carregar: clicar antes não abre o seletor.
+    const chip = await waitFor(() =>
+      document.querySelector<HTMLButtonElement>('[data-reference-chip]:not(:disabled)'),
+    )
     expect(chip.textContent).toContain('Período de apuração: 03/2024')
     await click(chip)
     await click(byText('button', 'Data exata'))
