@@ -146,7 +146,8 @@ async function settle(ms = 30): Promise<void> {
   })
 }
 
-async function waitFor<T>(find: () => T | null | undefined, timeout = 4000): Promise<T> {
+// 10 s: com as suítes da API e do web em paralelo, o primeiro import() do chat (Streamdown) demora.
+async function waitFor<T>(find: () => T | null | undefined, timeout = 10_000): Promise<T> {
   const deadline = Date.now() + timeout
   for (;;) {
     const found = find()
