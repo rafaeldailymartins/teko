@@ -16,6 +16,12 @@ import { SessionGate } from './session-gate.tsx'
 import { SignInPanel } from './sign-in-panel.tsx'
 import { UserMenu } from './user-menu.tsx'
 
+/**
+ * O diálogo do onboarding chega por `import()` sob demanda (fora do first-load): sozinho o teste
+ * leva uns 2 s, mas com a suíte inteira em paralelo passava dos 5 s padrão. Mesmo teto do chat.
+ */
+vi.setConfig({ testTimeout: 30_000 })
+
 const navigation = vi.hoisted(() => ({
   pathname: '/pt-BR/chat/',
   search: new URLSearchParams(),
