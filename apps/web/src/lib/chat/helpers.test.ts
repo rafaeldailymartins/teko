@@ -63,6 +63,11 @@ describe('markdown das respostas', () => {
       ].join('\n'),
     )
     expect(answerClipboardText(' Sem fontes. ', [], 'Fontes')).toBe('Sem fontes.')
+    // Colchete solto antes da citação fica no texto; só o link vira [n].
+    expect(answerClipboardText('Ver [nota [S1](cite:S1).', [], 'Fontes')).toBe('Ver [nota [1].')
+    // Muitos `[` sem fechar não travam a troca (busca linear).
+    const unclosed = `${'['.repeat(50_000)}[S1](cite:S1)`
+    expect(answerClipboardText(unclosed, [], 'Fontes')).toBe(`${'['.repeat(50_000)}[1]`)
   })
 
   it('só deixa links para a própria origem e as fontes oficiais', () => {

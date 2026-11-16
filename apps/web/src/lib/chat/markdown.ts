@@ -50,7 +50,9 @@ export function citationLinksToAnchors(markdown: string): string {
   return markdown.replaceAll(CITE_LINK, (_match, id: string) => `](#cite-${id})`)
 }
 
-const CITE_MARKDOWN = /\[[^\]]*\]\(cite:S([1-9]\d*)\)/g
+// O texto do link não aceita `[`: assim cada tentativa para no próximo colchete e a busca fica
+// linear, mesmo com muitos `[` sem fechar (sem backtracking quadrático).
+const CITE_MARKDOWN = /\[[^[\]]*\]\(cite:S([1-9]\d*)\)/g
 
 /** Uma fonte na lista do "copiar resposta" (dispositivo, documento e versão). */
 export interface CopiedSource {
