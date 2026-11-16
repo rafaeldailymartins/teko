@@ -60,9 +60,21 @@ test.describe('histórico', () => {
 
     await item.click()
     await expect(page).toHaveURL(new RegExp(`/pt-BR/chat/\\?c=${conversationId}$`))
+    // A conversa abre com a pergunta e a resposta gravadas, sem a abertura do chat vazio.
+    await expect(page.locator('[data-message-role="user"]').first()).toContainText(
+      'Qual valor mínimo aplicado no GOYAZES',
+    )
+    await expect(
+      page.locator('article[data-message-role="assistant"] [data-reference-date]').first(),
+    ).toHaveAttribute('data-reference-date', '2008-05-01')
+    await expect(page.locator('[data-welcome-date]')).toHaveCount(0)
     if (!isMobile) {
       // No desktop o painel de histórico do chat marca a conversa aberta.
       await expect(page.locator(`a[href="${href}"][aria-current="page"]`)).toBeVisible()
+      // "Nova conversa" volta ao chat vazio.
+      await page.getByRole('link', { name: 'Nova conversa' }).click()
+      await expect(page).toHaveURL(/\/pt-BR\/chat\/$/)
+      await expect(page.locator('[data-welcome-date]')).toBeVisible()
     }
     await page.waitForLoadState('networkidle')
     expect(await enforcedViolations(page)).toEqual([])

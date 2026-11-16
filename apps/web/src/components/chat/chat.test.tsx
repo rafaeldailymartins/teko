@@ -14,7 +14,13 @@ import { ApiError } from '@/lib/api/errors'
 import { createQueryClient } from '@/lib/api/query-client'
 import { answerParts, partsToChunks } from '@/lib/chat/parts'
 import ptBR from '../../../messages/pt-BR.json'
-import { ANSWER, QUESTION_ID, questionDetail, RESOLVED_2008 } from '../../../test/chat-fixtures.ts'
+import {
+  ANSWER,
+  CONVERSATION_ID,
+  QUESTION_ID,
+  questionDetail,
+  RESOLVED_2008,
+} from '../../../test/chat-fixtures.ts'
 import { ME } from '../../../test/fake-api.ts'
 import { ChatWorkspace } from './chat-workspace.tsx'
 
@@ -124,6 +130,8 @@ const DIFF = {
 
 const fetchCalls: Request[] = []
 let questionResponse: () => Response = () => new Response(null, { status: 404 })
+/** Perguntas de uma conversa (`GET /questions?conversationId=`), ao abrir `?c=`. */
+let historyResponse: () => Response = () => json({ items: [] })
 let timelineResponse: () => Response = () => json(TIMELINE)
 
 function json(body: unknown, status = 200): Response {
@@ -171,8 +179,10 @@ async function render(ui: ReactNode, searchParams = ''): Promise<void> {
     root.render(
       <NextIntlClientProvider locale="pt-BR" messages={ptBR} timeZone="America/Sao_Paulo">
         <QueryClientProvider client={createQueryClient()}>
+          {/* Com memória, como a URL de verdade: a área de trabalho segue o c da URL. */}
           <NuqsTestingAdapter
             searchParams={searchParams}
+            hasMemory
             onUrlUpdate={(event) => urlUpdates.push(event)}
           >
             <TooltipProvider>{ui}</TooltipProvider>
@@ -264,6 +274,7 @@ beforeEach(() => {
   fetchCalls.length = 0
   urlUpdates = []
   questionResponse = () => new Response(null, { status: 404 })
+  historyResponse = () => json({ items: [] })
   timelineResponse = () => json(TIMELINE)
   ;(
     window as unknown as { happyDOM: { setViewport(v: { width: number }): void } }
@@ -291,6 +302,7 @@ beforeEach(() => {
       if (pathname.endsWith('/diff')) return json(DIFF)
       if (pathname.endsWith('/feedback')) return new Response(null, { status: 204 })
       if (pathname.startsWith('/api/v1/questions/')) return questionResponse()
+      if (pathname === '/api/v1/questions') return historyResponse()
       return new Response(null, { status: 404 })
     }),
   )
@@ -582,13 +594,14 @@ describe('chat', () => {
     await render(<ChatWorkspace />)
     const textarea = await type('Pergunta longa')
     await press({ key: 'Enter', ctrlKey: true }, textarea)
-    await waitFor(() => byText('button', 'Parar'))
+    // Os botões do composer são só ícone: o nome acessível é o rótulo.
+    await waitFor(() => document.querySelector('button[aria-label="Parar"]'))
     expect(document.querySelector('section[aria-busy="true"]')).not.toBeNull()
     expect(document.querySelector('[data-testid="chat-live"]')?.textContent).toBe(
       'Gerando a resposta.',
     )
     await press({ key: 'Escape' })
-    await waitFor(() => byText('button', 'Enviar'))
+    await waitFor(() => document.querySelector('button[aria-label="Enviar"]'))
     expect(document.querySelector('[data-testid="chat-live"]')?.textContent).toBe(
       'Resposta interrompida.',
     )
@@ -652,6 +665,55 @@ describe('chat', () => {
     await click(document.querySelector('[data-reference-chip]'))
     await click(byText('button', 'Voltar ao padrão'))
     expect(urlUpdates.at(-1)?.queryString).not.toContain('ref=')
+  })
+
+  it('abre a conversa da URL (c) com todas as perguntas dela', async () => {
+    const second = '0193a3b0-7c1e-7b3a-9f00-4c2d1e5f6a7d'
+    historyResponse = () =>
+      json({
+        items: [
+          questionDetail(),
+          questionDetail({ id: second, question: 'E em 01/2010?', referenceDate: '2010-01-01' }),
+        ],
+      })
+    await render(<ChatWorkspace />, `?c=${CONVERSATION_ID}`)
+    await waitFor(() => document.querySelectorAll('[data-message-role="assistant"]').length === 2)
+    const request = fetchCalls.find((call) => new URL(call.url).pathname === '/api/v1/questions')
+    expect(new URL(request?.url ?? '').searchParams.get('conversationId')).toBe(CONVERSATION_ID)
+    expect(
+      [...document.querySelectorAll('[data-message-role="user"]')].map((item) => item.textContent),
+    ).toEqual(['Você: O que diz o art. 76, § 6º do RCTE?', 'Você: E em 01/2010?'])
+    // Sem a abertura: a conversa já está na tela.
+    expect(document.querySelector('[data-welcome-date]')).toBeNull()
+  })
+
+  it('a abertura do chat vazio: saudação, data em destaque e sugestões sem repetir', async () => {
+    await render(<ChatWorkspace />, '?ref=2008-05')
+    const heading = await waitFor(() => document.querySelector('h1'))
+    expect(heading.textContent).toMatch(/^(Bom dia|Boa tarde|Boa noite), Ana$/)
+    expect(document.querySelector('[data-welcome-date]')?.textContent).toContain('05/2008')
+    const suggestions = [...document.querySelectorAll('[data-suggestion]')]
+    const questions = suggestions.map(
+      (item) => item.querySelector('[lang="pt-BR"]')?.textContent ?? '',
+    )
+    expect(questions).toHaveLength(5)
+    expect(new Set(questions).size).toBe(5)
+
+    // A data em destaque abre o mesmo seletor do chip do composer.
+    await click(await waitFor(() => document.querySelector('[data-welcome-date]:not(:disabled)')))
+    await waitFor(() => byText('[data-slot="popover-content"]', 'Data de referência'))
+  })
+
+  it('uma sugestão de família pergunta no período dela', async () => {
+    transport.scenarios.push(answered)
+    await render(<ChatWorkspace />)
+    await click(await waitFor(() => enabledButton('Como se preenche o registro C170')))
+    expect(transport.calls[0]).toMatchObject({
+      question: 'Como se preenche o registro C170 da EFD ICMS/IPI?',
+      context: { reference: { periodoApuracao: '2025-06', source: 'periodo_apuracao' } },
+    })
+    // A abertura sai da tela: o foco vai para o composer.
+    expect(document.activeElement?.tagName).toBe('TEXTAREA')
   })
 
   it('relê a pergunta da URL (q) ao abrir', async () => {

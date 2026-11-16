@@ -68,6 +68,11 @@ export function chatConversationHref(locale: Locale, conversationId: string): st
   return `/${locale}/chat/${serializeChat({ c: conversationId })}`
 }
 
+/** Conversa nova (o chat vazio), mantendo a data de referência escolhida. */
+export function newConversationHref(locale: Locale, ref: ReferenceInput | null): string {
+  return `/${locale}/chat/${serializeChat({ ref })}`
+}
+
 /** Dispositivo numa data (`ref` ausente = hoje). */
 export function provisionHref(
   locale: Locale,

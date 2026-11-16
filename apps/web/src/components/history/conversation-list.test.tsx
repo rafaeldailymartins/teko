@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 import { createProblem, ErrorCode } from '@teko/shared/errors'
 import type { AnchorHTMLAttributes } from 'react'
+import { act } from 'react'
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { apiClient } from '@/lib/api/client'
 import { conversationsQuery } from '@/lib/api/queries'
@@ -106,6 +107,40 @@ describe('ConversationList', () => {
     expect(titles).toEqual(['Primeira', 'Terceira'])
     expect(byText('button', 'Carregar mais')).toBeUndefined()
     expect(rendered.container.textContent).toContain('90 dias')
+  })
+
+  it('na página: grupos por dia e busca pelo título, sem acento nem caixa', async () => {
+    const items = [
+      conversation(FIRST, 'Crédito de ICMS na EFD'),
+      conversation(SECOND, 'RCTE art. 76, § 6º'),
+      conversation(THIRD, 'Prazo do ICMS'),
+      conversation('0193a3b0-7c1e-7b3a-9f00-000000000004', 'Evento R-4020 da Reinf'),
+    ]
+    rendered = await renderClient(<ConversationList variant="page" />, {
+      client: seeded([{ items, nextCursor: null }]),
+    })
+    const { container } = rendered
+    // As quatro são de 10/11/2026, antes da semana de hoje: um grupo só.
+    expect(container.querySelectorAll('nav section')).toHaveLength(1)
+    expect(container.querySelector('nav section h2')?.textContent).toBeTruthy()
+
+    const search = container.querySelector<HTMLInputElement>('input[type="search"]')
+    if (search === null) throw new Error('busca ausente')
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set
+    await act(async () => {
+      setter?.call(search, 'credito efd')
+      search.dispatchEvent(new Event('input', { bubbles: true }))
+    })
+    const titles = [...container.querySelectorAll('nav li a > span:first-child')].map(
+      (span) => span.textContent,
+    )
+    expect(titles).toEqual(['Crédito de ICMS na EFD'])
+
+    await act(async () => {
+      setter?.call(search, 'reinf ecd')
+      search.dispatchEvent(new Event('input', { bubbles: true }))
+    })
+    expect(container.querySelector('nav [role="status"]')?.textContent).toContain('reinf ecd')
   })
 
   it('vazio: estado vazio na página e uma frase no painel', async () => {

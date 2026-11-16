@@ -3,92 +3,160 @@
 import { type Citation, idSchema, type ResolvedReferenceDate } from '@teko/shared/contracts'
 import type { Locale } from '@teko/shared/i18n'
 import type { IsoDate } from '@teko/shared/vigencia'
-import { AlertTriangleIcon, CircleSlashIcon } from 'lucide-react'
+import {
+  AlertTriangleIcon,
+  CircleSlashIcon,
+  DatabaseIcon,
+  type LucideIcon,
+  ServerIcon,
+  ZapOffIcon,
+} from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import { lazy, type ReactNode, Suspense, useCallback } from 'react'
-import { Button } from '@/components/ui/button'
+import { TekoLogo } from '@/components/brand/teko-logo'
+import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { CoverageStatus } from '@/lib/chat/coverage'
 import {
   type AnswerView,
   answerValidity,
   answerView,
+  type DegradationLabel,
   degradationLabels,
   messageText,
   type TekoUIMessage,
 } from '@/lib/chat/parts'
 import { formatIsoDate, formatTaxPeriod } from '@/lib/i18n/format'
+import { cn } from '@/lib/utils'
+import { AnswerActions } from './answer-actions.tsx'
 import { CitationChip } from './citation-chip.tsx'
 import { CoverageBanner } from './coverage.tsx'
-import { FeedbackButtons } from './feedback-buttons.tsx'
+import { SourceList } from './source-list.tsx'
 import { useIntervalText } from './validity-badge.tsx'
 
 /** Streamdown e Shiki: chunk sob demanda, pré-carregado quando a conversa abre. */
 const AnswerMarkdown = lazy(() => import('./answer-markdown.tsx'))
+
+/** Medida de leitura das respostas: 16 px, entrelinha folgada e linhas de até ~70 caracteres. */
+const READING_CLASSES = 'max-w-[70ch] text-[16px] leading-[1.7] text-foreground'
 
 /** Bolha da pergunta (aparece na hora do envio: bolha otimista). */
 export function UserBubble({ message }: { readonly message: TekoUIMessage }) {
   const t = useTranslations('chat.thread')
   return (
     <div className="flex justify-end" data-message-role="user">
-      <div className="max-w-[85%] rounded-2xl rounded-br-sm bg-secondary px-4 py-2 text-secondary-foreground">
+      <div className="max-w-[85%] rounded-2xl rounded-br-md border border-border/60 bg-secondary px-4 py-2.5 text-secondary-foreground shadow-soft sm:max-w-[75%]">
         <span className="sr-only">{t('you')}: </span>
-        <p className="whitespace-pre-wrap">{messageText(message)}</p>
+        <p className="whitespace-pre-wrap text-[15px] leading-relaxed">{messageText(message)}</p>
       </div>
     </div>
   )
 }
 
-/** Placeholder da resposta entre o envio e o primeiro chunk. */
-export function AnswerSkeleton() {
+/** Nome e selo do Tekó no topo de cada resposta. */
+function AnswerByline() {
+  const t = useTranslations('chat.thread')
   return (
-    <div className="flex flex-col gap-2" data-testid="answer-skeleton">
-      <Skeleton className="h-4 w-48" />
-      <Skeleton className="h-4 w-full" />
-      <Skeleton className="h-4 w-5/6" />
+    <span className="inline-flex items-center gap-2">
+      <TekoLogo className="size-6 rounded-md shadow-soft" />
+      <span className="font-semibold text-sm">{t('assistant')}</span>
+    </span>
+  )
+}
+
+interface AnswerSkeletonProps {
+  /** Texto do estado ("Consultando as redações vigentes…"); sem ele, só a forma da resposta. */
+  readonly label?: string
+}
+
+/**
+ * Placeholder da resposta com a forma dela (selo, rótulos da data e da vigência, parágrafo e fontes)
+ * e, com `label`, o ponto âmbar andando sobre o fio da linha do tempo: o Tekó procura a redação
+ * vigente na data. Com movimento reduzido, o ponto fica parado.
+ */
+export function AnswerSkeleton({ label }: AnswerSkeletonProps) {
+  return (
+    <div className="flex flex-col gap-3" data-testid="answer-skeleton">
+      <div className="flex flex-wrap items-center gap-2">
+        <AnswerByline />
+        <Skeleton className="h-5 w-40 rounded-full" />
+        <Skeleton className="h-5 w-48 rounded-full" />
+      </div>
+      {label !== undefined && (
+        <div className="flex items-center gap-3 text-muted-foreground text-sm">
+          <span aria-hidden="true" className="timeline-rule relative h-px w-16 shrink-0">
+            <span className="absolute top-1/2 left-1/2 size-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-date-mark motion-safe:left-0 motion-safe:translate-x-0 motion-safe:animate-timeline" />
+          </span>
+          <span>{label}</span>
+        </div>
+      )}
+      <div className="flex max-w-[70ch] flex-col gap-2.5 pt-1">
+        <Skeleton className="h-4 w-full" />
+        <Skeleton className="h-4 w-[94%]" />
+        <Skeleton className="h-4 w-[82%]" />
+        <Skeleton className="h-4 w-3/5" />
+      </div>
+      <div className="grid max-w-[70ch] gap-2 pt-1 sm:grid-cols-2">
+        <Skeleton className="h-14 w-full rounded-lg" />
+        <Skeleton className="h-14 w-full rounded-lg" />
+      </div>
     </div>
   )
 }
 
-function referenceText(
+function referenceValue(
   reference: ResolvedReferenceDate,
   t: ReturnType<typeof useTranslations<'chat.answer'>>,
   locale: Locale,
 ): string {
   // Período de apuração (o PA resolve para o dia 1) e data exata têm formas próprias.
   const isPeriodo = reference.value.endsWith('-01') && reference.source !== 'explicit'
-  const value = isPeriodo
+  return isPeriodo
     ? t('referencePeriodo', { value: formatTaxPeriod(locale, reference.value.slice(0, 7)) })
     : t('referenceDate', { value: formatIsoDate(locale, reference.value, 'numeric') })
-  return `${value} · ${t(`source.${reference.source}`)}`
 }
 
-/** Cabeçalho da resposta: data de referência usada, origem dela e vigência das redações citadas. */
+/**
+ * Cabeçalho da resposta: o selo e, em `Badge`, a data de referência usada (âmbar, com a origem
+ * dela; tracejado quando inferida do texto) e a vigência das redações citadas (verde-folha).
+ */
 function AnswerHeader({ view }: { readonly view: AnswerView }) {
   const t = useTranslations('chat.answer')
   const locale = useLocale()
   const intervalText = useIntervalText()
   const { reference } = view
-  if (reference === null) return null
   const validity = answerValidity(view.citations)
-  const inferred = reference.source === 'question_text'
+  const inferred = reference?.source === 'question_text'
   return (
-    <header
-      className="flex flex-col gap-1 text-muted-foreground text-xs"
-      data-reference-date={reference.value}
-      data-reference-source={reference.source}
-    >
-      <p className={inferred ? 'font-medium text-accent-foreground' : undefined}>
-        {referenceText(reference, t, locale)}
-      </p>
-      {validity !== null && (
-        <p data-answer-validity="" className="tabular-nums">
-          {t('validity', { range: intervalText(validity) })}
-        </p>
-      )}
-      {reference.periodBoundaryInside && (
-        <p className="flex items-center gap-1 text-degraded">
-          <AlertTriangleIcon aria-hidden="true" className="size-3.5" />
+    <header className="flex flex-col gap-2">
+      <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
+        <AnswerByline />
+        {reference !== null && (
+          <div
+            className="flex flex-wrap items-center gap-1.5"
+            data-reference-date={reference.value}
+            data-reference-source={reference.source}
+          >
+            <Badge tone="accent" size="sm" className={cn(inferred && 'border-dashed')}>
+              <span aria-hidden="true" className="size-1.5 shrink-0 rounded-full bg-date-mark" />
+              <span className="font-semibold tabular-nums">
+                {referenceValue(reference, t, locale)}
+              </span>
+              <span className="font-normal opacity-85">· {t(`source.${reference.source}`)}</span>
+            </Badge>
+            {validity !== null && (
+              <Badge tone="leaf" size="sm" data-answer-validity="">
+                <span className="tabular-nums">
+                  {t('validity', { range: intervalText(validity) })}
+                </span>
+              </Badge>
+            )}
+          </div>
+        )}
+      </div>
+      {reference?.periodBoundaryInside === true && (
+        <p className="flex items-center gap-1.5 text-degraded text-sm">
+          <AlertTriangleIcon aria-hidden="true" className="size-4 shrink-0" />
           {t('boundaryInside')}
         </p>
       )}
@@ -96,25 +164,37 @@ function AnswerHeader({ view }: { readonly view: AnswerView }) {
   )
 }
 
+const DEGRADATION_ICONS: Readonly<Record<DegradationLabel, LucideIcon>> = {
+  lexicalOnly: ZapOffIcon,
+  fallback: ServerIcon,
+  cached: DatabaseIcon,
+}
+
+/** Rótulos de degradação de `data-meta`: discretos, no tom de alerta, com ícone próprio. */
 function DegradationBadges({ view }: { readonly view: AnswerView }) {
   const t = useTranslations('chat.answer.degraded')
   const labels = degradationLabels(view.meta)
   if (labels.length === 0) return null
   return (
-    <ul className="flex flex-wrap gap-1.5">
-      {labels.map((label) => (
-        <li
-          key={label}
-          data-degraded={label}
-          className="rounded-full border border-degraded px-2 py-0.5 text-degraded text-xs"
-        >
-          {t(label)}
-        </li>
-      ))}
+    <ul className="flex flex-wrap gap-1.5" aria-label={t('label')}>
+      {labels.map((label) => {
+        const Icon = DEGRADATION_ICONS[label]
+        return (
+          <li
+            key={label}
+            data-degraded={label}
+            className="inline-flex items-center gap-1.5 rounded-full border border-degraded/40 bg-popover px-2 py-0.5 font-medium text-degraded text-xs"
+          >
+            <Icon aria-hidden="true" className="size-3.5" />
+            {t(label)}
+          </li>
+        )
+      })}
     </ul>
   )
 }
 
+/** Recusa: sem resposta fundamentada, com o motivo e o que o corpus cobre. Não é um erro. */
 function RefusalNotice({ view }: { readonly view: AnswerView }) {
   const t = useTranslations('chat.refusal')
   const intervalText = useIntervalText()
@@ -124,21 +204,34 @@ function RefusalNotice({ view }: { readonly view: AnswerView }) {
     <div
       role="note"
       data-refusal={refusal.reason}
-      className="flex flex-col gap-1 rounded-lg border px-3 py-2 text-sm"
+      className="flex max-w-[70ch] gap-3 rounded-xl border bg-surface p-4"
     >
-      <p className="flex items-center gap-2 font-medium">
-        <CircleSlashIcon aria-hidden="true" className="size-4" />
-        {t('title')}
-      </p>
-      <p>{t(`reasons.${refusal.reason}`)}</p>
-      {refusal.coverage?.map((family) => (
-        <p key={family.family} className="text-muted-foreground text-xs tabular-nums">
-          {t('covered', {
-            family: family.family,
-            ranges: family.covered.map((interval) => intervalText(interval)).join('; '),
-          })}
-        </p>
-      ))}
+      <span
+        aria-hidden="true"
+        className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground"
+      >
+        <CircleSlashIcon className="size-4" />
+      </span>
+      <div className="flex min-w-0 flex-col gap-1.5">
+        <p className="font-semibold font-serif text-base">{t('title')}</p>
+        <p className="text-[15px] leading-relaxed">{t(`reasons.${refusal.reason}`)}</p>
+        {refusal.coverage !== undefined && refusal.coverage.length > 0 && (
+          <ul className="flex flex-col gap-1 pt-1">
+            {refusal.coverage.map((family) => (
+              <li
+                key={family.family}
+                className="flex items-center gap-2 font-mono text-muted-foreground text-xs tabular-nums"
+              >
+                <span aria-hidden="true" className="size-1.5 shrink-0 rounded-full bg-leaf" />
+                {t('covered', {
+                  family: family.family,
+                  ranges: family.covered.map((interval) => intervalText(interval)).join('; '),
+                })}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     </div>
   )
 }
@@ -149,28 +242,33 @@ interface ClarificationProps {
   readonly disabled: boolean
 }
 
+/** Esclarecimento da data: um botão por data candidata, no âmbar da data de referência. */
 function ClarificationButtons({ view, onChoose, disabled }: ClarificationProps) {
   const t = useTranslations('chat.clarification')
   const locale = useLocale()
   const { clarification } = view
   if (clarification === null) return null
   return (
-    <fieldset className="flex flex-col gap-2">
-      <legend className="font-medium">{t('title')}</legend>
-      <p className="text-muted-foreground text-sm">{t(`reasons.${clarification.reason}`)}</p>
+    <fieldset className="flex max-w-[70ch] flex-col gap-2.5 rounded-xl border border-accent-border/60 bg-popover p-4 shadow-soft">
+      <legend className="float-left font-semibold font-serif text-base">{t('title')}</legend>
+      <p className="clear-left text-muted-foreground text-sm">
+        {t(`reasons.${clarification.reason}`)}
+      </p>
       <div className="flex flex-wrap gap-2">
         {clarification.candidates.map((date) => (
-          <Button
+          <button
             key={date}
-            variant="outline"
-            size="sm"
+            type="button"
             disabled={disabled}
             data-candidate={date}
-            className="border-accent-border"
             onClick={() => onChoose(date)}
+            className="inline-flex h-9 items-center gap-2 rounded-full border border-accent-border/70 bg-accent px-3.5 font-medium text-accent-foreground text-sm shadow-soft outline-none transition-shadow duration-150 ease-out-soft hover:shadow-raised focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50"
           >
-            {t('choose', { value: formatIsoDate(locale, date, 'numeric') })}
-          </Button>
+            <span aria-hidden="true" className="size-2 rounded-full bg-date-mark" />
+            <span className="tabular-nums">
+              {t('choose', { value: formatIsoDate(locale, date, 'numeric') })}
+            </span>
+          </button>
         ))}
       </div>
     </fieldset>
@@ -190,8 +288,9 @@ interface AssistantMessageProps {
 }
 
 /**
- * Resposta do assistente: cabeçalho com data e vigência, rótulos de degradação, avisos de
- * cobertura, recusa ou esclarecimento, markdown com os chips de citação, fontes e feedback.
+ * Resposta do assistente: cabeçalho com o selo, a data e a vigência, rótulos de degradação, avisos
+ * de cobertura, recusa ou esclarecimento, o markdown na medida de leitura com os chips de citação,
+ * as fontes em cartões e as ações (copiar, 👍/👎).
  */
 export function AssistantMessage({
   message,
@@ -236,7 +335,7 @@ export function AssistantMessage({
       aria-label={t('thread.assistant')}
       data-message-role="assistant"
       data-message-id={message.id}
-      className="flex flex-col gap-3"
+      className="group/answer flex flex-col gap-3.5"
     >
       <AnswerHeader view={view} />
       <DegradationBadges view={view} />
@@ -246,7 +345,7 @@ export function AssistantMessage({
       <RefusalNotice view={view} />
       <ClarificationButtons view={view} onChoose={onClarify} disabled={busy} />
       {view.text !== '' && (
-        <div data-answer-body="">
+        <div data-answer-body="" className={READING_CLASSES}>
           <Suspense fallback={<p className="whitespace-pre-wrap">{view.text}</p>}>
             <AnswerMarkdown
               markdown={view.text}
@@ -258,23 +357,22 @@ export function AssistantMessage({
       )}
       {streaming && view.text === '' && view.refusal === null && <AnswerSkeleton />}
       {citations.length > 0 && (
-        <div className="flex flex-wrap items-center gap-1 text-muted-foreground text-xs">
-          <span>{t('answer.citations')}:</span>
-          {citations.map((citation) => (
-            <CitationChip
-              key={citation.id}
-              citation={citation}
-              number={Number(citation.id.slice(1))}
-              today={today}
-              selected={selectedCitationId === citation.id}
-              onOpen={() => open(citation.id)}
-            />
-          ))}
-        </div>
+        <SourceList
+          citations={citations}
+          today={today}
+          selectedCitationId={selectedCitationId}
+          onOpen={open}
+        />
       )}
       {(finished || footer !== undefined) && (
         <div className="flex flex-wrap items-center gap-2">
-          {finished && questionId !== null && <FeedbackButtons questionId={questionId} />}
+          {finished && (
+            <AnswerActions
+              questionId={questionId}
+              markdown={view.text === '' ? null : view.text}
+              citations={citations}
+            />
+          )}
           {footer}
         </div>
       )}

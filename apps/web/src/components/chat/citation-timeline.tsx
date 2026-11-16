@@ -1,13 +1,15 @@
 'use client'
 
 import type { IsoDate } from '@teko/shared/vigencia'
-import { useTranslations } from 'next-intl'
+import { GitCompareArrowsIcon } from 'lucide-react'
+import { useLocale, useTranslations } from 'next-intl'
 import { lazy, type ReactNode, Suspense, useId, useState } from 'react'
 import { ProvisionTimeline } from '@/components/provision/provision-timeline'
 import { QueryError } from '@/components/query-error'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useProvisionTimeline } from '@/lib/api/hooks'
+import { formatIsoDate } from '@/lib/i18n/format'
 import { dateWithin, displayedVersionIndex, versionIndexAt } from '@/lib/validity'
 
 /** "O que mudou" só baixa o próprio código no clique (fora do chunk do painel). */
@@ -41,6 +43,7 @@ interface CitationTimelineProps {
  */
 export function CitationTimeline({ stableKey, referenceDate, today }: CitationTimelineProps) {
   const t = useTranslations('provision')
+  const locale = useLocale()
   const query = useProvisionTimeline(stableKey)
   const [diffOpen, setDiffOpen] = useState(false)
   const id = useId()
@@ -76,12 +79,16 @@ export function CitationTimeline({ stableKey, referenceDate, today }: CitationTi
     const diffFrom = previous === undefined ? null : dateWithin(previous.validity, date)
     body = (
       <>
-        <p className="text-muted-foreground text-xs">
-          {t('timeline.count', { count: versions.length })}
-        </p>
-        <ProvisionTimeline versions={versions} selectedIndex={index} today={today} />
-        <section aria-labelledby={`${id}-changes`} className="flex flex-col gap-2">
-          <h4 id={`${id}-changes`} className="font-medium text-sm">
+        <ProvisionTimeline
+          versions={versions}
+          selectedIndex={index}
+          today={today}
+          selectedLabel={t('timeline.atReference', {
+            date: formatIsoDate(locale, date, 'numeric'),
+          })}
+        />
+        <section aria-labelledby={`${id}-changes`} className="flex flex-col gap-2.5 pt-2">
+          <h4 id={`${id}-changes`} className="font-semibold font-serif text-base">
             {t('whatChanged')}
           </h4>
           {diffFrom === null || diffTo === null ? (
@@ -89,13 +96,14 @@ export function CitationTimeline({ stableKey, referenceDate, today }: CitationTi
           ) : (
             <>
               <Button
-                variant="outline"
+                variant={diffOpen ? 'secondary' : 'outline'}
                 size="sm"
                 className="self-start"
                 aria-expanded={diffOpen}
                 aria-controls={`${id}-diff`}
                 onClick={() => setDiffOpen((open) => !open)}
               >
+                <GitCompareArrowsIcon aria-hidden="true" />
                 {diffOpen ? t('hideDiff') : t('showDiff')}
               </Button>
               <div id={`${id}-diff`}>
@@ -118,10 +126,17 @@ export function CitationTimeline({ stableKey, referenceDate, today }: CitationTi
   }
 
   return (
-    <section aria-labelledby={`${id}-timeline`} className="flex flex-col gap-3">
-      <h4 id={`${id}-timeline`} className="font-medium text-sm">
-        {t('timeline.title')}
-      </h4>
+    <section aria-labelledby={`${id}-timeline`} className="flex flex-col gap-3 border-t pt-5">
+      <div className="flex items-baseline justify-between gap-2">
+        <h4 id={`${id}-timeline`} className="font-semibold font-serif text-base">
+          {t('timeline.title')}
+        </h4>
+        {query.isSuccess && (
+          <span className="text-muted-foreground text-xs">
+            {t('timeline.count', { count: query.data.versions.length })}
+          </span>
+        )}
+      </div>
       {body}
     </section>
   )

@@ -7,7 +7,7 @@ export const generateCompareMetadata = pageMetadata('compare')
 export async function ComparePage({ params }: LocalePageProps) {
   await resolvePageLocale(params)
   return (
-    <div className="mx-auto w-full max-w-4xl px-5 py-10 sm:py-14">
+    <div className="mx-auto w-full max-w-5xl px-5 py-8 sm:py-12">
       <CompareView />
     </div>
   )

@@ -45,7 +45,9 @@ const ROUTES: readonly Route[] = [
   { name: 'chat vazio', path: 'chat/', session: true },
   { name: 'history', path: 'history/', session: true },
   { name: 'provision', path: `provision/?k=${KEY}&ref=2008-05`, session: true },
+  { name: 'provision (busca)', path: 'provision/?ref=2008-05', session: true },
   { name: 'compare', path: `compare/?k=${KEY}&from=2008-05&to=2010-01`, session: true },
+  { name: 'compare (vazio)', path: 'compare/', session: true },
   { name: 'settings', path: 'settings/', session: true },
   { name: 'privacy', path: 'privacy/' },
   { name: 'terms', path: 'terms/' },
@@ -65,7 +67,10 @@ async function settled(page: Page): Promise<void> {
   await expect(page.locator('h1').first()).toBeAttached()
   await page.evaluate(async () => {
     await document.fonts.ready
-    await Promise.all(document.getAnimations().map((animation) => animation.finished))
+    // Uma transição interrompida (hover, foco que muda) rejeita o `finished`: também terminou.
+    await Promise.all(
+      document.getAnimations().map((animation) => animation.finished.catch(() => undefined)),
+    )
   })
 }
 
@@ -136,6 +141,15 @@ for (const locale of ['en', 'pt-BR'] as const) {
         await expect(scope.getByRole('link', { name: chat.citation.source })).toBeVisible()
         await settled(page)
         await expectNoViolations(page, testInfo)
+
+        // O que mudou, no próprio painel (a primeira fonte pode não ter redação anterior).
+        const toggle = scope.getByRole('button', { name: MESSAGES[locale].provision.showDiff })
+        if (await toggle.isVisible()) {
+          await toggle.click()
+          await expect(scope.locator('ins, del').first()).toBeVisible()
+          await settled(page)
+          await expectNoViolations(page, testInfo)
+        }
       })
 
       test.describe('primeira visita', () => {
