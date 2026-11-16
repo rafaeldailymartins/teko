@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { decideQuota } from './quota-guard.ts'
+import { decideQuota, quotaUsage } from './quota-guard.ts'
 
 const CAPS = {
   questionsGlobal: 300,
@@ -53,6 +53,28 @@ describe('decideQuota', () => {
       decideQuota({ ...IDLE, globalStreamSeconds: 5900, globalNeurons: 795 }, CAPS, RESERVATION),
     ).toEqual({
       kind: 'ok',
+    })
+  })
+})
+
+describe('quotaUsage', () => {
+  it('uso global do dia sobre cada teto', () => {
+    expect(
+      quotaUsage(
+        { ...IDLE, globalRequests: 150, globalStreamSeconds: 4500, globalNeurons: 80 },
+        CAPS,
+      ),
+    ).toEqual([
+      { scope: 'global_questions', ratio: 0.5 },
+      { scope: 'global_stream_seconds', ratio: 0.75 },
+      { scope: 'global_neurons', ratio: 0.1 },
+    ])
+  })
+
+  it('teto zero conta como esgotado', () => {
+    expect(quotaUsage(IDLE, { ...CAPS, neuronsGlobal: 0 })[2]).toEqual({
+      scope: 'global_neurons',
+      ratio: 1,
     })
   })
 })

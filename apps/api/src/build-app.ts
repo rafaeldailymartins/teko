@@ -19,6 +19,7 @@ import {
   registerApiCacheControl,
   registerSecurityHeaders,
 } from '#adapters/in/http/plugins/security-headers.ts'
+import { registerTelemetry } from '#adapters/in/http/plugins/telemetry.ts'
 import { registerProblemHandlers } from '#adapters/in/http/problem/error-handler.ts'
 import { authProviderRoutes } from '#adapters/in/http/routes/auth-providers.ts'
 import { coverageRoutes } from '#adapters/in/http/routes/coverage.ts'
@@ -60,7 +61,7 @@ export function fastifyTrustProxy(trustProxy: HttpOptions['trustProxy']): Fastif
  *
  *  1. opções do Fastify: logger com redact, `bodyLimit` 32 KB, request id, `trustProxy` por
  *     plataforma;
- *  2. compilers Zod (o `@fastify/otel` entra aqui na F6);
+ *  2. compilers Zod e telemetria (`@fastify/otel`, `x-trace-id`, duração e flush por requisição);
  *  3. `under-pressure`;
  *  4. `helmet` (CSP `default-src 'none'`);
  *  5. hook `/api/*` com `Cache-Control: private, no-store` e `Vary: Cookie`;
@@ -91,6 +92,7 @@ export async function buildApp(deps: BuildAppDeps): Promise<FastifyInstance> {
   registerProblemHandlers(app, deps.http.staticSite === undefined ? undefined : staticNotFound)
   decorateContainer(app, deps.container)
   registerRequestIdHeader(app)
+  await registerTelemetry(app, deps.http.telemetry)
 
   await registerUnderPressure(app, { eventLoopDelayGuard: deps.http.eventLoopDelayGuard })
   await registerSecurityHeaders(app)

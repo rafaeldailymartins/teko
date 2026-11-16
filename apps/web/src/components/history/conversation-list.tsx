@@ -10,6 +10,7 @@ import { useQueryStates } from 'nuqs'
 import { Suspense, useId, useRef, useState } from 'react'
 import { useCloseHistoryPanel } from '@/components/app-shell/workspace'
 import { EmptyState } from '@/components/empty-state'
+import { SupportId } from '@/components/support-id'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import type { ListConversationsResponse } from '@/lib/api/__generated__/types.gen'
@@ -186,6 +187,7 @@ function ConversationListContent({ variant, onRequestDelete }: ConversationListC
           <CircleAlertIcon aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-destructive" />
           {signedOut ? tRoot(query.error.messageKey) : t('error')}
         </p>
+        <SupportId traceId={query.error.traceId} />
         {signedOut ? (
           <Link
             href={localePagePath(locale, 'sign-in')}

@@ -3,8 +3,8 @@ import type { IncomingMessage } from 'node:http'
 import type { FastifyInstance } from 'fastify'
 
 /**
- * Request id de cada requisição (também usado como `traceId` do problem+json até a F6 ligar o
- * OpenTelemetry), devolvido ao cliente em `x-request-id`.
+ * Request id de cada requisição (o da borda, nos logs), devolvido ao cliente em `x-request-id`. O
+ * `traceId` do problem+json e o `x-trace-id` são o `trace_id` do OTel (`telemetry.ts`).
  *
  * A origem depende da plataforma (`HttpOptions.requestIdHeader`): `x-vercel-id`, que a borda da
  * Vercel gera; `x-request-id`, que o Caddy da stack de CI e do proxy local sobrescreve com um UUID

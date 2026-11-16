@@ -244,11 +244,14 @@ describe('cabeçalhos de segurança e request id', () => {
 })
 
 describe('erros RFC 9457', () => {
-  it('rota inexistente sai como problem+json com traceId = request id', async () => {
+  it('rota inexistente sai como problem+json com traceId = trace_id do traceparent (x-trace-id)', async () => {
     const { app } = await start('ci')
     const res = await app.inject({
       url: '/api/v1/nada?q=1',
-      headers: { 'x-request-id': 'caddy-request-0001' },
+      headers: {
+        'x-request-id': 'caddy-request-0001',
+        traceparent: '00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-00',
+      },
     })
 
     expect(res.statusCode).toBe(404)
@@ -259,9 +262,11 @@ describe('erros RFC 9457', () => {
     expect(body).toMatchObject({
       code: 'not_found',
       status: 404,
-      traceId: 'caddy-request-0001',
+      traceId: '4bf92f3577b34da6a3ce929d0e0e4736',
       instance: '/api/v1/nada',
     })
+    expect(res.headers['x-trace-id']).toBe('4bf92f3577b34da6a3ce929d0e0e4736')
+    expect(res.headers['x-request-id']).toBe('caddy-request-0001')
   })
 
   it('usa o mesmo limite de corpo do Caddy da stack de CI (32 KB)', async () => {

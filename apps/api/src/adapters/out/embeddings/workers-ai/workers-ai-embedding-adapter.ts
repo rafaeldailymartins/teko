@@ -4,6 +4,24 @@ import {
   EmbeddingQuotaExceededError,
   EmbeddingUnavailableError,
 } from '#app/ports/embedding-port.ts'
+import { withSpan } from '../../telemetry/tracing.ts'
+
+/**
+ * Atributos do span de uma chamada ao Workers AI (embeddings e reranker): operação, modelo e
+ * quantidade de textos; nunca o conteúdo.
+ */
+export function workersAiSpanAttributes(
+  operation: 'embeddings' | 'rerank',
+  model: string,
+  texts: number,
+): Record<string, string | number> {
+  return {
+    'gen_ai.operation.name': operation,
+    'gen_ai.provider.name': 'cloudflare.workers_ai',
+    'gen_ai.request.model': model,
+    'teko.workers_ai.texts': texts,
+  }
+}
 
 /**
  * BGE-M3 pelo Workers AI (REST): `POST https://api.cloudflare.com/client/v4/accounts/{id}/ai/run/
@@ -157,16 +175,21 @@ export function createWorkersAiEmbeddingAdapter(options: WorkersAiOptions): Embe
       if (texts.length === 0) {
         return []
       }
-      const reply = await postWorkersAi(
-        {
-          endpoint,
-          apiToken: options.apiToken,
-          payload: { text: texts },
-          signal: embedOptions?.signal,
-          fetch: doFetch,
-        },
-        (message, errorOptions) => new EmbeddingUnavailableError(message, errorOptions),
-        (message) => new EmbeddingQuotaExceededError(message),
+      const reply = await withSpan(
+        `embeddings ${BGE_M3_MODEL}`,
+        workersAiSpanAttributes('embeddings', BGE_M3_MODEL, texts.length),
+        () =>
+          postWorkersAi(
+            {
+              endpoint,
+              apiToken: options.apiToken,
+              payload: { text: texts },
+              signal: embedOptions?.signal,
+              fetch: doFetch,
+            },
+            (message, errorOptions) => new EmbeddingUnavailableError(message, errorOptions),
+            (message) => new EmbeddingQuotaExceededError(message),
+          ),
       )
       const parsed = responseSchema.safeParse(reply.body)
       if (!parsed.success || !parsed.data.success || !parsed.data.result) {

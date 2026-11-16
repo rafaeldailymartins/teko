@@ -99,3 +99,37 @@ describe('createGracefulShutdown', () => {
     await expect(shutdown({ signal: 'SIGTERM' })).resolves.toBeUndefined()
   })
 })
+
+describe('encerramento da telemetria', () => {
+  function withTelemetry(shutdownTelemetry: () => Promise<void>) {
+    const lifecycle = createLifecycle({ now: () => new Date(0) })
+    const app = Fastify()
+    const warn = vi.spyOn(app.log, 'warn')
+    const telemetry = { shutdown: vi.fn(shutdownTelemetry) }
+    const close = vi.fn(async () => {})
+    const shutdown = createGracefulShutdown({
+      app,
+      container: { lifecycle, backgroundTasks: fakeBackgroundTasks([], 0), close },
+      telemetry,
+      profile: { drainDelayMs: 0, backgroundDrainMs: 20 },
+    })
+    return { shutdown, telemetry, close, warn }
+  }
+
+  it('flush final da telemetria junto com o fechamento do container', async () => {
+    const { shutdown, telemetry, close, warn } = withTelemetry(async () => {})
+    await shutdown({ signal: 'SIGTERM' })
+    expect(telemetry.shutdown).toHaveBeenCalledOnce()
+    expect(close).toHaveBeenCalledOnce()
+    expect(warn).not.toHaveBeenCalled()
+  })
+
+  it('não espera a telemetria além do teto das tarefas pós-resposta', async () => {
+    const { shutdown, warn } = withTelemetry(() => new Promise(() => {}))
+    await shutdown({ signal: 'SIGTERM' })
+    expect(warn).toHaveBeenCalledWith(
+      { timeoutMs: 20 },
+      'telemetry flush did not finish at shutdown',
+    )
+  })
+})

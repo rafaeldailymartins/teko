@@ -20,6 +20,7 @@ import { clarifiedRequest, type ReferenceRequest } from '../chat/reference.ts'
 import { askQuestion } from './__generated__/sdk.gen.ts'
 import { apiClient } from './client.ts'
 import { toApiError } from './errors.ts'
+import { traceIdOf, withTraceparent } from './trace.ts'
 
 /**
  * Transporte do `useChat` (ADR 0029, mesma origem):
@@ -27,8 +28,10 @@ import { toApiError } from './errors.ts'
  * 1. `POST /api/v1/questions` pelo SDK gerado (o interceptor converte erro em `ApiError`);
  * 2. `answered` (cache), `refused` e `needs_clarification` voltam na hora e viram chunks
  *    sintetizados, pelo mesmo caminho do stream;
- * 3. `accepted` abre `POST /api/v1/questions/:id/stream` com `fetch` (cookie de sessão, sem CORS) e
- *    lê o UI Message Stream v1 com o parser e o schema do próprio `ai`.
+ * 3. `accepted` abre `POST /api/v1/questions/:id/stream` com `fetch` (cookie de sessão, sem CORS e
+ *    com um `traceparent` novo, como o cliente gerado) e lê o UI Message Stream v1 com o parser e
+ *    o schema do próprio `ai`. O `x-trace-id` da resposta fica em `lastTraceId`: um chunk `error`
+ *    no meio do stream não traz o "ID de suporte", e a UI o lê daqui.
  *
  * Sem resume: `reconnectToStream` devolve `null`, e a UI relê `GET /questions/:id` quando o stream
  * cai.
@@ -114,9 +117,15 @@ export interface TekoChatTransportOptions {
 
 export class TekoChatTransport implements ChatTransport<TekoUIMessage> {
   readonly #options: TekoChatTransportOptions
+  #lastTraceId: string | null = null
 
   constructor(options: TekoChatTransportOptions) {
     this.#options = options
+  }
+
+  /** `x-trace-id` do último stream aberto (`null` antes dele ou sem o header). */
+  get lastTraceId(): string | null {
+    return this.#lastTraceId
   }
 
   async sendMessages({
@@ -127,6 +136,7 @@ export class TekoChatTransport implements ChatTransport<TekoUIMessage> {
   }: Parameters<ChatTransport<TekoUIMessage>['sendMessages']>[0]): Promise<
     ReadableStream<UIMessageChunk>
   > {
+    this.#lastTraceId = null
     const { locale, reference } = this.#options.context()
     const signal = abortSignal === undefined ? {} : { signal: abortSignal }
     const { data } = await askQuestion({
@@ -150,11 +160,12 @@ export class TekoChatTransport implements ChatTransport<TekoUIMessage> {
       {
         method: 'POST',
         credentials: 'same-origin',
-        headers: { 'content-type': 'application/json' },
+        headers: withTraceparent(new Headers({ 'content-type': 'application/json' })),
         body: '{}',
         ...signal,
       },
     )
+    this.#lastTraceId = traceIdOf(stream)
     if (!stream.ok || stream.body === null) {
       throw toApiError(await readProblem(stream), stream)
     }

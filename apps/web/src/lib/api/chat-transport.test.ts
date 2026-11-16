@@ -22,6 +22,7 @@ interface Call {
   readonly body: string
   readonly credentials: RequestCredentials | undefined
   readonly signal: AbortSignal | null | undefined
+  readonly traceparent: string | null
 }
 
 const calls: Call[] = []
@@ -39,6 +40,7 @@ function mockFetch(handler: Handler): void {
         body: await request.clone().text(),
         credentials: init?.credentials,
         signal: init?.signal ?? request.signal,
+        traceparent: request.headers.get('traceparent'),
       }
       calls.push(call)
       return handler(call)
@@ -268,6 +270,31 @@ describe('TekoChatTransport.sendMessages', () => {
       'text-end',
       'finish',
     ])
+  })
+
+  it('cada requisição leva um traceparent novo; o x-trace-id do stream fica no transporte', async () => {
+    const traceId = '4bf92f3577b34da6a3ce929d0e0e4736'
+    mockFetch((call) => {
+      if (call.url.endsWith('/v1/questions')) {
+        return json({ status: 'accepted', questionId: QUESTION_ID, resolved: RESOLVED_2008 })
+      }
+      const response = sse([
+        encodeSseChunk({ type: 'start', messageId: QUESTION_ID }),
+        encodeSseChunk(createStreamErrorChunk(ErrorCode.UpstreamUnavailable)),
+      ])
+      response.headers.set('x-trace-id', traceId)
+      return response
+    })
+    const chat = transport()
+    expect(chat.lastTraceId).toBeNull()
+    await collect(await send(chat))
+    const traceparents = calls.map((call) => call.traceparent)
+    expect(traceparents).toEqual([
+      expect.stringMatching(/^00-[0-9a-f]{32}-[0-9a-f]{16}-00$/),
+      expect.stringMatching(/^00-[0-9a-f]{32}-[0-9a-f]{16}-00$/),
+    ])
+    expect(traceparents[0]).not.toBe(traceparents[1])
+    expect(chat.lastTraceId).toBe(traceId)
   })
 
   it('o chunk error do stream chega ao useChat com {code, retryable}', async () => {

@@ -5,6 +5,7 @@ import type {
   UsageReservation,
   UsageSnapshot,
 } from '../ports/question-repository.ts'
+import { type QuotaUsage, QuotaUsageScope } from '../ports/telemetry.ts'
 
 /**
  * `QuotaGuard` (`docs/architecture/backend.md`, "Pergunta e streaming"): decide, sob o advisory
@@ -33,4 +34,27 @@ export function decideQuota(
     usage.globalStreamSeconds + reservation.streamSeconds > caps.streamSecondsGlobal ||
     usage.globalNeurons + reservation.neurons > caps.neuronsGlobal
   return globalFull ? { kind: 'quota', scope: QuotaScope.GlobalDaily } : { kind: 'ok' }
+}
+
+function ratioOf(used: number, cap: number): number {
+  return cap <= 0 ? 1 : used / cap
+}
+
+/**
+ * Uso da cota global do dia sobre o teto, por recurso (`teko.quota.used_ratio`; o alerta do
+ * Grafana dispara acima de 0,7). Lido do mesmo snapshot do `decideQuota`, antes da reserva desta
+ * pergunta.
+ */
+export function quotaUsage(usage: UsageSnapshot, caps: UsageCaps): QuotaUsage[] {
+  return [
+    {
+      scope: QuotaUsageScope.Questions,
+      ratio: ratioOf(usage.globalRequests, caps.questionsGlobal),
+    },
+    {
+      scope: QuotaUsageScope.StreamSeconds,
+      ratio: ratioOf(usage.globalStreamSeconds, caps.streamSecondsGlobal),
+    },
+    { scope: QuotaUsageScope.Neurons, ratio: ratioOf(usage.globalNeurons, caps.neuronsGlobal) },
+  ]
 }

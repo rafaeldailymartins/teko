@@ -12,7 +12,9 @@ import type { ShutdownProfile } from './config/platform.ts'
  * 3. `app.close()`: para de aceitar conexões, responde 503 às novas e espera as ativas (na F4,
  *    os streams terminam em no máximo 100 s);
  * 4. espera as tarefas pós-resposta (`BackgroundTasks`) por até `backgroundDrainMs`;
- * 5. libera os recursos do container (pool do Postgres a partir da F2).
+ * 5. libera os recursos do container (pool do Postgres a partir da F2) e, em paralelo, encerra a
+ *    telemetria (flush final de traces, logs e métricas), com o mesmo teto `backgroundDrainMs`
+ *    (300 ms na Vercel: cabe no `forceFlush` ≤ 400 ms do plano).
  *
  * O teto total é o `delay` do close-with-grace (`graceMs`): 450 ms na Vercel, que dá 500 ms no
  * scale-down; `SHUTDOWN_GRACE_MS` (≥ 30 s) fora dela. Na Vercel, cada deploy é uma deployment
@@ -28,13 +30,29 @@ export interface GracefulShutdownDeps {
   readonly app: Pick<FastifyInstance, 'close' | 'log'>
   readonly container: Pick<Container, 'lifecycle' | 'backgroundTasks' | 'close'>
   readonly profile: Pick<ShutdownProfile, 'drainDelayMs' | 'backgroundDrainMs'>
+  /** SDK do OTel (`instrumentation.ts`); ausente nos testes. */
+  readonly telemetry?: { shutdown(): Promise<void> }
   readonly wait?: (ms: number) => Promise<unknown>
+}
+
+/** Espera `work` por até `timeoutMs`; `false` se o teto venceu antes. */
+async function within(work: Promise<void>, timeoutMs: number): Promise<boolean> {
+  let timer: NodeJS.Timeout | undefined
+  const expired = new Promise<false>((resolve) => {
+    timer = setTimeout(resolve, timeoutMs, false)
+  })
+  try {
+    return await Promise.race([work.then(() => true), expired])
+  } finally {
+    clearTimeout(timer)
+  }
 }
 
 export function createGracefulShutdown({
   app,
   container,
   profile,
+  telemetry,
   wait = sleep,
 }: GracefulShutdownDeps): (event: ShutdownEvent) => Promise<void> {
   const { drainDelayMs, backgroundDrainMs } = profile
@@ -53,7 +71,13 @@ export function createGracefulShutdown({
     if (abandoned > 0) {
       app.log.warn({ abandoned }, 'background tasks still pending at shutdown')
     }
-    await container.close()
+    const [, telemetryFlushed] = await Promise.all([
+      container.close(),
+      telemetry === undefined ? true : within(telemetry.shutdown(), backgroundDrainMs),
+    ])
+    if (!telemetryFlushed) {
+      app.log.warn({ timeoutMs: backgroundDrainMs }, 'telemetry flush did not finish at shutdown')
+    }
     app.log.info({ drainedForMs: container.lifecycle.drainingForMs() }, 'shutdown complete')
   }
 }

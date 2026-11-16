@@ -16,7 +16,8 @@ As versões vêm do catálogo do `pnpm-workspace.yaml`. Escolhas que fazem parte
   todos na mesma linha.
 - AI SDK da Vercel (`ai`, `@ai-sdk/google`, `@ai-sdk/groq`) só em `adapters/out/llm/**` (ADR 0007;
   o `@google/genai` não tem proveniência).
-- OTel 2.x com `@fastify/otel` e `@langfuse/otel` (veja [observabilidade](observabilidade.md)).
+- OTel 2.x (SDK base, exporters OTLP/HTTP, `@fastify/otel` 0.21 e, com o Langfuse, `@langfuse/otel`),
+  sem `@vercel/otel` (veja [observabilidade](observabilidade.md)).
 - `@vercel/functions` fixado em 3.7.6 (última com proveniência, ADR 0002), só em
   `adapters/out/platform/vercel`: `waitUntil`, `attachDatabasePool`, `ipAddress` e `geolocation`.
   Não exporta `getDeadline`: o prazo é `início + FUNCTION_MAX_DURATION_S` (porta
@@ -60,10 +61,12 @@ API usa; escrita do corpus fica no container da CLI.
 ## Entrypoints
 
 - `build-app.ts`: `buildApp(container)`, que nunca chama `listen`.
-- `server.ts`: único entrypoint HTTP. Inicializa a telemetria, valida o env, **importa
-  dinamicamente** `build-app` e `composition-root` (para a instrumentação registrar antes dos
-  módulos instrumentados), monta o container e chama `listen({host:'0.0.0.0', port})`. Registra o
-  handler de SIGTERM.
+- `server.ts`: único entrypoint HTTP. Valida o env, inicializa a telemetria
+  (`instrumentation.ts`, o único módulo além da raiz de composição que sobe adapters de saída, só os
+  de `adapters/out/telemetry`), **importa dinamicamente** `composition-root` (provider, contexto
+  assíncrono e propagador prontos antes do primeiro span), monta o container e chama
+  `listen({host:'0.0.0.0', port})`. Registra o handler de SIGTERM, que também faz o flush final da
+  telemetria.
 - `cli.ts`: subcomandos `ingest`, `sources-watch`, `seed-fixtures`, `eval-fixture`, `coverage-mark`
   e `maintenance`. Roda só no Actions e localmente, nunca na Vercel (AUP).
 - `config/platform.ts` lê `RUNTIME_TARGET` (`vercel | render | node`) e escolhe `BackgroundTasks`,
@@ -86,7 +89,9 @@ API usa; escrita do corpus fica no container da CLI.
    `bodyLimit` de 32 KB, `genReqId` pelo `x-vercel-id` na Vercel (senão um UUID) e `trustProxy`
    por plataforma: na Vercel, 1 salto (a Vercel sobrescreve `x-forwarded-for` e `x-real-ip`); no
    Render, o valor medido no ensaio; local e CI, só a rede da stack.
-2. Compilers Zod e `@fastify/otel`.
+2. Compilers Zod e telemetria: `@fastify/otel` (span `request` filho do `traceparent`),
+   `x-trace-id` em toda resposta, `http.server.request.duration` e, no fim de cada requisição de
+   `/api`, o flush em `BackgroundTasks` (teto de 500 ms).
 3. `under-pressure` (`maxEventLoopDelay: 1000`) fora da Vercel; na Vercel fica desligado, porque o
    congelamento da instância entre invocações entra na medida (ADR 0017).
 4. `helmet` com CSP `default-src 'none'` nas respostas da API (o CSP das páginas vem do build do
@@ -102,8 +107,8 @@ API usa; escrita do corpus fica no container da CLI.
 7. Better Auth.
 8. Swagger + Scalar em `/api/docs`, só no staging e no CI.
 9. Rotas `/api/v1`.
-10. Error handler RFC 9457 (`application/problem+json` com `code` e `traceId`). Recusa não é erro
-    HTTP.
+10. Error handler RFC 9457 (`application/problem+json` com `code` e `traceId`, o mesmo `trace_id`
+    do `x-trace-id`). Recusa não é erro HTTP.
 
 **CSRF.** Mutações em `/api/*` (inclusive `/api/auth/*`) e o stream exigem `Origin` igual ao
 domínio do ambiente (`https://tekoia.vercel.app` ou `https://tekoia-staging.vercel.app`;

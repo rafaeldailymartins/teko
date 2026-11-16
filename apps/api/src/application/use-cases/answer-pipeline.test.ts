@@ -2,6 +2,8 @@ import type { TekoStreamChunk } from '@teko/shared/contracts'
 import { describe, expect, it } from 'vitest'
 import type { Evidence } from '#domain/qa/evidence.ts'
 import type { LlmEvent, LlmModel, LlmRequest } from '../ports/llm-port.ts'
+import type { Telemetry } from '../ports/telemetry.ts'
+import { recordingTelemetry } from '../ports/testing/recording-telemetry.ts'
 import { PROMPT_CANARY } from '../prompts/answer.ts'
 import { createProviderRouter } from '../services/provider-router.ts'
 import { type AnswerOutcome, runAnswerPipeline, toCitation, toResolved } from './answer-pipeline.ts'
@@ -74,6 +76,7 @@ function scriptedModel(text: string): LlmModel & { requests: LlmRequest[] } {
 async function run(
   retrieve: RetrieveEvidence,
   answer: string,
+  telemetry?: Telemetry,
 ): Promise<{
   chunks: TekoStreamChunk[]
   outcome: AnswerOutcome | null
@@ -88,6 +91,7 @@ async function run(
       retrieveEvidence: retrieve,
       router: createProviderRouter({ models: [model], clock: { now: () => new Date(0) } }),
       corpusVersion: async () => 14,
+      ...(telemetry === undefined ? {} : { telemetry }),
       nowMs: () => {
         now += 10
         return now
@@ -197,6 +201,27 @@ describe('runAnswerPipeline', () => {
       '',
     )
     expect(chunks.map((chunk) => chunk.type)).toEqual(['start', 'data-refusal'])
+  })
+})
+
+describe('sinais de RAG', () => {
+  it('conta o sentinel INSUFICIENTE com a corpus_version', async () => {
+    const telemetry = recordingTelemetry()
+    await run(FOUND, 'INSUFICIENTE', telemetry)
+    expect(telemetry.calls).toEqual([{ method: 'insufficientSentinel', args: [14] }])
+  })
+
+  it('conta as citações a fontes inexistentes, removidas da resposta', async () => {
+    const telemetry = recordingTelemetry()
+    const { outcome } = await run(FOUND, 'Vale [S1], [S7] e [S9].', telemetry)
+    expect(telemetry.calls).toEqual([{ method: 'citationsInvalidated', args: [2, 14] }])
+    expect(outcome?.answer?.markdown).not.toContain('S9')
+  })
+
+  it('resposta com citações válidas não emite sinal de RAG', async () => {
+    const telemetry = recordingTelemetry()
+    await run(FOUND, 'Vale a regra [S1].', telemetry)
+    expect(telemetry.calls).toEqual([])
   })
 })
 

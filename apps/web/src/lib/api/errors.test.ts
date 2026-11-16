@@ -48,6 +48,18 @@ describe('toApiError', () => {
     expect(toApiError({ code: 'inventado' }, response(401)).code).toBe('unauthenticated')
   })
 
+  it('sem traceId no corpo, o ID de suporte vem do x-trace-id da resposta', () => {
+    const traceId = '4bf92f3577b34da6a3ce929d0e0e4736'
+    const gateway = new Response('<html>Bad Gateway</html>', {
+      status: 502,
+      headers: { 'x-trace-id': traceId },
+    })
+    expect(toApiError('<html>Bad Gateway</html>', gateway).traceId).toBe(traceId)
+    const problem = createProblem({ code: ErrorCode.NotFound, traceId: 'do-corpo' })
+    const withBoth = new Response(null, { status: 404, headers: { 'x-trace-id': traceId } })
+    expect(toApiError(problem, withBoth).traceId).toBe('do-corpo')
+  })
+
   it('falha de rede (sem resposta) é internal, repetível e sem status', () => {
     const cause = new TypeError('fetch failed')
     const error = toApiError(cause, undefined)

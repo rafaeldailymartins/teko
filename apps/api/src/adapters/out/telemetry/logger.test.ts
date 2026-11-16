@@ -1,7 +1,20 @@
 import { Writable } from 'node:stream'
+import { context, ROOT_CONTEXT, TraceFlags, trace } from '@opentelemetry/api'
 import { pino } from 'pino'
-import { describe, expect, it } from 'vitest'
-import { createLogger, type LoggerConfig, loggerOptions, REDACTED } from './logger.ts'
+import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { createLogger, type LoggerConfig, loggerOptions, REDACTED, traceFields } from './logger.ts'
+import { type InMemoryTracing, registerInMemoryTracing } from './testing/in-memory-tracing.ts'
+
+let tracing: InMemoryTracing
+
+beforeAll(() => {
+  // Registra o contexto assíncrono (o `context.with` abaixo precisa dele).
+  tracing = registerInMemoryTracing()
+})
+
+afterAll(async () => {
+  await tracing.stop()
+})
 
 const CONFIG: LoggerConfig = {
   level: 'info',
@@ -83,5 +96,53 @@ describe('logger', () => {
     const logger = createLogger({ ...CONFIG, level: 'warn' })
     expect(logger.level).toBe('warn')
     expect(logger.isLevelEnabled('info')).toBe(false)
+  })
+})
+
+describe('logger e telemetria', () => {
+  it('dentro de um span, a linha leva trace_id, span_id e trace_flags', () => {
+    const { logger, lines } = capture(CONFIG)
+    const spanContext = {
+      traceId: '4bf92f3577b34da6a3ce929d0e0e4736',
+      spanId: '00f067aa0ba902b7',
+      traceFlags: TraceFlags.SAMPLED,
+    }
+    context.with(trace.setSpanContext(ROOT_CONTEXT, spanContext), () => {
+      logger.info('dentro')
+    })
+    logger.info('fora')
+    expect(lines()[0]).toMatchObject({
+      trace_id: spanContext.traceId,
+      span_id: spanContext.spanId,
+      trace_flags: '01',
+    })
+    expect(lines()[1]).not.toHaveProperty('trace_id')
+  })
+
+  it('traceFields fica vazio sem span válido', () => {
+    expect(traceFields()).toEqual({})
+  })
+
+  it('com LogSink, a mesma linha (já redigida) vai também ao OTel', () => {
+    const written: string[] = []
+    const logger = createLogger({ ...CONFIG, sink: { write: (line) => written.push(line) } })
+    logger.warn({ question: 'segredo' }, 'aviso')
+    expect(written).toHaveLength(1)
+    expect(JSON.parse(written[0] ?? '{}')).toMatchObject({
+      level: 40,
+      msg: 'aviso',
+      question: REDACTED,
+    })
+  })
+
+  it('o nível do logger filtra também o LogSink', () => {
+    const written: string[] = []
+    const logger = createLogger({
+      ...CONFIG,
+      level: 'warn',
+      sink: { write: (line) => written.push(line) },
+    })
+    logger.info('não vai')
+    expect(written).toHaveLength(0)
   })
 })

@@ -37,6 +37,76 @@ function problemsOf(source: Record<string, string | undefined>): readonly string
   throw new Error('parseEnv deveria ter falhado')
 }
 
+describe('telemetria OTLP (F6)', () => {
+  it('sem endpoint, sem exportação; métricas em delta por padrão', () => {
+    const env = parseEnv(DEV_ENV)
+    expect(env.OTEL_EXPORTER_OTLP_ENDPOINT).toBeUndefined()
+    expect(env.OTEL_EXPORTER_OTLP_HEADERS).toBeUndefined()
+    expect(env.OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE).toBe('delta')
+  })
+
+  it('aceita só delta e cumulative como temporalidade', () => {
+    expect(
+      parseEnv({ ...DEV_ENV, OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE: 'cumulative' })
+        .OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE,
+    ).toBe('cumulative')
+    expect(
+      problemsOf({ ...DEV_ENV, OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE: 'lowmemory' }),
+    ).toHaveLength(1)
+  })
+
+  it('lê endpoint e headers no formato da especificação, com URL encoding', () => {
+    const env = parseEnv({
+      ...PROD_ENV,
+      OTEL_EXPORTER_OTLP_ENDPOINT: 'https://otlp-gateway-prod-sa-east-1.grafana.net/otlp',
+      OTEL_EXPORTER_OTLP_HEADERS: 'Authorization=Basic%20dTpw, X-Scope = a=b ,',
+    })
+    expect(env.OTEL_EXPORTER_OTLP_ENDPOINT).toBe(
+      'https://otlp-gateway-prod-sa-east-1.grafana.net/otlp',
+    )
+    expect(env.OTEL_EXPORTER_OTLP_HEADERS).toEqual({
+      Authorization: 'Basic dTpw',
+      'X-Scope': 'a=b',
+    })
+  })
+
+  it.each([
+    'Authorization',
+    '=valor',
+    'Authorization=',
+    'Auth orization=x',
+    'Authorization=%E0%A4%A',
+  ])('headers malformados derrubam o boot sem repetir o valor (%s)', (headers) => {
+    const problems = problemsOf({
+      ...DEV_ENV,
+      OTEL_EXPORTER_OTLP_ENDPOINT: 'http://localhost:4318',
+      OTEL_EXPORTER_OTLP_HEADERS: headers,
+    })
+    expect(problems).toEqual([
+      'OTEL_EXPORTER_OTLP_HEADERS: deve ser uma lista chave=valor separada por vírgula',
+    ])
+  })
+
+  it('headers sem endpoint e endpoint fora de http(s) derrubam o boot', () => {
+    expect(problemsOf({ ...DEV_ENV, OTEL_EXPORTER_OTLP_HEADERS: 'a=b' })).toEqual([
+      'OTEL_EXPORTER_OTLP_ENDPOINT: obrigatória com OTEL_EXPORTER_OTLP_HEADERS',
+    ])
+    expect(problemsOf({ ...DEV_ENV, OTEL_EXPORTER_OTLP_ENDPOINT: 'ftp://x' })).toEqual([
+      'OTEL_EXPORTER_OTLP_ENDPOINT: deve ser uma URL http(s)',
+    ])
+  })
+
+  it('staging e produção exigem https (a credencial vai nos headers); dev aceita http local', () => {
+    expect(problemsOf({ ...PROD_ENV, OTEL_EXPORTER_OTLP_ENDPOINT: 'http://otlp.example' })).toEqual(
+      ['OTEL_EXPORTER_OTLP_ENDPOINT: APP_ENV=production exige https'],
+    )
+    expect(
+      parseEnv({ ...DEV_ENV, OTEL_EXPORTER_OTLP_ENDPOINT: 'http://localhost:4318' })
+        .OTEL_EXPORTER_OTLP_ENDPOINT,
+    ).toBe('http://localhost:4318')
+  })
+})
+
 describe('parseEnv', () => {
   it('aplica os padrões do plano', () => {
     const env = parseEnv(DEV_ENV)

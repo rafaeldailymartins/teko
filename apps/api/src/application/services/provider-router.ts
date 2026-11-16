@@ -10,6 +10,7 @@ import {
   type LlmRequest,
   type LlmUsage,
 } from '../ports/llm-port.ts'
+import { noopTelemetry, ProviderErrorStatus, type Telemetry } from '../ports/telemetry.ts'
 
 /**
  * Cadeia de LLM com circuit breakers (`docs/architecture/backend.md`, "LLM, PII, prompt e tetos"):
@@ -55,10 +56,19 @@ interface Breaker {
   consecutiveFailures: number
 }
 
+const ERROR_STATUS = {
+  [LlmErrorKind.RateLimited]: ProviderErrorStatus.RateLimited,
+  [LlmErrorKind.Unavailable]: ProviderErrorStatus.Unavailable,
+  [LlmErrorKind.Rejected]: ProviderErrorStatus.Rejected,
+} as const satisfies Record<LlmErrorKind, ProviderErrorStatus>
+
 export function createProviderRouter(deps: {
   readonly models: readonly LlmModel[]
   readonly clock: Clock
+  /** Erros por provedor e fallbacks (padrão: nenhum). */
+  readonly telemetry?: Telemetry
 }): ProviderRouter {
+  const telemetry = deps.telemetry ?? noopTelemetry
   const breakers = new Map<string, Breaker>(
     deps.models.map((model) => [model.model, { openUntilMs: 0, consecutiveFailures: 0 }]),
   )
@@ -75,6 +85,7 @@ export function createProviderRouter(deps: {
   }
 
   function recordFailure(model: LlmModel, error: LlmError): void {
+    telemetry.providerError(model.provider, ERROR_STATUS[error.kind])
     const breaker = breakerOf(model)
     const time = now()
     if (error.kind === LlmErrorKind.RateLimited) {
@@ -110,6 +121,9 @@ export function createProviderRouter(deps: {
           continue
         }
         breakerOf(model).consecutiveFailures = 0
+        if (fallbackFrom !== null) {
+          telemetry.providerFallback(fallbackFrom, model.model)
+        }
         yield { type: 'start', provider: model.provider, model: model.model, fallbackFrom }
         while (current.done !== true) {
           yield current.value

@@ -4,6 +4,7 @@ import Fastify, { type FastifyInstance } from 'fastify'
 import { serializerCompiler, validatorCompiler } from 'fastify-type-provider-zod'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import type { Container } from '#app/container.ts'
+import { noopTelemetry } from '#app/ports/telemetry.ts'
 import { decorateContainer } from '../plugins/container.ts'
 import { healthRoutes } from './health.ts'
 
@@ -38,6 +39,7 @@ const container: Container = {
   clientIp: { resolve: () => ({ ip: null, source: 'none' }) },
   geo: { countryOf: () => null },
   rateLimitStore: null,
+  telemetry: noopTelemetry,
   streamBudget: { timeoutMs: () => 100_000 },
   close: async () => {},
 }

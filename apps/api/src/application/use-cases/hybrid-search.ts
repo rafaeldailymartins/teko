@@ -6,6 +6,7 @@ import { extractProvisionRefs } from '#domain/qa/provision-refs.ts'
 import { type EmbeddingPort, EmbeddingUnavailableError } from '../ports/embedding-port.ts'
 import { type RerankerPort, RerankerUnavailableError } from '../ports/reranker-port.ts'
 import type { SearchRepository } from '../ports/search-repository.ts'
+import { noopTelemetry, type Telemetry } from '../ports/telemetry.ts'
 import type { QueryRewriter } from '../services/query-rewriter.ts'
 
 /**
@@ -63,6 +64,8 @@ export interface HybridSearchDeps {
   readonly rerankTimeoutMs: number
   /** `null` = sem reescrita (`QUERY_REWRITE_ENABLED` desligada ou sem cadeia de LLM). */
   readonly rewriter: QueryRewriter | null
+  /** Distribuição das notas do reranker (padrão: nenhuma). */
+  readonly telemetry?: Telemetry
 }
 
 /**
@@ -114,6 +117,7 @@ async function embedQuestion(
 }
 
 export function createHybridSearch(deps: HybridSearchDeps): HybridSearch {
+  const telemetry = deps.telemetry ?? noopTelemetry
   return async ({ question, referenceDate, families, zeroDataRetentionOnly, signal }) => {
     if (families.length === 0) {
       const stableKeys = extractProvisionRefs(question, families)
@@ -167,11 +171,12 @@ export function createHybridSearch(deps: HybridSearchDeps): HybridSearch {
       }
     }
     // Ordem estável: empate de nota mantém a ordem do RRF.
-    const evidence = candidates
+    const ranked = candidates
       .map((item, index) => ({ item, index, score: scores[index] ?? Number.NEGATIVE_INFINITY }))
       .sort((a, b) => b.score - a.score || a.index - b.index)
       .slice(0, deps.limit)
-      .map(({ item }) => item)
+    telemetry.rerankerScores(ranked.map(({ score }) => score))
+    const evidence = ranked.map(({ item }) => item)
     return { mode, evidence, stableKeys, reranked: true, rewrittenQuery }
   }
 }

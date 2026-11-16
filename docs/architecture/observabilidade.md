@@ -6,23 +6,85 @@ timer de exportação: a instância da Vercel pausa entre requisições.
 
 ## OTel (linha 2.x)
 
-- SDK Node padrão, sem `@vercel/otel` e sem coletor. Na Vercel não há `node --import`, então
-  `server.ts` inicializa o SDK antes de importar dinamicamente o resto da app. Fastify pelo
-  `@fastify/otel` (plugin); spans de `pg` e das chamadas aos provedores criados à mão nos adapters
-  (`withSpan`), porque o bundle não garante a auto-instrumentação por hook de módulo.
+- SDK Node padrão (`@opentelemetry/sdk-trace-node`, `sdk-metrics`, `sdk-logs` e os exporters
+  OTLP/HTTP), sem `@vercel/otel`, sem `@opentelemetry/sdk-node` e sem coletor. Na Vercel não há
+  `node --import`, então `server.ts` chama `startInstrumentation` (`src/instrumentation.ts`, sobre
+  `adapters/out/telemetry/sdk.ts`) antes de importar dinamicamente a raiz de composição. Fastify
+  pelo `@fastify/otel` (plugin explícito, span `request` com `http.route`); spans de `pg` (o `query`
+  de cada cliente do pool, `pg-tracing.ts`), do LLM (`chat <modelo>`, com `gen_ai.*` e o uso de
+  tokens), dos embeddings e do reranker do Workers AI criados à mão nos adapters (`withSpan` e
+  `tracedIterable` de `adapters/out/telemetry/tracing.ts`), porque o bundle não garante a
+  auto-instrumentação por hook de módulo. Os spans levam o tipo do erro (`error.type`), nunca a
+  mensagem (pode repetir valores do prompt ou da consulta).
 - **Resource:** `service.name=teko-api`, `service.version`, `deployment.environment.name`,
-  `vcs.ref.head.revision`, `process.runtime.version` (o minor real da Vercel) e `cloud.region`.
+  `vcs.ref.head.revision`, `process.runtime.name` e `process.runtime.version` (o minor real da
+  Vercel), `cloud.region` (`VERCEL_REGION`, só na Vercel) e `service.instance.id` (um UUID por
+  processo, que separa as séries de instâncias simultâneas).
 - **Processors:** `BatchSpanProcessor` com exporter OTLP/HTTP direto ao endpoint da stack Grafana
-  Cloud, e `LangfuseSpanProcessor` (abaixo). Os spans de LLM chegam aos dois com o mesmo `trace_id`.
-- **Flush:** ao fim de cada request de API, `BackgroundTasks` (`waitUntil`) roda o `forceFlush` de
-  traces e logs com teto de 500 ms; métricas em temporalidade delta no mesmo flush, no máximo uma
-  vez por minuto por instância. Telemetria de uma invocação que estoura o prazo pode se perder.
-- **Sampler:** `AlwaysOnSampler` descartando `/healthz`; o `trace_id` do `traceparent` do navegador
-  é reaproveitado, mas a flag `sampled` é ignorada.
-- **Logs:** pino em JSON no stdout só para depuração imediata (logs de runtime da Vercel: 1 h);
-  logs duráveis pelo exporter OTLP de logs para o Loki, com `env`, `service` e `level`.
-- **Correlação:** o navegador propaga `traceparent` para `/api`; a API devolve `x-trace-id`, que a
-  UI mostra como "ID de suporte"; o `trace_id` vai como propriedade ao PostHog.
+  Cloud e, no mesmo provider, os de `additionalSpanProcessors` (`src/instrumentation.ts`): o
+  `LangfuseSpanProcessor` (abaixo) entra ali. Os spans de LLM chegam aos dois com o mesmo `trace_id`.
+- **Flush:** ao fim de cada request de `/api` (menos `/api/healthz`), o hook `onResponse`
+  (`adapters/in/http/plugins/telemetry.ts`) põe o flush em `BackgroundTasks` (`waitUntil`) com teto
+  de 500 ms: `forceFlush` de traces e logs e, no máximo uma vez por minuto por instância, das
+  métricas, por um leitor sem timer (`OnDemandMetricReader`). Falha de
+  exportação é engolida (não vira log, que viraria outra exportação). No SIGTERM, o encerramento
+  gracioso exporta o que sobrou (métricas inclusive) com o teto das tarefas pós-resposta. Telemetria
+  de uma invocação que estoura o prazo pode se perder.
+- **Sampler** (`TekoSampler`): sempre amostra, menos `/healthz` e `/api/healthz` (por `url.path` ou
+  `http.route`); com pai remoto (o `traceparent` do navegador), o `trace_id` é reaproveitado e a
+  flag `sampled` é ignorada; com pai local, segue a decisão dele (os filhos de um `/healthz` também
+  saem descartados).
+- **Logs:** pino em JSON no stdout só para depuração imediata (logs de runtime da Vercel: 1 h); a
+  mesma linha, já com o `redact`, vai ao `LogSink` do OTel (`log-sink.ts`) e ao Loki pelo exporter
+  OTLP de logs, com `env` e `service` (atributos e resource), `level` (`severity_text`) e o
+  `trace_id`/`span_id` do span ativo (o `mixin` do logger põe os dois em toda linha, também no
+  stdout). Com `LOG_PRETTY=true` (só dev), os logs ficam só no terminal.
+- **Correlação:** o web gera um `traceparent` W3C por requisição a `/api` (`apps/web/src/lib/api/
+  trace.ts`, no cliente gerado e no `fetch` do stream; sem SDK no navegador, flag `sampled` em 0);
+  a API devolve `x-trace-id` em toda resposta, igual ao `traceId` dos Problem Details e do `finish`
+  do stream, e a UI o mostra como "ID de suporte" nas mensagens de erro; o `trace_id` vai como
+  propriedade ao PostHog. Sem o SDK (testes), o `x-trace-id` sai do `traceparent` ou de um id
+  aleatório no mesmo formato.
+- **Configuração:** `OTEL_EXPORTER_OTLP_ENDPOINT` (base OTLP/HTTP; os sinais vão em `/v1/traces`,
+  `/v1/metrics` e `/v1/logs`) e `OTEL_EXPORTER_OTLP_HEADERS` (formato da especificação, `chave=valor`
+  com URL encoding; no Grafana Cloud, `Authorization=Basic%20<base64 de instância:token>`), as duas
+  Sensitive na Vercel. Staging e produção exigem https; sem o endpoint (CI, testes, dev sem a stack),
+  nada é exportado, a porta de métricas é no-op e o boot de staging ou produção avisa no log.
+- **Temporalidade das métricas:** delta por padrão, como pede o desenho;
+  `OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE=cumulative` troca para cumulativa (o total da
+  instância, uma série por `service.instance.id`). **Pendente de decisão do mantenedor:** o Mimir
+  recusa métricas delta enquanto a ingestão nativa de delta (`-distributor.otel-native-delta-ingestion`,
+  experimental) estiver desligada, e o Prometheus do `otel-lgtm` também (na prova local, só o gauge
+  chegou em delta; tudo chegou em cumulativo). Se a stack do Grafana Cloud não aceitar delta, staging
+  e produção precisam da variável em `cumulative` (`infra/vercel/env.*.json`).
+- **Tracing da Vercel:** os spans de fetch da Vercel param quando o pacote lista
+  `@opentelemetry/api` ou `@opentelemetry/sdk-trace-node`, e os de framework e custom só existem com
+  `@vercel/otel`, que o Tekó não usa; sobram os de infraestrutura da própria Vercel, que o
+  `vercel-usage` (F7) mede contra a cota de 1M.
+- **Dev local:** profile `otel` em `infra/local/compose.yaml` (`grafana/otel-lgtm`, Grafana em
+  `http://localhost:3300`, OTLP/HTTP em `127.0.0.1:4318`); na API,
+  `OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318` e
+  `OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE=cumulative`.
+
+### Métricas (contrato com os painéis e alertas)
+
+Definidas só em `adapters/out/telemetry/metrics.ts`, atrás da porta `Telemetry`
+(`application/ports/telemetry.ts`); a aplicação não importa OTel. O ambiente vem do resource
+(`deployment_environment_name` no Mimir).
+
+| Instrumento OTel                 | Tipo           | Atributos                                                                                                        | Prometheus (Mimir)                       | Emitido em                                                |
+| -------------------------------- | -------------- | ---------------------------------------------------------------------------------------------------------------- | ---------------------------------------- | --------------------------------------------------------- |
+| `http.server.request.duration`   | histograma (s) | `http.request.method`, `http.route` (sem rota no 404), `http.response.status_code`                               | `http_server_request_duration_seconds_*` | hook `onResponse` (toda requisição)                       |
+| `teko.rag.answers`               | counter        | `outcome` (`answered\|refused\|failed\|aborted`), `refusal_reason`, `retrieval_mode`, `cached`, `corpus_version` | `teko_rag_answers_total`                 | `AskQuestion` (cache, fora da cobertura) e `StreamAnswer` |
+| `teko.rag.citations_invalidated` | counter        | `corpus_version`                                                                                                 | `teko_rag_citations_invalidated_total`   | pipeline da resposta (citação a fonte inexistente)        |
+| `teko.rag.insufficient_sentinel` | counter        | `corpus_version`                                                                                                 | `teko_rag_insufficient_sentinel_total`   | pipeline da resposta                                      |
+| `teko.rag.reranker_score`        | histograma     | `rank` (`top1\|top12`)                                                                                           | `teko_rag_reranker_score_*`              | `HybridSearch` (só quando o reranker reordenou)           |
+| `teko.llm.ttft`                  | histograma (s) | `provider`, `model`                                                                                              | `teko_llm_ttft_seconds_*`                | `StreamAnswer`                                            |
+| `teko.llm.tokens`                | counter        | `provider`, `model`, `type` (`input\|output`)                                                                    | `teko_llm_tokens_total`                  | `StreamAnswer`                                            |
+| `teko.llm.shadow_cost`           | counter (USD)  | `provider`, `model`                                                                                              | `teko_llm_shadow_cost_usd_total`         | `StreamAnswer` (`services/pricing.ts`)                    |
+| `teko.llm.provider_errors`       | counter        | `provider`, `status` (`429\|5xx\|4xx`; `5xx` inclui rede e timeout)                                              | `teko_llm_provider_errors_total`         | `ProviderRouter`                                          |
+| `teko.llm.provider_fallback`     | counter        | `from`, `to` (modelos)                                                                                           | `teko_llm_provider_fallback_total`       | `ProviderRouter` (antes do primeiro token)                |
+| `teko.quota.used_ratio`          | gauge          | `scope` (`global_questions\|global_stream_seconds\|global_neurons`, a linha `global` de `usage_daily`)           | `teko_quota_used_ratio`                  | `QuotaGuard`, no snapshot da decisão                      |
 
 ## Langfuse Cloud Hobby (EU)
 

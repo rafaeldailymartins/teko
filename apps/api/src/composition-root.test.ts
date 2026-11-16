@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { createLogger } from '#adapters/out/telemetry/logger.ts'
+import { startTelemetry } from '#adapters/out/telemetry/sdk.ts'
 import {
   createBlobStore,
   createContainer,
@@ -54,6 +55,7 @@ describe('createContainer', () => {
   it('na Vercel, o teto do stream respeita o maxDuration configurado', () => {
     const container = createContainer(
       parseEnv({ ...BASE, RUNTIME_TARGET: 'vercel', FUNCTION_MAX_DURATION_S: '120' }),
+      silentTelemetry(),
     )
     // 120 s de prazo, 30 s já gastos: 90 s − 20 s de reserva.
     expect(container.streamBudget.timeoutMs(0, 30_000)).toBe(70_000)
@@ -158,9 +160,18 @@ describe('logBackgroundFailure', () => {
   })
 })
 
+/** Telemetria sem exportação e sem registro global (o padrão do CI e dos testes). */
+function silentTelemetry() {
+  return startTelemetry({
+    identity: { serviceVersion: '0.0.0', gitSha: 'unknown', environment: 'ci', region: null },
+    otlp: null,
+    registerGlobal: false,
+  })
+}
+
 describe('createRuntime', () => {
   it('monta o app pronto para responder ao /healthz', async () => {
-    const { app, container, shutdown } = await createRuntime(parseEnv(BASE))
+    const { app, container, shutdown } = await createRuntime(parseEnv(BASE), silentTelemetry())
     const res = await app.inject({ url: '/healthz' })
     expect(res.statusCode).toBe(200)
     expect(res.json()).toEqual(container.useCases.getHealth())
@@ -171,6 +182,7 @@ describe('createRuntime', () => {
   it('na Vercel usa o perfil de encerramento de 500 ms', async () => {
     const { app, shutdown } = await createRuntime(
       parseEnv({ ...BASE, RUNTIME_TARGET: 'vercel', FUNCTION_MAX_DURATION_S: '120' }),
+      silentTelemetry(),
     )
     expect(shutdown).toEqual(VERCEL_SHUTDOWN)
     await app.close()

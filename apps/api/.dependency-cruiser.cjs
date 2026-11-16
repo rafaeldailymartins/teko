@@ -23,6 +23,9 @@ const npm = (name) => `(^|/)node_modules/${name}/`
 const LLM_SDKS = ['ai', '@ai-sdk/[^/]+'].map(npm).join('|')
 const VERCEL_PACKAGES = npm('@vercel/[^/]+')
 const PLATFORM_CONFIG = '^src/config/platform\\.ts$'
+const INSTRUMENTATION = '^src/instrumentation\\.ts$'
+/** OpenTelemetry (API, SDK, exporters e o `@fastify/otel`): só em adapters e nas raízes. */
+const OTEL_PACKAGES = npm('@opentelemetry/[^/]+')
 
 /** @type {import('dependency-cruiser').IConfiguration} */
 module.exports = {
@@ -44,7 +47,7 @@ module.exports = {
     {
       name: 'core-not-to-frameworks',
       comment:
-        'domain e application não conhecem Fastify, Drizzle, pg, SDKs de LLM, Better Auth nem @vercel/*.',
+        'domain e application não conhecem Fastify, Drizzle, pg, SDKs de LLM, Better Auth, @vercel/* nem OpenTelemetry (a porta é a Telemetry).',
       severity: 'error',
       from: { path: '^src/(application|domain)/', pathNot: TEST_FILE },
       to: {
@@ -57,6 +60,7 @@ module.exports = {
           npm('better-auth'),
           LLM_SDKS,
           VERCEL_PACKAGES,
+          OTEL_PACKAGES,
         ],
       },
     },
@@ -70,18 +74,27 @@ module.exports = {
     {
       name: 'adapters-out-only-from-composition-root',
       comment:
-        'Só src/composition-root.ts instancia adapters de saída (e src/config/platform.ts, os de plataforma).',
+        'Só src/composition-root.ts instancia adapters de saída (e src/config/platform.ts, os de plataforma; src/instrumentation.ts, os de telemetria).',
       severity: 'error',
       from: {
         pathNot: [
           '^src/composition-root\\.ts$',
           PLATFORM_CONFIG,
+          INSTRUMENTATION,
           '^src/adapters/out/',
           TEST_FILE,
           EVALS,
         ],
       },
       to: { path: '^src/adapters/out/' },
+    },
+    {
+      name: 'instrumentation-only-telemetry-adapters',
+      comment:
+        'src/instrumentation.ts (o SDK do OTel, antes do import da raiz de composição) só sobe os adapters de src/adapters/out/telemetry.',
+      severity: 'error',
+      from: { path: INSTRUMENTATION },
+      to: { path: '^src/adapters/out/', pathNot: '^src/adapters/out/telemetry/' },
     },
     {
       name: 'platform-config-only-platform-adapters',

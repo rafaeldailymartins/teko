@@ -117,6 +117,24 @@ catalog:
   "@ai-sdk/groq": 4.0.77
   "@vercel/functions": 3.7.6 # última com provenance SLSA + trusted publisher; 3.9+ sem provenance (ADR 0002)
 
+  # Telemetria (F6, add-otel-telemetry): OTel linha 2.x (estável 2.12.x, experimental 0.223.x) e o
+  # plugin do Fastify da mesma linha. A linha 3 (e o @fastify/otel 1.x, que já a exige) espera o
+  # Langfuse suportar OTel 3 (ignore de major no Dependabot). Todos com proveniência. A api fica na
+  # 1.10.0, a mesma que a árvore já tinha (Next, promptfoo): uma 1.9.x só na API duplicaria as
+  # variantes de peer do vitest e quebraria o @fast-check/vitest. O SDK 2.12 declara `< 1.10` (aviso
+  # de peer, como o do promptfoo antes); a API é compatível dentro da major 1 (ADR 0002, adendo).
+  "@opentelemetry/api": 1.10.0
+  "@opentelemetry/api-logs": 0.223.1
+  "@opentelemetry/sdk-trace-node": 2.12.1
+  "@opentelemetry/sdk-metrics": 2.12.1
+  "@opentelemetry/sdk-logs": 0.223.1
+  "@opentelemetry/resources": 2.12.1
+  "@opentelemetry/semantic-conventions": 1.45.0
+  "@opentelemetry/exporter-trace-otlp-http": 0.223.1
+  "@opentelemetry/exporter-metrics-otlp-http": 0.223.1
+  "@opentelemetry/exporter-logs-otlp-http": 0.223.1
+  "@fastify/otel": 0.21.4
+
   # Banco (F2). Nenhum driver Postgres do npm é publicado com proveniência: pg e Testcontainers são
   # exceções da regra de proveniência do repositório, documentadas no ADR 0002 (o trustPolicy
   # no-downgrade só recusa a perda de proveniência, não a ausência).

@@ -6,6 +6,7 @@ import type { Route } from 'next'
 import Link from 'next/link'
 import { useLocale, useTranslations } from 'next-intl'
 import { type ReactNode, useDeferredValue, useId, useState } from 'react'
+import { SupportId } from '@/components/support-id'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useProvisionSearch } from '@/lib/api/hooks'
 import { formatIsoDate } from '@/lib/i18n/format'
@@ -110,6 +111,7 @@ export function ProvisionSearch({ at, dateField }: ProvisionSearchProps) {
             {tRoot(query.error.messageKey)}
           </p>
         )}
+        {ready && query.isError && <SupportId traceId={query.error.traceId} />}
         {ready && query.isSuccess && query.data.items.length === 0 && (
           <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed bg-surface px-6 py-10 text-center">
             <SearchXIcon aria-hidden="true" className="size-6 text-muted-foreground" />

@@ -156,6 +156,40 @@ const trustProxySchema = z
 
 export type TrustProxy = z.output<typeof trustProxySchema>
 
+/**
+ * `OTEL_EXPORTER_OTLP_HEADERS` no formato da especificação do OTel: pares `chave=valor` separados
+ * por vírgula, com o valor em URL encoding (o Grafana Cloud entrega
+ * `Authorization=Basic%20<base64>`). As mensagens de erro nunca repetem o valor.
+ */
+const otlpHeadersSchema = z
+  .string()
+  .trim()
+  .transform((value, ctx): Record<string, string> => {
+    const headers: Record<string, string> = {}
+    for (const pair of value.split(',')) {
+      if (pair.trim() === '') {
+        continue
+      }
+      const separator = pair.indexOf('=')
+      const key = separator === -1 ? '' : pair.slice(0, separator).trim()
+      let decoded: string | null = null
+      try {
+        decoded = decodeURIComponent(pair.slice(separator + 1).trim())
+      } catch {
+        decoded = null
+      }
+      if (!/^[A-Za-z0-9-]+$/.test(key) || decoded === null || decoded === '') {
+        ctx.addIssue({
+          code: 'custom',
+          message: 'deve ser uma lista chave=valor separada por vírgula',
+        })
+        return z.NEVER
+      }
+      headers[key] = decoded
+    }
+    return headers
+  })
+
 const envSchema = z
   .object({
     NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
@@ -262,6 +296,24 @@ const envSchema = z
     RATE_LIMIT_PER_MINUTE: z.coerce.number().int().min(1).max(1000).default(60),
     /** Maior RRF abaixo do qual a pergunta é recusada como `no_evidence` sem chamar o LLM. */
     MIN_EVIDENCE_RRF: z.coerce.number().min(0).max(1).default(0),
+    /**
+     * Base OTLP/HTTP da telemetria (traces, métricas e logs vão em `/v1/*`): a stack do Grafana
+     * Cloud em staging e produção (Sensitive na Vercel), o `otel-lgtm` local
+     * (`http://localhost:4318`) em dev. Sem ela, nada é exportado (CI, testes, dev sem a stack).
+     */
+    OTEL_EXPORTER_OTLP_ENDPOINT: z
+      .url({ protocol: /^https?$/, error: 'deve ser uma URL http(s)' })
+      .optional(),
+    /** Headers das exportações OTLP (Grafana Cloud: basic auth); Sensitive na Vercel. */
+    OTEL_EXPORTER_OTLP_HEADERS: otlpHeadersSchema.optional(),
+    /**
+     * Temporalidade das métricas (nome padrão do OTel; só `delta` e `cumulative`). O padrão é o da
+     * arquitetura (`delta`); o Mimir e o Prometheus recusam delta sem a ingestão nativa de delta
+     * ligada, e aí vale `cumulative` (uma série por instância).
+     */
+    OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE: z
+      .enum(['delta', 'cumulative'])
+      .default('delta'),
     // --- Ingestão (CLI `ingest`, `snapshot`, `eval-fixture`; só no Actions e localmente) -------
     /**
      * Onde ficam os artefatos da ingestão (ADR 0030). Com `github-releases` (o que os workflows
@@ -365,6 +417,12 @@ const envSchema = z
         issue('CF_AI_TOKEN', `obrigatória com ${name}=workers-ai`)
       }
     }
+    if (
+      env.OTEL_EXPORTER_OTLP_HEADERS !== undefined &&
+      env.OTEL_EXPORTER_OTLP_ENDPOINT === undefined
+    ) {
+      issue('OTEL_EXPORTER_OTLP_ENDPOINT', 'obrigatória com OTEL_EXPORTER_OTLP_HEADERS')
+    }
     if (env.BLOB_STORE === BlobStoreBackend.GithubReleases && env.GITHUB_TOKEN === undefined) {
       issue('GITHUB_TOKEN', 'obrigatória com BLOB_STORE=github-releases')
     }
@@ -422,6 +480,10 @@ const envSchema = z
     }
     if (env.LOG_PRETTY) {
       issue('LOG_PRETTY', `APP_ENV=${env.APP_ENV} não usa pino-pretty (devDependency)`)
+    }
+    if (env.OTEL_EXPORTER_OTLP_ENDPOINT?.startsWith('https://') === false) {
+      // Os headers levam a credencial do Grafana Cloud: nunca em texto claro.
+      issue('OTEL_EXPORTER_OTLP_ENDPOINT', `APP_ENV=${env.APP_ENV} exige https`)
     }
     if (env.LLM_PROVIDER === LlmProvider.Fake) {
       issue('LLM_PROVIDER', `fake é proibido com APP_ENV=${env.APP_ENV}`)

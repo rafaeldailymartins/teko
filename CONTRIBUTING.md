@@ -49,6 +49,13 @@ pnpm --filter @teko/api seed:fixtures; echo "exit=$?"  # migrates the local data
 - Optional local Langfuse (UI on `http://localhost:3100`, user `dev@teko.localhost`, password in
   `infra/local/.env`):
   `docker compose -f infra/local/compose.yaml --profile langfuse up -d --wait`.
+- Optional local Grafana with traces, logs and metrics of the API (`grafana/otel-lgtm`, UI on
+  `http://localhost:3300`, user `admin`/`admin`):
+  `docker compose -f infra/local/compose.yaml --profile otel up -d --wait`, then add
+  `OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318` and
+  `OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE=cumulative` (the local Prometheus drops delta
+  metrics) to `apps/api/.env` and restart the API. Without the endpoint, nothing is exported. Use `LOG_PRETTY=false` to send the logs too (the pretty
+  output stays only on the terminal).
 - `pnpm --filter @teko/api seed:fixtures` applies the Drizzle migrations to the local Postgres and
   loads the single corpus fixture (`apps/api/test/fixtures/corpus`) with the fake embeddings
   provider, which reads the real BGE-M3 vectors stored in `embeddings.json.gz`. `pnpm dev:secrets`

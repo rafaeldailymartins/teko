@@ -1,5 +1,6 @@
 import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres'
 import pg from 'pg'
+import { tracePoolQueries } from './pg-tracing.ts'
 
 /**
  * Pool do `pg` + Drizzle. Driver: `pg` 8.23.1 (node-postgres), a única escolha com suporte
@@ -86,6 +87,7 @@ export function createDatabase(options: DatabaseOptions): Database {
   // Um erro numa conexão ociosa (ex.: compute do Neon suspenso) não pode derrubar o processo: o
   // pool descarta a conexão, e a próxima query abre outra (com o `retryTransientRead` nas leituras).
   pool.on('error', () => {})
+  tracePoolQueries(pool)
   const db = drizzle({ client: pool })
   let closed: Promise<void> | undefined
   return {

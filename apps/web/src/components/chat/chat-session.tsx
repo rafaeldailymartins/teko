@@ -16,6 +16,7 @@ import { ArrowDownIcon, CircleAlertIcon, RotateCwIcon } from 'lucide-react'
 import { useFormatter, useLocale, useTranslations } from 'next-intl'
 import { useQueryStates } from 'nuqs'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { SupportId } from '@/components/support-id'
 import { Button } from '@/components/ui/button'
 import { type ChatRequestContext, TekoChatTransport } from '@/lib/api/chat-transport'
 import { useHistory, useQuestion, useQuota } from '@/lib/api/hooks'
@@ -137,7 +138,7 @@ export default function ChatSession({
       },
     })
   const busy = status === 'submitted' || status === 'streaming'
-  const failure = chatFailure(error)
+  const failure = chatFailure(error, transport.lastTraceId)
   const quota = useQuota(blocksComposer(failure))
   const resetAt = failure?.resetAt ?? quota.data?.resetAt ?? null
   const blocked = blocksComposer(failure) && (resetAt === null || Date.parse(resetAt) > now)
@@ -374,7 +375,10 @@ export default function ChatSession({
               data-chat-error={failure.code}
             >
               <CircleAlertIcon aria-hidden="true" className="size-4 shrink-0 text-destructive" />
-              <p className="min-w-0 flex-1">{tErrors(failure.code)}</p>
+              <div className="min-w-0 flex-1">
+                <p>{tErrors(failure.code)}</p>
+                <SupportId traceId={failure.traceId} />
+              </div>
               {failure.retryable && lastMessage?.role === 'user' && (
                 <Button variant="outline" size="sm" onClick={() => void regenerate()}>
                   <RotateCwIcon aria-hidden="true" />

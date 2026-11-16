@@ -5,6 +5,7 @@ import {
   type ProblemDetails,
   type QuotaExceededMeta,
 } from '@teko/shared/errors'
+import { traceIdOf } from './trace.ts'
 
 /**
  * Erro tipado da camada de dados. Toda falha do cliente gerado chega à UI como `ApiError` (o
@@ -21,7 +22,10 @@ export class ApiError extends Error {
   readonly code: ErrorCode
   readonly status: number | null
   readonly retryable: boolean
-  /** `traceId` do problem+json, quando a API respondeu. */
+  /**
+   * "ID de suporte": o `traceId` do problem+json ou, sem ele, o header `x-trace-id` da resposta
+   * (o mesmo `trace_id` do trace da requisição na API); `null` sem resposta.
+   */
   readonly traceId: string | null
   /** Só em `quota_exceeded`: escopo e horário de reset. */
   readonly quota: QuotaExceededMeta | null
@@ -31,6 +35,7 @@ export class ApiError extends Error {
     readonly code: ErrorCode
     readonly status: number | null
     readonly problem?: ProblemDetails
+    readonly traceId?: string | null
     readonly cause?: unknown
   }) {
     super(init.problem?.detail ?? init.problem?.title ?? init.code, { cause: init.cause })
@@ -38,7 +43,7 @@ export class ApiError extends Error {
     this.status = init.status
     this.retryable = isRetryable(init.code)
     this.problem = init.problem ?? null
-    this.traceId = init.problem?.traceId ?? null
+    this.traceId = init.problem?.traceId ?? init.traceId ?? null
     this.quota = init.problem?.code === ErrorCode.QuotaExceeded ? init.problem.meta : null
   }
 
@@ -86,12 +91,14 @@ export function toApiError(error: unknown, response: Response | undefined): ApiE
   if (response === undefined) {
     return new ApiError({ code: ErrorCode.Internal, status: null, cause: error })
   }
+  const traceId = traceIdOf(response)
   if (isProblemDetails(error)) {
-    return new ApiError({ code: error.code, status: response.status, problem: error })
+    return new ApiError({ code: error.code, status: response.status, problem: error, traceId })
   }
   return new ApiError({
     code: errorCodeForStatus(response.status),
     status: response.status,
+    traceId,
     cause: error,
   })
 }

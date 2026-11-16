@@ -24,10 +24,11 @@ import type {
   UsageCaps,
   UsageReservation,
 } from '../ports/question-repository.ts'
+import { AnswerOutcomeKind, noopTelemetry, type Telemetry } from '../ports/telemetry.ts'
 import { PROMPT_VERSION } from '../prompts/answer.ts'
 import type { Lifecycle } from '../services/lifecycle.ts'
 import type { ProviderRouter } from '../services/provider-router.ts'
-import { decideQuota } from '../services/quota-guard.ts'
+import { decideQuota, quotaUsage } from '../services/quota-guard.ts'
 import { toResolved } from './answer-pipeline.ts'
 import type { CheckCoverage, CoverageSource } from './check-coverage.ts'
 import type { ResolveReferenceDate } from './resolve-reference-date.ts'
@@ -65,6 +66,8 @@ export interface AskQuestionDeps {
   readonly caps: UsageCaps
   readonly reservation: UsageReservation
   readonly killSwitch: boolean
+  /** Métricas de operação (padrão: nenhuma). */
+  readonly telemetry?: Telemetry
 }
 
 /** Dia das cotas (São Paulo) e o instante em que elas voltam. */
@@ -81,6 +84,7 @@ export function quotaExceeded(scope: QuotaScope, resetAt: string): ApplicationEr
 }
 
 export function createAskQuestion(deps: AskQuestionDeps): AskQuestion {
+  const telemetry = deps.telemetry ?? noopTelemetry
   return async ({ user, request, requestId, requestCountry }) => {
     if (deps.lifecycle.isDraining()) {
       throw new ApplicationError({ code: ErrorCode.ServicePaused })
@@ -131,6 +135,13 @@ export function createAskQuestion(deps: AskQuestionDeps): AskQuestion {
         answer: null,
         refusal,
       })
+      telemetry.answer({
+        outcome: AnswerOutcomeKind.Refused,
+        refusalReason: RefusalReason.OutOfCoverage,
+        retrievalMode: null,
+        cached: false,
+        corpusVersion,
+      })
       return { status: QuestionStatus.Refused, questionId, resolved, refusal }
     }
 
@@ -155,6 +166,13 @@ export function createAskQuestion(deps: AskQuestionDeps): AskQuestion {
         answer,
         refusal: null,
       })
+      telemetry.answer({
+        outcome: AnswerOutcomeKind.Answered,
+        refusalReason: null,
+        retrievalMode: answer.meta.retrievalMode,
+        cached: true,
+        corpusVersion,
+      })
       return { status: QuestionStatus.Answered, questionId, resolved, answer }
     }
 
@@ -173,7 +191,10 @@ export function createAskQuestion(deps: AskQuestionDeps): AskQuestion {
       { ...base, cacheKey },
       day,
       deps.reservation,
-      (usage) => decideQuota(usage, deps.caps, deps.reservation),
+      (usage) => {
+        telemetry.quotaUsage(quotaUsage(usage, deps.caps))
+        return decideQuota(usage, deps.caps, deps.reservation)
+      },
     )
     if (outcome.kind === 'busy') {
       throw new ApplicationError({ code: ErrorCode.StreamBusy })

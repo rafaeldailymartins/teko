@@ -5,6 +5,7 @@ import type { BackgroundTasks } from './ports/background-tasks.ts'
 import type { ClientIp } from './ports/client-ip.ts'
 import type { GeoResolver } from './ports/geo-resolver.ts'
 import type { RateLimitStore } from './ports/rate-limit-store.ts'
+import type { Telemetry } from './ports/telemetry.ts'
 import type { Lifecycle } from './services/lifecycle.ts'
 import type { NeuronBudget } from './services/neuron-budget.ts'
 import type { StreamBudget } from './services/stream-budget.ts'
@@ -120,6 +121,8 @@ export interface Container {
   readonly rateLimitStore: RateLimitStore | null
   /** Teto de cada stream, descontado o prazo da invocação (F4). */
   readonly streamBudget: StreamBudget
+  /** Métricas de operação (`noopTelemetry` sem telemetria configurada). */
+  readonly telemetry: Telemetry
   /** Libera recursos (pool do Postgres, exporters...) depois que o servidor HTTP fechou. */
   close(): Promise<void>
 }
