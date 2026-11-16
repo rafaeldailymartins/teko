@@ -20,6 +20,7 @@ import {
   registerSecurityHeaders,
 } from '#adapters/in/http/plugins/security-headers.ts'
 import { registerProblemHandlers } from '#adapters/in/http/problem/error-handler.ts'
+import { authProviderRoutes } from '#adapters/in/http/routes/auth-providers.ts'
 import { coverageRoutes } from '#adapters/in/http/routes/coverage.ts'
 import { evalRoutes } from '#adapters/in/http/routes/eval.ts'
 import { healthRoutes } from '#adapters/in/http/routes/health.ts'
@@ -107,6 +108,7 @@ export async function buildApp(deps: BuildAppDeps): Promise<FastifyInstance> {
 
   await app.register(healthRoutes)
   await app.register(coverageRoutes)
+  await app.register(authProviderRoutes)
   await app.register(meRoutes)
   await app.register(questionRoutes)
   await app.register(provisionRoutes)

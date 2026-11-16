@@ -8,9 +8,14 @@ import {
   useQuery,
   useQueryClient,
 } from '@tanstack/react-query'
-import type { OnboardingRequest } from '@teko/shared/contracts'
+import type {
+  EmailSignInRequest,
+  EmailSignUpRequest,
+  OnboardingRequest,
+} from '@teko/shared/contracts'
 import type { ReferenceInput } from '@teko/shared/vigencia'
 import type {
+  GetAuthProvidersResponse,
   GetCoverageResponse,
   GetMeResponse,
   GetProvisionDiffResponse,
@@ -22,9 +27,17 @@ import type {
   SearchProvisionsResponse,
 } from './__generated__/types.gen.ts'
 import { deleteAccount, fetchMyDataExport, type MyDataExport, submitOnboarding } from './account.ts'
-import { deletePasskey, type Passkey, registerPasskey, signOut } from './auth.ts'
+import {
+  deletePasskey,
+  type Passkey,
+  registerPasskey,
+  signInWithEmail,
+  signOut,
+  signUpWithEmail,
+} from './auth.ts'
 import type { ApiError } from './errors.ts'
 import {
+  authProvidersQuery,
   conversationsQuery,
   coverageQuery,
   historyQuery,
@@ -56,6 +69,14 @@ export function useQuota(enabled = true): ApiQuery<GetQuotaResponse> {
 /** Passkeys da conta; `enabled: false` enquanto não há sessão. */
 export function usePasskeys(enabled = true): ApiQuery<Passkey[]> {
   return useQuery(passkeysQuery(enabled))
+}
+
+/**
+ * Métodos de entrada ativos no ambiente (`github`, `google`, `passkey`, `email`): a tela de entrada
+ * mostra só esses. Localmente, sem OAuth apps, vêm só `passkey` e `email`.
+ */
+export function useAuthProviders(): ApiQuery<GetAuthProvidersResponse> {
+  return useQuery(authProvidersQuery())
 }
 
 export function useCoverage(): ApiQuery<GetCoverageResponse> {
@@ -101,7 +122,8 @@ export function useProvisionSearch(
 }
 
 /**
- * Mutações da conta. O erro é `ApiError` (ou `PasskeyError`, na cerimônia da passkey). Sair e
+ * Mutações da conta. O erro é `ApiError` (ou `PasskeyError`, na cerimônia da passkey, e
+ * `EmailAuthError`, na entrada por e-mail). Sair e
  * excluir a conta não mexem no cache: quem chama recarrega a página no destino, o que zera tudo.
  */
 type ApiMutation<TData, TVariables = void> = UseMutationResult<TData, Error, TVariables>
@@ -112,6 +134,26 @@ export function useCompleteOnboarding(): ApiMutation<GetMeResponse, OnboardingRe
   return useMutation({
     mutationFn: submitOnboarding,
     onSuccess: (me) => queryClient.setQueryData(meQuery().queryKey, me),
+  })
+}
+
+/**
+ * Entrada e cadastro por e-mail e senha. O erro é `EmailAuthError` (com `failure`) ou `ApiError`.
+ * No sucesso, o `/me` é relido: a guarda e o cabeçalho passam a ver a sessão nova.
+ */
+export function useEmailSignIn(): ApiMutation<void, EmailSignInRequest> {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: signInWithEmail,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: meQuery().queryKey }),
+  })
+}
+
+export function useEmailSignUp(): ApiMutation<void, EmailSignUpRequest> {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: signUpWithEmail,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: meQuery().queryKey }),
   })
 }
 

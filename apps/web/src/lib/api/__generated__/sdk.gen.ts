@@ -3,7 +3,7 @@
 
 import { client } from './client.gen.ts';
 import type { Client, ClientMeta, Options as Options2, RequestResult, TDataShape } from './client/index.ts';
-import type { AskQuestionData, AskQuestionErrors, AskQuestionResponses, CompleteOnboardingData, CompleteOnboardingErrors, CompleteOnboardingResponses, DeleteMyDataData, DeleteMyDataErrors, DeleteMyDataResponses, ExportMyDataData, ExportMyDataErrors, ExportMyDataResponses, GetCoverageData, GetCoverageErrors, GetCoverageResponses, GetHealthData, GetHealthErrors, GetHealthResponses, GetMeData, GetMeErrors, GetMeResponses, GetProvisionDiffData, GetProvisionDiffErrors, GetProvisionDiffResponses, GetProvisionTimelineData, GetProvisionTimelineErrors, GetProvisionTimelineResponses, GetQuestionData, GetQuestionErrors, GetQuestionResponses, GetQuotaData, GetQuotaErrors, GetQuotaResponses, ListConversationsData, ListConversationsErrors, ListConversationsResponses, ListHistoryData, ListHistoryErrors, ListHistoryResponses, RecordFeedbackData, RecordFeedbackErrors, RecordFeedbackResponses, SearchProvisionsData, SearchProvisionsErrors, SearchProvisionsResponses, StreamAnswerData, StreamAnswerResponses } from './types.gen.ts';
+import type { AskQuestionData, AskQuestionErrors, AskQuestionResponses, CompleteOnboardingData, CompleteOnboardingErrors, CompleteOnboardingResponses, DeleteMyDataData, DeleteMyDataErrors, DeleteMyDataResponses, ExportMyDataData, ExportMyDataErrors, ExportMyDataResponses, GetAuthProvidersData, GetAuthProvidersErrors, GetAuthProvidersResponses, GetCoverageData, GetCoverageErrors, GetCoverageResponses, GetHealthData, GetHealthErrors, GetHealthResponses, GetMeData, GetMeErrors, GetMeResponses, GetProvisionDiffData, GetProvisionDiffErrors, GetProvisionDiffResponses, GetProvisionTimelineData, GetProvisionTimelineErrors, GetProvisionTimelineResponses, GetQuestionData, GetQuestionErrors, GetQuestionResponses, GetQuotaData, GetQuotaErrors, GetQuotaResponses, ListConversationsData, ListConversationsErrors, ListConversationsResponses, ListHistoryData, ListHistoryErrors, ListHistoryResponses, RecordFeedbackData, RecordFeedbackErrors, RecordFeedbackResponses, SearchProvisionsData, SearchProvisionsErrors, SearchProvisionsResponses, StreamAnswerData, StreamAnswerResponses } from './types.gen.ts';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -23,6 +23,11 @@ export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends 
  * Liveness (prefixo da API)
  */
 export const getHealth = <ThrowOnError extends boolean = false>(options?: Options<GetHealthData, ThrowOnError>): RequestResult<GetHealthResponses, GetHealthErrors, ThrowOnError> => (options?.client ?? client).get<GetHealthResponses, GetHealthErrors, ThrowOnError>({ url: '/healthz', ...options });
+
+/**
+ * Métodos de entrada ativos no ambiente
+ */
+export const getAuthProviders = <ThrowOnError extends boolean = false>(options?: Options<GetAuthProvidersData, ThrowOnError>): RequestResult<GetAuthProvidersResponses, GetAuthProvidersErrors, ThrowOnError> => (options?.client ?? client).get<GetAuthProvidersResponses, GetAuthProvidersErrors, ThrowOnError>({ url: '/v1/auth/providers', ...options });
 
 /**
  * Conversas do usuário, da mais recente para a mais antiga

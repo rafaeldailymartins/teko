@@ -119,10 +119,12 @@ contrato de `@teko/shared` e o cliente gerado.
   difere do git. Os imports do gerado levam `.ts` (`output.module.extension`): o Turbopack do
   `next build` não resolve o `.js` para o arquivo `.ts`.
 - **Better Auth sem o cliente dele:** as rotas que o web usa (`/api/auth/sign-in/social`,
-  `/sign-out` e as do plugin de passkey) passam pelo mesmo `apiClient` em `src/lib/api/auth.ts`; a
-  cerimônia WebAuthn usa o `@simplewebauthn/browser`, carregado por `import()` no clique. O cliente
-  do Better Auth com o plugin de passkey somaria ~15 KiB gz, e o Biome segue proibindo
-  `better-auth` no web.
+  `/sign-up/email`, `/sign-in/email`, `/sign-out` e as do plugin de passkey) passam pelo mesmo
+  `apiClient` em `src/lib/api/auth.ts`; a cerimônia WebAuthn usa o `@simplewebauthn/browser`,
+  carregado por `import()` no clique. O cliente do Better Auth com o plugin de passkey somaria
+  ~15 KiB gz, e o Biome segue proibindo `better-auth` no web. Os métodos de entrada ativos vêm de
+  `GET /api/v1/auth/providers` (`useAuthProviders`), e as falhas de e-mail e senha que a tela
+  explica chegam como `EmailAuthError` (ADR 0036).
 - Erros: um interceptor do cliente converte Problem Details em `ApiError` (`code: ErrorCode`,
   `retryable`, `traceId`, cota), e a UI mostra `t(error.messageKey)` (`errors.<code>`).
 - TanStack Query (`staleTime: 60_000`, retry só de erro transitório; keys com a data efetiva de

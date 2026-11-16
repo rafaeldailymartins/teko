@@ -9,6 +9,7 @@ import {
 } from '@tanstack/react-query'
 import type { ReferenceInput } from '@teko/shared/vigencia'
 import {
+  getAuthProvidersOptions,
   getCoverageOptions,
   getMeOptions,
   getProvisionDiffOptions,
@@ -63,6 +64,17 @@ export function quotaQuery(enabled = true) {
 /** Passkeys da conta (`GET /auth/passkey/list-user-passkeys`, fora do OpenAPI). */
 export function passkeysQuery(enabled = true) {
   return apiQuery({ queryKey: ['auth', 'passkeys'] as const, queryFn: listPasskeys }, enabled)
+}
+
+/**
+ * Métodos de entrada ativos no ambiente (`GET /v1/auth/providers`, pública). É configuração do
+ * deploy: não fica velha durante a visita.
+ */
+export function authProvidersQuery() {
+  return {
+    ...apiQuery(getAuthProvidersOptions({ client: apiClient })),
+    staleTime: Number.POSITIVE_INFINITY,
+  }
 }
 
 /** Cobertura efetiva do corpus por família (`GET /v1/coverage`, pública). */

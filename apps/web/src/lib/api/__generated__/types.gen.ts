@@ -40,6 +40,65 @@ export type GetHealthResponses = {
 
 export type GetHealthResponse = GetHealthResponses[keyof GetHealthResponses];
 
+export type GetAuthProvidersData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/v1/auth/providers';
+};
+
+export type GetAuthProvidersErrors = {
+    /**
+     * RFC 9457 problem details (application/problem+json)
+     */
+    503: {
+        type: string;
+        title: string;
+        status: number;
+        detail?: string;
+        instance?: string;
+        traceId: string;
+        code: 'quota_exceeded';
+        meta: {
+            scope: 'user_daily' | 'global_daily';
+            resetAt: string;
+        };
+    } | {
+        type: string;
+        title: string;
+        status: number;
+        detail?: string;
+        instance?: string;
+        traceId: string;
+        code: 'validation_error';
+        errors?: Array<{
+            path: string;
+            message: string;
+        }>;
+    } | {
+        type: string;
+        title: string;
+        status: number;
+        detail?: string;
+        instance?: string;
+        traceId: string;
+        code: 'unauthenticated' | 'forbidden' | 'not_found' | 'onboarding_required' | 'rate_limited' | 'service_paused' | 'stream_busy' | 'upstream_unavailable' | 'region_restricted' | 'internal';
+    };
+};
+
+export type GetAuthProvidersError = GetAuthProvidersErrors[keyof GetAuthProvidersErrors];
+
+export type GetAuthProvidersResponses = {
+    /**
+     * Métodos de entrada ativos no ambiente
+     */
+    200: {
+        methods: Array<'github' | 'google' | 'passkey' | 'email'>;
+    };
+};
+
+export type GetAuthProvidersResponse = GetAuthProvidersResponses[keyof GetAuthProvidersResponses];
+
 export type ListConversationsData = {
     body?: never;
     path?: never;

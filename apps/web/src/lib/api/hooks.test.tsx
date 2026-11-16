@@ -2,6 +2,7 @@ import { type QueryClient, QueryClientProvider, type QueryKey } from '@tanstack/
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
 import {
+  useAuthProviders,
   useCoverage,
   useHistory,
   useMe,
@@ -12,6 +13,7 @@ import {
   useQuota,
 } from './hooks.ts'
 import {
+  authProvidersQuery,
   coverageQuery,
   historyQuery,
   meQuery,
@@ -42,6 +44,7 @@ function put(client: QueryClient, key: QueryKey, data: unknown): void {
 function seed(client: QueryClient): void {
   put(client, meQuery().queryKey, { name: 'Ana' })
   put(client, coverageQuery().queryKey, { corpusVersion: 7 })
+  put(client, authProvidersQuery().queryKey, { methods: ['passkey', 'email'] })
   put(client, historyQuery(ID).queryKey, { items: [] })
   put(client, questionQuery(ID).queryKey, { status: 'answered' })
   put(client, quotaQuery().queryKey, { day: '2026-11-15' })
@@ -60,6 +63,7 @@ function Probe({
   const results = {
     me: useMe(),
     coverage: useCoverage(),
+    providers: useAuthProviders(),
     history: useHistory(id),
     question: useQuestion(id),
     quota: useQuota(id !== null),
@@ -90,6 +94,7 @@ describe('hooks da API', () => {
     expect(render(ID, KEY)).toEqual({
       me: ['success', { name: 'Ana' }],
       coverage: ['success', { corpusVersion: 7 }],
+      providers: ['success', { methods: ['passkey', 'email'] }],
       history: ['success', { items: [] }],
       question: ['success', { status: 'answered' }],
       quota: ['success', { day: '2026-11-15' }],
