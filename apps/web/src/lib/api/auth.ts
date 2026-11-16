@@ -2,12 +2,14 @@ import type {
   PublicKeyCredentialCreationOptionsJSON,
   PublicKeyCredentialRequestOptionsJSON,
 } from '@simplewebauthn/browser'
+import type { EmailSignInRequest, EmailSignUpRequest } from '@teko/shared/contracts'
 import { z } from 'zod'
 import { apiClient } from './client.ts'
 import { ApiError } from './errors.ts'
 
 /**
- * Chamadas ao Better Auth (`/api/auth/*`, mesma origem, cookie de sessão). Não usam o cliente do
+ * Chamadas ao Better Auth (`/api/auth/*`, mesma origem, cookie de sessão): OAuth, e-mail e senha,
+ * sair e passkey. Não usam o cliente do
  * Better Auth: as rotas são poucas e estáveis, e o cliente dele com o plugin de passkey somaria
  * ~15 KiB gz ao bundle (design de `add-auth-ui`). Passam pelo `apiClient`, então toda falha HTTP
  * chega como `ApiError`. A cerimônia WebAuthn fica com o `@simplewebauthn/browser` (o mesmo que o
@@ -45,6 +47,129 @@ export async function startSocialSignIn(
     throwOnError: true,
   })
   return socialSignInSchema.parse(data).url
+}
+
+/**
+ * Por que a entrada ou o cadastro por e-mail não terminou, para a UI escolher a mensagem (ADR
+ * 0036). Nenhuma diz se um e-mail tem conta: a API responde igual nos dois casos.
+ */
+export const EmailAuthFailure = {
+  /** E-mail ou senha não conferem (a mesma resposta para um e-mail sem conta). */
+  InvalidCredentials: 'invalidCredentials',
+  /**
+   * O cadastro respondeu, mas a entrada com a senha escolhida falhou: o e-mail já tinha conta (por
+   * senha, GitHub ou Google). A mensagem sugere entrar pelo método de sempre, sem afirmar nada.
+   */
+  AccountUnavailable: 'accountUnavailable',
+  /** Senha com menos de `PASSWORD_MIN_LENGTH` caracteres. */
+  PasswordTooShort: 'passwordTooShort',
+  /** Senha com mais de `PASSWORD_MAX_LENGTH` caracteres. */
+  PasswordTooLong: 'passwordTooLong',
+  InvalidEmail: 'invalidEmail',
+  /** Nome vazio, longo demais ou com caractere de controle. */
+  InvalidName: 'invalidName',
+  /** Outro corpo recusado (campo a mais, por exemplo). */
+  InvalidInput: 'invalidInput',
+  /** Tentativas demais deste IP (5 entradas por minuto, 5 cadastros a cada 10 minutos). */
+  RateLimited: 'rateLimited',
+} as const
+
+export type EmailAuthFailure = (typeof EmailAuthFailure)[keyof typeof EmailAuthFailure]
+
+export class EmailAuthError extends Error {
+  override readonly name = 'EmailAuthError'
+  readonly failure: EmailAuthFailure
+
+  constructor(failure: EmailAuthFailure, options?: { readonly cause?: unknown }) {
+    super(failure, options)
+    this.failure = failure
+  }
+}
+
+/** Códigos do Better Auth (corpo `{code, message}` dos 400) que a UI distingue. */
+const INPUT_FAILURES: Readonly<Record<string, EmailAuthFailure>> = {
+  PASSWORD_TOO_SHORT: EmailAuthFailure.PasswordTooShort,
+  PASSWORD_TOO_LONG: EmailAuthFailure.PasswordTooLong,
+  INVALID_EMAIL: EmailAuthFailure.InvalidEmail,
+  INVALID_NAME: EmailAuthFailure.InvalidName,
+}
+
+/** Código do corpo de erro do Better Auth, que o `ApiError` guarda em `cause`. */
+function betterAuthCode(error: ApiError): string | null {
+  const { cause } = error
+  return typeof cause === 'object' &&
+    cause !== null &&
+    'code' in cause &&
+    typeof cause.code === 'string'
+    ? cause.code
+    : null
+}
+
+/**
+ * Falha de e-mail e senha que a UI explica, ou `null` para as outras (rede, 403 de origem, 5xx),
+ * que seguem como `ApiError`.
+ */
+export function emailAuthFailureOf(error: unknown): EmailAuthFailure | null {
+  if (!(error instanceof ApiError)) {
+    return null
+  }
+  switch (error.status) {
+    case 401:
+      return EmailAuthFailure.InvalidCredentials
+    case 429:
+      return EmailAuthFailure.RateLimited
+    case 400:
+    case 422:
+      return INPUT_FAILURES[betterAuthCode(error) ?? ''] ?? EmailAuthFailure.InvalidInput
+    default:
+      return null
+  }
+}
+
+/** Roda a chamada e troca o erro que a UI explica por `EmailAuthError`. */
+async function emailCall<T>(run: () => Promise<T>): Promise<T> {
+  try {
+    return await run()
+  } catch (error) {
+    const failure = emailAuthFailureOf(error)
+    throw failure === null ? error : new EmailAuthError(failure, { cause: error })
+  }
+}
+
+/** Entra com e-mail e senha; o Better Auth grava o cookie de sessão. */
+export async function signInWithEmail(credentials: EmailSignInRequest): Promise<void> {
+  await emailCall(() =>
+    apiClient.post<{ 200: unknown }, unknown, true>({
+      url: '/auth/sign-in/email',
+      body: { email: credentials.email, password: credentials.password },
+      headers: JSON_HEADERS,
+      throwOnError: true,
+    }),
+  )
+}
+
+/**
+ * Cria a conta por e-mail e senha e entra nela. O cadastro nunca abre sessão e responde igual
+ * para um e-mail que já tem conta (proteção contra enumeração): a sessão vem da entrada logo
+ * depois, e uma entrada recusada ali vira `accountUnavailable`.
+ */
+export async function signUpWithEmail(account: EmailSignUpRequest): Promise<void> {
+  await emailCall(() =>
+    apiClient.post<{ 200: unknown }, unknown, true>({
+      url: '/auth/sign-up/email',
+      body: { name: account.name, email: account.email, password: account.password },
+      headers: JSON_HEADERS,
+      throwOnError: true,
+    }),
+  )
+  try {
+    await signInWithEmail({ email: account.email, password: account.password })
+  } catch (error) {
+    if (error instanceof EmailAuthError && error.failure === EmailAuthFailure.InvalidCredentials) {
+      throw new EmailAuthError(EmailAuthFailure.AccountUnavailable, { cause: error })
+    }
+    throw error
+  }
 }
 
 /** Encerra a sessão: o Better Auth apaga o cookie e revoga a sessão no banco. */

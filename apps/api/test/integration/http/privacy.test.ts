@@ -200,14 +200,26 @@ describe('cli maintenance purge', () => {
        RETURNING id`,
       [userId],
     )
+    // Janelas do rate limit do Better Auth (IP e caminho): a parada há 2 dias sai, a recente fica.
+    const now = Date.now()
+    await owner.query(
+      `INSERT INTO auth.rate_limit (key, count, last_request)
+       VALUES ('10.9.9.1|/sign-in/email', 3, $1), ('10.9.9.2|/sign-in/email', 1, $2)`,
+      [now - 2 * 86_400_000, now],
+    )
     const maintenance = createMaintenance(env)
     try {
       const counts = await maintenance.purge()
       expect(counts.questions).toBeGreaterThanOrEqual(1)
       expect(counts.expiredPending).toBeGreaterThanOrEqual(1)
+      expect(counts.rateLimits).toBeGreaterThanOrEqual(1)
     } finally {
       await maintenance.close()
     }
+    const windows = await owner.query<{ key: string }>(
+      `SELECT key FROM auth.rate_limit WHERE key LIKE '10.9.9.%' ORDER BY key`,
+    )
+    expect(windows.rows).toEqual([{ key: '10.9.9.2|/sign-in/email' }])
     const rows = await owner.query<{ id: string; status: string }>(
       'SELECT id, status FROM app.questions WHERE id = ANY($1::uuid[])',
       [[old, pending.rows[0]?.id]],

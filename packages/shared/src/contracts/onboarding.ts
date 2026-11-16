@@ -59,7 +59,7 @@ export const meExportSchema = z
       termsAcceptedAt: z.iso.datetime({ offset: true }).nullable(),
       countryOfResidence: z.string().nullable(),
     }),
-    /** Provedores OAuth ligados à conta (sem tokens). */
+    /** Contas ligadas: `github`, `google` ou `email` (senha), sem tokens nem hash. */
     linkedAccounts: z.array(z.string()),
     passkeys: z.int().nonnegative(),
     questions: z.array(questionDetailSchema),

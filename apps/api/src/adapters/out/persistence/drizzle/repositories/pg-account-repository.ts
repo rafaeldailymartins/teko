@@ -6,10 +6,24 @@ import { QUESTION_COLUMNS, type QuestionRow, toRecord } from './pg-question-repo
 
 /**
  * Exportação, exclusão e expurgo dos dados de usuário (`teko_app`). A exclusão é uma transação: o
- * `DELETE` em `auth.user` leva, por cascata, sessões, contas OAuth, passkeys, perguntas e feedback;
- * as linhas de uso (`usage_daily`, escopo `user:<id>`) e as janelas de rate limit da chave do
- * usuário saem junto.
+ * `DELETE` em `auth.user` leva, por cascata, sessões, contas (OAuth e a de senha, com o hash),
+ * passkeys, perguntas e feedback; as linhas de uso (`usage_daily`, escopo `user:<id>`) e as janelas
+ * de rate limit da chave do usuário saem junto.
  */
+
+/**
+ * Nome de cada conta ligada na exportação: o provedor OAuth, ou `email` para a conta de senha (o
+ * `credential` do Better Auth). Só o nome sai; tokens e o hash da senha nunca.
+ */
+function linkedAccountName(providerId: string): string {
+  return providerId === 'credential' ? 'email' : providerId
+}
+
+/**
+ * As janelas do rate limit do Better Auth (`auth.rate_limit`, chave IP e caminho, `last_request` em
+ * ms) duram no máximo 10 min (cadastro por e-mail); a manutenção apaga as paradas há mais de um dia.
+ */
+const AUTH_RATE_LIMIT_RETENTION_MS = 86_400_000
 
 interface UserRow {
   readonly id: string
@@ -96,7 +110,7 @@ export function createPgAccountRepository(pool: pg.Pool): AccountRepository {
             termsAcceptedAt: user.terms_accepted_at,
             countryOfResidence: user.country_of_residence,
           },
-          linkedAccounts: accounts.rows.map((row) => row.provider_id),
+          linkedAccounts: accounts.rows.map((row) => linkedAccountName(row.provider_id)),
           passkeys: passkeys.rows[0]?.total ?? 0,
           questions: questions.rows.map((row) => toDetail(toRecord(row))),
           feedback: feedback.rows.map((row) => ({
@@ -139,7 +153,11 @@ export function createPgMaintenanceRepository(pool: pg.Pool): MaintenanceReposit
             [pendingBefore, now],
           ),
           answerCache: await count('DELETE FROM app.answer_cache WHERE expires_at <= $1', [now]),
-          rateLimits: await count('DELETE FROM app.rate_limits WHERE expires_at <= $1', [now]),
+          rateLimits:
+            (await count('DELETE FROM app.rate_limits WHERE expires_at <= $1', [now])) +
+            (await count('DELETE FROM auth.rate_limit WHERE last_request < $1', [
+              now.getTime() - AUTH_RATE_LIMIT_RETENTION_MS,
+            ])),
           sessions: await count('DELETE FROM auth.session WHERE expires_at <= $1', [now]),
           verifications: await count('DELETE FROM auth.verification WHERE expires_at <= $1', [now]),
         }

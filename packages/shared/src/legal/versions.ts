@@ -9,6 +9,6 @@
  *
  * As duas seguem o formato de `termsVersionSchema` (data ISO, por convenção).
  */
-export const TERMS_VERSION = '2026-11-14'
+export const TERMS_VERSION = '2026-11-16'
 
-export const PRIVACY_POLICY_VERSION = '2026-11-15'
+export const PRIVACY_POLICY_VERSION = '2026-11-16'

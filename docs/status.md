@@ -231,6 +231,15 @@ Pendência do mantenedor: revisar os textos de `/privacy` e `/terms` (a lista de
 PR #103: encarregado, bases legais, transferência internacional, canal dos titulares, cláusulas de
 garantia diante do CDC, foro e datas das versões). A F6 atualiza a política quando ligar o PostHog.
 
+## Depois da F5
+
+- `add-email-password-login` (arquivada em 2026-11-16, [ADR 0036](adr/0036-login-por-email-e-senha.md)):
+  login por e-mail e senha em todos os ambientes, sem confirmação de e-mail nem recuperação de senha
+  (decisão do mantenedor), sem vínculo implícito com GitHub ou Google, rate limit mais rígido nas
+  rotas de e-mail, `GET /api/v1/auth/providers`, cliente no web (`signUpWithEmail`,
+  `signInWithEmail`, `useAuthProviders`) e Termos e política na versão 2026-11-16. A tela de entrada
+  com o formulário vem com o redesign do front.
+
 ## Antes da F7: o que o mantenedor faz
 
 Lista única das ações fora do repositório que o deploy da F7 exige. O agente que começa a F7
