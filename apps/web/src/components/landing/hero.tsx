@@ -1,7 +1,7 @@
 import type { Locale } from '@teko/shared/i18n'
 import { ArrowRightIcon, CheckIcon } from 'lucide-react'
 import { getTranslations } from 'next-intl/server'
-import { Badge } from '@/components/ui/badge'
+import { TekoLogo } from '@/components/brand/teko-logo'
 import { buttonVariants } from '@/components/ui/button'
 import { formatIsoDate, formatTaxPeriod, formatValidityBounds } from '@/lib/i18n/format'
 import {
@@ -19,6 +19,7 @@ import {
   finalStepIndex,
 } from '@/lib/landing/demo-timeline'
 import { localePagePath } from '@/lib/navigation'
+import { PRODUCT_NAME } from '@/lib/site'
 import {
   type ChatDemoCopy,
   DemoFigure,
@@ -120,7 +121,7 @@ export async function Hero({ locale }: HeroProps) {
   const t = await getTranslations({ locale, namespace: 'landing' })
   const [before, after] = DEMO_SCENES
   const beforeBounds = formatValidityBounds(locale, before.validity)
-  const proofs = ['official', 'cited', 'license'] as const
+  const proofs = ['official', 'cited'] as const
   const demo: HeroDemoProps = {
     copy: await demoCopy(locale),
     timeline: await timelineCopy(locale),
@@ -143,13 +144,21 @@ export async function Hero({ locale }: HeroProps) {
       />
       <div className="mx-auto grid max-w-5xl gap-x-12 gap-y-10 px-5 pt-12 pb-12 sm:pt-20 lg:grid-cols-[1.06fr_1fr] lg:items-center lg:pb-16">
         <div className="lg:col-start-1 lg:row-start-1">
-          <Badge tone="leaf">
-            <span aria-hidden="true" className="size-2 rounded-full bg-leaf" />
-            {t('badge')}
-          </Badge>
+          <div className="flex items-center gap-4 sm:gap-5">
+            <TekoLogo
+              variant="seal"
+              className="size-16 rounded-[1.1rem] shadow-raised sm:size-[5.25rem] sm:rounded-[1.4rem]"
+            />
+            <p
+              lang="pt-BR"
+              className="font-semibold font-serif text-[clamp(3rem,7vw,4.5rem)] text-primary leading-none tracking-[-0.03em]"
+            >
+              {PRODUCT_NAME}
+            </p>
+          </div>
           <h1
             id="hero-title"
-            className="mt-7 text-balance font-semibold font-serif text-[clamp(2.5rem,4.6vw,3.75rem)] leading-[1.05] tracking-[-0.02em]"
+            className="mt-9 text-balance font-semibold font-serif text-[clamp(2.5rem,4.6vw,3.75rem)] leading-[1.05] tracking-[-0.02em]"
           >
             {t.rich('title', {
               date: (chunks) => (

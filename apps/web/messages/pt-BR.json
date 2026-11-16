@@ -112,7 +112,6 @@
     }
   },
   "landing": {
-    "badge": "Código aberto e gratuito",
     "title": "Legislação fiscal, na redação que valia <date>na sua data</date>.",
     "lead": "O Tekó é um assistente de código aberto para dúvidas sobre legislação fiscal brasileira. Cada resposta é dada para um período de apuração ou data de referência e cita o dispositivo e a versão usados.",
     "cta": {
@@ -121,8 +120,7 @@
     },
     "proof": {
       "official": "Fontes oficiais versionadas",
-      "cited": "Citação em cada afirmação",
-      "license": "Licença MIT"
+      "cited": "Citação em cada afirmação"
     },
     "demo": {
       "caption": "Exemplo ilustrativo com um caso real do RCTE de Goiás.",

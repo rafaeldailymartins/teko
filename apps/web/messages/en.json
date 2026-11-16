@@ -112,7 +112,6 @@
     }
   },
   "landing": {
-    "badge": "Open source and free",
     "title": "Tax law, in the wording that applied <date>on your date</date>.",
     "lead": "Tekó is an open-source assistant for questions about Brazilian tax law. Every answer is given for a tax period or reference date and cites the provision and the version it used.",
     "cta": {
@@ -121,8 +120,7 @@
     },
     "proof": {
       "official": "Versioned official sources",
-      "cited": "A citation for every statement",
-      "license": "MIT license"
+      "cited": "A citation for every statement"
     },
     "demo": {
       "caption": "Illustrative example with a real case from the Goiás RCTE.",
