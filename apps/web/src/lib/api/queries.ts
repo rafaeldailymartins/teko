@@ -1,6 +1,7 @@
 import {
   type InfiniteData,
   infiniteQueryOptions,
+  type Query,
   type QueryClient,
   type QueryFunction,
   type QueryKey,
@@ -20,7 +21,7 @@ import {
   listHistoryOptions,
   searchProvisionsOptions,
 } from './__generated__/@tanstack/react-query.gen.ts'
-import type { ListConversationsResponse } from './__generated__/types.gen.ts'
+import type { GetQuestionResponse, ListConversationsResponse } from './__generated__/types.gen.ts'
 import { listPasskeys, listSignInMethods } from './auth.ts'
 import { apiClient } from './client.ts'
 import type { ApiError } from './errors.ts'
@@ -135,6 +136,41 @@ export async function refreshAfterQuestion(client: QueryClient): Promise<void> {
     client.invalidateQueries({ queryKey: conversationsQuery().queryKey }),
     client.invalidateQueries({ queryKey: quotaQuery().queryKey }),
   ])
+}
+
+/** Uma pergunta em cache é da conversa: pela resposta gravada ou pelo id que o histórico listou. */
+function isQuestionOf(query: Query, conversationId: string, ids: ReadonlySet<string>): boolean {
+  const [key] = query.queryKey as [{ _id?: unknown; path?: { id?: unknown } } | undefined]
+  if (key?._id !== questionQuery(null).queryKey[0]._id) {
+    return false
+  }
+  const data = query.state.data as GetQuestionResponse | undefined
+  return data?.conversationId === conversationId || ids.has(String(key.path?.id))
+}
+
+/**
+ * Depois de excluir uma conversa, o cache esquece tudo dela: o histórico e cada pergunta somem, a
+ * lista perde o item na hora (sem esperar a releitura) e é relida, para a paginação continuar
+ * certa. A cota não muda: excluir não devolve perguntas.
+ */
+export async function forgetConversation(client: QueryClient, conversationId: string) {
+  const historyKey = historyQuery(conversationId).queryKey
+  const ids = new Set(client.getQueryData(historyKey)?.items.map((item) => item.id) ?? [])
+  client.removeQueries({ queryKey: historyKey, exact: true })
+  client.removeQueries({ predicate: (query) => isQuestionOf(query, conversationId, ids) })
+  const listKey = conversationsQuery().queryKey
+  client.setQueryData(listKey, (data) =>
+    data === undefined
+      ? data
+      : {
+          ...data,
+          pages: data.pages.map((page) => ({
+            ...page,
+            items: page.items.filter((item) => item.conversationId !== conversationId),
+          })),
+        },
+  )
+  await client.invalidateQueries({ queryKey: listKey })
 }
 
 /** Uma pergunta com a resposta ou a recusa (`GET /v1/questions/:id`); `null` = desligada. */

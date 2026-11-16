@@ -37,10 +37,12 @@ import {
   signUpWithEmail,
 } from './auth.ts'
 import type { ApiError } from './errors.ts'
+import { removeConversation } from './mutations.ts'
 import {
   authProvidersQuery,
   conversationsQuery,
   coverageQuery,
+  forgetConversation,
   historyQuery,
   meQuery,
   passkeysQuery,
@@ -174,6 +176,19 @@ export function useDeleteAccount(): ApiMutation<void> {
 
 export function useExportMyData(): ApiMutation<MyDataExport> {
   return useMutation({ mutationFn: fetchMyDataExport })
+}
+
+/**
+ * Exclui uma conversa (o id vai como variável). No sucesso, o cache esquece a conversa: some da
+ * lista na hora, e o histórico e as perguntas dela saem do cache (`forgetConversation`). O erro é
+ * `ApiError` (409 `stream_busy` com uma resposta em andamento); 404 conta como excluída.
+ */
+export function useDeleteConversation(): ApiMutation<void, string> {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: removeConversation,
+    onSuccess: (_data, conversationId) => forgetConversation(queryClient, conversationId),
+  })
 }
 
 /** Cadastro e remoção de passkey; os dois relêem a lista. */

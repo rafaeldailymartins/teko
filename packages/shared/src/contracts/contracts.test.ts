@@ -6,6 +6,7 @@ import {
   askQuestionResponseSchema,
   type Citation,
   citationSchema,
+  conversationIdParamsSchema,
   conversationListQuerySchema,
   conversationListResponseSchema,
   coverageResponseSchema,
@@ -339,6 +340,14 @@ describe('UI Message Stream', () => {
     })
     expect(parseStreamError('{"code":"teapot","retryable":true}')).toBeNull()
     expect(parseStreamError('An error occurred.')).toBeNull()
+  })
+})
+
+describe('DELETE /api/v1/conversations/:id', () => {
+  it('aceita só o id da conversa no caminho', () => {
+    expect(conversationIdParamsSchema.safeParse({ id: CONVERSATION_ID }).success).toBe(true)
+    expect(conversationIdParamsSchema.safeParse({ id: 'abc' }).success).toBe(false)
+    expect(conversationIdParamsSchema.safeParse({ id: CONVERSATION_ID, x: 1 }).success).toBe(false)
   })
 })
 

@@ -620,6 +620,194 @@ describe('GET /api/v1/conversations', () => {
   })
 })
 
+describe('DELETE /api/v1/conversations/:id', () => {
+  function deleteConversation(app: FastifyInstance, cookie: string, id: string) {
+    return app.inject({
+      method: 'DELETE',
+      url: `/api/v1/conversations/${id}`,
+      headers: { origin: ORIGIN, cookie },
+    })
+  }
+
+  async function quotaUsed(app: FastifyInstance, cookie: string): Promise<number> {
+    const res = await app.inject({ url: '/api/v1/me/quota', headers: { cookie } })
+    return quotaResponseSchema.parse(res.json()).user.used
+  }
+
+  async function usageRows(userId: string) {
+    const { rows } = await owner.query(
+      `SELECT day::text, scope, requests, stream_seconds, tokens_in, tokens_out
+       FROM app.usage_daily WHERE scope = 'user:' || $1 ORDER BY day`,
+      [userId],
+    )
+    return rows
+  }
+
+  /** Grava uma pergunta direto no banco (para os estados de stream). */
+  async function insertQuestion(
+    userId: string,
+    conversationId: string,
+    status: string,
+    streamStartedAt: string | null,
+  ): Promise<void> {
+    await owner.query(
+      `INSERT INTO app.questions (user_id, conversation_id, question_redacted, locale, families,
+         reference_date, reference_source, status, stream_started_at)
+       VALUES ($1, $2, 'Pergunta em stream', 'pt-BR', '{rcte}', '2008-05-01', 'explicit', $3,
+         now() - $4::interval)`,
+      [userId, conversationId, status, streamStartedAt],
+    )
+  }
+
+  it('o dono exclui a conversa com o que pende dela; a cota e a lista do resto ficam', async () => {
+    const { app } = await startApp()
+    const alice = await newUser()
+    const first = askBody(`${GOYAZES} (exclusão 1)`)
+    const idOf = async (body: Record<string, unknown>) => {
+      const res = askQuestionResponseSchema.parse((await ask(app, alice.cookie, body)).json())
+      return 'questionId' in res ? res.questionId : ''
+    }
+    const firstId = await idOf(first)
+    await streamOf(app, alice.cookie, firstId)
+    // A segunda pergunta entra na mesma conversa.
+    const secondId = await idOf({ ...first, question: `${GOYAZES} (exclusão 2)` })
+    await streamOf(app, alice.cookie, secondId)
+    const feedback = await app.inject({
+      method: 'POST',
+      url: `/api/v1/questions/${firstId}/feedback`,
+      headers: { ...JSON_HEADERS, cookie: alice.cookie },
+      payload: { rating: 'up' },
+    })
+    expect(feedback.statusCode).toBe(204)
+    const kept = askBody(`${GOYAZES} (fica)`)
+    await ask(app, alice.cookie, kept)
+
+    const usedBefore = await quotaUsed(app, alice.cookie)
+    const usageBefore = await usageRows(alice.userId)
+    expect(usedBefore).toBe(3)
+
+    const res = await deleteConversation(app, alice.cookie, first.conversationId)
+    expect(res.statusCode).toBe(204)
+    expect(res.body).toBe('')
+
+    const left = await owner.query(
+      `SELECT (SELECT count(*)::int FROM app.questions WHERE conversation_id = $1) AS questions,
+              (SELECT count(*)::int FROM app.feedback WHERE question_id = ANY($2::uuid[])) AS feedback`,
+      [first.conversationId, [firstId, secondId]],
+    )
+    expect(left.rows[0]).toEqual({ questions: 0, feedback: 0 })
+    for (const id of [firstId, secondId]) {
+      const detail = await app.inject({
+        url: `/api/v1/questions/${id}`,
+        headers: { cookie: alice.cookie },
+      })
+      expect(detail.statusCode).toBe(404)
+    }
+    const history = historyResponseSchema.parse(
+      (
+        await app.inject({
+          url: `/api/v1/questions?conversationId=${first.conversationId}`,
+          headers: { cookie: alice.cookie },
+        })
+      ).json(),
+    )
+    expect(history.items).toEqual([])
+    const list = conversationListResponseSchema.parse(
+      (
+        await app.inject({ url: '/api/v1/conversations', headers: { cookie: alice.cookie } })
+      ).json(),
+    )
+    expect(list.items.map((item) => item.conversationId)).toEqual([kept.conversationId])
+
+    // A cota não volta: o uso do dia continua igual, linha por linha.
+    expect(await quotaUsed(app, alice.cookie)).toBe(usedBefore)
+    expect(await usageRows(alice.userId)).toEqual(usageBefore)
+
+    // Excluir de novo: a conversa já não existe.
+    expect((await deleteConversation(app, alice.cookie, first.conversationId)).statusCode).toBe(404)
+  })
+
+  it('conversa de outro usuário → o mesmo 404 de uma inexistente, sem apagar nada', async () => {
+    const { app } = await startApp()
+    const alice = await newUser()
+    const bob = await newUser()
+    const body = askBody(`${GOYAZES} (de alice)`)
+    await ask(app, alice.cookie, body)
+
+    const foreign = await deleteConversation(app, bob.cookie, body.conversationId)
+    const missing = await deleteConversation(app, bob.cookie, randomUUID())
+    expect(foreign.statusCode).toBe(404)
+    expect(missing.statusCode).toBe(404)
+    const strip = (problem: Record<string, unknown>) => {
+      const { traceId: _trace, instance: _instance, ...rest } = problem
+      return rest
+    }
+    expect(strip(foreign.json())).toEqual(strip(missing.json()))
+    expect(foreign.json()).toMatchObject({ code: 'not_found' })
+
+    const { rows } = await owner.query(
+      'SELECT count(*)::int AS total FROM app.questions WHERE conversation_id = $1',
+      [body.conversationId],
+    )
+    expect(rows[0]).toEqual({ total: 1 })
+  })
+
+  it('sem sessão → 401; Origin errado → 403; id inválido → 400', async () => {
+    const { app } = await startApp()
+    const alice = await newUser()
+    const id = randomUUID()
+    expect((await deleteConversation(app, '', id)).statusCode).toBe(401)
+    const foreign = await app.inject({
+      method: 'DELETE',
+      url: `/api/v1/conversations/${id}`,
+      headers: { origin: 'https://evil.example', cookie: alice.cookie },
+    })
+    expect(foreign.statusCode).toBe(403)
+    const invalid = await deleteConversation(app, alice.cookie, 'nao-e-uuid')
+    expect(invalid.statusCode).toBe(400)
+    expect(invalid.json()).toMatchObject({ code: 'validation_error' })
+  })
+
+  it('resposta em stream → 409 stream_busy; um stream parado há mais de 110 s não segura', async () => {
+    const { app } = await startApp()
+    const alice = await newUser()
+    const streaming = randomUUID()
+    await insertQuestion(alice.userId, streaming, 'answered', null)
+    await insertQuestion(alice.userId, streaming, 'streaming', '5 seconds')
+    const busy = await deleteConversation(app, alice.cookie, streaming)
+    expect(busy.statusCode).toBe(409)
+    expect(busy.json()).toMatchObject({ code: 'stream_busy' })
+    const { rows } = await owner.query(
+      'SELECT count(*)::int AS total FROM app.questions WHERE conversation_id = $1',
+      [streaming],
+    )
+    expect(rows[0]).toEqual({ total: 2 })
+
+    const stale = randomUUID()
+    await insertQuestion(alice.userId, stale, 'streaming', '5 minutes')
+    expect((await deleteConversation(app, alice.cookie, stale)).statusCode).toBe(204)
+  })
+
+  it('o cache de respostas é de todos: excluir a conversa de um não tira a resposta do outro', async () => {
+    const { app, spy } = await startApp()
+    const alice = await newUser()
+    const bob = await newUser()
+    const question = `${GOYAZES} (cache compartilhado)`
+    const body = askBody(question)
+    const res = askQuestionResponseSchema.parse((await ask(app, alice.cookie, body)).json())
+    await streamOf(app, alice.cookie, 'questionId' in res ? res.questionId : '')
+    expect(spy.requests).toHaveLength(1)
+
+    expect((await deleteConversation(app, alice.cookie, body.conversationId)).statusCode).toBe(204)
+
+    const cached = askQuestionResponseSchema.parse(
+      (await ask(app, bob.cookie, askBody(question))).json(),
+    )
+    expect(cached).toMatchObject({ status: 'answered', answer: { meta: { cached: true } } })
+    expect(spy.requests).toHaveLength(1)
+  })
+})
+
 describe('POST /api/v1/_eval/answer (APP_ENV=ci)', () => {
   it('roda o pipeline inteiro sem sessão nem persistência', async () => {
     const { app } = await startApp()

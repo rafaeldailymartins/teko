@@ -2,6 +2,7 @@ import { PassThrough } from 'node:stream'
 import {
   askQuestionRequestSchema,
   askQuestionResponseSchema,
+  conversationIdParamsSchema,
   conversationListQuerySchema,
   conversationListResponseSchema,
   encodeSseChunk,
@@ -23,8 +24,8 @@ import type { QuestionUseCases } from '#app/container.ts'
 import { requireOnboardedSession, requireSession } from '../plugins/auth.ts'
 
 /**
- * Perguntas (`/api/v1/questions*`), a lista de conversas (`/api/v1/conversations`) e a cota do
- * dia (`/api/v1/me/quota`). O stream sai em SSE com os
+ * Perguntas (`/api/v1/questions*`), a lista e a exclusão de conversas (`/api/v1/conversations*`)
+ * e a cota do dia (`/api/v1/me/quota`). O stream sai em SSE com os
  * cabeçalhos do UI Message Stream v1, um heartbeat `: hb` a cada 15 s e o `[DONE]` no fim. A
  * desconexão do cliente aborta o sinal da resposta (e o LLM), e a iteração para.
  */
@@ -178,6 +179,28 @@ export const questionRoutes: FastifyPluginAsyncZod = async (app) => {
     async (request) => {
       const session = await requireSession(request)
       return questions().history.conversations(session.user.id, request.query.cursor)
+    },
+  )
+
+  app.delete(
+    '/api/v1/conversations/:id',
+    {
+      config: { rateLimit: {} },
+      schema: {
+        operationId: 'deleteConversation',
+        summary: 'Exclui uma conversa do usuário, com as perguntas, respostas e feedback dela',
+        description:
+          'Só o dono exclui: conversa inexistente ou de outro usuário dá o mesmo 404. Com uma resposta da conversa ainda em stream, 409 `stream_busy`. A cota do dia não muda.',
+        tags: ['questions'],
+        params: conversationIdParamsSchema,
+        response: { 204: z.null(), ...ERRORS },
+      },
+    },
+    async (request, reply) => {
+      // Lida do banco, como `DELETE /me`: uma sessão revogada não apaga nada.
+      const session = await requireSession(request, { fresh: true })
+      await questions().history.deleteConversation(session.user.id, request.params.id)
+      return reply.code(204).send(null)
     },
   )
 

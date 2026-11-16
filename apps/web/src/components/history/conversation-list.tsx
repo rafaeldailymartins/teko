@@ -7,7 +7,7 @@ import type { Route } from 'next'
 import Link from 'next/link'
 import { useFormatter, useLocale, useTranslations } from 'next-intl'
 import { useQueryStates } from 'nuqs'
-import { Suspense, useId, useState } from 'react'
+import { Suspense, useId, useRef, useState } from 'react'
 import { useCloseHistoryPanel } from '@/components/app-shell/workspace'
 import { EmptyState } from '@/components/empty-state'
 import { Button, buttonVariants } from '@/components/ui/button'
@@ -19,6 +19,13 @@ import { formatTaxPeriod } from '@/lib/i18n/format'
 import { localePagePath } from '@/lib/navigation'
 import { chatConversationHref, chatSearchParams } from '@/lib/url-state'
 import { cn } from '@/lib/utils'
+import {
+  CONVERSATION_LINK_ATTRIBUTE,
+  ConversationActions,
+  DeleteConversationDialog,
+  DeletionNotice,
+  type DeletionTarget,
+} from './delete-conversation.tsx'
 
 type Conversation = ListConversationsResponse['items'][number]
 type Variant = 'panel' | 'page'
@@ -71,6 +78,8 @@ interface ConversationItemProps {
   /** Hoje ou ontem: basta a hora; antes, a data. */
   readonly recent: boolean
   readonly onOpen: () => void
+  /** Abre a confirmação da exclusão; recebe o "⋯" que abriu o menu. */
+  readonly onDelete: (trigger: HTMLElement | null) => void
 }
 
 function ConversationItem({
@@ -79,22 +88,24 @@ function ConversationItem({
   variant,
   recent,
   onOpen,
+  onDelete,
 }: ConversationItemProps) {
   const t = useTranslations('history')
   const format = useFormatter()
   const locale = useLocale()
   const updated = new Date(conversation.updatedAt)
   return (
-    <li>
+    <li className="group/row relative">
       <Link
         href={chatConversationHref(locale, conversation.conversationId) as Route}
         onClick={onOpen}
         aria-current={current ? 'page' : undefined}
+        {...{ [CONVERSATION_LINK_ATTRIBUTE]: conversation.conversationId }}
         className={cn(
           'group/item relative flex flex-col gap-1.5 outline-none transition-[background-color,box-shadow,border-color] duration-150 ease-out-soft focus-visible:ring-2 focus-visible:ring-ring',
           variant === 'panel'
-            ? 'rounded-lg px-3 py-2.5 hover:bg-muted'
-            : 'rounded-xl border bg-popover py-3.5 pr-10 pl-4 shadow-soft hover:border-border-strong/50 hover:shadow-raised',
+            ? 'rounded-lg py-2.5 pr-9 pl-3 hover:bg-muted'
+            : 'rounded-xl border bg-popover py-3.5 pr-20 pl-4 shadow-soft hover:border-border-strong/50 hover:shadow-raised',
           current &&
             'bg-popover shadow-soft ring-1 ring-border before:absolute before:top-2.5 before:bottom-2.5 before:left-0 before:w-[3px] before:rounded-full before:bg-leaf hover:bg-popover',
         )}
@@ -130,17 +141,25 @@ function ConversationItem({
           />
         )}
       </Link>
+      <ConversationActions title={conversation.title} variant={variant} onDelete={onDelete} />
     </li>
   )
 }
 
-function ConversationListContent({ variant }: ConversationListProps) {
+interface ConversationListContentProps extends ConversationListProps {
+  readonly onRequestDelete: (target: DeletionTarget) => void
+}
+
+function ConversationListContent({ variant, onRequestDelete }: ConversationListContentProps) {
   const t = useTranslations('history')
   const tRoot = useTranslations()
   const locale = useLocale()
   const closeHistory = useCloseHistoryPanel()
   const searchId = useId()
-  const [{ c: openConversation }] = useQueryStates({ c: chatSearchParams.c })
+  const [{ c: openConversation }, setChat] = useQueryStates({
+    c: chatSearchParams.c,
+    q: chatSearchParams.q,
+  })
   const [search, setSearch] = useState('')
   const [today] = useState(() => isoDateInTimeZone(new Date()))
   const query = useConversations()
@@ -199,6 +218,25 @@ function ConversationListContent({ variant }: ConversationListProps) {
   const filtered = filterByTitle(conversations, search)
   const groups = groupHistory(filtered, today)
   const GroupHeading = variant === 'panel' ? 'h3' : 'h2'
+  const shownInOrder = groups.flatMap(({ items }) => items)
+
+  /** Exclusão pedida pelo "⋯": a vizinha na ordem da tela recebe o foco depois. */
+  const requestDelete = (conversation: Conversation, trigger: HTMLElement | null) => {
+    const index = shownInOrder.indexOf(conversation)
+    const neighbor = shownInOrder[index + 1] ?? shownInOrder[index - 1] ?? null
+    onRequestDelete({
+      conversationId: conversation.conversationId,
+      title: conversation.title,
+      trigger,
+      neighborId: neighbor?.conversationId ?? null,
+      // Sem `c` (e sem `q`), a URL vira a do `newConversationHref`, com a mesma `ref`, e o chat
+      // monta uma sessão vazia; `replace` tira a conversa excluída do "voltar".
+      leave:
+        conversation.conversationId === openConversation
+          ? () => void setChat({ c: null, q: null }, { history: 'replace' })
+          : null,
+    })
+  }
 
   return (
     <nav
@@ -257,6 +295,7 @@ function ConversationListContent({ variant }: ConversationListProps) {
                 variant={variant}
                 recent={group === HistoryGroup.Today || group === HistoryGroup.Yesterday}
                 onOpen={closeHistory}
+                onDelete={(trigger) => requestDelete(conversation, trigger)}
               />
             ))}
           </ul>
@@ -295,11 +334,27 @@ function ConversationListContent({ variant }: ConversationListProps) {
  * fica marcada no painel. Abrir uma navega para o chat com `?c=<id>` e fecha o Sheet do histórico
  * no celular. Estados de carregamento (skeleton), vazio e erro, com nova tentativa; sem sessão, o
  * erro leva ao login. O `Suspense` é exigido pelo `useQueryStates` no export estático.
+ *
+ * Cada item tem o menu "⋯" com "Excluir conversa". O diálogo de confirmação e o aviso ficam aqui
+ * fora do `Suspense` e do conteúdo: continuam montados quando a lista fica vazia, e o foco tem para
+ * onde voltar (o contêiner, sem conversa vizinha).
  */
 export function ConversationList({ variant }: ConversationListProps) {
+  const [target, setTarget] = useState<DeletionTarget | null>(null)
+  const [deletions, setDeletions] = useState(0)
+  const container = useRef<HTMLDivElement>(null)
   return (
-    <Suspense fallback={<ConversationListLoading variant={variant} />}>
-      <ConversationListContent variant={variant} />
-    </Suspense>
+    <div ref={container} tabIndex={-1} className="outline-none">
+      <DeletionNotice stamp={deletions} variant={variant} />
+      <Suspense fallback={<ConversationListLoading variant={variant} />}>
+        <ConversationListContent variant={variant} onRequestDelete={setTarget} />
+      </Suspense>
+      <DeleteConversationDialog
+        target={target}
+        onClose={() => setTarget(null)}
+        onDeleted={() => setDeletions((count) => count + 1)}
+        fallbackFocus={container}
+      />
+    </div>
   )
 }

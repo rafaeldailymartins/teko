@@ -6,6 +6,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest
 import { apiClient } from '@/lib/api/client'
 import { conversationsQuery } from '@/lib/api/queries'
 import { createQueryClient } from '@/lib/api/query-client'
+import { newConversationHref } from '@/lib/url-state'
 import { byText, click, type Rendered, renderClient, settle } from '../../../test/render.tsx'
 import { ConversationList } from './conversation-list.tsx'
 
@@ -205,5 +206,111 @@ describe('ConversationList', () => {
     await click(byText('button', 'Tentar de novo'))
     await settle(50)
     expect(rendered.container.textContent).toContain('Depois')
+  })
+})
+
+describe('excluir uma conversa', () => {
+  /** `fetch` da exclusão: guarda método e caminho e responde com `respond`. */
+  function deletions(respond: () => Response) {
+    const calls: string[] = []
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (request: Request) => {
+        calls.push(`${request.method} ${new URL(request.url).pathname}`)
+        return request.method === 'DELETE'
+          ? respond()
+          : Response.json({ items: [conversation(FIRST, 'Prazo do ICMS')], nextCursor: null })
+      }),
+    )
+    return calls
+  }
+
+  const titles = () =>
+    [...document.querySelectorAll('nav li a > span:first-child')].map((span) => span.textContent)
+
+  /** Abre o "⋯" da conversa e escolhe "Excluir conversa"; devolve o diálogo. */
+  async function openDeletion(title: string): Promise<HTMLElement> {
+    const trigger = document.querySelector<HTMLElement>(
+      `button[aria-label="Ações da conversa “${title}”"]`,
+    )
+    await click(trigger)
+    await click(byText('[role="menuitem"]', 'Excluir conversa'))
+    const dialog = document.querySelector<HTMLElement>('[role="alertdialog"]')
+    if (dialog === null) throw new Error('diálogo ausente')
+    return dialog
+  }
+
+  it('pela lista: confirma, a conversa some, o aviso aparece e a rota não muda', async () => {
+    const calls = deletions(() => new Response(null, { status: 204 }))
+    rendered = await renderClient(<ConversationList variant="page" />, {
+      client: seeded([
+        {
+          items: [conversation(FIRST, 'Prazo do ICMS'), conversation(SECOND, 'GOYAZES')],
+          nextCursor: null,
+        },
+      ]),
+    })
+    const dialog = await openDeletion('GOYAZES')
+    expect(dialog.textContent).toContain('Excluir esta conversa?')
+    expect(dialog.textContent).toContain('“GOYAZES”')
+    expect(dialog.textContent).toContain('Não dá para desfazer')
+    expect(dialog.textContent).toContain('cota')
+
+    await click(byText('[role="alertdialog"] button', 'Excluir conversa'))
+    await settle(50)
+    expect(calls).toContain(`DELETE /api/v1/conversations/${SECOND}`)
+    expect(titles()).toEqual(['Prazo do ICMS'])
+    expect(document.querySelector('[aria-live="polite"]')?.textContent).toBe('Conversa excluída.')
+    expect(rendered.urls).toEqual([])
+  })
+
+  it('cancelar não apaga nada', async () => {
+    const calls = deletions(() => new Response(null, { status: 204 }))
+    rendered = await renderClient(<ConversationList variant="page" />, {
+      client: seeded([{ items: [conversation(FIRST, 'Prazo do ICMS')], nextCursor: null }]),
+    })
+    await openDeletion('Prazo do ICMS')
+    await click(byText('[role="alertdialog"] button', 'Cancelar'))
+    await settle(50)
+    expect(calls.some((call) => call.startsWith('DELETE'))).toBe(false)
+    expect(titles()).toEqual(['Prazo do ICMS'])
+  })
+
+  it('a conversa aberta: depois de excluir, volta ao chat vazio com a mesma data', async () => {
+    deletions(() => new Response(null, { status: 204 }))
+    rendered = await renderClient(<ConversationList variant="panel" />, {
+      searchParams: `?c=${SECOND}&ref=2008-05`,
+      client: seeded([
+        {
+          items: [conversation(FIRST, 'Prazo do ICMS'), conversation(SECOND, 'GOYAZES')],
+          nextCursor: null,
+        },
+      ]),
+    })
+    await openDeletion('GOYAZES')
+    await click(byText('[role="alertdialog"] button', 'Excluir conversa'))
+    await settle(50)
+    // A mesma URL do "Nova conversa" (`newConversationHref`), com a data mantida.
+    const expected = newConversationHref('pt-BR', { periodoApuracao: '2008-05' })
+    expect(expected).toBe('/pt-BR/chat/?ref=2008-05')
+    expect(rendered.urls.at(-1)).toBe(expected.slice('/pt-BR/chat/'.length))
+  })
+
+  it('resposta em andamento (409): explica, mantém o diálogo e a conversa', async () => {
+    deletions(() =>
+      Response.json(createProblem({ code: ErrorCode.StreamBusy, traceId: 't' }), {
+        status: 409,
+        headers: { 'content-type': 'application/problem+json' },
+      }),
+    )
+    rendered = await renderClient(<ConversationList variant="page" />, {
+      client: seeded([{ items: [conversation(FIRST, 'Prazo do ICMS')], nextCursor: null }]),
+    })
+    await openDeletion('Prazo do ICMS')
+    await click(byText('[role="alertdialog"] button', 'Excluir conversa'))
+    await settle(50)
+    const alert = document.querySelector('[role="alertdialog"] [role="alert"]')
+    expect(alert?.textContent).toContain('ainda está sendo gerada')
+    expect(titles()).toEqual(['Prazo do ICMS'])
   })
 })

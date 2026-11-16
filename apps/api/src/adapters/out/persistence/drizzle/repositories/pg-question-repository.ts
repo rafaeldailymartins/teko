@@ -62,13 +62,15 @@ interface StoredRetrieval {
 const LOCK_SQL = `SELECT pg_advisory_xact_lock(hashtextextended('teko-quota:' || $1, 0)),
   pg_advisory_xact_lock(hashtextextended('teko-quota:global', 0))`
 
+/** Stream em andamento: claim há menos de 110 s (o teto do stream mais a folga). */
+const ACTIVE_STREAM = `status = 'streaming' AND stream_started_at > now() - interval '110 seconds'`
+
 const USAGE_SQL = `SELECT
   coalesce(sum(requests) FILTER (WHERE scope = 'global'), 0)::int AS global_requests,
   coalesce(sum(requests) FILTER (WHERE scope = 'user:' || $2), 0)::int AS user_requests,
   coalesce(sum(stream_seconds) FILTER (WHERE scope = 'global'), 0)::int AS global_stream_seconds,
   coalesce(sum(neurons) FILTER (WHERE scope = 'global'), 0)::int AS global_neurons,
-  EXISTS (SELECT 1 FROM app.questions WHERE user_id = $2::uuid AND status = 'streaming'
-          AND stream_started_at > now() - interval '110 seconds') AS active_stream
+  EXISTS (SELECT 1 FROM app.questions WHERE user_id = $2::uuid AND ${ACTIVE_STREAM}) AS active_stream
 FROM app.usage_daily WHERE day = $1::date AND scope IN ('global', 'user:' || $2)`
 
 interface UsageRow {
@@ -119,6 +121,18 @@ SELECT q.id, q.user_id, $3, $4 FROM app.questions q WHERE q.id = $1::uuid AND q.
 ON CONFLICT (question_id) DO UPDATE SET rating = EXCLUDED.rating, reason = EXCLUDED.reason,
   created_at = now()
 RETURNING question_id`
+
+/**
+ * Exclusão de uma conversa: primeiro trava as perguntas dela (o claim de um stream concorrente
+ * espera e, depois do `DELETE`, acha a pergunta apagada: 404), e só então apaga. Nada em
+ * `usage_daily` nem em `answer_cache` muda: a cota do dia continua contando as perguntas, e o cache
+ * exato não tem dono (a chave é a pergunta normalizada, a data e o corpus).
+ */
+const LOCK_CONVERSATION_SQL = `SELECT (${ACTIVE_STREAM}) AS active FROM app.questions
+WHERE user_id = $1::uuid AND conversation_id = $2::uuid FOR UPDATE`
+
+const DELETE_CONVERSATION_SQL = `DELETE FROM app.questions
+WHERE user_id = $1::uuid AND conversation_id = $2::uuid`
 
 /**
  * Conversas do usuário agregadas das perguntas (índice `questions_user_created`). O instante da
@@ -397,6 +411,22 @@ export function createPgQuestionRepository(pool: pg.Pool): QuestionRepository {
       const { rowCount } = await pool.query(FEEDBACK_SQL, [questionId, userId, rating, reason])
       return rowCount === 1
     },
+
+    deleteConversation: (userId, conversationId) =>
+      inTransaction(pool, async (client) => {
+        const locked = await client.query<{ active: boolean }>(LOCK_CONVERSATION_SQL, [
+          userId,
+          conversationId,
+        ])
+        if (locked.rows.length === 0) {
+          return { kind: 'not_found' }
+        }
+        if (locked.rows.some((row) => row.active)) {
+          return { kind: 'busy' }
+        }
+        const { rowCount } = await client.query(DELETE_CONVERSATION_SQL, [userId, conversationId])
+        return { kind: 'deleted', questions: rowCount ?? 0 }
+      }),
 
     async usage(day, userId) {
       const { rows } = await retryTransientRead(() =>

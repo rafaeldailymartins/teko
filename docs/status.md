@@ -251,6 +251,12 @@ garantia diante do CDC, foro e datas das versões). A F6 atualiza a política qu
   senha em abas, com validação inline e o aviso sem recuperação), onboarding em passos com o país
   com busca, configurações com navegação lateral, método de entrada e zona de perigo; jornada local
   de cadastro, onboarding e chat pela tela; bundle em 441,9 KiB gz.
+- `add-conversation-deletion` (arquivada em 2026-11-16, pedido do mantenedor):
+  `DELETE /api/v1/conversations/:id` (só o dono; o mesmo 404 para a de outro; 409 `stream_busy` com
+  resposta em andamento; uso do dia e cache intactos, então a cota não volta), menu "⋯" com
+  "Excluir conversa" no painel do chat e em `/history`, confirmação em `AlertDialog` e aviso
+  `aria-live`; política e Termos (mesma versão 2026-11-16) citam a exclusão de uma conversa. A ação
+  no cabeçalho da conversa aberta fica para depois do redesenho do chat.
 
 ## Antes da F7: o que o mantenedor faz
 

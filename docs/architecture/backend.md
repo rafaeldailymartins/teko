@@ -127,6 +127,7 @@ Contrato canônico em `packages/shared/src/contracts` e no OpenAPI. Tudo na mesm
 | `POST /api/v1/questions/:id/stream`                                                             | Cookie de sessão + `Origin`; UI Message Stream v1; um stream por pergunta (claim atômico)                             |
 | `GET /api/v1/questions`, `GET /api/v1/questions/:id`                                            | Histórico por `conversationId`                                                                                        |
 | `GET /api/v1/conversations?cursor=`                                                             | Conversas do usuário (título da primeira pergunta, contagem, última data); páginas de 20 por cursor opaco             |
+| `DELETE /api/v1/conversations/:id`                                                              | Exclui a conversa do dono (204); de outro ou inexistente, o mesmo 404; stream ativo, 409 `stream_busy`; cota intacta  |
 | `POST /api/v1/questions/:id/feedback`                                                           | Polegar e motivo, inclusive "citação errada"                                                                          |
 | `GET /api/v1/provisions?q=&family=&at=`, `…/:stableKey/timeline`, `…/:stableKey/diff?from=&to=` | Paleta (chave, rótulo ou texto), linha do tempo e diff por palavra e por campo; rate limit da aplicação               |
 | `POST /api/v1/_eval/answer`, `GET /api/v1/_eval/search`                                         | Só com `APP_ENV=ci`, em plugin separado; com `APP_ENV=staging` dão 404 (teste de integração)                          |
@@ -238,7 +239,11 @@ Drizzle 1.0, schemas `corpus`, `app` e `auth`, IDs `uuidv7()`, casing por tabela
 **Conversas** não têm tabela: `GET /conversations` agrega `app.questions` do usuário por
 `conversation_id` (índice `questions_user_created`), ordenada pela última pergunta, com o cursor no
 instante dela em texto UTC com microssegundos (um `Date` perderia a precisão e a página seguinte
-repetiria ou pularia conversas).
+repetiria ou pularia conversas). `DELETE /conversations/:id` lê a sessão do banco e, numa transação,
+trava as perguntas do usuário na conversa (`FOR UPDATE`) e as apaga; o feedback sai pelo `ON DELETE
+CASCADE`. Uma pergunta em stream há menos de 110 s recusa a exclusão (409 `stream_busy`), e um `claim`
+concorrente espera a trava e depois acha a pergunta apagada (404). `usage_daily` e `answer_cache`
+não mudam: excluir não devolve a cota, e o cache exato não tem dono.
 
 **Roles.** `teko_app` (runtime e manutenção: DML em `app`/`auth`, SELECT em `corpus`,
 `statement_timeout` e `idle_in_transaction_session_timeout` de 5 s no role) e `teko_watch` (só

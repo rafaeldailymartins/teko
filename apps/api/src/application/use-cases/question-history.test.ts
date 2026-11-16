@@ -2,6 +2,7 @@ import { CONVERSATIONS_PAGE_SIZE } from '@teko/shared/contracts'
 import { describe, expect, it, vi } from 'vitest'
 import type {
   ConversationRecord,
+  DeleteConversationOutcome,
   QuestionRecord,
   QuestionRepository,
 } from '../ports/question-repository.ts'
@@ -170,6 +171,39 @@ describe('lista de conversas', () => {
       })
     }
     expect(questions.listConversations).not.toHaveBeenCalled()
+  })
+})
+
+describe('exclusão de uma conversa', () => {
+  function withOutcome(outcome: DeleteConversationOutcome) {
+    const { history, questions } = setup()
+    const deleteConversation = vi.fn(async () => outcome)
+    Object.assign(questions, { deleteConversation })
+    return { history, questions, deleteConversation }
+  }
+
+  it('apaga as perguntas do dono e não mexe na cota', async () => {
+    const { history, questions, deleteConversation } = withOutcome({
+      kind: 'deleted',
+      questions: 3,
+    })
+    await expect(history.deleteConversation('u1', CONVERSATION_ID)).resolves.toBeUndefined()
+    expect(deleteConversation).toHaveBeenCalledWith('u1', CONVERSATION_ID)
+    expect(questions.usage).not.toHaveBeenCalled()
+  })
+
+  it('inexistente ou de outro usuário → o mesmo not_found', async () => {
+    const { history } = withOutcome({ kind: 'not_found' })
+    await expect(history.deleteConversation('u2', CONVERSATION_ID)).rejects.toMatchObject({
+      problem: { code: 'not_found', detail: 'Conversation not found' },
+    })
+  })
+
+  it('com uma resposta em stream → 409 stream_busy', async () => {
+    const { history } = withOutcome({ kind: 'busy' })
+    await expect(history.deleteConversation('u1', CONVERSATION_ID)).rejects.toMatchObject({
+      problem: { code: 'stream_busy' },
+    })
   })
 })
 

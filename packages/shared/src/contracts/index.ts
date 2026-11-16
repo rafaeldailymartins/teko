@@ -33,9 +33,11 @@ export {
 export {
   CONVERSATION_TITLE_MAX_LENGTH,
   CONVERSATIONS_PAGE_SIZE,
+  type ConversationIdParams,
   type ConversationListQuery,
   type ConversationListResponse,
   type ConversationSummary,
+  conversationIdParamsSchema,
   conversationListQuerySchema,
   conversationListResponseSchema,
   conversationSummarySchema,

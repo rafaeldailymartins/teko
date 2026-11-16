@@ -204,6 +204,50 @@ for (const locale of ['en', 'pt-BR'] as const) {
         await expectNoViolations(page, testInfo)
       })
 
+      test('histórico com o menu da conversa e o diálogo de exclusão abertos', async ({
+        page,
+        context,
+        baseURL,
+      }, testInfo) => {
+        const history = MESSAGES[locale].history
+        const title = 'Qual o prazo de pagamento do ICMS no art. 76 do RCTE?'
+        await signInWithTestSession(context, baseURL)
+        // Uma conversa simulada: o axe não depende do que outras jornadas gravaram.
+        await page.route('**/api/v1/conversations', async (route) => {
+          await route.fulfill({
+            json: {
+              items: [
+                {
+                  conversationId: '0193a3b0-7c1e-7b3a-9f00-4c2d1e5f6a7c',
+                  title,
+                  questionCount: 2,
+                  updatedAt: new Date().toISOString(),
+                  lastReferenceDate: '2008-05-01',
+                },
+              ],
+              nextCursor: null,
+            },
+          })
+        })
+        await page.goto(`/${locale}/history/`)
+        await settled(page)
+        await page
+          .getByRole('button', { name: history.actions.menu.replace('{title}', title) })
+          .click()
+        const item = page.getByRole('menuitem', { name: history.actions.delete })
+        await expect(item).toBeVisible()
+        await settled(page)
+        await expectNoViolations(page, testInfo)
+
+        await item.click()
+        const dialog = page.getByRole('alertdialog', { name: history.delete.title })
+        await expect(dialog).toBeVisible()
+        await settled(page)
+        await expectNoViolations(page, testInfo)
+        await dialog.getByRole('button', { name: history.delete.cancel }).click()
+        await expect(dialog).toBeHidden()
+      })
+
       test.describe('primeira visita', () => {
         // Sem a escolha de consentimento: o banner LGPD na tela.
         test.use({ storageState: { cookies: [], origins: [] } })
