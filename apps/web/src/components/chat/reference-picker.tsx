@@ -8,7 +8,7 @@ import {
 } from '@teko/shared/vigencia'
 import { CalendarIcon, ChevronLeftIcon, ChevronRightIcon } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
-import { useId, useState } from 'react'
+import { type ReactNode, useId, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@/components/ui/popover'
 import { type ReferenceChoice, referenceDisplay, referencePresets } from '@/lib/chat/reference'
@@ -65,10 +65,19 @@ export function ReferencePicker({
     }
   }
 
-  const label =
-    display.kind === 'periodo'
-      ? t('chipPeriodo', { value: formatTaxPeriod(locale, display.periodo) })
-      : t('chipDate', { value: formatIsoDate(locale, display.date, 'numeric') })
+  // No celular, só a data fica visível; o rótulo continua no nome acessível (`max-sm:sr-only`).
+  const label: ReactNode = (
+    <>
+      <span className="max-sm:sr-only">
+        {t(display.kind === 'periodo' ? 'chipPeriodoLabel' : 'chipDateLabel')}{' '}
+      </span>
+      <span className="font-mono font-semibold">
+        {display.kind === 'periodo'
+          ? formatTaxPeriod(locale, display.periodo)
+          : formatIsoDate(locale, display.date, 'numeric')}
+      </span>
+    </>
+  )
   const selectedPeriodo = choice?.periodoApuracao ?? null
 
   function choose(next: ReferenceChoice): void {
@@ -84,12 +93,14 @@ export function ReferencePicker({
         aria-keyshortcuts="Alt+D"
         title={t('open')}
         data-reference-chip=""
-        className="border-accent-border bg-accent text-accent-foreground hover:bg-accent/80"
+        className="h-8 rounded-full border-accent-border/70 bg-accent px-3 text-accent-foreground shadow-none hover:border-accent-border hover:bg-accent hover:text-accent-foreground hover:shadow-soft aria-expanded:bg-accent aria-expanded:text-accent-foreground"
       >
         <CalendarIcon aria-hidden="true" />
         <span className="tabular-nums">{label}</span>
         {display.isDefault && (
-          <span className="font-normal text-xs opacity-80">({t('defaultHint')})</span>
+          <span className="font-normal text-xs opacity-85 max-sm:sr-only">
+            ({t('defaultHint')})
+          </span>
         )}
       </PopoverTrigger>
       <PopoverContent align="start" className="w-80">

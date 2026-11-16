@@ -12,14 +12,13 @@ import {
   type ReferenceInput,
   referenceDateFromInput,
 } from '@teko/shared/vigencia'
-import { MessageSquareTextIcon } from 'lucide-react'
+import { ArrowDownIcon, CircleAlertIcon, RotateCwIcon } from 'lucide-react'
 import { useFormatter, useLocale, useTranslations } from 'next-intl'
 import { useQueryStates } from 'nuqs'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { EmptyState } from '@/components/empty-state'
 import { Button } from '@/components/ui/button'
 import { type ChatRequestContext, TekoChatTransport } from '@/lib/api/chat-transport'
-import { useQuestion, useQuota } from '@/lib/api/hooks'
+import { useHistory, useQuestion, useQuota } from '@/lib/api/hooks'
 import { rereadQuestion } from '@/lib/api/mutations'
 import { refreshAfterQuestion } from '@/lib/api/queries'
 import { blocksComposer, chatFailure } from '@/lib/chat/failure'
@@ -30,7 +29,7 @@ import {
   questionDetailMessages,
   type TekoUIMessage,
 } from '@/lib/chat/parts'
-import { type ReferenceChoice, referenceRequest } from '@/lib/chat/reference'
+import { type ReferenceChoice, referenceDisplay, referenceRequest } from '@/lib/chat/reference'
 import {
   isApplePlatform,
   isComposerShortcut,
@@ -38,13 +37,21 @@ import {
   isReferenceShortcut,
   submitShortcutLabel,
 } from '@/lib/hotkeys'
+import { formatIsoDate, formatTaxPeriod } from '@/lib/i18n/format'
 import { chatSearchParams } from '@/lib/url-state'
+import { cn } from '@/lib/utils'
 import { BlockErrorBoundary } from './block-error-boundary.tsx'
+import { ChatWelcome } from './chat-welcome.tsx'
 import { Composer } from './composer.tsx'
 import { AnswerSkeleton, AssistantMessage, UserBubble } from './message.tsx'
 import { Suggestions } from './suggestions.tsx'
+import { useStickToBottom } from './use-stick-to-bottom.ts'
 
 export interface ChatSessionProps {
+  /** Conversa desta sessão (o `chatId`); a área de trabalho troca a sessão ao trocar de conversa. */
+  readonly conversationId: string
+  /** A conversa veio da URL (`c`): relê as perguntas dela do histórico ao abrir. */
+  readonly restoreConversation: boolean
   /** Abre o painel de citação com as citações da resposta e a posição escolhida. */
   readonly onOpenCitation: (
     citations: readonly Citation[],
@@ -80,11 +87,15 @@ function inferredChoice(date: IsoDate): ReferenceInput {
 
 /**
  * Conversa: thread e composer sobre o `useChat` com o `TekoChatTransport`. Estado na URL (nuqs):
- * `c` (conversa, o `chatId`), `q` (última pergunta, relida de `GET /questions/:id` ao abrir) e
- * `ref` (data de referência do chip). Carregado só no navegador (`lazy` dentro do `ClientOnly`), fora do
- * primeiro carregamento.
+ * `c` (conversa, o `chatId`), `q` (última pergunta) e `ref` (data de referência do chip). Ao abrir
+ * uma conversa da URL, relê as perguntas dela (`GET /questions?conversationId=`); só com `q`, relê
+ * a pergunta (`GET /questions/:id`). Sem conversa, a abertura (saudação, data em destaque e
+ * sugestões) com o composer no meio; com conversa, o composer desce e fica fixo embaixo. Carregado
+ * só no navegador (`lazy` dentro do `ClientOnly`), fora do primeiro carregamento.
  */
 export default function ChatSession({
+  conversationId,
+  restoreConversation,
   onOpenCitation,
   selectedCitationId,
   composerLocked = false,
@@ -94,15 +105,14 @@ export default function ChatSession({
   const tErrors = useTranslations('errors')
   const format = useFormatter()
   const locale = useLocale()
-  const [{ c, q, ref }, setUrl] = useQueryStates(chatSearchParams)
+  const [{ q, ref }, setUrl] = useQueryStates(chatSearchParams)
   const queryClient = useQueryClient()
   const [today] = useState(() => isoDateInTimeZone(new Date()))
-  const [conversationId] = useState(() => c ?? crypto.randomUUID())
   const [pickerOpen, setPickerOpen] = useState(false)
   const [announcement, setAnnouncement] = useState('')
   const [now, setNow] = useState(() => Date.now())
   const textareaRef = useRef<HTMLTextAreaElement>(null)
-  const endRef = useRef<HTMLDivElement>(null)
+  const anchorRef = useRef<HTMLDivElement>(null)
   const contextRef = useRef<ChatRequestContext>({ locale, reference: referenceRequest(ref, today) })
   const [restored, setRestored] = useState(false)
   const [transport] = useState(() => new TekoChatTransport({ context: () => contextRef.current }))
@@ -130,14 +140,22 @@ export default function ChatSession({
   const resetAt = failure?.resetAt ?? quota.data?.resetAt ?? null
   const blocked = blocksComposer(failure) && (resetAt === null || Date.parse(resetAt) > now)
 
-  // Pergunta da URL ao abrir: relida do histórico (`GET /questions/:id`), uma vez.
-  const restore = useQuestion(!restored && messages.length === 0 ? q : null)
+  // Ao abrir: as perguntas da conversa da URL (histórico) ou, sem ela, a pergunta `q`. Uma vez.
+  const pending = !restored && messages.length === 0
+  const restoreHistory = useHistory(pending && restoreConversation ? conversationId : null)
+  const restoreQuestion = useQuestion(pending && !restoreConversation ? q : null)
   useEffect(() => {
-    if (restore.data !== undefined && !restored && messages.length === 0) {
+    if (!pending) return
+    if (restoreHistory.data !== undefined) {
       setRestored(true)
-      setMessages(questionDetailMessages(restore.data))
+      setMessages(restoreHistory.data.items.flatMap((item) => questionDetailMessages(item)))
+    } else if (restoreQuestion.data !== undefined) {
+      setRestored(true)
+      setMessages(questionDetailMessages(restoreQuestion.data))
     }
-  }, [restore.data, restored, messages.length, setMessages])
+  }, [pending, restoreHistory.data, restoreQuestion.data, setMessages])
+  const restoring = pending && (restoreHistory.isFetching || restoreQuestion.isFetching)
+  const restoreFailed = pending && restoreHistory.isError
 
   // O markdown carrega sob demanda; começa a baixar assim que a conversa abre.
   useEffect(() => {
@@ -170,11 +188,14 @@ export default function ChatSession({
     }
   }, [status, t])
 
-  // Acompanha o fim da conversa a cada mensagem nova e a cada pedaço do stream.
-  const scrollKey = `${messages.length}:${messages.at(-1)?.parts.length ?? 0}:${status}`
-  useEffect(() => {
-    if (scrollKey !== '') endRef.current?.scrollIntoView?.({ block: 'end' })
-  }, [scrollKey])
+  // Acompanha o fim da conversa a cada mensagem nova e a cada pedaço do stream, só se o usuário
+  // estiver no fim (subiu para reler: a conversa fica parada e aparece "Ir para o fim").
+  const lastText = messages
+    .at(-1)
+    ?.parts.reduce((size, part) => size + (part.type === 'text' ? part.text.length : 1), 0)
+  // Sem conversa, nada a acompanhar: a abertura fica no topo.
+  const scrollKey = messages.length === 0 ? '' : `${messages.length}:${lastText ?? 0}:${status}`
+  const { atEnd, scrollToEnd } = useStickToBottom(anchorRef, scrollKey)
 
   const askWith = useCallback(
     (text: string, reference: ReferenceChoice) => {
@@ -182,8 +203,9 @@ export default function ChatSession({
       clearError()
       void setUrl({ c: conversationId })
       void sendMessage({ text })
+      scrollToEnd()
     },
-    [clearError, conversationId, locale, sendMessage, setUrl, today],
+    [clearError, conversationId, locale, scrollToEnd, sendMessage, setUrl, today],
   )
 
   const stopAnswer = useCallback(() => {
@@ -254,100 +276,137 @@ export default function ChatSession({
     })
   }
 
+  const display = referenceDisplay(ref, today)
+  const thinkingDate =
+    display.kind === 'periodo'
+      ? formatTaxPeriod(locale, display.periodo)
+      : formatIsoDate(locale, display.date, 'numeric')
   const lastMessage = messages.at(-1)
   const waitingFirstChunk = busy && lastMessage?.role === 'user'
   const showFailure = failure !== null && !busy && !blocked
+  const empty = messages.length === 0 && !restoring
+  const composerDisabled = busy || blocked || composerLocked
 
   return (
-    <div className="flex min-h-full flex-col">
+    <div className={cn('flex min-h-full flex-col', empty && 'justify-center')}>
       <p aria-live="polite" role="status" className="sr-only" data-testid="chat-live">
         {announcement}
       </p>
-      <section
-        aria-label={t('thread.label')}
-        aria-busy={busy}
-        className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-6"
-      >
-        {messages.length === 0 && !restore.isFetching && (
-          <div className="flex flex-1 flex-col items-center justify-center gap-8">
-            <EmptyState
-              icon={<MessageSquareTextIcon />}
-              title={tPage('emptyTitle')}
-              headingLevel={1}
+      {empty ? (
+        <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 pt-10 pb-6 sm:pt-14">
+          <ChatWelcome
+            reference={ref}
+            today={today}
+            onChangeDate={() => setPickerOpen(true)}
+            disabled={blocked || composerLocked}
+          />
+          {restoreFailed && (
+            <div
+              role="alert"
+              className="mx-auto flex max-w-xl items-center gap-2 rounded-xl border border-destructive/40 bg-popover px-3 py-2 text-sm"
             >
-              {tPage('emptyBody')}
-            </EmptyState>
-            <Suggestions
-              disabled={busy || blocked || composerLocked}
-              onAsk={(question, periodo: PeriodoApuracao) => {
-                const reference = { periodoApuracao: periodo }
-                void setUrl({ ref: reference })
-                askWith(question, reference)
-              }}
-            />
-          </div>
-        )}
-        {/* Com a conversa na tela, o título da página continua lá para quem navega por títulos. */}
-        {(messages.length > 0 || restore.isFetching) && (
-          <h1 className="sr-only">{tPage('title')}</h1>
-        )}
-        {messages.length === 0 && restore.isFetching && <AnswerSkeleton />}
-        {messages.map((message, index) => (
-          <BlockErrorBoundary key={message.id} fallback={t('thread.blockError')}>
-            {message.role === 'user' ? (
-              <UserBubble message={message} />
-            ) : (
-              <AssistantMessage
-                message={message}
-                streaming={busy && index === messages.length - 1}
-                today={today}
-                busy={busy}
-                selectedCitationId={selectedCitationId}
-                onOpenCitation={(citations, position) =>
-                  onOpenCitation(
-                    citations,
-                    position,
-                    isUuid(message.id) ? message.id : null,
-                    answerView(message).reference?.value ?? null,
-                  )
-                }
-                onClarify={(date) => {
-                  clearError()
-                  void sendMessage(
-                    { text: lastQuestion === undefined ? '' : messageText(lastQuestion) },
-                    { body: { clarifiedDate: date } },
-                  )
-                }}
-                footer={
-                  showFailure && index === messages.length - 1 && isUuid(message.id) ? (
-                    <Button variant="outline" size="sm" onClick={() => void reread(message.id)}>
-                      {t('thread.reread')}
-                    </Button>
-                  ) : undefined
-                }
-              />
-            )}
-          </BlockErrorBoundary>
-        ))}
-        {waitingFirstChunk && <AnswerSkeleton />}
-        {showFailure && failure !== null && (
-          <div
-            role="alert"
-            className="flex flex-wrap items-center gap-2 text-sm"
-            data-chat-error={failure.code}
-          >
-            <p>{tErrors(failure.code)}</p>
-            {failure.retryable && lastMessage?.role === 'user' && (
-              <Button variant="outline" size="sm" onClick={() => void regenerate()}>
+              <CircleAlertIcon aria-hidden="true" className="size-4 shrink-0 text-destructive" />
+              <p>{t('thread.restoreError')}</p>
+              <Button
+                variant="outline"
+                size="sm"
+                className="ml-auto"
+                onClick={() => void restoreHistory.refetch()}
+              >
                 {t('thread.retry')}
               </Button>
-            )}
-          </div>
+            </div>
+          )}
+        </div>
+      ) : (
+        <section
+          aria-label={t('thread.label')}
+          aria-busy={busy}
+          className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-8 px-4 pt-8 pb-10"
+        >
+          {/* Com a conversa na tela, o título da página continua lá para quem navega por títulos. */}
+          <h1 className="sr-only">{tPage('title')}</h1>
+          {messages.length === 0 && restoring && <AnswerSkeleton label={t('thread.restoring')} />}
+          {messages.map((message, index) => (
+            <BlockErrorBoundary key={message.id} fallback={t('thread.blockError')}>
+              {message.role === 'user' ? (
+                <UserBubble message={message} />
+              ) : (
+                <AssistantMessage
+                  message={message}
+                  streaming={busy && index === messages.length - 1}
+                  today={today}
+                  busy={busy}
+                  selectedCitationId={selectedCitationId}
+                  onOpenCitation={(citations, position) =>
+                    onOpenCitation(
+                      citations,
+                      position,
+                      isUuid(message.id) ? message.id : null,
+                      answerView(message).reference?.value ?? null,
+                    )
+                  }
+                  onClarify={(date) => {
+                    clearError()
+                    void sendMessage(
+                      { text: lastQuestion === undefined ? '' : messageText(lastQuestion) },
+                      { body: { clarifiedDate: date } },
+                    )
+                  }}
+                  footer={
+                    showFailure && index === messages.length - 1 && isUuid(message.id) ? (
+                      <Button variant="outline" size="sm" onClick={() => void reread(message.id)}>
+                        <RotateCwIcon aria-hidden="true" />
+                        {t('thread.reread')}
+                      </Button>
+                    ) : undefined
+                  }
+                />
+              )}
+            </BlockErrorBoundary>
+          ))}
+          {waitingFirstChunk && (
+            <AnswerSkeleton label={t('thread.thinking', { date: thinkingDate })} />
+          )}
+          {showFailure && failure !== null && (
+            <div
+              role="alert"
+              className="flex max-w-[70ch] flex-wrap items-center gap-3 rounded-xl border border-destructive/40 bg-popover px-4 py-3 text-sm shadow-soft"
+              data-chat-error={failure.code}
+            >
+              <CircleAlertIcon aria-hidden="true" className="size-4 shrink-0 text-destructive" />
+              <p className="min-w-0 flex-1">{tErrors(failure.code)}</p>
+              {failure.retryable && lastMessage?.role === 'user' && (
+                <Button variant="outline" size="sm" onClick={() => void regenerate()}>
+                  <RotateCwIcon aria-hidden="true" />
+                  {t('thread.retry')}
+                </Button>
+              )}
+            </div>
+          )}
+        </section>
+      )}
+      <div ref={anchorRef} />
+      <div
+        className={cn(
+          'z-10 px-4 pb-4',
+          empty
+            ? 'pt-0'
+            : 'sticky bottom-0 bg-linear-to-t from-background from-70% to-transparent pt-6',
         )}
-        <div ref={endRef} />
-      </section>
-      <div className="sticky bottom-0 bg-background/95 px-4 pt-2 pb-4 backdrop-blur">
-        <div className="mx-auto w-full max-w-3xl">
+      >
+        <div className="relative mx-auto w-full max-w-3xl">
+          {!empty && !atEnd && (
+            <Button
+              variant="outline"
+              size="icon-sm"
+              aria-label={t('thread.toEnd')}
+              onClick={() => scrollToEnd('smooth')}
+              className="-top-11 absolute left-1/2 -translate-x-1/2 rounded-full shadow-raised"
+            >
+              <ArrowDownIcon aria-hidden="true" />
+            </Button>
+          )}
           <Composer
             onSubmit={(text) => askWith(text, ref)}
             onStop={stopAnswer}
@@ -366,6 +425,20 @@ export default function ChatSession({
           />
         </div>
       </div>
+      {empty && (
+        <div className="mx-auto w-full max-w-3xl px-4 pt-4 pb-12">
+          <Suggestions
+            disabled={composerDisabled}
+            onAsk={(question, periodo: PeriodoApuracao) => {
+              const reference = { periodoApuracao: periodo }
+              void setUrl({ ref: reference })
+              askWith(question, reference)
+              // A abertura sai da tela com o envio: o foco vai para o composer, não para o nada.
+              textareaRef.current?.focus()
+            }}
+          />
+        </div>
+      )}
     </div>
   )
 }

@@ -223,20 +223,34 @@ Content-Security-Policy: default-src 'self'; script-src 'self' 'sha256-…'; sty
   continua permitido, para a API recusar formalmente.
 - **Rótulos de degradação:** "Somente busca lexical", "Modelo de reserva", "Resposta em cache".
 - **Cota:** `quota_exceeded` e `service_paused` desabilitam o composer e mostram o reset.
-- **Citações:** chips numerados durante o stream, hover card e painel com documento, versão, badge
-  de intervalo, texto (`lang="pt-BR"`), tabela de campos, link para a fonte, "copiar citação",
-  "reportar", "Abrir o dispositivo", linha do tempo (a redação vigente na data de referência da
-  resposta marcada) e "O que mudou" (essa redação contra a anterior; código e consulta só no clique).
-  Linha do tempo e diff são os componentes de `src/components/provision/` (`ProvisionTimeline`,
-  `ProvisionDiff`), os mesmos da página de dispositivo.
+- **Chat vazio:** a abertura com o selo, a saudação pelo nome, a data de referência em destaque como
+  o ponto âmbar sobre o fio da linha do tempo do corpus (1998 a hoje; abre o mesmo seletor do chip) e
+  o composer no meio; com conversa, o composer desce e fica fixo embaixo, sem remontar.
+- **Thread:** resposta em 16 px na medida de leitura (70 caracteres); cabeçalho com o selo, a data e
+  a vigência em `Badge`; "pensando" com a forma da resposta e o ponto âmbar andando no fio; cursor de
+  stream; fontes em cartões (quatro à vista); copiar a resposta e 👍/👎 discretos. A rolagem só
+  acompanha o stream com o usuário no fim (`useStickToBottom`); se ele sobe, aparece "Ir para o fim".
+- **Composer:** um bloco só com a área de texto, o chip da data, a cobertura, o contador, o atalho em
+  `Kbd` e o botão redondo de enviar ou parar; os avisos (cota, cobertura, data inferida, PII) entram
+  no topo do bloco.
+- **Citações:** chips numerados durante o stream, hover card (família, dispositivo, começo do texto e
+  vigência) e painel com documento, versão, badge de intervalo, texto (`lang="pt-BR"`) num cartão de
+  leitura, link para a fonte, "copiar citação", "reportar", "Abrir o dispositivo", linha do tempo (a
+  redação vigente na data de referência da resposta marcada) e "O que mudou" (essa redação contra a
+  anterior; código e consulta só no clique). Linha do tempo e diff são os componentes de
+  `src/components/provision/` (`ProvisionTimeline`, `ProvisionDiff`), os mesmos da página de
+  dispositivo. A linha do tempo é vertical, no motivo da logo (o ponto âmbar na redação da data de
+  referência, a folha na vigente hoje); o diff marca as inserções em verde-folha e risca as remoções.
 - **Histórico:** `ConversationList` (`GET /v1/conversations`) no painel esquerdo do chat (primeira
   página, conversa aberta marcada, link para o resto; no Sheet, abrir uma conversa o fecha por
-  `useCloseHistoryPanel`) e em `/history/` com "Carregar mais"; abrir uma conversa vai para
-  `/chat/?c=<id>`.
+  `useCloseHistoryPanel`) e em `/history/` com "Carregar mais", agrupado por dia (fuso de São Paulo)
+  e com busca pelo título. Abrir uma conversa vai para `/chat/?c=<id>`, e o chat relê as perguntas
+  dela (`GET /v1/questions?conversationId=`); "Nova conversa" fica no topo do painel.
 - **Dispositivo e comparação:** `/provision/?k=&ref=` mostra a redação vigente na data (ou a anterior
   mais próxima, com aviso), o badge (vigente, encerrada ou futura, com o último dia incluído), "O que
   mudou" montado só no clique e a linha do tempo, que troca o `ref`; sem `k`, a busca de dispositivos
-  (`useDeferredValue`). `/compare/?k=&from=&to=` compara duas datas, com o exemplo do roteiro. Datas
+  (`useDeferredValue`, com exemplos). `/compare/?k=&from=&to=` compara duas datas, lado a lado no
+  desktop e empilhadas no celular, com o exemplo do roteiro. Datas
   de calendário são formatadas em UTC (`formatIsoDate` de `src/lib/i18n/format.ts`), para o fuso não
   trocar o dia.
 - **Cobertura:** `/coverage/` é pública (fora do grupo `(app)`, sem sessão): título e introdução no
@@ -256,8 +270,9 @@ Content-Security-Policy: default-src 'self'; script-src 'self' 'sha256-…'; sty
   digitada, tema, idioma e densidade.
 - **Teclado:** `Ctrl/⌘+K` paleta, `/` composer, `Ctrl/⌘+Enter` envia, `Esc` para ou fecha,
   `[`/`]` citações, `Alt+D` data.
-- **Estados:** sugestões sensíveis à data (RCTE art. 76 § 6º em 05/2008 contra 01/2010 e 03/2004
-  contra 05/2006), skeletons, bolha otimista, `ErrorBoundary` por bloco, disclaimer fixo "Apoio à
+- **Estados:** sugestões sem repetir (em destaque, o RCTE art. 76 § 6º em 05/2008 contra 01/2010;
+  abaixo, uma pergunta por família do corpus, no período certo), skeletons com a forma do conteúdo,
+  bolha otimista, `ErrorBoundary` por bloco, disclaimer fixo "Apoio à
   consulta; não constitui parecer".
 - **Landing** estática, sem chamada à API (`src/components/landing/`): hero com a manchete em
   serif, a linha do tempo do RCTE, art. 76, § 6º atravessando o hero (redações, revogação e o ponto

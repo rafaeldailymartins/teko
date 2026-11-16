@@ -21,6 +21,17 @@ SHALL ficar marcada.
 - **WHEN** o usuário com uma conversa abre `/pt-BR/history/` e escolhe a conversa
 - **THEN** o app vai para `/pt-BR/chat/?c=<conversationId>` e, no desktop, o painel de histórico a marca como aberta
 
+### Requirement: Histórico por dia e com busca
+
+O histórico MUST agrupar as conversas por dia no fuso de São Paulo (hoje, ontem, últimos 7 dias,
+últimos 30 dias e anteriores), com a data de referência em mono. A partir de quatro conversas
+carregadas, SHALL haver uma busca pelo título que ignora acento e caixa.
+
+#### Scenario: Busca pelo título
+
+- **WHEN** o usuário digita "credito efd" na busca do histórico
+- **THEN** só ficam as conversas cujo título tem as duas palavras, como "Crédito de ICMS na EFD"
+
 ### Requirement: Estados e páginas do histórico
 
 O painel de histórico MUST mostrar a primeira página e levar ao histórico completo quando houver
@@ -80,9 +91,10 @@ cada dispositivo na mesma data.
 ### Requirement: Comparação entre datas
 
 A página `/[locale]/compare/?k=<stableKey>&from=<data>&to=<data>` MUST mostrar as redações vigentes
-em cada data e o diff entre elas (inserções e remoções por palavra e os campos alterados), com um
-formulário que valida a chave e exige `from` anterior a `to` antes de escrever a URL, e o exemplo do
-roteiro (RCTE, art. 76, § 6º, 05/2008 contra 01/2010).
+em cada data e o diff entre elas (inserções em verde-folha, remoções riscadas e os campos
+alterados), lado a lado no desktop e empilhados no celular, com um formulário que valida a chave e
+exige `from` anterior a `to` antes de escrever a URL, o exemplo do roteiro (RCTE, art. 76, § 6º,
+05/2008 contra 01/2010) e um estado vazio sem comparação na URL.
 
 #### Scenario: Exemplo do roteiro
 

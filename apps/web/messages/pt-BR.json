@@ -75,7 +75,8 @@
     },
     "history": {
       "title": "Histórico",
-      "description": "Suas perguntas anteriores, com a data de referência de cada uma."
+      "description": "Suas perguntas anteriores, com a data de referência de cada uma.",
+      "eyebrow": "Suas conversas"
     },
     "settings": {
       "title": "Configurações",
@@ -597,7 +598,17 @@
     "viewAll": "Ver todo o histórico",
     "loadMore": "Carregar mais",
     "loadingMore": "Carregando…",
-    "retention": "As conversas ficam guardadas por 90 dias e podem ser apagadas nas configurações."
+    "retention": "As conversas ficam guardadas por 90 dias e podem ser apagadas nas configurações.",
+    "searchLabel": "Buscar nas conversas",
+    "searchPlaceholder": "Buscar pelo título…",
+    "searchEmpty": "Nenhuma conversa com “{query}” no título.",
+    "groups": {
+      "today": "Hoje",
+      "yesterday": "Ontem",
+      "week": "Últimos 7 dias",
+      "month": "Últimos 30 dias",
+      "older": "Anteriores"
+    }
   },
   "provision": {
     "title": "Dispositivos",
@@ -630,7 +641,8 @@
     "timeline": {
       "title": "Linha do tempo",
       "label": "Redações do dispositivo",
-      "count": "{count, plural, one {# redação} other {# redações}}"
+      "count": "{count, plural, one {# redação} other {# redações}}",
+      "atReference": "Em {date}"
     },
     "diff": {
       "loading": "Comparando as redações…",
@@ -638,7 +650,7 @@
       "at": "Em {date}",
       "absent": "O dispositivo não existia nesta data.",
       "unchanged": "O texto é o mesmo nas duas datas.",
-      "legend": "Sublinhado em verde, o que entrou; riscado em vermelho, o que saiu.",
+      "legend": "Legenda:",
       "insertedStart": "[incluído:",
       "insertedEnd": "]",
       "deletedStart": "[removido:",
@@ -646,7 +658,9 @@
       "fieldChanges": "Campos alterados",
       "field": "Campo",
       "before": "Antes",
-      "after": "Depois"
+      "after": "Depois",
+      "legendInserted": "incluído",
+      "legendDeleted": "removido"
     },
     "search": {
       "label": "Buscar dispositivo",
@@ -654,8 +668,10 @@
       "hint": "Mostra os dispositivos vigentes em {date}; digite ao menos 2 caracteres.",
       "searching": "Buscando…",
       "empty": "Nenhum dispositivo vigente na data casa com a busca.",
-      "results": "Dispositivos encontrados"
-    }
+      "results": "Dispositivos encontrados",
+      "examples": "Experimente:"
+    },
+    "eyebrow": "Corpus"
   },
   "compare": {
     "title": "Comparar versões",
@@ -668,7 +684,10 @@
     "invalidKey": "Chave inválida. Use o formato go:rcte:art:76:par:6.",
     "invalidRange": "Informe as duas datas, com a inicial antes da final.",
     "result": "Diferença entre as redações",
-    "openProvision": "Abrir o dispositivo"
+    "openProvision": "Abrir o dispositivo",
+    "eyebrow": "Linha do tempo",
+    "emptyTitle": "Duas datas, duas redações",
+    "emptyBody": "Informe a chave de um dispositivo e duas datas: as redações vigentes em cada uma aparecem lado a lado, com o que entrou e o que saiu."
   },
   "chat": {
     "loading": "Carregando a conversa…",
@@ -681,7 +700,10 @@
       "blockedQuota": "O limite diário de perguntas foi atingido. As perguntas voltam {reset}.",
       "blockedPaused": "O serviço está pausado. Tente de novo {reset}.",
       "resetAt": "em {time}",
-      "resetSoon": "mais tarde"
+      "resetSoon": "mais tarde",
+      "hintSend": "para enviar",
+      "hintStop": "para parar",
+      "counter": "{count, number} / {max, number}"
     },
     "pii": {
       "title": "Sua pergunta parece ter dados pessoais",
@@ -714,7 +736,9 @@
       "dateLabel": "Data",
       "apply": "Aplicar",
       "inferred": "Data inferida do texto: {value}",
-      "confirm": "Confirmar"
+      "confirm": "Confirmar",
+      "chipPeriodoLabel": "Período de apuração:",
+      "chipDateLabel": "Data de referência:"
     },
     "coverage": {
       "label": "Cobertura na data",
@@ -735,7 +759,12 @@
       "noAnswer": "Esta pergunta não tem resposta gravada.",
       "blockError": "Não foi possível mostrar este trecho.",
       "retry": "Tentar de novo",
-      "reread": "Recarregar a resposta"
+      "reread": "Recarregar a resposta",
+      "thinking": "Consultando a legislação vigente em {date}…",
+      "restoring": "Abrindo a conversa…",
+      "restoreError": "Não foi possível abrir esta conversa.",
+      "toEnd": "Ir para o fim da conversa",
+      "newConversation": "Nova conversa"
     },
     "answer": {
       "referencePeriodo": "Período de apuração {value}",
@@ -747,14 +776,19 @@
         "default": "padrão: mês anterior",
         "clarified": "esclarecida por você"
       },
-      "validity": "Vigência das redações citadas: {range}",
+      "validity": "Vigência das fontes: {range}",
       "boundaryInside": "A redação muda dentro deste período: confira a data exata.",
       "citations": "Fontes",
       "degraded": {
         "lexicalOnly": "Somente busca lexical",
         "fallback": "Modelo de reserva",
-        "cached": "Resposta em cache"
-      }
+        "cached": "Resposta em cache",
+        "label": "Como a resposta foi gerada"
+      },
+      "copy": "Copiar a resposta",
+      "copied": "Resposta copiada.",
+      "sourcesMore": "Mostrar {count, plural, one {# fonte a mais} other {# fontes a mais}}",
+      "sourcesLess": "Mostrar menos fontes"
     },
     "intervals": {
       "range": "{from} a {to}",
@@ -807,18 +841,43 @@
       "invalid": "Esta citação não foi confirmada pelo validador.",
       "status": {
         "current": "Vigente",
-        "superseded": "Superada",
+        "superseded": "Encerrada",
         "future": "Futura"
       },
-      "validity": "Vigência: {range}"
+      "validity": "Vigência: {range}",
+      "sourcePrefix": "Fonte",
+      "previewHint": "Clique para abrir"
     },
     "suggestions": {
-      "title": "Experimente",
-      "body": "A mesma pergunta em duas datas mostra redações diferentes.",
+      "title": "Comece por aqui",
+      "body": "Perguntas sobre o corpus, cada uma já no período de apuração certo.",
       "questions": {
-        "rcte76": "O que diz o art. 76, § 6º do RCTE?"
+        "rcte76": "O que diz o art. 76, § 6º do RCTE?",
+        "efdC170": "Como se preenche o registro C170 da EFD ICMS/IPI?",
+        "reinfR4020": "O que se informa no evento R-4020 da EFD-Reinf?",
+        "rcteCompensation": "Como funciona a não cumulatividade do ICMS no RCTE?",
+        "efdGoTable52": "Quais informações da Tabela 5.2 de Goiás vão na EFD todo mês?"
       },
-      "ask": "Perguntar em {period}"
+      "ask": "Perguntar em {period}",
+      "compareTitle": "Mesma pergunta, duas datas",
+      "compareBody": "O § 6º foi revogado em 23/11/2009. Pergunte antes e depois e veja a resposta mudar.",
+      "families": {
+        "rcte": "RCTE · Goiás",
+        "efd-icms-ipi": "EFD ICMS/IPI",
+        "efd-reinf": "EFD-Reinf",
+        "efd-go": "EFD · Goiás"
+      },
+      "period": "Período <date>{period}</date>"
+    },
+    "welcome": {
+      "greeting": {
+        "morning": "Bom dia",
+        "afternoon": "Boa tarde",
+        "evening": "Boa noite"
+      },
+      "greetingNamed": "{greeting}, {name}",
+      "lead": "Pergunte sobre a EFD ICMS/IPI, a EFD-Reinf ou a legislação do ICMS de Goiás. Cada resposta traz a redação vigente na data de referência, as fontes e a vigência delas.",
+      "dateLead": "Respostas com a lei vigente em"
     }
   },
   "coverage": {

@@ -4,12 +4,13 @@ import { useMutation } from '@tanstack/react-query'
 import { FeedbackRating, FeedbackReason } from '@teko/shared/contracts'
 import { type IsoDate, isoDateInTimeZone } from '@teko/shared/vigencia'
 import {
+  BookOpenTextIcon,
+  CheckIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
   CopyIcon,
   ExternalLinkIcon,
   FlagIcon,
-  HistoryIcon,
 } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import { useId, useState } from 'react'
@@ -30,10 +31,10 @@ interface CitationPanelProps {
 }
 
 /**
- * Painel da citação aberta: dispositivo, documento, versão, badge do intervalo de vigência, texto
- * citado (`lang="pt-BR"`, também na UI em inglês), campos, link para a fonte oficial, "copiar
- * citação", "reportar", o link para a página do dispositivo e, no próprio painel, a linha do tempo
- * e o "O que mudou" (diff sob demanda) na data de referência da resposta.
+ * Painel da citação aberta: a família, o dispositivo em serif, o documento e a versão, o badge do
+ * intervalo de vigência, o texto citado num cartão de leitura (`lang="pt-BR"`, também na UI em
+ * inglês), as ações (fonte oficial, página do dispositivo, copiar, reportar), os campos e, no próprio
+ * painel, a linha do tempo e o "O que mudou" (diff sob demanda) na data de referência da resposta.
  */
 export function CitationPanel({ selection, onStep }: CitationPanelProps) {
   const t = useTranslations('chat.citation')
@@ -57,17 +58,18 @@ export function CitationPanel({ selection, onStep }: CitationPanelProps) {
   }
 
   return (
-    <article aria-labelledby={titleId} className="flex flex-col gap-4 px-4 pb-6">
+    <article aria-labelledby={titleId} className="flex flex-col gap-5 px-4 pb-8">
       <div className="flex items-center justify-between gap-2">
-        <span className="text-muted-foreground text-xs" aria-live="polite">
+        <span className="font-medium text-muted-foreground text-xs tabular-nums" aria-live="polite">
           {t('position', { current: selection.index + 1, total })}
         </span>
-        <div className="flex gap-1">
+        <div className="flex items-center gap-1">
           <Button
             variant="ghost"
             size="icon-sm"
             aria-label={t('previous')}
             aria-keyshortcuts="["
+            title={`${t('previous')} ([)`}
             disabled={selection.index === 0}
             onClick={() => onStep(-1)}
           >
@@ -78,6 +80,7 @@ export function CitationPanel({ selection, onStep }: CitationPanelProps) {
             size="icon-sm"
             aria-label={t('next')}
             aria-keyshortcuts="]"
+            title={`${t('next')} (])`}
             disabled={selection.index >= total - 1}
             onClick={() => onStep(1)}
           >
@@ -87,10 +90,21 @@ export function CitationPanel({ selection, onStep }: CitationPanelProps) {
       </div>
 
       <header className="flex flex-col gap-2">
-        <h3 id={titleId} className="font-medium font-serif text-base" lang="pt-BR">
+        <p className="font-medium break-all font-mono text-[0.6875rem] text-muted-foreground">
+          {citation.family} · {citation.jurisdiction} · {citation.stableKey}
+        </p>
+        <h3
+          id={titleId}
+          className="text-balance font-semibold font-serif text-xl leading-snug tracking-tight"
+          lang="pt-BR"
+        >
           {citation.label}
         </h3>
-        <ValidityBadge interval={citation.validity} today={today} className="self-start" />
+        <p lang="pt-BR" className="text-muted-foreground text-sm leading-snug">
+          {citation.document.title}
+          <span className="block text-xs">{citation.document.versionLabel}</span>
+        </p>
+        <ValidityBadge interval={citation.validity} today={today} className="mt-1 self-start" />
         {!citation.valid && (
           <p role="note" className="text-coverage-out text-sm">
             {t('invalid')}
@@ -102,74 +116,39 @@ export function CitationPanel({ selection, onStep }: CitationPanelProps) {
         <section aria-label={t('text')}>
           <blockquote
             lang="pt-BR"
-            className="whitespace-pre-line border-l-2 border-accent-border pl-3 font-serif text-[15px] leading-relaxed"
+            className="relative whitespace-pre-line rounded-xl border bg-popover py-4 pr-4 pl-5 font-serif text-[16px] leading-[1.7] shadow-soft before:absolute before:top-4 before:bottom-4 before:left-0 before:w-0.5 before:rounded-full before:bg-leaf-gradient"
           >
             {citation.excerpt}
           </blockquote>
         </section>
       )}
 
-      <table className="w-full text-sm">
-        <caption className="sr-only">{t('fields')}</caption>
-        <tbody>
-          <tr className="border-b">
-            <th scope="row" className="py-1.5 pr-3 text-left font-normal text-muted-foreground">
-              {t('document')}
-            </th>
-            <td className="py-1.5" lang="pt-BR">
-              {citation.document.title}
-            </td>
-          </tr>
-          <tr className="border-b">
-            <th scope="row" className="py-1.5 pr-3 text-left font-normal text-muted-foreground">
-              {t('version')}
-            </th>
-            <td className="py-1.5" lang="pt-BR">
-              {citation.document.versionLabel}
-            </td>
-          </tr>
-          <tr className="border-b">
-            <th scope="row" className="py-1.5 pr-3 text-left font-normal text-muted-foreground">
-              {t('family')}
-            </th>
-            <td className="py-1.5 font-mono">
-              {citation.family} · {citation.jurisdiction}
-            </td>
-          </tr>
-          <tr>
-            <th scope="row" className="py-1.5 pr-3 text-left font-normal text-muted-foreground">
-              {t('key')}
-            </th>
-            <td className="break-all py-1.5 font-mono text-xs">{citation.stableKey}</td>
-          </tr>
-        </tbody>
-      </table>
-
-      <div className="flex flex-wrap gap-2">
+      <div className="grid grid-cols-2 gap-2">
         <a
           href={citation.document.sourceUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className={buttonVariants({ variant: 'outline', size: 'sm' })}
+          className={buttonVariants({ variant: 'outline', size: 'sm', className: 'justify-start' })}
         >
           <ExternalLinkIcon aria-hidden="true" />
           {t('source')}
         </a>
         <a
           href={provisionHref(locale, citation.stableKey, selection.referenceDate)}
-          className={buttonVariants({ variant: 'outline', size: 'sm' })}
+          className={buttonVariants({ variant: 'outline', size: 'sm', className: 'justify-start' })}
         >
-          <HistoryIcon aria-hidden="true" />
+          <BookOpenTextIcon aria-hidden="true" />
           {t('openProvision')}
         </a>
-        <Button variant="outline" size="sm" onClick={() => void copy()}>
-          <CopyIcon aria-hidden="true" />
+        <Button variant="ghost" size="sm" className="justify-start" onClick={() => void copy()}>
+          {copied ? <CheckIcon aria-hidden="true" /> : <CopyIcon aria-hidden="true" />}
           {t('copy')}
         </Button>
         {questionId !== null && (
           <Button
-            variant="outline"
+            variant="ghost"
             size="sm"
+            className="justify-start"
             disabled={report.isPending || report.isSuccess}
             onClick={() =>
               report.mutate({

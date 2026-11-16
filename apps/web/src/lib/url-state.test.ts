@@ -5,6 +5,7 @@ import {
   chatSearchParams,
   compareHref,
   compareSearchParams,
+  newConversationHref,
   provisionHref,
   provisionSearchParams,
 } from './url-state.ts'
@@ -56,6 +57,8 @@ describe('dispositivo e comparação', () => {
 
   it('links do chat, do dispositivo e da comparação', () => {
     expect(chatConversationHref('pt-BR', QUESTION_ID)).toBe(`/pt-BR/chat/?c=${QUESTION_ID}`)
+    expect(newConversationHref('pt-BR', null)).toBe('/pt-BR/chat/')
+    expect(newConversationHref('en', { periodoApuracao: '2008-05' })).toBe('/en/chat/?ref=2008-05')
     expect(provisionHref('en', KEY)).toBe(`/en/provision/?k=${KEY}`)
     expect(provisionHref('pt-BR', KEY, { referenceDate: '2008-05-01' })).toBe(
       `/pt-BR/provision/?k=${KEY}&ref=2008-05-01`,

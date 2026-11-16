@@ -50,6 +50,33 @@ export function citationLinksToAnchors(markdown: string): string {
   return markdown.replaceAll(CITE_LINK, (_match, id: string) => `](#cite-${id})`)
 }
 
+const CITE_MARKDOWN = /\[[^\]]*\]\(cite:S([1-9]\d*)\)/g
+
+/** Uma fonte na lista do "copiar resposta" (dispositivo, documento e versão). */
+export interface CopiedSource {
+  readonly id: string
+  readonly label: string
+  readonly document: { readonly title: string; readonly versionLabel: string }
+}
+
+/**
+ * Texto do "copiar resposta": o markdown com cada citação como `[n]` e, no fim, a lista numerada das
+ * fontes com o documento e a versão (o título da lista vem traduzido da UI).
+ */
+export function answerClipboardText(
+  markdown: string,
+  sources: readonly CopiedSource[],
+  sourcesTitle: string,
+): string {
+  const body = markdown.replaceAll(CITE_MARKDOWN, (_match, n: string) => `[${n}]`).trim()
+  if (sources.length === 0) return body
+  const list = sources.map(
+    (source) =>
+      `[${source.id.slice(1)}] ${source.label}: ${source.document.title} (${source.document.versionLabel})`,
+  )
+  return [body, '', `${sourcesTitle}:`, ...list].join('\n')
+}
+
 /** `#cite-S1` → `S1`; qualquer outro href → `null`. */
 export function citationIdFromHref(href: string | undefined): string | null {
   const id = href === undefined ? undefined : CITE_ANCHOR.exec(href)?.[1]

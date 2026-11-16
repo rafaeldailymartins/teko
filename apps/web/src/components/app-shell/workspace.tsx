@@ -19,6 +19,8 @@ import { DESKTOP_MEDIA_QUERY, useMediaQuery } from './use-media-query.ts'
 interface WorkspaceProps {
   /** Conteúdo do painel de histórico (conversas). */
   readonly history: ReactNode
+  /** Ações no topo do painel de histórico ("Nova conversa"), no desktop e no Sheet do celular. */
+  readonly historyActions?: ReactNode
   /** Conteúdo do painel de citação (dispositivo, versão, vigência). */
   readonly citation: ReactNode
   /** A conversa: o painel central, que nunca é desmontado ao trocar de layout. */
@@ -43,11 +45,13 @@ export function useCloseHistoryPanel(): () => void {
 
 interface SidePanelProps {
   readonly title: string
+  /** Ações abaixo do título, fora da rolagem. */
+  readonly actions?: ReactNode
   readonly children: ReactNode
 }
 
 /** Painel lateral no desktop: uma região nomeada pelo título, com rolagem própria. */
-function SidePanel({ title, children }: SidePanelProps) {
+function SidePanel({ title, actions, children }: SidePanelProps) {
   const titleId = useId()
   return (
     <section aria-labelledby={titleId} className="flex h-full min-h-0 flex-col bg-surface">
@@ -57,6 +61,7 @@ function SidePanel({ title, children }: SidePanelProps) {
       >
         {title}
       </h2>
+      {actions !== undefined && <div className="shrink-0 px-3 pb-2">{actions}</div>}
       <ScrollArea className="min-h-0 flex-1">{children}</ScrollArea>
     </section>
   )
@@ -72,6 +77,7 @@ function SidePanel({ title, children }: SidePanelProps) {
  */
 export function Workspace({
   history,
+  historyActions,
   citation,
   children,
   citationOpen: controlledCitationOpen,
@@ -99,6 +105,7 @@ export function Workspace({
               <SheetHeader>
                 <SheetTitle>{t('history')}</SheetTitle>
               </SheetHeader>
+              {historyActions !== undefined && <div className="px-4 pb-2">{historyActions}</div>}
               <ScrollArea className="min-h-0 flex-1">{history}</ScrollArea>
             </SheetContent>
           </Sheet>
@@ -122,7 +129,9 @@ export function Workspace({
         >
           {isDesktop && (
             <ResizablePanel id="history" defaultSize="22%" minSize="15%" maxSize="35%" collapsible>
-              <SidePanel title={t('history')}>{history}</SidePanel>
+              <SidePanel title={t('history')} actions={historyActions}>
+                {history}
+              </SidePanel>
             </ResizablePanel>
           )}
           {isDesktop && <ResizableHandle withHandle aria-label={t('resizeHistory')} />}

@@ -71,11 +71,13 @@ export default function AnswerMarkdown({
     <Streamdown
       mode={streaming ? 'streaming' : 'static'}
       isAnimating={streaming}
+      // Cursor discreto no fim do texto enquanto a resposta chega (some no fim do stream).
+      caret="circle"
       plugins={{ code }}
       controls={false}
       rehypePlugins={rehypePlugins}
       components={components}
-      className="text-[15px] leading-relaxed [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:my-2 [&_ul]:list-disc [&_ul]:pl-5"
+      className="[&_h1]:mt-5 [&_h1]:mb-2 [&_h1]:font-semibold [&_h1]:font-serif [&_h1]:text-xl [&_h2]:mt-5 [&_h2]:mb-2 [&_h2]:font-semibold [&_h2]:font-serif [&_h2]:text-lg [&_h3]:mt-4 [&_h3]:mb-1.5 [&_h3]:font-semibold [&_li]:my-1 [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:my-3 [&_p:first-child]:mt-0 [&_strong]:font-semibold [&_ul]:list-disc [&_ul]:pl-5 [&>*:last-child]:after:text-leaf"
     >
       {citationLinksToAnchors(markdown)}
     </Streamdown>

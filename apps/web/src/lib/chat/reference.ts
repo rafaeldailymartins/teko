@@ -75,3 +75,18 @@ export function referenceDisplay(choice: ReferenceChoice, today: IsoDate): Refer
   }
   return { kind: 'date', date: choice.referenceDate, isDefault: false }
 }
+
+/** Primeiro ano do corpus (RCTE e CTE, desde 1998): o começo da linha do tempo do chat vazio. */
+export const CORPUS_START_YEAR = 1998
+
+/**
+ * Posição (0 a 1) de uma data na linha do tempo do chat vazio, de 01/01/1998 ao fim do ano de
+ * `today`: o ponto âmbar da data de referência anda sobre o fio conforme o período escolhido.
+ */
+export function corpusTimelinePosition(date: IsoDate, today: IsoDate): number {
+  const at = toCalendarDate(date)
+  const end = toCalendarDate(today).year + 1
+  const value = at.year + (at.month - 1) / 12 + (at.day - 1) / 365
+  const position = (value - CORPUS_START_YEAR) / (end - CORPUS_START_YEAR)
+  return Math.min(Math.max(position, 0), 1)
+}

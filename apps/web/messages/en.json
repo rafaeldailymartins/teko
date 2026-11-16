@@ -75,7 +75,8 @@
     },
     "history": {
       "title": "History",
-      "description": "Your previous questions, each with its reference date."
+      "description": "Your previous questions, each with its reference date.",
+      "eyebrow": "Your conversations"
     },
     "settings": {
       "title": "Settings",
@@ -597,7 +598,17 @@
     "viewAll": "See the full history",
     "loadMore": "Load more",
     "loadingMore": "Loading…",
-    "retention": "Conversations are kept for 90 days and can be deleted in the settings."
+    "retention": "Conversations are kept for 90 days and can be deleted in the settings.",
+    "searchLabel": "Search conversations",
+    "searchPlaceholder": "Search by title…",
+    "searchEmpty": "No conversation with “{query}” in the title.",
+    "groups": {
+      "today": "Today",
+      "yesterday": "Yesterday",
+      "week": "Last 7 days",
+      "month": "Last 30 days",
+      "older": "Older"
+    }
   },
   "provision": {
     "title": "Provisions",
@@ -630,7 +641,8 @@
     "timeline": {
       "title": "Timeline",
       "label": "Wordings of the provision",
-      "count": "{count, plural, one {# wording} other {# wordings}}"
+      "count": "{count, plural, one {# wording} other {# wordings}}",
+      "atReference": "On {date}"
     },
     "diff": {
       "loading": "Comparing the wordings…",
@@ -638,7 +650,7 @@
       "at": "On {date}",
       "absent": "The provision did not exist on this date.",
       "unchanged": "The text is the same on both dates.",
-      "legend": "Underlined in green, what was added; struck through in red, what was removed.",
+      "legend": "Key:",
       "insertedStart": "[added:",
       "insertedEnd": "]",
       "deletedStart": "[removed:",
@@ -646,7 +658,9 @@
       "fieldChanges": "Changed fields",
       "field": "Field",
       "before": "Before",
-      "after": "After"
+      "after": "After",
+      "legendInserted": "added",
+      "legendDeleted": "removed"
     },
     "search": {
       "label": "Search provisions",
@@ -654,8 +668,10 @@
       "hint": "Shows provisions in force on {date}; type at least 2 characters.",
       "searching": "Searching…",
       "empty": "No provision in force on that date matches the search.",
-      "results": "Provisions found"
-    }
+      "results": "Provisions found",
+      "examples": "Try:"
+    },
+    "eyebrow": "Corpus"
   },
   "compare": {
     "title": "Compare versions",
@@ -668,7 +684,10 @@
     "invalidKey": "Invalid key. Use the format go:rcte:art:76:par:6.",
     "invalidRange": "Fill in both dates, with the start before the end.",
     "result": "Difference between the wordings",
-    "openProvision": "Open the provision"
+    "openProvision": "Open the provision",
+    "eyebrow": "Timeline",
+    "emptyTitle": "Two dates, two wordings",
+    "emptyBody": "Enter a provision key and two dates: the wordings in force on each show up side by side, with what was added and what was removed."
   },
   "chat": {
     "loading": "Loading the conversation…",
@@ -681,7 +700,10 @@
       "blockedQuota": "The daily question limit was reached. Questions are back {reset}.",
       "blockedPaused": "The service is paused. Try again {reset}.",
       "resetAt": "at {time}",
-      "resetSoon": "later"
+      "resetSoon": "later",
+      "hintSend": "to send",
+      "hintStop": "to stop",
+      "counter": "{count, number} / {max, number}"
     },
     "pii": {
       "title": "Your question seems to contain personal data",
@@ -714,7 +736,9 @@
       "dateLabel": "Date",
       "apply": "Apply",
       "inferred": "Date inferred from the text: {value}",
-      "confirm": "Confirm"
+      "confirm": "Confirm",
+      "chipPeriodoLabel": "Tax period:",
+      "chipDateLabel": "Reference date:"
     },
     "coverage": {
       "label": "Coverage on this date",
@@ -735,7 +759,12 @@
       "noAnswer": "This question has no saved answer.",
       "blockError": "This part could not be shown.",
       "retry": "Try again",
-      "reread": "Reload the answer"
+      "reread": "Reload the answer",
+      "thinking": "Looking up the law in force on {date}…",
+      "restoring": "Opening the conversation…",
+      "restoreError": "We could not open this conversation.",
+      "toEnd": "Jump to the end of the conversation",
+      "newConversation": "New conversation"
     },
     "answer": {
       "referencePeriodo": "Tax period {value}",
@@ -747,14 +776,19 @@
         "default": "default: previous month",
         "clarified": "clarified by you"
       },
-      "validity": "Validity of the cited wording: {range}",
+      "validity": "Sources in force: {range}",
       "boundaryInside": "The wording changes within this period: check the exact date.",
       "citations": "Sources",
       "degraded": {
         "lexicalOnly": "Lexical search only",
         "fallback": "Fallback model",
-        "cached": "Cached answer"
-      }
+        "cached": "Cached answer",
+        "label": "How the answer was produced"
+      },
+      "copy": "Copy the answer",
+      "copied": "Answer copied.",
+      "sourcesMore": "Show {count, plural, one {# more source} other {# more sources}}",
+      "sourcesLess": "Show fewer sources"
     },
     "intervals": {
       "range": "{from} to {to}",
@@ -807,18 +841,43 @@
       "invalid": "This citation was not confirmed by the validator.",
       "status": {
         "current": "In force",
-        "superseded": "Superseded",
-        "future": "Future"
+        "superseded": "Ended",
+        "future": "Upcoming"
       },
-      "validity": "Validity: {range}"
+      "validity": "Validity: {range}",
+      "sourcePrefix": "Source",
+      "previewHint": "Click to open"
     },
     "suggestions": {
-      "title": "Try it",
-      "body": "The same question on two dates shows different wordings.",
+      "title": "Start here",
+      "body": "Questions about the corpus, each already set to the right tax period.",
       "questions": {
-        "rcte76": "What does art. 76, § 6 of the RCTE say?"
+        "rcte76": "What does art. 76, § 6 of the RCTE say?",
+        "efdC170": "How is record C170 of the EFD ICMS/IPI filled in?",
+        "reinfR4020": "What does event R-4020 of the EFD-Reinf report?",
+        "rcteCompensation": "How does ICMS non-cumulativity work in the RCTE?",
+        "efdGoTable52": "Which Goiás Table 5.2 items go into the EFD every month?"
       },
-      "ask": "Ask for {period}"
+      "ask": "Ask for {period}",
+      "compareTitle": "Same question, two dates",
+      "compareBody": "§ 6 was repealed on 11/23/2009. Ask before and after and watch the answer change.",
+      "families": {
+        "rcte": "RCTE · Goiás",
+        "efd-icms-ipi": "EFD ICMS/IPI",
+        "efd-reinf": "EFD-Reinf",
+        "efd-go": "EFD · Goiás"
+      },
+      "period": "Period <date>{period}</date>"
+    },
+    "welcome": {
+      "greeting": {
+        "morning": "Good morning",
+        "afternoon": "Good afternoon",
+        "evening": "Good evening"
+      },
+      "greetingNamed": "{greeting}, {name}",
+      "lead": "Ask about the EFD ICMS/IPI, the EFD-Reinf or the Goiás ICMS legislation. Every answer comes with the wording in force on the reference date, its sources and their validity.",
+      "dateLead": "Answers with the law in force on"
     }
   },
   "coverage": {
