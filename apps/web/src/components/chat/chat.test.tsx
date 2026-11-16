@@ -395,9 +395,14 @@ describe('chat', () => {
         button.textContent?.includes('Tentar de novo'),
       ),
     )
+    expect(retry.closest('[role="alert"]')).not.toBeNull()
     timelineResponse = () => json(TIMELINE)
     await click(retry)
-    await waitFor(() => panel.querySelector('ol[aria-label="Redações do dispositivo"]'))
+    const timeline = await waitFor(() =>
+      panel.querySelector('ol[aria-label="Redações do dispositivo"]'),
+    )
+    expect(timeline.querySelectorAll('li').length).toBeGreaterThan(0)
+    expect(panel.querySelector('[role="alert"]')).toBeNull()
   })
 
   it('feedback 👍 grava a avaliação da resposta', async () => {
