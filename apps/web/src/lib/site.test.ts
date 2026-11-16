@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { MAIN_CONTENT_ID, PRODUCT_NAME, REPOSITORY_URL, SITE_ORIGIN } from './site.ts'
+import {
+  ISSUES_URL,
+  LICENSE_URL,
+  MAIN_CONTENT_ID,
+  PRODUCT_NAME,
+  REPOSITORY_URL,
+  SITE_ORIGIN,
+} from './site.ts'
 
 describe('configuração do site', () => {
   it('usa o nome com acento só na exibição', () => {
@@ -14,6 +21,11 @@ describe('configuração do site', () => {
 
   it('REPOSITORY_URL aponta para o repositório público em https', () => {
     expect(new URL(REPOSITORY_URL).protocol).toBe('https:')
+  })
+
+  it('issues e licença ficam no próprio repositório', () => {
+    expect(ISSUES_URL).toBe(`${REPOSITORY_URL}/issues`)
+    expect(LICENSE_URL.startsWith(`${REPOSITORY_URL}/`)).toBe(true)
   })
 
   it('MAIN_CONTENT_ID é um id HTML válido para o skip link', () => {

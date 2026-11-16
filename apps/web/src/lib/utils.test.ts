@@ -16,4 +16,15 @@ describe('cn', () => {
   it('mantém utilitários de tokens próprios lado a lado com os do Tailwind', () => {
     expect(cn('text-muted-foreground', 'text-sm')).toBe('text-muted-foreground text-sm')
   })
+
+  it('as sombras do tema são sombras (não cor), e shadow-none as anula', () => {
+    expect(cn('shadow-soft', 'shadow-none')).toBe('shadow-none')
+    expect(cn('shadow-soft', 'shadow-raised')).toBe('shadow-raised')
+    expect(cn('shadow-overlay', 'shadow-leaf/20')).toBe('shadow-overlay shadow-leaf/20')
+  })
+
+  it('a curva e a animação do tema também resolvem conflitos', () => {
+    expect(cn('ease-out-soft', 'ease-in')).toBe('ease-in')
+    expect(cn('animate-pulse', 'animate-timeline')).toBe('animate-timeline')
+  })
 })

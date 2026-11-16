@@ -2,17 +2,34 @@
   "app": {
     "name": "Tekó",
     "tagline": "Brazilian tax law, as of the right date",
-    "description": "An open-source assistant that answers questions about Brazilian tax law, citing the source and the wording in force on your reference date. Under construction."
+    "description": "An open-source assistant that answers questions about Brazilian tax law, citing the source and the wording in force on your reference date.",
+    "ogImageAlt": "Tekó logo: a T whose crossbar is a timeline, with the reference date in amber and leaves sprouting from the stem."
   },
   "common": {
     "skipToContent": "Skip to content",
     "homeLink": "Tekó, home page",
-    "languageNav": "Language",
+    "language": {
+      "label": "Language",
+      "current": "Language: {language}"
+    },
+    "siteNav": "Site navigation",
     "disclaimer": "A research aid; not professional advice.",
     "license": "Open source under the MIT license.",
     "sourceCode": "Source code on GitHub",
     "close": "Close",
     "openApp": "Open Tekó",
+    "menu": {
+      "open": "Open the menu",
+      "title": "Menu"
+    },
+    "footer": {
+      "product": "Product",
+      "project": "Project",
+      "legal": "Legal",
+      "issues": "Report an issue",
+      "licenseLink": "MIT License",
+      "madeWith": "Built on public data and open source."
+    },
     "theme": {
       "label": "Theme",
       "light": "Light",
@@ -40,6 +57,13 @@
       "resizeCitation": "Resize citation",
       "historyEmpty": "Your conversations show up here, each with the reference date it used.",
       "citationEmpty": "Pick a citation in the answer to see the provision, its version and its validity interval."
+    },
+    "gate": {
+      "loading": "Loading Tekó…",
+      "redirecting": "Taking you to sign in…",
+      "unavailableTitle": "We couldn’t check your session",
+      "unavailableBody": "Check your connection and try again. If the problem persists, the service may be down for a few minutes.",
+      "retry": "Try again"
     }
   },
   "pages": {
@@ -47,7 +71,7 @@
       "title": "Chat",
       "description": "Ask about tax law and get the answer in the wording in force on your date.",
       "emptyTitle": "Ask a question",
-      "emptyBody": "Set the tax period and ask about EFD ICMS/IPI, EFD-Reinf or the ICMS legislation of Goiás. The chat is still under construction."
+      "emptyBody": "Set the tax period and ask about EFD ICMS/IPI, EFD-Reinf or the ICMS legislation of Goiás."
     },
     "history": {
       "title": "History",
@@ -87,7 +111,7 @@
     }
   },
   "landing": {
-    "status": "Under construction",
+    "badge": "Open source and free",
     "title": "Tax law, in the wording that applied on your date.",
     "lead": "Tekó is an open-source assistant for questions about Brazilian tax law. Every answer is given for a tax period or reference date and cites the provision and the version it used.",
     "cta": {

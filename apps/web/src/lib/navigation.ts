@@ -41,7 +41,7 @@ function isLocale(segment: string | undefined): segment is Locale {
 
 /**
  * O mesmo caminho em outro locale (troca de idioma sem perder a página). Fora de um locale, vai
- * para a inicial do destino. A query não entra: ela pode levar dados da conversa.
+ * para a inicial do destino.
  */
 export function switchLocalePath(pathname: string, target: Locale): string {
   const [, first, ...rest] = pathname.split('/')
@@ -50,4 +50,25 @@ export function switchLocalePath(pathname: string, target: Locale): string {
   }
   const tail = rest.filter((segment) => segment !== '').join('/')
   return tail === '' ? localeHomePath(target) : `/${target}/${tail}/`
+}
+
+/**
+ * Destino da troca de idioma: o mesmo caminho em outro locale com a query e a âncora atuais (a
+ * conversa aberta, a data de referência, a seção da página). A query do Tekó só leva ids e datas
+ * (`src/lib/url-state.ts`), nunca o texto da pergunta, e a navegação fica na mesma origem. Fora de
+ * um locale, vai para a inicial do destino, sem a query.
+ */
+export function switchLocaleHref(
+  location: Pick<Location, 'pathname' | 'search' | 'hash'>,
+  target: Locale,
+): string {
+  const path = switchLocalePath(location.pathname, target)
+  const [, first] = location.pathname.split('/')
+  if (!isLocale(first)) {
+    return path
+  }
+  const search =
+    location.search.startsWith('?') && location.search.length > 1 ? location.search : ''
+  const hash = location.hash.startsWith('#') && location.hash.length > 1 ? location.hash : ''
+  return `${path}${search}${hash}`
 }

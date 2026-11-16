@@ -68,9 +68,9 @@ export async function LandingPage({ params }: LocalePageProps) {
           className="mx-auto grid max-w-5xl gap-12 px-5 pt-14 pb-16 sm:pt-20 lg:grid-cols-[1.1fr_1fr] lg:items-center"
         >
           <div>
-            <Badge tone="accent">
-              <span aria-hidden="true" className="size-2 rounded-full bg-accent-border" />
-              {t('status')}
+            <Badge tone="leaf">
+              <span aria-hidden="true" className="size-2 rounded-full bg-leaf" />
+              {t('badge')}
             </Badge>
             <h1
               id="hero-title"

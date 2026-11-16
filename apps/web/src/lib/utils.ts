@@ -1,5 +1,19 @@
 import { type ClassValue, clsx } from 'clsx'
-import { twMerge } from 'tailwind-merge'
+import { extendTailwindMerge } from 'tailwind-merge'
+
+/**
+ * O tailwind-merge com os tokens próprios do tema (`globals.css`): sem isto, `shadow-soft` e
+ * `shadow-raised` seriam lidos como cor de sombra, e `shadow-none` não os anularia.
+ */
+const twMerge = extendTailwindMerge({
+  extend: {
+    theme: {
+      shadow: ['soft', 'raised', 'overlay'],
+      ease: ['out-soft'],
+      animate: ['timeline'],
+    },
+  },
+})
 
 /**
  * Junta classes condicionais (clsx) e resolve conflitos de utilitários do Tailwind (tailwind-merge):

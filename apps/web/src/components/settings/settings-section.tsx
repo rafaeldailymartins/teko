@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { Card } from '@/components/ui/card'
 
 interface SettingsSectionProps {
   /** Âncora e `aria-labelledby` da seção. */
@@ -11,10 +12,7 @@ interface SettingsSectionProps {
 /** Bloco da página de configurações: título (`h2`), descrição opcional e o conteúdo. */
 export function SettingsSection({ id, title, description, children }: SettingsSectionProps) {
   return (
-    <section
-      aria-labelledby={`${id}-title`}
-      className="flex flex-col gap-4 rounded-xl border bg-surface p-4 sm:p-5"
-    >
+    <Card as="section" aria-labelledby={`${id}-title`} className="flex flex-col gap-4 p-4 sm:p-5">
       <div className="flex flex-col gap-1">
         <h2 id={`${id}-title`} className="font-semibold font-serif text-lg tracking-tight">
           {title}
@@ -24,7 +22,7 @@ export function SettingsSection({ id, title, description, children }: SettingsSe
         )}
       </div>
       {children}
-    </section>
+    </Card>
   )
 }
 

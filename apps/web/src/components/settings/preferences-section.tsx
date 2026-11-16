@@ -1,8 +1,8 @@
 'use client'
 
-import { usePathname } from 'next/navigation'
-import { useLocale, useTranslations } from 'next-intl'
+import { useTranslations } from 'next-intl'
 import { useId, useSyncExternalStore } from 'react'
+import { LanguageMenu } from '@/components/language-menu'
 import { setThemePreference, THEME_OPTIONS, useThemePreference } from '@/components/theme-selector'
 import {
   applyDensity,
@@ -13,8 +13,6 @@ import {
   readDensity,
   subscribeDensity,
 } from '@/lib/density'
-import { LOCALE_ENDONYMS, routing } from '@/lib/i18n/routing'
-import { switchLocalePath } from '@/lib/navigation'
 import { parseThemePreference } from '@/lib/theme'
 import { cn } from '@/lib/utils'
 import { SettingsSection } from './settings-section.tsx'
@@ -88,8 +86,6 @@ function ChoiceGroup({ legend, value, choices, onChange }: ChoiceGroupProps) {
 export function PreferencesSection() {
   const t = useTranslations('settings.preferences')
   const tTheme = useTranslations('common.theme')
-  const locale = useLocale()
-  const pathname = usePathname()
   const theme = useThemePreference()
   const density = useDensity()
 
@@ -107,31 +103,9 @@ export function PreferencesSection() {
         choices={DENSITY_OPTIONS.map((value) => ({ value, label: t(`densityOptions.${value}`) }))}
         onChange={(value) => setDensity(parseDensity(value))}
       />
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col items-start gap-2">
         <h3 className="font-medium">{t('language')}</h3>
-        <ul className="flex flex-wrap gap-2">
-          {routing.locales.map((target) => (
-            <li key={target}>
-              {target === locale ? (
-                <span
-                  aria-current="true"
-                  className="inline-flex min-h-8 items-center rounded-lg border border-primary bg-muted px-3 text-sm"
-                >
-                  {LOCALE_ENDONYMS[target]}
-                </span>
-              ) : (
-                <a
-                  href={switchLocalePath(pathname, target)}
-                  hrefLang={target}
-                  lang={target}
-                  className="inline-flex min-h-8 items-center rounded-lg border px-3 text-sm hover:bg-muted"
-                >
-                  {LOCALE_ENDONYMS[target]}
-                </a>
-              )}
-            </li>
-          ))}
-        </ul>
+        <LanguageMenu variant="labeled" />
       </div>
     </SettingsSection>
   )
