@@ -5,6 +5,7 @@ import {
   EmailAuthFailure,
   emailAuthFailureOf,
   listPasskeys,
+  listSignInMethods,
   OAuthProvider,
   PasskeyError,
   PasskeyFailure,
@@ -351,5 +352,26 @@ describe('listPasskeys e deletePasskey', () => {
     expect(calls).toEqual([
       { method: 'POST', url: '/api/auth/passkey/delete-passkey', body: { id: 'a' } },
     ])
+  })
+})
+
+describe('listSignInMethods', () => {
+  it('traduz as contas ligadas em métodos de entrada, sem repetir e sem os desconhecidos', async () => {
+    respond('/api/auth/list-accounts', () =>
+      json([
+        { id: '1', providerId: 'credential', accountId: 'u', scopes: [] },
+        { id: '2', providerId: 'github', accountId: 'g', scopes: [] },
+        { id: '3', providerId: 'google', accountId: 'o', scopes: [] },
+        { id: '4', providerId: 'github', accountId: 'g2', scopes: [] },
+        { id: '5', providerId: 'outro-provedor', accountId: 'x', scopes: [] },
+      ]),
+    )
+    expect(await listSignInMethods()).toEqual(['email', 'github', 'google'])
+    expect(calls).toEqual([{ method: 'GET', url: '/api/auth/list-accounts', body: undefined }])
+  })
+
+  it('sem sessão, a falha segue como ApiError', async () => {
+    respond('/api/auth/list-accounts', () => json({ code: 'UNAUTHORIZED' }, 401))
+    await expect(listSignInMethods()).rejects.toBeInstanceOf(ApiError)
   })
 })

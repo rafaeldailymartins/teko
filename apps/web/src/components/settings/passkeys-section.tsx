@@ -5,6 +5,7 @@ import { useFormatter, useTranslations } from 'next-intl'
 import { type FormEvent, useId, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Skeleton } from '@/components/ui/skeleton'
 import { PasskeyError } from '@/lib/api/auth'
 import { ApiError } from '@/lib/api/errors'
 import { useDeletePasskey, usePasskeys, useRegisterPasskey } from '@/lib/api/hooks'
@@ -49,22 +50,26 @@ export function PasskeysSection() {
   const failure = register.error ?? remove.error ?? passkeys.error
 
   return (
-    <SettingsSection id="passkeys" title={t('title')} description={t('lead')}>
+    <SettingsSection id="passkeys" title={t('title')} description={t('lead')} icon={KeyRoundIcon}>
       {passkeys.isPending ? (
-        <p className="text-muted-foreground text-sm">{t('loading')}</p>
+        <div className="flex flex-col gap-2" role="status" aria-label={t('loading')}>
+          <Skeleton className="h-14 rounded-xl" />
+        </div>
       ) : passkeys.data !== undefined && passkeys.data.length > 0 ? (
-        <ul className="flex flex-col divide-y rounded-lg border bg-background">
+        <ul className="flex flex-col divide-y overflow-hidden rounded-xl border bg-surface/60">
           {passkeys.data.map((passkey) => {
             const label = passkey.name ?? t('unnamed')
             return (
-              <li key={passkey.id} className="flex items-center gap-3 px-3 py-2">
-                <KeyRoundIcon
+              <li key={passkey.id} className="flex items-center gap-3 px-3.5 py-3">
+                <span
                   aria-hidden="true"
-                  className="size-4 shrink-0 text-muted-foreground"
-                />
+                  className="flex size-9 shrink-0 items-center justify-center rounded-lg border bg-popover text-primary shadow-soft"
+                >
+                  <FingerprintIcon className="size-4" />
+                </span>
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-medium">{label}</p>
-                  <p className="text-muted-foreground text-xs">
+                  <p className="font-mono text-muted-foreground text-xs tabular-nums">
                     {t('createdAt', {
                       date: format.dateTime(passkey.createdAt, { dateStyle: 'short' }),
                     })}
@@ -75,6 +80,7 @@ export function PasskeysSection() {
                   size="icon-sm"
                   aria-label={t('removeLabel', { name: label })}
                   disabled={busy}
+                  className="hover:bg-destructive/10 hover:text-destructive"
                   onClick={() => {
                     setDone(null)
                     register.reset()
@@ -88,10 +94,15 @@ export function PasskeysSection() {
           })}
         </ul>
       ) : (
-        passkeys.data !== undefined && <p className="text-muted-foreground text-sm">{t('empty')}</p>
+        passkeys.data !== undefined && (
+          <p className="flex items-center gap-3 rounded-xl border border-dashed bg-surface/40 px-4 py-3.5 text-muted-foreground text-sm">
+            <FingerprintIcon aria-hidden="true" className="size-5 shrink-0 text-validity-current" />
+            {t('empty')}
+          </p>
+        )
       )}
 
-      <form onSubmit={submit} className="flex flex-col gap-2 sm:flex-row sm:items-end">
+      <form onSubmit={submit} className="flex flex-col gap-2.5 sm:flex-row sm:items-end">
         <div className="flex flex-1 flex-col gap-1.5">
           <label htmlFor={`${id}-name`} className="font-medium text-sm">
             {t('nameLabel')}

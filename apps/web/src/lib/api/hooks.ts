@@ -31,6 +31,7 @@ import {
   deletePasskey,
   type Passkey,
   registerPasskey,
+  type SignInMethod,
   signInWithEmail,
   signOut,
   signUpWithEmail,
@@ -48,6 +49,7 @@ import {
   provisionTimelineQuery,
   questionQuery,
   quotaQuery,
+  signInMethodsQuery,
 } from './queries.ts'
 
 /**
@@ -69,6 +71,11 @@ export function useQuota(enabled = true): ApiQuery<GetQuotaResponse> {
 /** Passkeys da conta; `enabled: false` enquanto não há sessão. */
 export function usePasskeys(enabled = true): ApiQuery<Passkey[]> {
   return useQuery(passkeysQuery(enabled))
+}
+
+/** Como a conta da sessão entra (GitHub, Google ou e-mail); `enabled: false` sem sessão. */
+export function useSignInMethods(enabled = true): ApiQuery<SignInMethod[]> {
+  return useQuery(signInMethodsQuery(enabled))
 }
 
 /**

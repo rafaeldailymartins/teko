@@ -135,6 +135,8 @@ afterEach(async () => {
 describe('SignInPanel', () => {
   beforeEach(() => {
     api.on('GET /api/v1/me', () => problem(401, 'unauthenticated'))
+    // Ambiente com os OAuth apps: os quatro métodos (sem eles, veja sign-in.test.tsx).
+    api.on('GET /api/v1/auth/providers', { methods: ['github', 'google', 'passkey', 'email'] })
   })
 
   it('inicia o OAuth com o retorno saneado e vai para o provedor', async () => {
@@ -314,17 +316,34 @@ describe('SessionGate', () => {
     await settle()
     expect(document.querySelector('[role="dialog"]')).not.toBeNull()
 
+    const progress = () => dialog?.querySelector('[aria-live="polite"]')?.textContent
+    expect(progress()).toBe('1 de 3 confirmações')
     for (const checkbox of document.querySelectorAll<HTMLInputElement>('input[type="checkbox"]')) {
       await click(checkbox)
     }
-    const select = document.querySelector('select')
-    expect(select?.value).toBe('BR')
+    expect(progress()).toBe('3 de 3 confirmações')
+
+    // País com busca: o gatilho mostra o atual; a busca acha sem acento e pelo nome.
+    const picker = dialog?.querySelector<HTMLButtonElement>('[role="combobox"]')
+    expect(picker?.textContent).toContain('Brasil')
+    expect(picker?.getAttribute('aria-labelledby')).toBeTruthy()
+    expect(
+      document.getElementById(picker?.getAttribute('aria-labelledby') ?? '')?.textContent,
+    ).toBe(ptBR.onboarding.country)
+    await click(picker)
+    const search = await waitForElement('[cmdk-input]')
     await act(async () => {
-      if (select) {
-        select.value = 'PT'
-        select.dispatchEvent(new Event('change', { bubbles: true }))
+      if (search instanceof HTMLInputElement) {
+        const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set
+        setter?.call(search, 'portu')
+        search.dispatchEvent(new Event('input', { bubbles: true }))
       }
     })
+    await settle()
+    const items = [...document.querySelectorAll('[cmdk-item]')]
+    expect(items.map((item) => item.textContent)).toEqual(['PortugalPT'])
+    await click(items[0])
+    expect(picker?.textContent).toContain('Portugal')
     expect(button('Continuar')?.disabled).toBe(false)
     await click(button('Continuar'))
     expect(api.calls.find((call) => call.route === 'POST /api/v1/me/onboarding')?.body).toEqual({

@@ -161,6 +161,49 @@ for (const locale of ['en', 'pt-BR'] as const) {
         }
       })
 
+      test('entrada: criar conta com os erros dos campos', async ({ page }, testInfo) => {
+        const email = MESSAGES[locale].auth.email
+        await page.goto(`/${locale}/sign-in/`)
+        await settled(page)
+        await page.getByRole('tab', { name: email.signUp }).click()
+        await page.getByLabel(email.password, { exact: true }).fill('curta')
+        await page.getByRole('button', { name: email.submitSignUp }).click()
+        await expect(page.locator('[aria-invalid="true"]').first()).toBeVisible()
+        await settled(page)
+        await expectNoViolations(page, testInfo)
+      })
+
+      test('onboarding com o seletor de país aberto', async ({
+        page,
+        context,
+        baseURL,
+      }, testInfo) => {
+        const onboarding = MESSAGES[locale].onboarding
+        await signInWithTestSession(context, baseURL)
+        // O usuário de teste já concluiu o onboarding: o `/me` simula a pendência.
+        await page.route('**/api/v1/me', async (route) => {
+          const response = await route.fetch()
+          const me = (await response.json()) as { onboarding: Record<string, unknown> }
+          await route.fulfill({
+            response,
+            json: { ...me, onboarding: { ...me.onboarding, required: true } },
+          })
+        })
+        await page.goto(`/${locale}/settings/`)
+        await settled(page)
+        await page
+          .getByRole('button', { name: MESSAGES[locale].settings.account.completeOnboarding })
+          .click()
+        const dialog = page.getByRole('dialog')
+        await expect(dialog).toBeVisible()
+        await settled(page)
+        await expectNoViolations(page, testInfo)
+        await dialog.getByRole('combobox', { name: onboarding.country }).click()
+        await expect(page.getByPlaceholder(onboarding.countrySearch)).toBeVisible()
+        await settled(page)
+        await expectNoViolations(page, testInfo)
+      })
+
       test.describe('primeira visita', () => {
         // Sem a escolha de consentimento: o banner LGPD na tela.
         test.use({ storageState: { cookies: [], origins: [] } })

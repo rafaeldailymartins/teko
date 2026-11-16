@@ -265,20 +265,21 @@
   },
   "auth": {
     "signIn": {
-      "lead": "Entre com a sua conta do GitHub ou do Google. Depois do primeiro acesso, você pode cadastrar uma passkey nas configurações.",
+      "lead": "Pergunte sobre a legislação fiscal brasileira e receba a resposta na redação que valia na data certa.",
       "github": "Entrar com GitHub",
       "google": "Entrar com Google",
       "passkey": "Entrar com passkey",
-      "noPassword": "O Tekó não usa e-mail e senha.",
       "alreadySignedIn": "Você já entrou como {name}.",
       "continue": "Continuar",
-      "legal": "Ao entrar, você concorda com os <terms>Termos de uso</terms> e com a <privacy>Política de privacidade</privacy>."
+      "legal": "Ao entrar, você concorda com os <terms>Termos de uso</terms> e com a <privacy>Política de privacidade</privacy>.",
+      "divider": "ou com e-mail",
+      "loading": "Carregando as formas de entrada…"
     },
     "errors": {
       "title": "Não foi possível entrar",
       "cancelled": "O login foi cancelado. Tente de novo quando quiser.",
       "blocked": "Esta conta está bloqueada e não pode entrar no Tekó.",
-      "accountNotLinked": "Esta conta do provedor não pôde ser ligada à sua conta do Tekó. Entre com o provedor que você usou da primeira vez.",
+      "accountNotLinked": "Este e-mail usa outro método de entrada. Entre pelo método que você usou da primeira vez.",
       "emailMissing": "O provedor não compartilhou um e-mail verificado. Confira as configurações de privacidade da sua conta e tente de novo.",
       "generic": "Algo deu errado no login. Tente de novo."
     },
@@ -293,7 +294,9 @@
       "title": "Indisponível na sua região",
       "body": "Para a sua região, o Tekó só usa um provedor de IA que não guarda as perguntas, e ele está indisponível agora.",
       "hint": "Tente de novo mais tarde. Se o país de residência estiver errado, ele aparece nas configurações da conta.",
-      "back": "Voltar para a página inicial"
+      "back": "Voltar para a página inicial",
+      "eyebrow": "Política regional",
+      "settings": "Abrir as configurações"
     },
     "menu": {
       "label": "Conta de {name}",
@@ -305,6 +308,61 @@
       "group": "Conta",
       "signIn": "Entrar",
       "signOut": "Sair da conta"
+    },
+    "email": {
+      "tabs": "Entrar ou criar conta",
+      "signIn": "Entrar",
+      "signUp": "Criar conta",
+      "name": "Nome",
+      "namePlaceholder": "Como prefere ser chamado",
+      "email": "E-mail",
+      "emailPlaceholder": "voce@exemplo.com",
+      "password": "Senha",
+      "showPassword": "Mostrar a senha",
+      "hidePassword": "Ocultar a senha",
+      "passwordHint": "Pelo menos {min} caracteres. Uma frase que só você conheça funciona bem.",
+      "passwordCount": "{count} de {min} caracteres",
+      "passwordReady": "Mínimo atingido · {count} caracteres",
+      "submitSignIn": "Entrar",
+      "submitSignUp": "Criar conta e entrar",
+      "signingIn": "Entrando…",
+      "signingUp": "Criando a conta…",
+      "forgot": "Esqueceu a senha? Sem e-mail de recuperação, ela não volta. <terms>Entenda</terms>",
+      "notice": "O Tekó não confirma o e-mail nem recupera senhas. Guarde a sua num gerenciador de senhas. Detalhes nos <terms>Termos de uso</terms>.",
+      "validation": {
+        "nameRequired": "Informe um nome.",
+        "nameTooLong": "Use até {max} caracteres.",
+        "nameInvalid": "O nome tem caracteres que não são aceitos.",
+        "emailInvalid": "Informe um e-mail válido, como voce@exemplo.com.",
+        "passwordRequired": "Informe a senha.",
+        "passwordTooShort": "A senha precisa de pelo menos {min} caracteres.",
+        "passwordTooLong": "A senha pode ter até {max} caracteres."
+      },
+      "failures": {
+        "invalidCredentials": "E-mail ou senha não conferem. Confira e tente de novo.",
+        "accountUnavailable": "Não foi possível criar a conta com este e-mail. Se você já usa o Tekó, entre pelo método de sempre.",
+        "passwordTooShort": "A senha precisa de pelo menos {min} caracteres.",
+        "passwordTooLong": "A senha pode ter até {max} caracteres.",
+        "invalidEmail": "Informe um e-mail válido.",
+        "invalidName": "Confira o nome: ele não pode ficar vazio nem passar de {max} caracteres.",
+        "invalidInput": "Confira os dados e tente de novo.",
+        "rateLimited": "Muitas tentativas seguidas. Espere alguns minutos e tente de novo."
+      }
+    },
+    "brand": {
+      "label": "Sobre o Tekó",
+      "tagline": "A lei certa para cada momento.",
+      "body": "Cada resposta sai da redação vigente na data que você escolher, com as citações e o período de vigência à vista.",
+      "example": "Exemplo",
+      "provision": "Art. 76, § 6º · RCTE-GO",
+      "reference": "Sua data",
+      "current": "Vigente nesta data",
+      "points": {
+        "dated": "Respostas na data de referência",
+        "cited": "Citações que você confere",
+        "open": "Código aberto e gratuito"
+      },
+      "home": "Página inicial do Tekó"
     }
   },
   "onboarding": {
@@ -322,19 +380,31 @@
     "countryHint": "Define quais provedores de IA podem responder às suas perguntas.",
     "submit": "Continuar",
     "submitting": "Salvando…",
-    "signOut": "Sair"
+    "signOut": "Sair",
+    "steps": "Etapas do cadastro",
+    "progress": "{done} de {total} confirmações",
+    "stepDone": "concluída",
+    "age": "Maioridade",
+    "countrySearch": "Buscar país…",
+    "countryEmpty": "Nenhum país encontrado.",
+    "termsStep": "Termos e privacidade"
   },
   "settings": {
     "loading": "Carregando a sua conta…",
     "unavailable": "Não foi possível carregar a sua conta agora. Tente de novo em instantes.",
     "account": {
       "title": "Conta",
-      "name": "Nome",
-      "email": "E-mail",
       "country": "País de residência",
       "onboardingPending": "Conclua o cadastro inicial para fazer perguntas.",
       "completeOnboarding": "Concluir agora",
-      "signOut": "Sair"
+      "signOut": "Sair",
+      "method": "Entrada",
+      "methods": {
+        "github": "GitHub",
+        "google": "Google",
+        "email": "E-mail e senha"
+      },
+      "methodUnknown": "Não identificada"
     },
     "quota": {
       "title": "Cota do dia",
@@ -342,7 +412,8 @@
       "loading": "Carregando a cota…",
       "user": "{used} de {limit} perguntas hoje",
       "global": "Teto do serviço hoje: {used} de {limit} perguntas",
-      "resets": "Renova em {time}."
+      "resets": "Renova em {time}.",
+      "remaining": "{count, plural, one {# pergunta restante} other {# perguntas restantes}}"
     },
     "passkeys": {
       "title": "Passkeys",
@@ -361,7 +432,7 @@
     },
     "data": {
       "title": "Seus dados",
-      "lead": "Baixe tudo o que o Tekó guarda sobre você ou exclua a conta. As perguntas são apagadas automaticamente depois de 90 dias.",
+      "lead": "Baixe num arquivo JSON tudo o que o Tekó guarda sobre você. As perguntas são apagadas automaticamente depois de 90 dias.",
       "export": "Exportar meus dados",
       "exporting": "Preparando o arquivo…",
       "exported": "Arquivo JSON baixado."
@@ -384,7 +455,16 @@
         "comfortable": "Confortável",
         "compact": "Compacta"
       },
-      "language": "Idioma"
+      "language": "Idioma",
+      "lead": "Valem para este navegador, com ou sem sessão.",
+      "densityHints": {
+        "comfortable": "Mais respiro entre os elementos",
+        "compact": "Mais conteúdo na tela"
+      }
+    },
+    "nav": "Seções das configurações",
+    "danger": {
+      "title": "Zona de perigo"
     }
   },
   "errors": {

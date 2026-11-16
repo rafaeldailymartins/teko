@@ -246,6 +246,11 @@ garantia diante do CDC, foro e datas das versões). A F6 atualiza a política qu
   rotas de e-mail, `GET /api/v1/auth/providers`, cliente no web (`signUpWithEmail`,
   `signInWithEmail`, `useAuthProviders`) e Termos e política na versão 2026-11-16. A tela de entrada
   com o formulário vem com o redesign do front.
+- `redesign-auth-ui` (redesign, onda 2, arquivada em 2026-11-16): entrada em duas colunas com o
+  painel da marca, só os métodos do ambiente (GitHub e Google com os símbolos, passkey e e-mail e
+  senha em abas, com validação inline e o aviso sem recuperação), onboarding em passos com o país
+  com busca, configurações com navegação lateral, método de entrada e zona de perigo; jornada local
+  de cadastro, onboarding e chat pela tela; bundle em 441,9 KiB gz.
 
 ## Antes da F7: o que o mantenedor faz
 

@@ -30,6 +30,34 @@ export function countryOptions(locale: string): CountryOption[] {
   )
 }
 
+/** Texto comparável: sem acento, sem diferença de caixa e sem espaço nas pontas. */
+function fold(value: string): string {
+  return value.normalize('NFD').replace(/\p{M}/gu, '').toLocaleLowerCase('en').trim()
+}
+
+/**
+ * Países que casam com a busca, sem acento nem caixa ("sao" acha "São Tomé"), pelo nome ou pelo
+ * código: primeiro o código exato e os nomes que começam pelo texto, depois os que o contêm, cada
+ * grupo na ordem alfabética de `options`. Busca vazia devolve tudo.
+ */
+export function searchCountries(options: readonly CountryOption[], query: string): CountryOption[] {
+  const needle = fold(query)
+  if (needle === '') {
+    return [...options]
+  }
+  const first: CountryOption[] = []
+  const rest: CountryOption[] = []
+  for (const option of options) {
+    const name = fold(option.name)
+    if (option.code.toLowerCase() === needle || name.startsWith(needle)) {
+      first.push(option)
+    } else if (name.includes(needle)) {
+      rest.push(option)
+    }
+  }
+  return [...first, ...rest]
+}
+
 /** Se o código é um dos países do seletor (o que vem da API pode ser de uma versão anterior). */
 export function isCountryCode(value: string | null | undefined): value is string {
   return typeof value === 'string' && COUNTRY_CODES.includes(value)
