@@ -80,8 +80,51 @@ const COVERAGE = {
   ],
 }
 
+/** Redações do § 6º do art. 76 do RCTE, como na fixture da API. */
+const VERSIONS = [
+  {
+    label: 'RCTE, art. 76, § 6º',
+    validity: { from: '2003-09-12', to: '2004-11-04' },
+    text: '§ 6º Excepcionalmente, para projeto de valor igual ou superior a R$ 300.000,00...',
+    act: 'Decreto nº 5.825, de 05.09.03',
+    fields: null,
+  },
+  {
+    label: 'RCTE, art. 76, § 6º',
+    validity: { from: '2004-11-04', to: '2009-11-23' },
+    text: '§ 6º Observado o disposto no § 5º, quando o contribuinte aplicar 40.000,00...',
+    act: null,
+    fields: null,
+  },
+  {
+    label: 'RCTE, art. 76, § 6º',
+    validity: { from: '2009-11-23', to: null },
+    text: '§ 6º Revogado.',
+    act: 'Decreto nº 7.028',
+    fields: null,
+  },
+]
+const TIMELINE = {
+  stableKey: 'go:rcte:art:76:par:6',
+  family: 'rcte',
+  jurisdiction: 'GO',
+  versions: VERSIONS,
+}
+const DIFF = {
+  stableKey: 'go:rcte:art:76:par:6',
+  before: VERSIONS[0],
+  after: VERSIONS[1],
+  segments: [
+    { op: 'equal', text: '§ 6º ' },
+    { op: 'delete', text: 'R$ 300.000,00' },
+    { op: 'insert', text: '40.000,00' },
+  ],
+  fieldChanges: [],
+}
+
 const fetchCalls: Request[] = []
 let questionResponse: () => Response = () => new Response(null, { status: 404 })
+let timelineResponse: () => Response = () => json(TIMELINE)
 
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -190,6 +233,15 @@ async function type(text: string): Promise<HTMLTextAreaElement> {
   return textarea
 }
 
+/** Pergunta pela sugestão de 05/2008, abre o chip S1 e devolve o painel da citação. */
+async function openFirstCitation(): Promise<HTMLElement> {
+  transport.scenarios.push(answered)
+  await render(<ChatWorkspace />)
+  await click(await waitFor(() => enabledButton('Perguntar em 05/2008')))
+  await click(await waitFor(() => document.querySelector('button[data-citation-id="S1"]')))
+  return waitFor(() => byText('article', 'Citação 1 de 2'))
+}
+
 async function press(init: KeyboardEventInit, target: EventTarget = document): Promise<void> {
   await act(async () => {
     target.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, ...init }))
@@ -211,6 +263,7 @@ beforeEach(() => {
   fetchCalls.length = 0
   urlUpdates = []
   questionResponse = () => new Response(null, { status: 404 })
+  timelineResponse = () => json(TIMELINE)
   ;(
     window as unknown as { happyDOM: { setViewport(v: { width: number }): void } }
   ).happyDOM.setViewport({ width: 1280 })
@@ -232,6 +285,9 @@ beforeEach(() => {
           resetAt: '2099-01-01T03:00:00.000Z',
         })
       }
+      // Painel de citação: linha do tempo do dispositivo e o diff (só no clique).
+      if (pathname.endsWith('/timeline')) return timelineResponse()
+      if (pathname.endsWith('/diff')) return json(DIFF)
       if (pathname.endsWith('/feedback')) return new Response(null, { status: 204 })
       if (pathname.startsWith('/api/v1/questions/')) return questionResponse()
       return new Response(null, { status: 404 })
@@ -273,16 +329,11 @@ describe('chat', () => {
   })
 
   it('o chip abre o painel da citação, e ] e [ navegam entre as citações', async () => {
-    transport.scenarios.push(answered)
-    await render(<ChatWorkspace />)
-    await click(await waitFor(() => enabledButton('Perguntar em 05/2008')))
-    await click(await waitFor(() => document.querySelector('button[data-citation-id="S1"]')))
-
-    const panel = await waitFor(() => byText('article', 'Citação 1 de 2'))
+    const panel = await openFirstCitation()
     expect(panel.querySelector('h3')?.textContent).toBe('RCTE, art. 76, § 6º')
     expect(panel.querySelector('blockquote')?.getAttribute('lang')).toBe('pt-BR')
     expect(panel.querySelector('[data-validity]')?.getAttribute('data-validity')).toBe('superseded')
-    expect(byText('a', 'Linha do tempo')?.getAttribute('href')).toBe(
+    expect(byText('a', 'Abrir o dispositivo')?.getAttribute('href')).toBe(
       '/pt-BR/provision/?k=go%3Arcte%3Aart%3A76%3Apar%3A6&ref=2008-05-01',
     )
 
@@ -297,6 +348,55 @@ describe('chat', () => {
     await waitFor(() => byText('[role="status"]', 'a citação foi reportada'))
     const report = fetchCalls.find((request) => request.url.endsWith('/feedback'))
     expect(await report?.json()).toEqual({ rating: 'down', reason: 'wrong_citation' })
+  })
+
+  it('o painel mostra a linha do tempo na data da resposta e o diff só no clique', async () => {
+    const panel = await openFirstCitation()
+    const timeline = await waitFor(() =>
+      panel.querySelector('ol[aria-label="Redações do dispositivo"]'),
+    )
+    expect(timeline.querySelectorAll('li')).toHaveLength(3)
+    // Na data da resposta (01/05/2008) vale a redação de 04/11/2004 a 22/11/2009.
+    expect(timeline.querySelector('[aria-current="true"]')?.textContent).toContain(
+      '04/11/2004 a 22/11/2009',
+    )
+    expect(timeline.querySelectorAll('button')).toHaveLength(0)
+    const timelineRequest = fetchCalls.find((request) => request.url.includes('/timeline'))
+    expect(new URL(timelineRequest?.url ?? '').pathname).toBe(
+      '/api/v1/provisions/go%3Arcte%3Aart%3A76%3Apar%3A6/timeline',
+    )
+    expect(fetchCalls.some((request) => request.url.includes('/diff'))).toBe(false)
+
+    const toggle = await waitFor(() =>
+      byText('button', 'Ver o que mudou em relação à redação anterior'),
+    )
+    expect(toggle.getAttribute('aria-expanded')).toBe('false')
+    await click(toggle)
+    await waitFor(() => panel.querySelector('ins'))
+    expect(panel.querySelector('del')?.textContent).toContain('300.000,00')
+    const diff = new URL(fetchCalls.find((request) => request.url.includes('/diff'))?.url ?? '')
+    // A redação anterior (no primeiro dia dela) contra a vigente na data da resposta.
+    expect(diff.searchParams.get('from')).toBe('2003-09-12')
+    expect(diff.searchParams.get('to')).toBe('2008-05-01')
+    expect(byText('button', 'Esconder as mudanças')?.getAttribute('aria-expanded')).toBe('true')
+
+    // A citação seguinte é outro dispositivo: o diff aberto fecha.
+    await press({ key: ']' })
+    await waitFor(() => byText('article', 'Citação 2 de 2'))
+    expect(byText('button', 'Esconder as mudanças')).toBeUndefined()
+  })
+
+  it('a linha do tempo do painel mostra o erro da API e tenta de novo', async () => {
+    timelineResponse = () => json(createProblem({ code: ErrorCode.RateLimited, traceId: 't' }), 429)
+    const panel = await openFirstCitation()
+    const retry = await waitFor(() =>
+      [...panel.querySelectorAll<HTMLButtonElement>('[role="alert"] button')].find((button) =>
+        button.textContent?.includes('Tentar de novo'),
+      ),
+    )
+    timelineResponse = () => json(TIMELINE)
+    await click(retry)
+    await waitFor(() => panel.querySelector('ol[aria-label="Redações do dispositivo"]'))
   })
 
   it('feedback 👍 grava a avaliação da resposta', async () => {

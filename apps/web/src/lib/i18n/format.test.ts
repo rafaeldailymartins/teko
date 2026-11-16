@@ -1,6 +1,13 @@
 import { DISPLAY_TIME_ZONE } from '@teko/shared/i18n'
 import { describe, expect, it } from 'vitest'
-import { formatInstant, formatIsoDate, formatIsoDateRange, formatTaxPeriod } from './format.ts'
+import {
+  formatInstant,
+  formatIsoDate,
+  formatIsoDateRange,
+  formatMonthName,
+  formatTaxPeriod,
+  formatValidityBounds,
+} from './format.ts'
 
 /** O ICU usa espaços especiais (U+00A0, U+2009, U+202F) em alguns formatos; aqui vira espaço. */
 function plain(text: string): string {
@@ -24,6 +31,12 @@ describe('formatIsoDate', () => {
     expect(formatIsoDate('en', '2008-05-01', 'medium')).toBe('May 1, 2008')
   })
 
+  it('numérico (vigências e badges): dia e mês com dois dígitos, na ordem do locale', () => {
+    expect(formatIsoDate('pt-BR', '2008-05-01', 'numeric')).toBe('01/05/2008')
+    expect(formatIsoDate('en', '2008-05-01', 'numeric')).toBe('05/01/2008')
+    expect(formatIsoDate('pt-BR', '2010-01-01', 'numeric')).toBe('01/01/2010')
+  })
+
   it('não desloca o dia pelo fuso: 1º de janeiro continua 1º de janeiro', () => {
     expect(formatIsoDate('pt-BR', '2010-01-01')).toBe('1 de janeiro de 2010')
   })
@@ -45,6 +58,23 @@ describe('formatIsoDateRange', () => {
     expect(plain(formatIsoDateRange('en', '2008-05-01', '2009-12-31', 'medium'))).toBe(
       'May 1, 2008 – Dec 31, 2009',
     )
+  })
+})
+
+describe('formatValidityBounds', () => {
+  it('mostra o último dia incluído do intervalo semiaberto', () => {
+    expect(formatValidityBounds('pt-BR', { from: '2004-11-04', to: '2009-11-23' })).toEqual({
+      from: '04/11/2004',
+      to: '22/11/2009',
+    })
+    expect(formatValidityBounds('en', { from: '2009-11-23', to: null })).toEqual({
+      from: '11/23/2009',
+      to: null,
+    })
+    expect(formatValidityBounds('pt-BR', { from: null, to: null })).toEqual({
+      from: null,
+      to: null,
+    })
   })
 })
 
@@ -75,5 +105,18 @@ describe('formatTaxPeriod', () => {
 
   it('rejeita período inválido', () => {
     expect(() => formatTaxPeriod('pt-BR', '2024-13', 'long')).toThrow(RangeError)
+  })
+})
+
+describe('formatMonthName', () => {
+  it('abrevia o mês no idioma da UI', () => {
+    expect(formatMonthName('pt-BR', 5)).toBe('mai.')
+    expect(formatMonthName('en', 1)).toBe('Jan')
+    expect(formatMonthName('en', 12)).toBe('Dec')
+  })
+
+  it('rejeita mês fora de 1 a 12', () => {
+    expect(() => formatMonthName('pt-BR', 0)).toThrow(RangeError)
+    expect(() => formatMonthName('pt-BR', 13)).toThrow(RangeError)
   })
 })

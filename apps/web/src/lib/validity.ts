@@ -9,7 +9,7 @@ import {
 /**
  * Vigência na UI: o estado de uma redação em relação a hoje (a cor do badge, pelos tokens
  * `--validity-*`) e a escolha da redação vigente numa data, sobre a linha do tempo da API (em
- * ordem cronológica, intervalos `[from, to)`).
+ * ordem cronológica, intervalos `[from, to)`). A formatação das datas fica em `lib/i18n/format`.
  */
 
 export const ValidityStatus = {
@@ -18,29 +18,6 @@ export const ValidityStatus = {
   Future: 'future',
 } as const
 export type ValidityStatus = (typeof ValidityStatus)[keyof typeof ValidityStatus]
-
-/**
- * Data de calendário como instante à meia-noite UTC, para o `format.dateTime` do next-intl com
- * `timeZone: 'UTC'`: no fuso do app (São Paulo), `2008-05-01` viraria 30/04.
- */
-export function calendarDate(date: string): Date {
-  return new Date(`${date}T00:00:00Z`)
-}
-
-/** Opções de formatação das datas de calendário (dia, mês e ano, sem fuso). */
-export const CALENDAR_DATE_FORMAT = {
-  day: '2-digit',
-  month: '2-digit',
-  year: 'numeric',
-  timeZone: 'UTC',
-} as const satisfies Intl.DateTimeFormatOptions
-
-/** Opções de formatação de um mês (período de apuração). */
-export const MONTH_FORMAT = {
-  month: '2-digit',
-  year: 'numeric',
-  timeZone: 'UTC',
-} as const satisfies Intl.DateTimeFormatOptions
 
 /** Hoje em America/Sao_Paulo (a mesma regra da API para "hoje"). */
 export function todayIsoDate(now: Date = new Date()): IsoDate {

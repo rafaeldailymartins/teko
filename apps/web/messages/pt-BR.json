@@ -67,9 +67,7 @@
     },
     "coverage": {
       "title": "Cobertura",
-      "description": "Normas e períodos que o Tekó conhece.",
-      "emptyTitle": "Cobertura em breve",
-      "emptyBody": "A lista de normas e períodos cobertos, com a data da última verificação das fontes, aparece aqui."
+      "description": "Normas e períodos que o Tekó conhece."
     },
     "about": {
       "title": "Sobre",
@@ -730,7 +728,7 @@
       "copied": "Citação copiada.",
       "report": "Reportar citação errada",
       "reported": "Obrigado: a citação foi reportada.",
-      "timeline": "Linha do tempo e o que mudou",
+      "openProvision": "Abrir o dispositivo",
       "invalid": "Esta citação não foi confirmada pelo validador.",
       "status": {
         "current": "Vigente",
@@ -746,6 +744,65 @@
         "rcte76": "O que diz o art. 76, § 6º do RCTE?"
       },
       "ask": "Perguntar em {period}"
+    }
+  },
+  "coverage": {
+    "intro": "O Tekó só responde com base nas fontes abaixo, nos períodos em que elas foram coletadas e verificadas. Fora deles, a pergunta é recusada em vez de respondida por palpite.",
+    "lastVerified": "Fontes verificadas pela última vez em {date}.",
+    "corpusVersion": "Versão do corpus: {version}",
+    "afterVerification": "Datas posteriores à última verificação de cada família ficam fora da cobertura até a verificação seguinte.",
+    "loading": "Carregando a cobertura…",
+    "retry": "Tentar de novo",
+    "emptyTitle": "Nenhuma fonte publicada",
+    "emptyBody": "O corpus ainda não tem famílias com cobertura. Elas aparecem aqui depois da próxima ingestão.",
+    "jurisdiction": {
+      "BR": "Federal",
+      "GO": "Goiás"
+    },
+    "jurisdictionLabel": "Jurisdição",
+    "sources": "Fontes",
+    "covered": "Períodos cobertos",
+    "gaps": "Lacunas",
+    "noGaps": "Nenhuma",
+    "noCoverage": "Ainda sem cobertura",
+    "verifiedAt": "Última verificação",
+    "range": "{from} a {to}",
+    "since": "desde {from}",
+    "until": "até {to}",
+    "always": "sem limite de datas",
+    "legend": "Legenda das barras",
+    "legendCovered": "Coberto",
+    "legendGap": "Lacuna",
+    "scale": "Escala de {from} a {to}",
+    "families": {
+      "efdIcmsIpi": {
+        "name": "EFD ICMS/IPI",
+        "sources": "Guia Prático da Escrituração Fiscal Digital e as notas técnicas, do portal do SPED."
+      },
+      "efdReinf": {
+        "name": "EFD-Reinf",
+        "sources": "Leiautes dos eventos e notas técnicas da EFD-Reinf, do portal do SPED."
+      },
+      "rcte": {
+        "name": "RCTE de Goiás",
+        "sources": "Regulamento do Código Tributário do Estado de Goiás (Decreto nº 4.852/1997), do portal da Secretaria da Economia de Goiás."
+      },
+      "cte": {
+        "name": "CTE de Goiás",
+        "sources": "Código Tributário do Estado de Goiás (Lei nº 11.651/1991), do portal da Secretaria da Economia de Goiás."
+      },
+      "efdGo": {
+        "name": "EFD de Goiás",
+        "sources": "Guia prático estadual da EFD ICMS/IPI de Goiás (vigência aproximada pela data de publicação)."
+      },
+      "tabelasGo": {
+        "name": "Tabelas de Goiás",
+        "sources": "Tabelas de códigos de ajuste da EFD ICMS/IPI de Goiás, com as datas declaradas nas próprias tabelas."
+      },
+      "rcteAnexos": {
+        "name": "Anexos do RCTE",
+        "sources": "Anexos VIII e IX do Regulamento do Código Tributário do Estado de Goiás."
+      }
     }
   }
 }

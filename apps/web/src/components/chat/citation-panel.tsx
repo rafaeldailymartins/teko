@@ -21,6 +21,7 @@ import {
   provisionHref,
   selectedCitation,
 } from '@/lib/chat/selection'
+import { CitationTimeline } from './citation-timeline.tsx'
 import { useIntervalText, ValidityBadge } from './validity-badge.tsx'
 
 interface CitationPanelProps {
@@ -31,7 +32,8 @@ interface CitationPanelProps {
 /**
  * Painel da citação aberta: dispositivo, documento, versão, badge do intervalo de vigência, texto
  * citado (`lang="pt-BR"`, também na UI em inglês), campos, link para a fonte oficial, "copiar
- * citação", "reportar" e o link para a linha do tempo e o "O que mudou" do dispositivo.
+ * citação", "reportar", o link para a página do dispositivo e, no próprio painel, a linha do tempo
+ * e o "O que mudou" (diff sob demanda) na data de referência da resposta.
  */
 export function CitationPanel({ selection, onStep }: CitationPanelProps) {
   const t = useTranslations('chat.citation')
@@ -158,7 +160,7 @@ export function CitationPanel({ selection, onStep }: CitationPanelProps) {
           className={buttonVariants({ variant: 'outline', size: 'sm' })}
         >
           <HistoryIcon aria-hidden="true" />
-          {t('timeline')}
+          {t('openProvision')}
         </a>
         <Button variant="outline" size="sm" onClick={() => void copy()}>
           <CopyIcon aria-hidden="true" />
@@ -185,6 +187,14 @@ export function CitationPanel({ selection, onStep }: CitationPanelProps) {
       <p role="status" className="text-muted-foreground text-sm empty:hidden">
         {report.isSuccess ? t('reported') : copied ? t('copied') : ''}
       </p>
+
+      {/* A chave zera o "O que mudou" aberto ao trocar de citação com `[`/`]`. */}
+      <CitationTimeline
+        key={`${citation.stableKey}|${selection.referenceDate ?? ''}`}
+        stableKey={citation.stableKey}
+        referenceDate={selection.referenceDate}
+        today={today}
+      />
     </article>
   )
 }

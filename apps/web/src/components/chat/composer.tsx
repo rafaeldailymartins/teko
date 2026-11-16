@@ -8,10 +8,10 @@ import { useLocale, useTranslations } from 'next-intl'
 import { type RefObject, useId, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
-import { formatIsoDate, formatPeriodo } from '@/lib/chat/format'
 import { detectPii, removePii } from '@/lib/chat/pii'
 import type { ReferenceChoice } from '@/lib/chat/reference'
 import { isSubmitShortcut } from '@/lib/hotkeys'
+import { formatIsoDate, formatTaxPeriod } from '@/lib/i18n/format'
 import { ComposerCoverageBanner, CoverageIndicator } from './coverage.tsx'
 import { ReferencePicker } from './reference-picker.tsx'
 
@@ -102,8 +102,8 @@ export function Composer({
         <p className="flex flex-wrap items-center gap-2 rounded-lg border border-accent-border bg-accent px-3 py-1.5 text-accent-foreground text-sm">
           {t('reference.inferred', {
             value: inferredDate.endsWith('-01')
-              ? formatPeriodo(inferredDate.slice(0, 7))
-              : formatIsoDate(inferredDate, locale),
+              ? formatTaxPeriod(locale, inferredDate.slice(0, 7))
+              : formatIsoDate(locale, inferredDate, 'numeric'),
           })}
           <Button
             type="button"

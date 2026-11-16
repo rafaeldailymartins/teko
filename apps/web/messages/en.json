@@ -67,9 +67,7 @@
     },
     "coverage": {
       "title": "Coverage",
-      "description": "The laws and periods Tekó covers.",
-      "emptyTitle": "Coverage coming soon",
-      "emptyBody": "The covered laws and periods, with the date the sources were last checked, will appear here."
+      "description": "The laws and periods Tekó covers."
     },
     "about": {
       "title": "About",
@@ -730,7 +728,7 @@
       "copied": "Citation copied.",
       "report": "Report wrong citation",
       "reported": "Thanks: the citation was reported.",
-      "timeline": "Timeline and what changed",
+      "openProvision": "Open the provision",
       "invalid": "This citation was not confirmed by the validator.",
       "status": {
         "current": "In force",
@@ -746,6 +744,65 @@
         "rcte76": "What does art. 76, § 6 of the RCTE say?"
       },
       "ask": "Ask for {period}"
+    }
+  },
+  "coverage": {
+    "intro": "Tekó only answers from the sources below, within the periods in which they were collected and checked. Outside them, the question is declined instead of answered by guesswork.",
+    "lastVerified": "Sources last checked on {date}.",
+    "corpusVersion": "Corpus version: {version}",
+    "afterVerification": "Dates after each family's last check stay out of coverage until the next check.",
+    "loading": "Loading coverage…",
+    "retry": "Try again",
+    "emptyTitle": "No published sources",
+    "emptyBody": "The corpus has no families with coverage yet. They will appear here after the next ingestion.",
+    "jurisdiction": {
+      "BR": "Federal",
+      "GO": "Goiás"
+    },
+    "jurisdictionLabel": "Jurisdiction",
+    "sources": "Sources",
+    "covered": "Covered periods",
+    "gaps": "Gaps",
+    "noGaps": "None",
+    "noCoverage": "No coverage yet",
+    "verifiedAt": "Last checked",
+    "range": "{from} to {to}",
+    "since": "since {from}",
+    "until": "until {to}",
+    "always": "no date limits",
+    "legend": "Bar legend",
+    "legendCovered": "Covered",
+    "legendGap": "Gap",
+    "scale": "Scale from {from} to {to}",
+    "families": {
+      "efdIcmsIpi": {
+        "name": "EFD ICMS/IPI",
+        "sources": "The Digital Tax Bookkeeping practical guide and its technical notes, from the SPED portal."
+      },
+      "efdReinf": {
+        "name": "EFD-Reinf",
+        "sources": "EFD-Reinf event layouts and technical notes, from the SPED portal."
+      },
+      "rcte": {
+        "name": "RCTE (Goiás)",
+        "sources": "Regulation of the Goiás State Tax Code (Decree No. 4,852/1997), from the Goiás Department of Economy portal."
+      },
+      "cte": {
+        "name": "CTE (Goiás)",
+        "sources": "Goiás State Tax Code (Law No. 11,651/1991), from the Goiás Department of Economy portal."
+      },
+      "efdGo": {
+        "name": "EFD (Goiás)",
+        "sources": "The Goiás state practical guide for EFD ICMS/IPI (validity approximated by the publication date)."
+      },
+      "tabelasGo": {
+        "name": "Goiás tables",
+        "sources": "Goiás EFD ICMS/IPI adjustment code tables, with the dates declared in the tables themselves."
+      },
+      "rcteAnexos": {
+        "name": "RCTE annexes",
+        "sources": "Annexes VIII and IX of the Regulation of the Goiás State Tax Code."
+      }
     }
   }
 }

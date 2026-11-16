@@ -126,6 +126,16 @@ test.describe('chat', () => {
     await expect(panel.locator('h3')).toHaveText('RCTE, art. 76, § 6º')
     await expect(panel.locator('[data-validity]')).toContainText('desde 23/11/2009')
     await expect(panel.locator('blockquote')).toContainText('Revogado')
+
+    // Linha do tempo do § 6º no próprio painel, com a redação de 01/2010 marcada.
+    const timeline = panel.getByRole('list', { name: 'Redações do dispositivo' })
+    await expect(timeline.getByRole('listitem').nth(1)).toBeVisible()
+    expect(await timeline.getByRole('listitem').count()).toBeGreaterThanOrEqual(2)
+    await expect(timeline.locator('[aria-current="true"]')).toContainText('desde 23/11/2009')
+    await expect(panel.getByRole('link', { name: 'Abrir o dispositivo' })).toHaveAttribute(
+      'href',
+      /\/pt-BR\/provision\/\?k=go%3Arcte%3Aart%3A76%3Apar%3A6&ref=2010-01-01$/,
+    )
     await closeCitation(page, isMobile)
 
     await page.waitForLoadState('networkidle')

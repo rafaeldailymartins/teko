@@ -3,8 +3,9 @@
 import type { Locale } from '@teko/shared/i18n'
 import type { IsoDate, ValidityInterval } from '@teko/shared/vigencia'
 import { useLocale, useTranslations } from 'next-intl'
-import { intervalDisplay, ValidityStatus, validityStatus } from '@/lib/chat/format'
+import { formatValidityBounds } from '@/lib/i18n/format'
 import { cn } from '@/lib/utils'
+import { ValidityStatus, validityStatus } from '@/lib/validity'
 
 const STATUS_CLASSES: Record<ValidityStatus, string> = {
   [ValidityStatus.Current]: 'border-validity-current text-validity-current',
@@ -17,7 +18,7 @@ export function useIntervalText(): (interval: ValidityInterval) => string {
   const t = useTranslations('chat.intervals')
   const locale = useLocale() as Locale
   return (interval) => {
-    const { from, to } = intervalDisplay(interval, locale)
+    const { from, to } = formatValidityBounds(locale, interval)
     if (from !== null && to !== null) return t('range', { from, to })
     if (from !== null) return t('since', { from })
     if (to !== null) return t('until', { to })

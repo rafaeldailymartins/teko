@@ -1,12 +1,12 @@
 'use client'
 
 import type { IsoDate } from '@teko/shared/vigencia'
-import { useFormatter, useTranslations } from 'next-intl'
-import { Button } from '@/components/ui/button'
+import { useLocale, useTranslations } from 'next-intl'
+import { QueryError } from '@/components/query-error'
 import { Skeleton } from '@/components/ui/skeleton'
 import type { GetProvisionDiffResponse } from '@/lib/api/__generated__/types.gen'
 import { useProvisionDiff } from '@/lib/api/hooks'
-import { CALENDAR_DATE_FORMAT, calendarDate } from '@/lib/validity'
+import { formatIsoDate } from '@/lib/i18n/format'
 import { ValidityBadge } from './validity-badge.tsx'
 
 type Diff = GetProvisionDiffResponse
@@ -136,10 +136,9 @@ function DiffBody({ diff }: { readonly diff: Diff }) {
  */
 export function ProvisionDiff({ stableKey, from, to, today }: ProvisionDiffProps) {
   const t = useTranslations('provision.diff')
-  const tRoot = useTranslations()
-  const format = useFormatter()
+  const locale = useLocale()
   const query = useProvisionDiff(stableKey, { referenceDate: from }, { referenceDate: to })
-  const date = (value: IsoDate) => format.dateTime(calendarDate(value), CALENDAR_DATE_FORMAT)
+  const date = (value: IsoDate) => formatIsoDate(locale, value, 'numeric')
 
   if (query.isPending) {
     return (
@@ -154,14 +153,11 @@ export function ProvisionDiff({ stableKey, from, to, today }: ProvisionDiffProps
 
   if (query.isError) {
     return (
-      <div role="alert" className="flex flex-col items-start gap-2 text-sm">
-        <p className="text-muted-foreground">{tRoot(query.error.messageKey)}</p>
-        {query.error.retryable && (
-          <Button variant="outline" size="sm" onClick={() => void query.refetch()}>
-            {t('retry')}
-          </Button>
-        )}
-      </div>
+      <QueryError
+        error={query.error}
+        onRetry={() => void query.refetch()}
+        retryLabel={t('retry')}
+      />
     )
   }
 

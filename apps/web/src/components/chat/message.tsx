@@ -9,7 +9,6 @@ import { lazy, type ReactNode, Suspense, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { CoverageStatus } from '@/lib/chat/coverage'
-import { formatIsoDate, formatPeriodo } from '@/lib/chat/format'
 import {
   type AnswerView,
   answerValidity,
@@ -18,6 +17,7 @@ import {
   messageText,
   type TekoUIMessage,
 } from '@/lib/chat/parts'
+import { formatIsoDate, formatTaxPeriod } from '@/lib/i18n/format'
 import { CitationChip } from './citation-chip.tsx'
 import { CoverageBanner } from './coverage.tsx'
 import { FeedbackButtons } from './feedback-buttons.tsx'
@@ -58,8 +58,8 @@ function referenceText(
   // Período de apuração (o PA resolve para o dia 1) e data exata têm formas próprias.
   const isPeriodo = reference.value.endsWith('-01') && reference.source !== 'explicit'
   const value = isPeriodo
-    ? t('referencePeriodo', { value: formatPeriodo(reference.value.slice(0, 7)) })
-    : t('referenceDate', { value: formatIsoDate(reference.value, locale) })
+    ? t('referencePeriodo', { value: formatTaxPeriod(locale, reference.value.slice(0, 7)) })
+    : t('referenceDate', { value: formatIsoDate(locale, reference.value, 'numeric') })
   return `${value} · ${t(`source.${reference.source}`)}`
 }
 
@@ -169,7 +169,7 @@ function ClarificationButtons({ view, onChoose, disabled }: ClarificationProps) 
             className="border-accent-border"
             onClick={() => onChoose(date)}
           >
-            {t('choose', { value: formatIsoDate(date, locale) })}
+            {t('choose', { value: formatIsoDate(locale, date, 'numeric') })}
           </Button>
         ))}
       </div>
