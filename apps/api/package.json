@@ -14,7 +14,7 @@
     "#adapters/*": "./src/adapters/*"
   },
   "scripts": {
-    "dev": "node --watch --env-file-if-exists=.env src/server.ts",
+    "dev": "node --watch-path=src --watch-path=../../packages/shared/src --env-file-if-exists=.env src/server.ts",
     "build": "tsdown",
     "start": "node dist/server.mjs",
     "typecheck": "tsc -p tsconfig.json",
