@@ -48,8 +48,10 @@ partir de um item de `Menu`, `finalFocus` e `onOpenChangeComplete`) e TanStack Q
   (`pointer-coarse`). Abre um `AlertDialog` novo em `src/components/ui` (Base UI Alert Dialog, mesma
   aparência do `Dialog`): clicar fora não fecha, e o botão destrutivo só some depois da resposta.
   Cancelar devolve o foco ao "⋯"; excluir leva o foco à conversa vizinha (ou à lista, se ficou vazia).
-- **Depois de excluir.** Se era a conversa aberta (`?c=`), `router.replace` para o
-  `newConversationHref` com a mesma data, para o "voltar" do navegador não abrir uma conversa que não
-  existe. O aviso é uma região `aria-live` no topo da lista, que some em 6 s: o Tekó não tem toasts, e
+- **Depois de excluir.** Se era a conversa aberta (`?c=`), o nuqs tira `c` e `q` da URL com
+  `history: 'replace'`: fica a URL do `newConversationHref` com a mesma data (o teste confere as
+  duas), o chat monta a sessão vazia como no "Nova conversa", e o "voltar" do navegador não abre uma
+  conversa que não existe. O `useRouter` do App Router ficou de fora: a lista também é montada nos
+  testes do chat, sem o roteador. O aviso é uma região `aria-live` no topo da lista, que some em 6 s: o Tekó não tem toasts, e
   uma dependência só para isso não se paga. A ação no cabeçalho da conversa aberta fica de fora (a
   tela do chat está em redesenho em paralelo).

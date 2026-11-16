@@ -252,7 +252,8 @@ Content-Security-Policy: default-src 'self'; script-src 'self' 'sha256-…'; sty
   `DELETE /v1/conversations/:id` (404 conta como excluída) e `forgetConversation` tira a conversa da
   lista em cache na hora, apaga o histórico e as perguntas dela e relê a lista. Cancelar devolve o
   foco ao "⋯"; excluir o leva à conversa vizinha, e um aviso `aria-live` no topo da lista confirma.
-  Excluir a conversa aberta faz `router.replace` para o `newConversationHref` com a mesma data.
+  Excluir a conversa aberta tira `c` (e `q`) da URL pelo nuqs, com `history: 'replace'`: a URL fica
+  a do `newConversationHref` com a mesma data, e o chat monta a sessão vazia.
 - **Dispositivo e comparação:** `/provision/?k=&ref=` mostra a redação vigente na data (ou a anterior
   mais próxima, com aviso), o badge (vigente, encerrada ou futura, com o último dia incluído), "O que
   mudou" montado só no clique e a linha do tempo, que troca o `ref`; sem `k`, a busca de dispositivos

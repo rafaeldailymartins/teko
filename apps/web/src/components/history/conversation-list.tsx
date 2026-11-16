@@ -17,7 +17,7 @@ import { useConversations } from '@/lib/api/hooks'
 import { filterByTitle, groupHistory, HistoryGroup } from '@/lib/history'
 import { formatTaxPeriod } from '@/lib/i18n/format'
 import { localePagePath } from '@/lib/navigation'
-import { chatConversationHref, chatSearchParams, newConversationHref } from '@/lib/url-state'
+import { chatConversationHref, chatSearchParams } from '@/lib/url-state'
 import { cn } from '@/lib/utils'
 import {
   CONVERSATION_LINK_ATTRIBUTE,
@@ -156,9 +156,9 @@ function ConversationListContent({ variant, onRequestDelete }: ConversationListC
   const locale = useLocale()
   const closeHistory = useCloseHistoryPanel()
   const searchId = useId()
-  const [{ c: openConversation, ref }] = useQueryStates({
+  const [{ c: openConversation }, setChat] = useQueryStates({
     c: chatSearchParams.c,
-    ref: chatSearchParams.ref,
+    q: chatSearchParams.q,
   })
   const [search, setSearch] = useState('')
   const [today] = useState(() => isoDateInTimeZone(new Date()))
@@ -229,8 +229,12 @@ function ConversationListContent({ variant, onRequestDelete }: ConversationListC
       title: conversation.title,
       trigger,
       neighborId: neighbor?.conversationId ?? null,
-      leaveTo:
-        conversation.conversationId === openConversation ? newConversationHref(locale, ref) : null,
+      // Sem `c` (e sem `q`), a URL vira a do `newConversationHref`, com a mesma `ref`, e o chat
+      // monta uma sessão vazia; `replace` tira a conversa excluída do "voltar".
+      leave:
+        conversation.conversationId === openConversation
+          ? () => void setChat({ c: null, q: null }, { history: 'replace' })
+          : null,
     })
   }
 

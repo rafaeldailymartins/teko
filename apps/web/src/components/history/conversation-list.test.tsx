@@ -6,6 +6,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest
 import { apiClient } from '@/lib/api/client'
 import { conversationsQuery } from '@/lib/api/queries'
 import { createQueryClient } from '@/lib/api/query-client'
+import { newConversationHref } from '@/lib/url-state'
 import { byText, click, type Rendered, renderClient, settle } from '../../../test/render.tsx'
 import { ConversationList } from './conversation-list.tsx'
 
@@ -17,10 +18,6 @@ vi.mock('next/link', () => ({
     </a>
   ),
 }))
-
-// Excluir a conversa aberta troca a rota pelo roteador do App Router; aqui, um espião.
-const replace = vi.hoisted(() => vi.fn())
-vi.mock('next/navigation', () => ({ useRouter: () => ({ replace }) }))
 
 const FIRST = '0193a3b0-7c1e-7b3a-9f00-000000000001'
 const SECOND = '0193a3b0-7c1e-7b3a-9f00-000000000002'
@@ -59,7 +56,6 @@ afterEach(async () => {
   await rendered?.unmount()
   rendered = undefined
   vi.unstubAllGlobals()
-  replace.mockClear()
 })
 
 afterAll(() => {
@@ -265,7 +261,7 @@ describe('excluir uma conversa', () => {
     expect(calls).toContain(`DELETE /api/v1/conversations/${SECOND}`)
     expect(titles()).toEqual(['Prazo do ICMS'])
     expect(document.querySelector('[aria-live="polite"]')?.textContent).toBe('Conversa excluída.')
-    expect(replace).not.toHaveBeenCalled()
+    expect(rendered.urls).toEqual([])
   })
 
   it('cancelar não apaga nada', async () => {
@@ -294,7 +290,10 @@ describe('excluir uma conversa', () => {
     await openDeletion('GOYAZES')
     await click(byText('[role="alertdialog"] button', 'Excluir conversa'))
     await settle(50)
-    expect(replace).toHaveBeenCalledWith('/pt-BR/chat/?ref=2008-05')
+    // A mesma URL do "Nova conversa" (`newConversationHref`), com a data mantida.
+    const expected = newConversationHref('pt-BR', { periodoApuracao: '2008-05' })
+    expect(expected).toBe('/pt-BR/chat/?ref=2008-05')
+    expect(rendered.urls.at(-1)).toBe(expected.slice('/pt-BR/chat/'.length))
   })
 
   it('resposta em andamento (409): explica, mantém o diálogo e a conversa', async () => {

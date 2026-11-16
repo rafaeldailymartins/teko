@@ -9,8 +9,6 @@ import {
   LoaderCircleIcon,
   Trash2Icon,
 } from 'lucide-react'
-import type { Route } from 'next'
-import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { type RefObject, useEffect, useRef, useState } from 'react'
 import {
@@ -46,8 +44,11 @@ export interface DeletionTarget {
   readonly trigger: HTMLElement | null
   /** Conversa vizinha na lista, que recebe o foco depois da exclusão (`null` se era a única). */
   readonly neighborId: string | null
-  /** Era a conversa aberta no chat: depois de excluir, a tela vai para este chat vazio. */
-  readonly leaveTo: string | null
+  /**
+   * Era a conversa aberta no chat: depois de excluir, volta ao chat vazio (a URL do
+   * `newConversationHref`, com a mesma data), sem deixar a conversa no histórico do navegador.
+   */
+  readonly leave: (() => void) | null
 }
 
 interface ConversationActionsProps {
@@ -117,7 +118,6 @@ export function DeleteConversationDialog({
 }: DeleteConversationDialogProps) {
   const t = useTranslations('history.delete')
   const tRoot = useTranslations()
-  const router = useRouter()
   const deletion = useDeleteConversation()
   const deleted = useRef(false)
   // O diálogo fecha com animação: o conteúdo continua o da conversa até sumir.
@@ -140,9 +140,7 @@ export function DeleteConversationDialog({
     deletion.mutate(target.conversationId, {
       onSuccess: () => {
         deleted.current = true
-        if (target.leaveTo !== null) {
-          router.replace(target.leaveTo as Route)
-        }
+        target.leave?.()
         onDeleted()
         onClose()
       },
