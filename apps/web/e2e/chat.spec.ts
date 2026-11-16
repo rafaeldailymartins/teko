@@ -33,20 +33,24 @@ async function openCitation(page: Page, chip: Locator, isMobile: boolean): Promi
 }
 
 /**
- * Chip do § 6º numa resposta pronta: no texto ou nos cartões de fontes. Com mais de quatro fontes,
- * as outras ficam atrás de "Mostrar N fontes a mais".
+ * Chip do § 6º numa resposta pronta: no texto ou na lista de fontes, que fica recolhida numa linha
+ * ("N fontes") até ser aberta.
  */
 async function sixthParagraphChip(answer: Locator): Promise<Locator> {
   await expect(answer).toHaveAttribute('aria-busy', 'false')
-  const more = answer.getByRole('button', { name: /^Mostrar \d+ fontes? a mais$/ })
-  if ((await more.count()) > 0) await more.click()
+  const sources = answer.getByRole('button', { name: /^\d+ fontes?$/ })
+  if ((await sources.getAttribute('aria-expanded')) === 'false') await sources.click()
   return answer.getByRole('button', { name: SIXTH_PARAGRAPH }).first()
 }
 
+/** Fecha a citação com `Esc` (o foco está no chip ou no painel): o painel ou o Drawer some. */
 async function closeCitation(page: Page, isMobile: boolean): Promise<void> {
-  if (!isMobile) return
   await page.keyboard.press('Escape')
-  await expect(page.getByRole('dialog')).toBeHidden()
+  if (isMobile) {
+    await expect(page.getByRole('dialog')).toBeHidden()
+  } else {
+    await expect(page.locator('[data-citation-panel]')).toHaveCount(0)
+  }
 }
 
 test.use({ locale: 'pt-BR' })
@@ -58,19 +62,21 @@ test.describe('chat', () => {
     await recordViolations(page)
   })
 
-  test('chat vazio: data em destaque e sugestões sem repetir', async ({ page }) => {
+  test('chat vazio: a data só no chip e sugestões sem repetir', async ({ page }) => {
     await page.goto('/pt-BR/chat/?ref=2008-05')
     await expect(page.getByRole('heading', { level: 1 })).toHaveText(
       /^(Bom dia|Boa tarde|Boa noite)/,
     )
-    const date = page.locator('[data-welcome-date]')
-    await expect(date).toContainText('05/2008')
+    // A data de referência aparece uma vez só: no chip do composer, que abre o seletor.
+    const chip = page.locator('[data-reference-chip]')
+    await expect(chip).toContainText('05/2008')
+    await expect(page.locator('[data-chat-welcome]')).not.toContainText('05/2008')
     const questions = await page.locator('[data-suggestion] [lang="pt-BR"]').allTextContents()
-    expect(questions).toHaveLength(5)
-    expect(new Set(questions).size).toBe(5)
+    expect(questions).toHaveLength(4)
+    expect(new Set(questions).size).toBe(4)
+    await expect(page.getByText('Apoio à consulta; não constitui parecer.')).toBeInViewport()
 
-    // A data em destaque abre o mesmo seletor do chip do composer.
-    await date.click()
+    await chip.click()
     await expect(page.locator('[data-slot="popover-content"]')).toBeVisible()
     await page.keyboard.press('Escape')
 

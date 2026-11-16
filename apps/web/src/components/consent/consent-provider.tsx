@@ -278,8 +278,16 @@ interface ConsentPreferencesButtonProps {
 }
 
 /**
- * Link "Preferências de cookies" (rodapé): reabre as preferências a qualquer momento. Fora do
- * `ConsentProvider` (documentos sem os providers) não aparece.
+ * Ação que reabre as preferências de cookies (o item do menu da conta no app); `null` fora do
+ * `ConsentProvider`, onde a ação não aparece.
+ */
+export function useOpenConsentPreferences(): (() => void) | null {
+  return use(ConsentContext)?.openPreferences ?? null
+}
+
+/**
+ * Link "Preferências de cookies" (rodapé do site): reabre as preferências a qualquer momento. Fora
+ * do `ConsentProvider` (documentos sem os providers) não aparece.
  */
 export function ConsentPreferencesButton({ className }: ConsentPreferencesButtonProps) {
   const t = useTranslations('consent')

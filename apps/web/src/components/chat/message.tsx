@@ -3,34 +3,23 @@
 import { type Citation, idSchema, type ResolvedReferenceDate } from '@teko/shared/contracts'
 import type { Locale } from '@teko/shared/i18n'
 import type { IsoDate } from '@teko/shared/vigencia'
-import {
-  AlertTriangleIcon,
-  CircleSlashIcon,
-  DatabaseIcon,
-  type LucideIcon,
-  ServerIcon,
-  ZapOffIcon,
-} from 'lucide-react'
+import { AlertTriangleIcon, CircleSlashIcon } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import { lazy, type ReactNode, Suspense, useCallback } from 'react'
 import { TekoLogo } from '@/components/brand/teko-logo'
-import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
-import { CoverageStatus } from '@/lib/chat/coverage'
 import {
   type AnswerView,
   answerValidity,
   answerView,
-  type DegradationLabel,
   degradationLabels,
   messageText,
   type TekoUIMessage,
 } from '@/lib/chat/parts'
 import { formatIsoDate, formatTaxPeriod } from '@/lib/i18n/format'
-import { cn } from '@/lib/utils'
 import { AnswerActions } from './answer-actions.tsx'
 import { CitationChip } from './citation-chip.tsx'
-import { CoverageBanner } from './coverage.tsx'
+import { CoverageNote } from './coverage.tsx'
 import { SourceList } from './source-list.tsx'
 import { useIntervalText } from './validity-badge.tsx'
 
@@ -70,17 +59,16 @@ interface AnswerSkeletonProps {
 }
 
 /**
- * Placeholder da resposta com a forma dela (selo, rótulos da data e da vigência, parágrafo e fontes)
- * e, com `label`, o ponto âmbar andando sobre o fio da linha do tempo: o Tekó procura a redação
- * vigente na data. Com movimento reduzido, o ponto fica parado.
+ * Placeholder da resposta com a forma dela (selo e linha de metadados, parágrafo e a linha das
+ * fontes) e, com `label`, o ponto âmbar andando sobre o fio da linha do tempo: o Tekó procura a
+ * redação vigente na data. Com movimento reduzido, o ponto fica parado.
  */
 export function AnswerSkeleton({ label }: AnswerSkeletonProps) {
   return (
     <div className="flex flex-col gap-3" data-testid="answer-skeleton">
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2.5">
         <AnswerByline />
-        <Skeleton className="h-5 w-40 rounded-full" />
-        <Skeleton className="h-5 w-48 rounded-full" />
+        <Skeleton className="h-3 w-44" />
       </div>
       {label !== undefined && (
         <div className="flex items-center gap-3 text-muted-foreground text-sm">
@@ -96,62 +84,88 @@ export function AnswerSkeleton({ label }: AnswerSkeletonProps) {
         <Skeleton className="h-4 w-[82%]" />
         <Skeleton className="h-4 w-3/5" />
       </div>
-      <div className="grid max-w-[70ch] gap-2 pt-1 sm:grid-cols-2">
-        <Skeleton className="h-14 w-full rounded-lg" />
-        <Skeleton className="h-14 w-full rounded-lg" />
-      </div>
+      <Skeleton className="mt-1 h-4 w-20" />
     </div>
   )
 }
 
-function referenceValue(
+/** A data de referência usada: período de apuração (o PA resolve para o dia 1) ou data exata. */
+function referenceParts(
   reference: ResolvedReferenceDate,
-  t: ReturnType<typeof useTranslations<'chat.answer'>>,
   locale: Locale,
-): string {
-  // Período de apuração (o PA resolve para o dia 1) e data exata têm formas próprias.
+): { readonly kind: 'periodo' | 'date'; readonly value: string } {
   const isPeriodo = reference.value.endsWith('-01') && reference.source !== 'explicit'
   return isPeriodo
-    ? t('referencePeriodo', { value: formatTaxPeriod(locale, reference.value.slice(0, 7)) })
-    : t('referenceDate', { value: formatIsoDate(locale, reference.value, 'numeric') })
+    ? { kind: 'periodo', value: formatTaxPeriod(locale, reference.value.slice(0, 7)) }
+    : { kind: 'date', value: formatIsoDate(locale, reference.value, 'numeric') }
+}
+
+/** Separador da linha de metadados ("05/2008 · vigência desde 23/09/2005"). */
+function Dot() {
+  return <span aria-hidden="true">·</span>
 }
 
 /**
- * Cabeçalho da resposta: o selo e, em `Badge`, a data de referência usada (âmbar, com a origem
- * dela; tracejado quando inferida do texto) e a vigência das redações citadas (verde-folha).
+ * Cabeçalho da resposta numa linha: o selo e, em texto pequeno e apagado, a data de referência usada
+ * (com o ponto âmbar; "inferida do texto" quando veio da pergunta), a vigência das redações citadas
+ * e os rótulos de degradação. "Resposta em cache" não muda a resposta: fica na dica da linha e para
+ * leitores de tela, sem ocupar a vista.
  */
 function AnswerHeader({ view }: { readonly view: AnswerView }) {
   const t = useTranslations('chat.answer')
+  const tDegraded = useTranslations('chat.answer.degraded')
   const locale = useLocale()
   const intervalText = useIntervalText()
   const { reference } = view
   const validity = answerValidity(view.citations)
-  const inferred = reference?.source === 'question_text'
+  const degraded = degradationLabels(view.meta)
+  const visibleDegraded = degraded.filter((label) => label !== 'cached')
+  const cached = degraded.includes('cached')
+  const date = reference === null ? null : referenceParts(reference, locale)
+  const hasMeta = date !== null || degraded.length > 0
   return (
-    <header className="flex flex-col gap-2">
-      <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
+    <header className="flex flex-col gap-1.5">
+      <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
         <AnswerByline />
-        {reference !== null && (
-          <div
-            className="flex flex-wrap items-center gap-1.5"
-            data-reference-date={reference.value}
-            data-reference-source={reference.source}
+        {hasMeta && (
+          <p
+            className="inline-flex flex-wrap items-center gap-x-1.5 text-muted-foreground text-xs"
+            title={cached ? tDegraded('cached') : undefined}
+            data-reference-date={reference?.value}
+            data-reference-source={reference?.source}
           >
-            <Badge tone="accent" size="sm" className={cn(inferred && 'border-dashed')}>
-              <span aria-hidden="true" className="size-1.5 shrink-0 rounded-full bg-date-mark" />
-              <span className="font-semibold tabular-nums">
-                {referenceValue(reference, t, locale)}
-              </span>
-              <span className="font-normal opacity-85">· {t(`source.${reference.source}`)}</span>
-            </Badge>
-            {validity !== null && (
-              <Badge tone="leaf" size="sm" data-answer-validity="">
-                <span className="tabular-nums">
-                  {t('validity', { range: intervalText(validity) })}
+            {date !== null && reference !== null && (
+              <>
+                <span aria-hidden="true" className="size-1.5 shrink-0 rounded-full bg-date-mark" />
+                <span className="font-medium font-mono text-foreground/80 tabular-nums">
+                  <span className="sr-only">
+                    {t(date.kind === 'periodo' ? 'periodoLabel' : 'dateLabel')}{' '}
+                  </span>
+                  {date.value}
                 </span>
-              </Badge>
+                {reference.source === 'question_text' && <span>({t('source.question_text')})</span>}
+              </>
             )}
-          </div>
+            {validity !== null && (
+              <>
+                <Dot />
+                <span className="tabular-nums" data-answer-validity="">
+                  {t('validityShort', { range: intervalText(validity) })}
+                </span>
+              </>
+            )}
+            {visibleDegraded.map((label) => (
+              <span key={label} className="contents">
+                <Dot />
+                <span data-degraded={label}>{tDegraded(label)}</span>
+              </span>
+            ))}
+            {cached && (
+              <span className="sr-only" data-degraded="cached">
+                {tDegraded('cached')}
+              </span>
+            )}
+          </p>
         )}
       </div>
       {reference?.periodBoundaryInside === true && (
@@ -161,36 +175,6 @@ function AnswerHeader({ view }: { readonly view: AnswerView }) {
         </p>
       )}
     </header>
-  )
-}
-
-const DEGRADATION_ICONS: Readonly<Record<DegradationLabel, LucideIcon>> = {
-  lexicalOnly: ZapOffIcon,
-  fallback: ServerIcon,
-  cached: DatabaseIcon,
-}
-
-/** Rótulos de degradação de `data-meta`: discretos, no tom de alerta, com ícone próprio. */
-function DegradationBadges({ view }: { readonly view: AnswerView }) {
-  const t = useTranslations('chat.answer.degraded')
-  const labels = degradationLabels(view.meta)
-  if (labels.length === 0) return null
-  return (
-    <ul className="flex flex-wrap gap-1.5" aria-label={t('label')}>
-      {labels.map((label) => {
-        const Icon = DEGRADATION_ICONS[label]
-        return (
-          <li
-            key={label}
-            data-degraded={label}
-            className="inline-flex items-center gap-1.5 rounded-full border border-degraded/40 bg-popover px-2 py-0.5 font-medium text-degraded text-xs"
-          >
-            <Icon aria-hidden="true" className="size-3.5" />
-            {t(label)}
-          </li>
-        )
-      })}
-    </ul>
   )
 }
 
@@ -288,9 +272,10 @@ interface AssistantMessageProps {
 }
 
 /**
- * Resposta do assistente: cabeçalho com o selo, a data e a vigência, rótulos de degradação, avisos
- * de cobertura, recusa ou esclarecimento, o markdown na medida de leitura com os chips de citação,
- * as fontes em cartões e as ações (copiar, 👍/👎).
+ * Resposta do assistente, com o texto como protagonista: a linha do selo com a data, a vigência e a
+ * degradação em tom apagado, a nota de cobertura parcial (quando há), a recusa ou o esclarecimento,
+ * o markdown na medida de leitura com os chips de citação, as fontes recolhidas numa linha e as
+ * ações (copiar, 👍/👎).
  */
 export function AssistantMessage({
   message,
@@ -338,10 +323,7 @@ export function AssistantMessage({
       className="group/answer flex flex-col gap-3.5"
     >
       <AnswerHeader view={view} />
-      <DegradationBadges view={view} />
-      {uncovered.length > 0 && (
-        <CoverageBanner status={CoverageStatus.Partial} families={uncovered} />
-      )}
+      {uncovered.length > 0 && <CoverageNote families={uncovered} />}
       <RefusalNotice view={view} />
       <ClarificationButtons view={view} onChoose={onClarify} disabled={busy} />
       {view.text !== '' && (

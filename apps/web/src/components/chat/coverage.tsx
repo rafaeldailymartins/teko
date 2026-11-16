@@ -2,93 +2,65 @@
 
 import type { IsoDate } from '@teko/shared/vigencia'
 import { AlertTriangleIcon, CircleOffIcon } from 'lucide-react'
-import { useTranslations } from 'next-intl'
+import { useFormatter, useTranslations } from 'next-intl'
 import { useCoverage } from '@/lib/api/hooks'
 import { CoverageStatus, coverageAt } from '@/lib/chat/coverage'
-import { cn } from '@/lib/utils'
+import { familyMessageKey } from '@/lib/coverage'
 
-const DOT_CLASSES: Record<CoverageStatus, string> = {
-  [CoverageStatus.Grounded]: 'bg-leaf',
-  [CoverageStatus.Partial]: 'bg-degraded',
-  [CoverageStatus.Out]: 'bg-coverage-out',
+/** Nome legível de cada família (o mesmo da página de cobertura); família nova fica com o código. */
+function useFamilyNames(): (families: readonly string[]) => string {
+  const t = useTranslations('coverage.families')
+  const format = useFormatter()
+  return (families) =>
+    format.list(
+      families.map((family) => {
+        const key = familyMessageKey(family)
+        return key === null ? family : t(`${key}.name`)
+      }),
+      { type: 'conjunction' },
+    )
 }
 
-/** Indicador de cobertura no composer, para a data de referência atual (some sem dados). */
-export function CoverageIndicator({ date }: { readonly date: IsoDate }) {
+/**
+ * Nota de cobertura parcial numa resposta: uma linha discreta com os nomes legíveis das famílias
+ * sem fontes na data, no tom de alerta só no ícone.
+ */
+export function CoverageNote({ families }: { readonly families: readonly string[] }) {
+  const t = useTranslations('chat.coverage')
+  const names = useFamilyNames()
+  return (
+    <p
+      role="note"
+      data-coverage={CoverageStatus.Partial}
+      className="flex max-w-[70ch] items-start gap-2 text-muted-foreground text-sm"
+    >
+      <AlertTriangleIcon aria-hidden="true" className="mt-0.5 size-3.5 shrink-0 text-degraded" />
+      <span>{t('notePartial', { families: names(families) })}</span>
+    </p>
+  )
+}
+
+/**
+ * Aviso de data fora da cobertura no topo do composer (antes de enviar): só aparece quando nenhuma
+ * fonte cobre a data escolhida, sem impedir o envio.
+ */
+export function ComposerCoverageBanner({ date }: { readonly date: IsoDate }) {
   const t = useTranslations('chat.coverage')
   const { data } = useCoverage()
   if (data === undefined) return null
   const { status } = coverageAt(data.families, date)
+  if (status !== CoverageStatus.Out) return null
   return (
-    <span
-      className="inline-flex items-center gap-1.5 text-muted-foreground text-xs"
-      data-coverage={status}
-    >
-      <span className="relative flex size-2" aria-hidden="true">
-        {status === CoverageStatus.Grounded && (
-          <span className="absolute inset-0 rounded-full bg-leaf/50 motion-safe:animate-ping motion-safe:[animation-iteration-count:2]" />
-        )}
-        <span className={cn('relative size-2 rounded-full', DOT_CLASSES[status])} />
-      </span>
-      <span className="sr-only">{t('label')}: </span>
-      <span className="hidden sm:inline">{t(status)}</span>
-      <span className="sr-only sm:hidden">{t(status)}</span>
-    </span>
-  )
-}
-
-interface CoverageBannerProps {
-  readonly status: CoverageStatus
-  /** Famílias sem cobertura (cobertura parcial). */
-  readonly families?: readonly string[]
-  readonly className?: string
-}
-
-/** Aviso de cobertura parcial ou fora de cobertura; fundamentada não mostra nada. */
-export function CoverageBanner({ status, families = [], className }: CoverageBannerProps) {
-  const t = useTranslations('chat.coverage')
-  if (status === CoverageStatus.Grounded) return null
-  const Icon = status === CoverageStatus.Out ? CircleOffIcon : AlertTriangleIcon
-  return (
-    <div
+    <p
       role="note"
       data-coverage={status}
-      className={cn(
-        'flex max-w-[70ch] items-start gap-2.5 rounded-xl border bg-popover px-3 py-2 text-sm',
-        status === CoverageStatus.Out ? 'border-coverage-out/45' : 'border-degraded/45',
-        className,
-      )}
+      className="m-2 mb-0 flex items-start gap-2 rounded-xl border border-coverage-out/45 bg-popover px-3 py-2 text-sm"
     >
-      <Icon
-        aria-hidden="true"
-        className={cn(
-          'mt-0.5 size-4 shrink-0',
-          status === CoverageStatus.Out ? 'text-coverage-out' : 'text-degraded',
-        )}
-      />
-      <p>
-        <span
-          className={cn(
-            'font-medium',
-            status === CoverageStatus.Out ? 'text-coverage-out' : 'text-degraded',
-          )}
-        >
-          {t(status)}.{' '}
-        </span>
-        {status === CoverageStatus.Out
-          ? t('bannerOut')
-          : t('bannerPartial', { families: families.join(', ') })}
-      </p>
-    </div>
+      <CircleOffIcon aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-coverage-out" />
+      <span>
+        <span className="font-medium text-coverage-out">{t('out')}. </span>
+        {t('bannerOut')}
+      </span>
+    </p>
   )
-}
-
-/** Banner da data escolhida no composer (antes de enviar), no topo do bloco do composer. */
-export function ComposerCoverageBanner({ date }: { readonly date: IsoDate }) {
-  const { data } = useCoverage()
-  if (data === undefined) return null
-  const { status, uncovered } = coverageAt(data.families, date)
-  return status === CoverageStatus.Out ? (
-    <CoverageBanner status={status} families={uncovered} className="m-2 mb-0 max-w-none" />
-  ) : null
 }

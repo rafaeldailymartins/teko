@@ -142,8 +142,17 @@ for (const locale of ['en', 'pt-BR'] as const) {
         const chip = answer.locator('[data-answer-body] button[data-citation-id="S1"]')
         await expect(chip).toBeVisible()
         await expect(answer).toHaveAttribute('aria-busy', 'false')
+        // As fontes abertas entram na conta do axe (recolhidas, a lista fica `hidden`). No fim da
+        // conversa nada fica atrás do composer fixo, que senão cobre as últimas linhas da lista.
+        const sources = answer.getByRole('button', { name: /^\d+ (fontes?|sources?)$/ })
+        await sources.click()
+        await expect(answer.locator('[data-source-id]').first()).toBeVisible()
+        await page
+          .locator('[data-workspace-thread]')
+          .evaluate((thread) => thread.scrollTo({ top: thread.scrollHeight }))
         await settled(page)
         await expectNoViolations(page, testInfo)
+        await sources.click()
 
         await chip.click()
         const scope = isMobile ? page.getByRole('dialog') : page.locator('body')

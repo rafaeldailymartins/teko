@@ -7,14 +7,13 @@ import { ArrowUpIcon, ClockIcon, ShieldAlertIcon, SquareIcon, WandSparklesIcon }
 import { useLocale, useTranslations } from 'next-intl'
 import { type RefObject, useId, useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Kbd } from '@/components/ui/kbd'
 import { Textarea } from '@/components/ui/textarea'
 import { detectPii, removePii } from '@/lib/chat/pii'
 import type { ReferenceChoice } from '@/lib/chat/reference'
 import { isSubmitShortcut } from '@/lib/hotkeys'
 import { formatIsoDate, formatTaxPeriod } from '@/lib/i18n/format'
 import { cn } from '@/lib/utils'
-import { ComposerCoverageBanner, CoverageIndicator } from './coverage.tsx'
+import { ComposerCoverageBanner } from './coverage.tsx'
 import { ReferencePicker } from './reference-picker.tsx'
 
 interface ComposerProps {
@@ -36,7 +35,7 @@ interface ComposerProps {
   readonly inferredDate: IsoDate | null
   readonly onConfirmInferred: (date: IsoDate) => void
   readonly today: IsoDate
-  /** Teclas do atalho de envio, separadas por espaço ("Ctrl Enter", "⌘ Enter"). */
+  /** Teclas do atalho de envio, separadas por espaço ("Ctrl Enter", "⌘ Enter"), na dica do botão. */
   readonly shortcutLabel: string
   readonly textareaRef: RefObject<HTMLTextAreaElement | null>
 }
@@ -45,11 +44,11 @@ interface ComposerProps {
 const COUNTER_WARNING = 0.9
 
 /**
- * Composer do chat num bloco só: a pergunta, e embaixo o chip da data de referência, o indicador de
- * cobertura, o contador, o atalho e o botão redondo de enviar (`Ctrl/⌘+Enter`), que vira "Parar"
- * durante a resposta. Avisos (cota, cobertura, data inferida, dados pessoais) entram no topo do
- * bloco. Antes de enviar, o detector de PII avisa e oferece trocar os dados pelos marcadores; a
- * cobertura só avisa, sem impedir o envio.
+ * Composer do chat num bloco só, com o mínimo à vista: a pergunta, o chip da data de referência e o
+ * botão redondo de enviar (`Ctrl/⌘+Enter`, na dica do botão), que vira "Parar" durante a resposta.
+ * O contador só aparece perto do limite. Avisos (cota, data fora da cobertura, data inferida, dados
+ * pessoais) entram no topo do bloco só quando acontecem. Antes de enviar, o detector de PII avisa e
+ * oferece trocar os dados pelos marcadores; a cobertura só avisa, sem impedir o envio.
  */
 export function Composer({
   onSubmit,
@@ -69,7 +68,7 @@ export function Composer({
 }: ComposerProps) {
   const t = useTranslations('chat')
   const locale = useLocale()
-  const hintId = useId()
+  const inputId = useId()
   const piiId = useId()
   const [text, setText] = useState('')
   const [pii, setPii] = useState<readonly PiiKind[]>([])
@@ -167,17 +166,17 @@ export function Composer({
           </div>
         </div>
       )}
-      <label htmlFor={`${hintId}-input`} className="sr-only">
+      <label htmlFor={inputId} className="sr-only">
         {t('composer.label')}
       </label>
       <Textarea
-        id={`${hintId}-input`}
+        id={inputId}
         ref={textareaRef}
         value={text}
         maxLength={QUESTION_MAX_LENGTH}
         disabled={blocked}
         placeholder={t('composer.placeholder')}
-        aria-describedby={pii.length > 0 ? `${hintId} ${piiId}` : hintId}
+        aria-describedby={pii.length > 0 ? piiId : undefined}
         aria-keyshortcuts="Control+Enter Meta+Enter"
         rows={1}
         className="max-h-60 min-h-[3.25rem] resize-none rounded-none border-0 bg-transparent px-4 pt-3.5 pb-1 text-[16px] leading-relaxed shadow-none focus-visible:border-0 focus-visible:ring-0 disabled:opacity-60 md:text-[16px]"
@@ -193,38 +192,20 @@ export function Composer({
         }}
       />
       <div className="flex items-center gap-2 px-2.5 pt-1 pb-2.5">
-        <div className="flex min-w-0 flex-wrap items-center gap-2">
-          <ReferencePicker
-            choice={reference}
-            today={today}
-            onChange={onReferenceChange}
-            open={pickerOpen}
-            onOpenChange={onPickerOpenChange}
-            disabled={blocked}
-          />
-          <CoverageIndicator date={referenceDate} />
-        </div>
+        <ReferencePicker
+          choice={reference}
+          today={today}
+          onChange={onReferenceChange}
+          open={pickerOpen}
+          onOpenChange={onPickerOpenChange}
+          disabled={blocked}
+        />
         <div className="ml-auto flex shrink-0 items-center gap-2.5">
-          {count > 0 && (
-            <span
-              className={cn(
-                'hidden font-mono text-xs tabular-nums sm:inline',
-                nearLimit ? 'text-degraded' : 'text-muted-foreground',
-              )}
-              data-composer-counter=""
-            >
+          {nearLimit && (
+            <span className="font-mono text-degraded text-xs tabular-nums" data-composer-counter="">
               {t('composer.counter', { count, max: QUESTION_MAX_LENGTH })}
             </span>
           )}
-          <span
-            id={hintId}
-            className="hidden items-center gap-1 text-muted-foreground text-xs md:inline-flex"
-          >
-            {(busy ? 'Esc' : shortcutLabel).split(' ').map((key) => (
-              <Kbd key={key}>{key}</Kbd>
-            ))}
-            <span className="ml-0.5">{busy ? t('composer.hintStop') : t('composer.hintSend')}</span>
-          </span>
           {busy ? (
             <Button
               type="button"
@@ -233,6 +214,7 @@ export function Composer({
               onClick={onStop}
               aria-keyshortcuts="Escape"
               aria-label={t('composer.stop')}
+              title={`${t('composer.stop')} (Esc)`}
               className="rounded-full"
             >
               <SquareIcon aria-hidden="true" className="size-3.5 fill-current" />
@@ -242,7 +224,9 @@ export function Composer({
               type="submit"
               size="icon"
               disabled={!canSend}
+              aria-keyshortcuts="Control+Enter Meta+Enter"
               aria-label={t('composer.send')}
+              title={`${t('composer.send')} (${shortcutLabel.replace(' ', '+')})`}
               className="rounded-full"
             >
               <ArrowUpIcon aria-hidden="true" className="size-[1.125rem]" />

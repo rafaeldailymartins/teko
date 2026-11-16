@@ -2,7 +2,7 @@
 
 import type { Citation } from '@teko/shared/contracts'
 import type { IsoDate, ReferenceInput } from '@teko/shared/vigencia'
-import { QuoteIcon, SquarePenIcon } from 'lucide-react'
+import { SquarePenIcon } from 'lucide-react'
 import type { Route } from 'next'
 import Link from 'next/link'
 import { useLocale, useTranslations } from 'next-intl'
@@ -25,18 +25,16 @@ function ThreadSkeleton() {
   const t = useTranslations('chat')
   return (
     <div
-      className="mx-auto flex h-full w-full max-w-3xl flex-col items-center gap-5 px-4 pt-16"
+      className="mx-auto flex h-full w-full max-w-3xl flex-col items-center justify-center gap-4 px-4 pb-16"
       aria-busy="true"
     >
       <span className="sr-only" role="status">
         {t('loading')}
       </span>
-      <Skeleton className="size-14 rounded-2xl" />
+      <Skeleton className="size-11 rounded-xl" />
       <Skeleton className="h-9 w-64" />
-      <Skeleton className="h-4 w-full max-w-md" />
-      <Skeleton className="h-8 w-32 rounded-full" />
-      <div className="flex-1" />
-      <Skeleton className="mb-4 h-28 w-full rounded-2xl" />
+      <Skeleton className="h-4 w-full max-w-sm" />
+      <Skeleton className="mt-4 h-28 w-full rounded-2xl" />
     </div>
   )
 }
@@ -50,37 +48,33 @@ function PanelSkeleton() {
   )
 }
 
-/** Painel de citação vazio: o que vai aparecer ali, com o ícone da citação. */
-function CitationEmpty() {
-  const t = useTranslations('shell.panels')
-  return (
-    <div className="flex flex-col items-start gap-3 px-4 pt-2 pb-6">
-      <span
-        aria-hidden="true"
-        className="flex size-9 items-center justify-center rounded-xl bg-muted text-primary"
-      >
-        <QuoteIcon className="size-4" />
-      </span>
-      <p className="text-muted-foreground text-sm leading-relaxed">{t('citationEmpty')}</p>
-      <div aria-hidden="true" className="flex w-full flex-col gap-2 border-l border-dashed pl-4">
-        {['w-3/4', 'w-1/2', 'w-2/3'].map((width) => (
-          <span key={width} className="relative block">
-            <span className="absolute top-1/2 -left-[1.3rem] size-2 -translate-y-1/2 rounded-full border border-border-strong/60 bg-background" />
-            <span className={`block h-2 rounded-full bg-muted ${width}`} />
-          </span>
-        ))}
-      </div>
-    </div>
-  )
+interface NewConversationAnchorProps {
+  readonly reference: ReferenceInput | null
+  /** Só o ícone (trilho do histórico recolhido e barra do celular), com o nome no `aria-label`. */
+  readonly compact: boolean
 }
 
-function NewConversationAnchor({ reference }: { readonly reference: ReferenceInput | null }) {
+function NewConversationAnchor({ reference, compact }: NewConversationAnchorProps) {
   const t = useTranslations('chat.thread')
   const locale = useLocale()
   const closeHistory = useCloseHistoryPanel()
+  const href = newConversationHref(locale, reference) as Route
+  if (compact) {
+    return (
+      <Link
+        href={href}
+        onClick={closeHistory}
+        aria-label={t('newConversation')}
+        title={t('newConversation')}
+        className={buttonVariants({ variant: 'ghost', size: 'icon-sm' })}
+      >
+        <SquarePenIcon aria-hidden="true" />
+      </Link>
+    )
+  }
   return (
     <Link
-      href={newConversationHref(locale, reference) as Route}
+      href={href}
       onClick={closeHistory}
       className={buttonVariants({ variant: 'outline', size: 'sm', className: 'w-full' })}
     >
@@ -90,21 +84,39 @@ function NewConversationAnchor({ reference }: { readonly reference: ReferenceInp
   )
 }
 
-function NewConversationWithReference() {
+function NewConversationWithReference({ compact }: { readonly compact: boolean }) {
   const [{ ref }] = useQueryStates({ ref: chatSearchParams.ref })
-  return <NewConversationAnchor reference={ref} />
+  return <NewConversationAnchor reference={ref} compact={compact} />
 }
 
 /**
- * "Nova conversa" no topo do painel de histórico: volta ao chat vazio, mantendo a data escolhida.
- * O `Suspense` é exigido pelo `useQueryStates` no export estático (o HTML leva o link sem `ref`).
+ * "Nova conversa": volta ao chat vazio, mantendo a data escolhida. Completo no topo do histórico;
+ * só o ícone no trilho do histórico recolhido e na barra do celular. O `Suspense` é exigido pelo
+ * `useQueryStates` no export estático (o HTML leva o link sem `ref`).
  */
-function NewConversationLink() {
+function NewConversationLink({ compact = false }: { readonly compact?: boolean }) {
   return (
-    <Suspense fallback={<NewConversationAnchor reference={null} />}>
-      <NewConversationWithReference />
+    <Suspense fallback={<NewConversationAnchor reference={null} compact={compact} />}>
+      <NewConversationWithReference compact={compact} />
     </Suspense>
   )
+}
+
+/**
+ * Ao fechar a citação com o foco dentro do painel (ou perdido), o foco volta ao chip ou à fonte que
+ * a abriu: o painel some da árvore e o foco não pode ir junto.
+ */
+function returnFocusToCitation(citationId: string | undefined): void {
+  const active = document.activeElement
+  const lost =
+    active === null || active === document.body || active.closest('[data-citation-panel]') !== null
+  if (!lost || citationId === undefined) return
+  const opener = document.querySelector<HTMLElement>(
+    `[data-citation-id="${citationId}"][aria-pressed="true"], [data-source-id="${citationId}"][aria-pressed="true"]`,
+  )
+  requestAnimationFrame(() => {
+    if (opener?.isConnected) opener.focus()
+  })
 }
 
 /**
@@ -169,10 +181,10 @@ function ChatSessionHost({ onConversationChange, ...props }: ChatSessionHostProp
 }
 
 /**
- * Área de trabalho do chat: histórico | conversa | citação. Guarda a citação aberta (o painel e a
- * conversa são irmãos), abre o Drawer da citação no celular e navega entre citações com `[`/`]`.
- * O painel de histórico é a `ConversationList`, com "Nova conversa" no topo; trocar de conversa
- * fecha a citação aberta.
+ * Área de trabalho do chat: histórico e conversa e, só com uma citação aberta, o painel dela. Guarda
+ * a citação aberta (o painel e a conversa são irmãos), abre o painel ao lado da conversa (Drawer no
+ * celular) e navega entre citações com `[`/`]`. O painel de histórico é a `ConversationList`, com
+ * "Nova conversa" no topo; trocar de conversa fecha a citação aberta.
  */
 export function ChatWorkspace() {
   const { composerBlocked } = useSession()
@@ -183,6 +195,14 @@ export function ChatWorkspace() {
     setSelection(null)
     setCitationOpen(false)
   }, [])
+  const selectedId = selectedCitation(selection)?.id
+  const changeCitationOpen = useCallback(
+    (open: boolean) => {
+      if (!open) returnFocusToCitation(selectedId)
+      setCitationOpen(open)
+    },
+    [selectedId],
+  )
 
   const openCitation = useCallback(
     (
@@ -201,6 +221,7 @@ export function ChatWorkspace() {
   }, [])
 
   useEffect(() => {
+    if (!citationOpen) return
     function onKeyDown(event: KeyboardEvent): void {
       const delta = citationStep(event)
       if (delta === 0 || isEditableTarget(event.target)) return
@@ -209,16 +230,15 @@ export function ChatWorkspace() {
     }
     document.addEventListener('keydown', onKeyDown)
     return () => document.removeEventListener('keydown', onKeyDown)
-  }, [step])
+  }, [citationOpen, step])
 
   return (
     <Workspace
       history={<ConversationList variant="panel" />}
       historyActions={<NewConversationLink />}
+      compactActions={<NewConversationLink compact />}
       citation={
-        selection === null ? (
-          <CitationEmpty />
-        ) : (
+        selection === null ? null : (
           <BlockErrorBoundary fallback={tChat('blockError')}>
             <ClientOnly fallback={<PanelSkeleton />}>
               <CitationPanel selection={selection} onStep={step} />
@@ -226,14 +246,15 @@ export function ChatWorkspace() {
           </BlockErrorBoundary>
         )
       }
-      citationOpen={citationOpen}
-      onCitationOpenChange={setCitationOpen}
+      citationOpen={citationOpen && selection !== null}
+      onCitationOpenChange={changeCitationOpen}
     >
       <ClientOnly fallback={<ThreadSkeleton />}>
         <ChatSessionHost
           onConversationChange={closeCitation}
           onOpenCitation={openCitation}
-          selectedCitationId={selectedCitation(selection)?.id ?? null}
+          // A citação fechada deixa de marcar o chip; o Drawer guarda o conteúdo até sair da tela.
+          selectedCitationId={citationOpen ? (selectedId ?? null) : null}
           // Sem sessão confirmada ou com o onboarding pendente, o composer fica travado.
           composerLocked={composerBlocked}
         />

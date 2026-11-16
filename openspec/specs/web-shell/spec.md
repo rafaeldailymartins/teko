@@ -63,15 +63,20 @@ salvo MUST valer antes da primeira pintura pelo script inline já existente, sem
 ### Requirement: App shell das páginas do app
 
 As páginas do app (chat, history, settings, provision e compare) MUST ficar num layout comum com um
-cabeçalho (marca, navegação principal, paleta de comandos, menu de idioma, tema e a conta), um
-`<main>` alvo do skip link e o aviso fixo "Apoio à consulta; não constitui parecer", visível sem
-rolar. A troca de idioma SHALL manter a página atual, a query e a âncora. O layout SHALL continuar
-montado na navegação entre essas páginas.
+cabeçalho (marca, navegação, paleta, idioma, tema e conta) e um `<main>` alvo do skip link. O aviso
+"Apoio à consulta; não constitui parecer" MUST ficar discreto, sem barra fixa: no chat, abaixo do
+composer, sempre à vista; nas outras páginas, no fim do conteúdo. A troca de idioma SHALL manter a
+página, a query e a âncora, e o layout SHALL continuar montado entre essas páginas.
 
 #### Scenario: Aviso sempre visível
 
-- **WHEN** o usuário rola uma página longa do app
-- **THEN** o aviso "Apoio à consulta; não constitui parecer" continua na tela
+- **WHEN** o usuário rola uma conversa longa no chat
+- **THEN** o aviso "Apoio à consulta; não constitui parecer" continua na tela, abaixo do composer
+
+#### Scenario: Aviso nas outras páginas
+
+- **WHEN** o usuário rola até o fim de `/pt-BR/settings/`
+- **THEN** o aviso aparece numa linha pequena no fim do conteúdo
 
 #### Scenario: Idioma sem perder a página
 
@@ -90,26 +95,15 @@ páginas e a troca de tema. Atalhos com Alt ou Shift SHALL NOT abri-la.
 - **WHEN** o usuário tecla `Ctrl+K`, digita "hist" e tecla Enter
 - **THEN** a paleta fecha e o app vai para a página de histórico do locale atual
 
-### Requirement: Área de trabalho em três painéis
-
-A página do chat MUST mostrar, a partir de 768 px, três painéis redimensionáveis (histórico,
-conversa e citação) cujos separadores SHALL ter nome acessível e responder ao teclado (setas,
-Home/End e Enter para recolher). A conversa SHALL NOT ser desmontada quando a janela cruza 768 px.
-
-#### Scenario: Redimensionar pelo teclado
-
-- **WHEN** o usuário foca o separador do histórico e tecla seta para a direita
-- **THEN** o painel de histórico cresce e o separador anuncia o novo valor
-
 ### Requirement: Área de trabalho no celular
 
-Abaixo de 768 px, a página do chat MUST deixar só a conversa na tela, com o histórico num Sheet e a
-citação num Drawer abertos por botões visíveis. O HTML estático SHALL NOT mostrar os painéis
-laterais no celular antes da hidratação.
+Abaixo de 768 px, a página do chat MUST deixar só a conversa na tela, com o histórico num Sheet
+aberto por um botão visível e a citação num Drawer aberto pelo chip ou pela fonte. O HTML estático
+SHALL NOT mostrar os painéis laterais no celular antes da hidratação.
 
 #### Scenario: Citação no celular
 
-- **WHEN** o usuário num viewport de 375 px toca em "Citação"
+- **WHEN** o usuário num viewport de 375 px toca no chip 1 de uma resposta
 - **THEN** a citação abre num Drawer, que fecha com Esc ou arrastando para baixo
 
 ### Requirement: Páginas-esqueleto e landing estáticas
@@ -188,3 +182,28 @@ de tentar de novo.
 
 - **WHEN** o `GET /api/v1/me` falha por rede ou 5xx
 - **THEN** a tela da marca mostra o erro e "Tentar de novo", que consulta o `/me` outra vez
+
+### Requirement: Área de trabalho em duas colunas
+
+A página do chat MUST mostrar, a partir de 768 px, no máximo duas colunas: o histórico e a conversa
+ou, com uma citação aberta, a conversa e o painel de citação, separados por um separador
+redimensionável com nome acessível que responde ao teclado. Sem citação aberta, SHALL NOT haver
+painel de citação. A conversa SHALL NOT ser desmontada quando a janela cruza 768 px nem quando a
+citação abre ou fecha.
+
+#### Scenario: Citação no lugar do histórico
+
+- **WHEN** o usuário abre uma citação com o histórico aberto
+- **THEN** o painel de citação entra à direita da conversa e o histórico vira o trilho até a citação
+  fechar
+
+### Requirement: Histórico recolhível
+
+No desktop, o histórico do chat MUST poder ser recolhido por um botão, com a escolha lembrada no
+navegador (storage bloqueado vale como aberto). Recolhido, ou com a citação aberta, ele SHALL virar
+um trilho com o botão "Mostrar o histórico" e o atalho de nova conversa.
+
+#### Scenario: Histórico recolhido lembrado
+
+- **WHEN** o usuário recolhe o histórico e recarrega a página
+- **THEN** o histórico continua recolhido, com "Mostrar o histórico" e "Nova conversa" à vista

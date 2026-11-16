@@ -198,11 +198,13 @@ describe('sugestões', () => {
     expect(DATE_COMPARISON_SUGGESTION.question).toBe('rcte76')
   })
 
-  it('nenhuma pergunta se repete, e as famílias do corpus aparecem', () => {
-    const questions = [DATE_COMPARISON_SUGGESTION, ...SUGGESTIONS].map((item) => item.question)
+  it('são quatro, nenhuma pergunta se repete, e cada família do corpus aparece uma vez', () => {
+    const all = [DATE_COMPARISON_SUGGESTION, ...SUGGESTIONS]
+    expect(all).toHaveLength(4)
+    const questions = all.map((item) => item.question)
     expect(new Set(questions).size).toBe(questions.length)
-    expect(new Set(SUGGESTIONS.map((item) => item.family))).toEqual(
-      new Set(['efd-icms-ipi', 'efd-reinf', 'rcte', 'efd-go']),
-    )
+    const families = all.map((item) => item.family)
+    expect(new Set(families)).toEqual(new Set(['efd-icms-ipi', 'efd-reinf', 'rcte', 'efd-go']))
+    expect(new Set(families).size).toBe(families.length)
   })
 })

@@ -62,15 +62,22 @@ o stream com `Esc` ou com o botão "Parar". Cada mensagem SHALL ficar num `Error
 
 ### Requirement: Composer num bloco só
 
-O composer MUST ser um bloco só, com a área de texto, o chip da data de referência, o indicador de
-cobertura, o contador de caracteres, o atalho visível e o botão redondo de enviar (nome acessível
-"Enviar"), que vira "Parar" durante a resposta. Os avisos (cota, cobertura, data inferida, dados
-pessoais) SHALL entrar no topo do bloco.
+O composer MUST ser um bloco só, com o mínimo à vista: a área de texto, o chip da data de referência
+e o botão redondo de enviar (nome acessível "Enviar", com o atalho no `title` e no
+`aria-keyshortcuts`), que vira "Parar" durante a resposta. O contador de caracteres SHALL aparecer
+só perto do limite. Os avisos (cota, data fora da cobertura, data inferida, dados pessoais) SHALL
+entrar no topo do bloco só quando acontecem.
 
 #### Scenario: Enviar pelo botão
 
 - **WHEN** o usuário digita a pergunta e aciona o botão "Enviar"
 - **THEN** a pergunta sai com a data do chip, e o botão vira "Parar" até o fim da resposta
+
+#### Scenario: Composer sem ruído
+
+- **WHEN** o chat abre sem conversa numa data com cobertura
+- **THEN** o composer não mostra linha de cobertura nem a dica do atalho, e o botão "Enviar" tem
+  `title` "Enviar (Ctrl+Enter)"
 
 ### Requirement: Aviso de PII antes de enviar
 
@@ -105,8 +112,9 @@ escolhido vai como `periodo_apuracao`, data exata como `explicit`, e a escolha d
 ### Requirement: Data usada visível e na URL
 
 A data escolhida MUST ficar na URL (`ref`), junto com a conversa (`c`) e a última pergunta (`q`).
-O cabeçalho de cada resposta SHALL repetir a data e a vigência usadas; data inferida do texto
-aparece em âmbar, e o composer oferece "Confirmar" para fixá-la no chip.
+O cabeçalho de cada resposta SHALL repetir a data e a vigência usadas numa linha discreta, em texto
+pequeno e apagado, com o ponto âmbar da data ("05/2008 · vigência desde 23/09/2005"); data inferida
+do texto aparece marcada "inferida do texto", e o composer oferece "Confirmar" para fixá-la no chip.
 
 #### Scenario: Data do texto
 
@@ -115,16 +123,27 @@ aparece em âmbar, e o composer oferece "Confirmar" para fixá-la no chip.
 
 ### Requirement: Cobertura, degradação e cota visíveis
 
-O composer MUST indicar a cobertura do corpus na data escolhida (fundamentada, parcial ou fora de
-cobertura) sem bloquear o envio. A resposta SHALL mostrar os rótulos de degradação de `data-meta`
-("Somente busca lexical", "Modelo de reserva", "Resposta em cache"), o aviso de cobertura parcial e,
-na recusa, o motivo. `quota_exceeded` e `service_paused` MUST desabilitar o composer até o reset e
-mostrar o horário dele.
+O composer MUST avisar quando nenhuma fonte cobre a data escolhida, sem bloquear o envio. A linha
+de metadados da resposta SHALL mostrar a degradação que afeta a qualidade; "Resposta em cache" fica
+só na dica da linha e para leitores de tela. A cobertura parcial SHALL virar uma nota de uma linha
+com os nomes legíveis das famílias, e a recusa SHALL mostrar o motivo. `quota_exceeded` e
+`service_paused` MUST desabilitar o composer até o reset e mostrar o horário dele.
 
 #### Scenario: Cota estourada
 
 - **WHEN** o `POST /questions` responde `quota_exceeded`
 - **THEN** o composer fica desabilitado e mostra quando as perguntas voltam
+
+#### Scenario: Cobertura parcial com nomes legíveis
+
+- **WHEN** a resposta chega com `uncoveredFamilies: ['efd-icms-ipi']`
+- **THEN** a nota diz "Sem fontes de EFD ICMS/IPI nesta data", sem o código `efd-icms-ipi`
+
+#### Scenario: Degradação na linha de metadados
+
+- **WHEN** a resposta chega com busca só lexical, modelo de reserva e do cache
+- **THEN** a linha mostra "Somente busca lexical" e "Modelo de reserva", e "Resposta em cache" fica
+  na dica da linha
 
 ### Requirement: Markdown seguro
 
@@ -140,27 +159,21 @@ runtime (a CSP barra).
 
 ### Requirement: Citações navegáveis
 
-O link `cite:<id>` MUST virar um chip numerado com prévia no hover e no foco (dispositivo,
-documento, começo do texto citado e vigência). O clique SHALL abrir o painel de citação (Drawer
-abaixo de 768 px) com documento, versão, badge do intervalo de vigência, texto em `lang="pt-BR"`, a
-chave do dispositivo, link da fonte, "copiar citação", "reportar", navegação por `[`/`]` e o link
-"Abrir o dispositivo" para a página do dispositivo.
+O link `cite:<id>` MUST virar um chip numerado com prévia no hover e no foco. O clique SHALL abrir
+o painel de citação (ao lado da conversa no desktop, Drawer abaixo de 768 px) com documento, versão,
+badge do intervalo de vigência, texto em `lang="pt-BR"`, a chave do dispositivo, link da fonte,
+"copiar citação", "reportar", navegação por `[`/`]` e "Abrir o dispositivo". O painel SHALL
+fechar pelo botão "Fechar a citação" e por `Esc`, devolvendo o foco ao chip.
 
 #### Scenario: Chip de citação
 
 - **WHEN** o usuário clica no chip 1 de uma resposta
 - **THEN** o painel mostra a citação S1 com o intervalo de vigência, e `]` passa para a S2
 
-### Requirement: Fontes em cartões
+#### Scenario: Fechar com Esc
 
-As fontes da resposta MUST aparecer em cartões com o número, o dispositivo, o documento e a situação
-da redação, as quatro primeiras à vista e as outras atrás de um botão; a fonte aberta no painel
-SHALL ficar sempre à vista. O cartão SHALL abrir o painel de citação como o chip.
-
-#### Scenario: Muitas fontes
-
-- **WHEN** a resposta tem doze fontes
-- **THEN** quatro cartões ficam à vista e "Mostrar 8 fontes a mais" abre o resto
+- **WHEN** o painel está aberto no desktop e o usuário tecla `Esc` com o foco no chip
+- **THEN** o painel fecha e o histórico volta ao lado da conversa
 
 ### Requirement: Linha do tempo e O que mudou no painel de citação
 
@@ -188,28 +201,19 @@ demanda, só no `/chat/`, fora da soma de first-load conferida pelo orçamento d
 - **WHEN** o pós-build soma o JS gz do primeiro acesso
 - **THEN** nenhum chunk do Streamdown, do Shiki ou do `useChat` entra na conta
 
-### Requirement: Abertura do chat vazio
-
-Sem conversa, o chat MUST mostrar uma abertura com a saudação (o `h1` da página), o que o Tekó
-responde e a data de referência em destaque sobre a linha do tempo do corpus. A data em destaque
-SHALL abrir o mesmo seletor do chip do composer.
-
-#### Scenario: Data em destaque
-
-- **WHEN** o usuário abre `/pt-BR/chat/?ref=2008-05` sem conversa
-- **THEN** a abertura mostra 05/2008 sobre a linha do tempo, e o clique abre o seletor da data
-
 ### Requirement: Sugestões do chat vazio
 
-As sugestões MUST ser todas diferentes: em destaque, "O que diz o art. 76, § 6º do RCTE?" com um
-botão para 05/2008 e outro para 01/2010, e uma pergunta de cada família do corpus (EFD ICMS/IPI,
-EFD-Reinf, RCTE e EFD de Goiás), com o ícone da família e o período em que será feita. Enviar uma
+As sugestões MUST ser quatro linhas finas, todas diferentes, sem subtítulo de seção nem badges:
+"O que diz o art. 76, § 6º do RCTE?" com um botão para 05/2008 e outro para 01/2010 (nomes
+acessíveis "Perguntar em 05/2008" e "Perguntar em 01/2010"), e uma pergunta de cada outra família
+do corpus (EFD ICMS/IPI, EFD-Reinf e EFD de Goiás) com o período em que será feita. Enviar uma
 sugestão SHALL gravar o período em `ref` e levar o foco ao composer.
 
 #### Scenario: Sugestões sem repetir
 
 - **WHEN** o usuário abre `/pt-BR/chat/` sem conversa
-- **THEN** vê cinco perguntas diferentes, a do DoD com "Perguntar em 05/2008" e "Perguntar em 01/2010"
+- **THEN** vê quatro perguntas diferentes, a do DoD com "Perguntar em 05/2008" e "Perguntar em
+  01/2010"
 
 #### Scenario: Sugestão de família
 
@@ -238,3 +242,31 @@ conversa, nada rola.
 
 - **WHEN** a resposta está em stream e o usuário rola para cima
 - **THEN** a posição não muda a cada pedaço, e o botão "Ir para o fim da conversa" aparece
+
+### Requirement: Fontes recolhidas numa linha
+
+As fontes da resposta MUST ficar recolhidas numa linha com a contagem ("12 fontes"), um botão com
+`aria-expanded` que abre uma lista de uma coluna em linhas finas, com o número, o dispositivo e a
+situação da redação. A linha SHALL abrir o painel de citação como o chip, e a fonte aberta no painel
+SHALL ficar marcada. Citação recusada pelo validador SHALL sair riscada, em tom apagado.
+
+#### Scenario: Muitas fontes
+
+- **WHEN** a resposta tem doze fontes
+- **THEN** só a linha "12 fontes" fica à vista, e o clique nela abre a lista com as doze
+
+#### Scenario: Fonte abre a citação
+
+- **WHEN** o usuário abre a lista e clica na fonte 2
+- **THEN** o painel mostra "Citação 2 de 2", e a fonte 2 fica marcada até o painel fechar
+
+### Requirement: Abertura curta do chat vazio
+
+Sem conversa, o chat MUST mostrar uma abertura curta: o selo, a saudação (o `h1` da página) e uma
+linha sobre o que o Tekó responde. A data de referência SHALL aparecer uma vez só, no chip do
+composer.
+
+#### Scenario: Data num lugar só
+
+- **WHEN** o usuário abre `/pt-BR/chat/?ref=2008-05` sem conversa
+- **THEN** 05/2008 aparece só no chip do composer, e o clique nele abre o seletor da data

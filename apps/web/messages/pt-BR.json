@@ -53,10 +53,11 @@
     "panels": {
       "history": "Histórico",
       "citation": "Citação",
-      "resizeHistory": "Redimensionar o histórico",
+      "collapseHistory": "Recolher o histórico",
       "resizeCitation": "Redimensionar a citação",
       "historyEmpty": "Suas conversas aparecem aqui, cada uma com a data de referência usada.",
-      "citationEmpty": "Escolha uma citação na resposta para ver o dispositivo, a versão e o intervalo de vigência."
+      "closeCitation": "Fechar a citação",
+      "expandHistory": "Mostrar o histórico"
     },
     "gate": {
       "loading": "Carregando o Tekó…",
@@ -774,13 +775,10 @@
       "placeholder": "Pergunte sobre a EFD ICMS/IPI, a EFD-Reinf ou a legislação de Goiás…",
       "send": "Enviar",
       "stop": "Parar",
-      "hint": "{shortcut} envia · Esc para",
       "blockedQuota": "O limite diário de perguntas foi atingido. As perguntas voltam {reset}.",
       "blockedPaused": "O serviço está pausado. Tente de novo {reset}.",
       "resetAt": "em {time}",
       "resetSoon": "mais tarde",
-      "hintSend": "para enviar",
-      "hintStop": "para parar",
       "counter": "{count, number} / {max, number}"
     },
     "pii": {
@@ -819,11 +817,8 @@
       "chipDateLabel": "Data de referência:"
     },
     "coverage": {
-      "label": "Cobertura na data",
-      "grounded": "Fundamentada",
-      "partial": "Cobertura parcial",
       "out": "Fora de cobertura",
-      "bannerPartial": "Nesta data, o Tekó não tem fontes de {families}. A resposta pode ficar incompleta.",
+      "notePartial": "Sem fontes de {families} nesta data; a resposta pode ficar incompleta.",
       "bannerOut": "Nenhuma fonte do Tekó cobre esta data. A pergunta pode ser recusada."
     },
     "thread": {
@@ -847,6 +842,8 @@
     "answer": {
       "referencePeriodo": "Período de apuração {value}",
       "referenceDate": "Data de referência {value}",
+      "periodoLabel": "Período de apuração",
+      "dateLabel": "Data de referência",
       "source": {
         "explicit": "escolhida por você",
         "periodo_apuracao": "escolhida por você",
@@ -855,18 +852,17 @@
         "clarified": "esclarecida por você"
       },
       "validity": "Vigência das fontes: {range}",
+      "validityShort": "vigência {range}",
       "boundaryInside": "A redação muda dentro deste período: confira a data exata.",
       "citations": "Fontes",
       "degraded": {
         "lexicalOnly": "Somente busca lexical",
         "fallback": "Modelo de reserva",
-        "cached": "Resposta em cache",
-        "label": "Como a resposta foi gerada"
+        "cached": "Resposta em cache"
       },
       "copy": "Copiar a resposta",
       "copied": "Resposta copiada.",
-      "sourcesMore": "Mostrar {count, plural, one {# fonte a mais} other {# fontes a mais}}",
-      "sourcesLess": "Mostrar menos fontes"
+      "sourcesToggle": "{count, plural, one {# fonte} other {# fontes}}"
     },
     "intervals": {
       "range": "{from} a {to}",
@@ -927,25 +923,14 @@
       "previewHint": "Clique para abrir"
     },
     "suggestions": {
-      "title": "Comece por aqui",
-      "body": "Perguntas sobre o corpus, cada uma já no período de apuração certo.",
+      "title": "Sugestões de perguntas",
       "questions": {
         "rcte76": "O que diz o art. 76, § 6º do RCTE?",
         "efdC170": "Como se preenche o registro C170 da EFD ICMS/IPI?",
         "reinfR4020": "O que se informa no evento R-4020 da EFD-Reinf?",
-        "rcteCompensation": "Como funciona a não cumulatividade do ICMS no RCTE?",
         "efdGoTable52": "Quais informações da Tabela 5.2 de Goiás vão na EFD todo mês?"
       },
-      "ask": "Perguntar em {period}",
-      "compareTitle": "Mesma pergunta, duas datas",
-      "compareBody": "O § 6º foi revogado em 23/11/2009. Pergunte antes e depois e veja a resposta mudar.",
-      "families": {
-        "rcte": "RCTE · Goiás",
-        "efd-icms-ipi": "EFD ICMS/IPI",
-        "efd-reinf": "EFD-Reinf",
-        "efd-go": "EFD · Goiás"
-      },
-      "period": "Período <date>{period}</date>"
+      "askPrefix": "Perguntar em"
     },
     "welcome": {
       "greeting": {
@@ -954,8 +939,7 @@
         "evening": "Boa noite"
       },
       "greetingNamed": "{greeting}, {name}",
-      "lead": "Pergunte sobre a EFD ICMS/IPI, a EFD-Reinf ou a legislação do ICMS de Goiás. Cada resposta traz a redação vigente na data de referência, as fontes e a vigência delas.",
-      "dateLead": "Respostas com a lei vigente em"
+      "lead": "A legislação fiscal na redação vigente na data que você escolher, sempre com as fontes."
     }
   },
   "coverage": {

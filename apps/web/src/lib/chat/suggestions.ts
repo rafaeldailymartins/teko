@@ -2,30 +2,30 @@ import type { PeriodoApuracao } from '@teko/shared/vigencia'
 
 /**
  * Sugestões do chat vazio, todas sobre o corpus real (fixture e produção) e cada uma num período em
- * que a fonte tem redação vigente. Nenhuma pergunta se repete.
+ * que a fonte tem redação vigente. Nenhuma pergunta se repete, e são quatro, uma por família.
  *
  * - A de destaque é a do DoD: RCTE, art. 76, § 6º em 05/2008 (redação de 04.11.04, piso de 40.000
  *   no GOYAZES/PROESPORTE) contra 01/2010 (revogado pelo Decreto nº 7.028, a partir de 23.11.09).
- * - As outras cobrem as famílias do corpus: EFD ICMS/IPI (Guia Prático 3.1.9, 2025), EFD-Reinf
- *   (leiautes 2.1.2, desde 09/2023), RCTE (compensação do imposto, desde 1998) e o Guia Prático da
- *   EFD de Goiás (versão 5.9, desde 16/03/2026).
+ * - As outras cobrem as demais famílias do corpus: EFD ICMS/IPI (Guia Prático 3.1.9, 2025),
+ *   EFD-Reinf (leiautes 2.1.2, desde 09/2023) e o Guia Prático da EFD de Goiás (versão 5.9, desde
+ *   16/03/2026).
  */
 
-/** Família da sugestão: escolhe o ícone e o rótulo do cartão (`chat.suggestions.families`). */
-export type SuggestionFamily = 'rcte' | 'efd-icms-ipi' | 'efd-reinf' | 'efd-go'
+/** Família do corpus de onde a sugestão vem (documenta a cobertura das sugestões). */
+type SuggestionFamily = 'rcte' | 'efd-icms-ipi' | 'efd-reinf' | 'efd-go'
 
 /** Chave do texto da pergunta em `chat.suggestions.questions`. */
-type SuggestionQuestion = 'rcte76' | 'efdC170' | 'reinfR4020' | 'rcteCompensation' | 'efdGoTable52'
+type SuggestionQuestion = 'rcte76' | 'efdC170' | 'reinfR4020' | 'efdGoTable52'
 
-export interface Suggestion {
+interface Suggestion {
   readonly id: string
   readonly family: SuggestionFamily
   readonly question: SuggestionQuestion
   readonly period: PeriodoApuracao
 }
 
-/** A pergunta do DoD em dois períodos com redações diferentes (o cartão de destaque). */
-export interface DateComparisonSuggestion {
+/** A pergunta do DoD em dois períodos com redações diferentes (a primeira linha). */
+interface DateComparisonSuggestion {
   readonly id: string
   readonly family: SuggestionFamily
   readonly question: SuggestionQuestion
@@ -42,6 +42,5 @@ export const DATE_COMPARISON_SUGGESTION: DateComparisonSuggestion = {
 export const SUGGESTIONS: readonly Suggestion[] = [
   { id: 'efd-c170', family: 'efd-icms-ipi', question: 'efdC170', period: '2025-06' },
   { id: 'reinf-r4020', family: 'efd-reinf', question: 'reinfR4020', period: '2024-03' },
-  { id: 'rcte-compensacao', family: 'rcte', question: 'rcteCompensation', period: '2024-03' },
   { id: 'efd-go-tabela-5-2', family: 'efd-go', question: 'efdGoTable52', period: '2026-04' },
 ]

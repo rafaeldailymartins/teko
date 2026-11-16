@@ -89,9 +89,10 @@ function inferredChoice(date: IsoDate): ReferenceInput {
  * Conversa: thread e composer sobre o `useChat` com o `TekoChatTransport`. Estado na URL (nuqs):
  * `c` (conversa, o `chatId`), `q` (última pergunta) e `ref` (data de referência do chip). Ao abrir
  * uma conversa da URL, relê as perguntas dela (`GET /questions?conversationId=`); só com `q`, relê
- * a pergunta (`GET /questions/:id`). Sem conversa, a abertura (saudação, data em destaque e
- * sugestões) com o composer no meio; com conversa, o composer desce e fica fixo embaixo. Carregado
- * só no navegador (`lazy` dentro do `ClientOnly`), fora do primeiro carregamento.
+ * a pergunta (`GET /questions/:id`). Sem conversa, a abertura (saudação e uma linha) com o composer
+ * no meio e as sugestões embaixo; com conversa, o composer desce e fica fixo embaixo. O aviso de que
+ * o Tekó não constitui parecer fica numa linha pequena logo abaixo do composer, sempre à vista.
+ * Carregado só no navegador (`lazy` dentro do `ClientOnly`), fora do primeiro carregamento.
  */
 export default function ChatSession({
   conversationId,
@@ -103,6 +104,7 @@ export default function ChatSession({
   const t = useTranslations('chat')
   const tPage = useTranslations('pages.chat')
   const tErrors = useTranslations('errors')
+  const tCommon = useTranslations('common')
   const format = useFormatter()
   const locale = useLocale()
   const [{ q, ref }, setUrl] = useQueryStates(chatSearchParams)
@@ -219,7 +221,9 @@ export default function ChatSession({
       if (isReferenceShortcut(event)) {
         event.preventDefault()
         setPickerOpen(true)
-      } else if (event.key === 'Escape' && busy) {
+      } else if (event.key === 'Escape' && busy && !event.defaultPrevented) {
+        // Marcado como tratado: o mesmo `Esc` não fecha também a citação aberta.
+        event.preventDefault()
         stopAnswer()
       } else if (isComposerShortcut(event) && !isEditableTarget(event.target)) {
         event.preventDefault()
@@ -293,13 +297,8 @@ export default function ChatSession({
         {announcement}
       </p>
       {empty ? (
-        <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 pt-10 pb-6 sm:pt-14">
-          <ChatWelcome
-            reference={ref}
-            today={today}
-            onChangeDate={() => setPickerOpen(true)}
-            disabled={blocked || composerLocked}
-          />
+        <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 pt-10 pb-7 sm:pt-14">
+          <ChatWelcome />
           {restoreFailed && (
             <div
               role="alert"
@@ -389,7 +388,7 @@ export default function ChatSession({
       <div ref={anchorRef} />
       <div
         className={cn(
-          'z-10 px-4 pb-4',
+          'z-10 px-4 pb-2',
           empty
             ? 'pt-0'
             : 'sticky bottom-0 bg-linear-to-t from-background from-70% to-transparent pt-6',
@@ -423,10 +422,13 @@ export default function ChatSession({
             shortcutLabel={shortcutLabel}
             textareaRef={textareaRef}
           />
+          <p className="pt-2 text-center text-muted-foreground text-xs" data-disclaimer="">
+            {tCommon('disclaimer')}
+          </p>
         </div>
       </div>
       {empty && (
-        <div className="mx-auto w-full max-w-3xl px-4 pt-4 pb-12">
+        <div className="mx-auto w-full max-w-3xl px-4 pt-3 pb-12">
           <Suggestions
             disabled={composerDisabled}
             onAsk={(question, periodo: PeriodoApuracao) => {
