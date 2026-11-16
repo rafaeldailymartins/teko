@@ -26,7 +26,10 @@ o cliente do Better Auth, PostHog depois do consentimento e orçamento total) es
   `generateStaticParams → {rest:['404']}`); `/_next/static/*` com
   `Cache-Control: public, max-age=31536000, immutable`. A mesma semântica vale no Plano B
   (`static-site.ts`) e no Caddy da stack de CI (snippets de `scripts/caddy-static-site.ts`); o
-  `apps/web/e2e/platform.spec.ts` acessa `/en/xyz` e confere headers e CSP.
+  `apps/web/e2e/platform.spec.ts` acessa `/en/xyz` e confere headers e CSP. Em `next dev`, um
+  `redirects()` só de desenvolvimento aplica a mesma regra da raiz (`src/lib/i18n/root-locale.ts`,
+  presa ao `policy.ts` por `scripts/root-locale.test.ts`); a página estática de `/` é uma tela neutra
+  com a logo que vai na hora para o idioma do navegador (`public/root-locale.js`).
 - **Dev local:** `pnpm dev` sobe web (`:3000`) e API (`:4000`); em desenvolvimento, `rewrites()` do
   Next manda `/api/*` para a API, e o navegador vê uma origem só. Não há proxy assinado nem segredo
   de dev para o caminho web → API. O login local usa `pnpm --filter @teko/api seed:dev-session`.
@@ -42,7 +45,8 @@ apps/web/
   src/app/[locale]/(app)/layout.tsx                  # app shell (cabeçalho, paleta, aviso fixo)
   src/app/[locale]/(app)/{chat,provision,compare,history,settings}/page.tsx
   src/app/[locale]/{sign-in,coverage,about,privacy,terms,[...rest]}/page.tsx
-  src/components/              # ui/ (shadcn), app-shell/, pages/, providers.tsx e componentes de tela
+  src/components/              # ui/ (shadcn), brand/ (logo), app-shell/, pages/, providers.tsx e componentes de tela
+  public/                      # ícones e Open Graph gerados da logo, script da entrada `/`
   src/lib/                     # site, i18n/, theme, density, contrast, utils, navigation, hotkeys, api/, auth/; depois validity/, analytics/
   messages/{en,pt-BR}.json
 ```
@@ -65,11 +69,33 @@ contrato de `@teko/shared` e o cliente gerado.
   mortos); o destaque de menus e da paleta usa `--muted`, não o âmbar. Componentes: message-scroller, message, bubble, code-block, command, resizable,
   drawer, calendar, popover, hover-card, sheet, tabs, table, skeleton, sonner, dialog, mais padrões
   de AI Elements (inline-citation, sources, suggestion, prompt-input).
-- Cores em OKLCH: primária petróleo `oklch(0.50 0.09 205)`, acento âmbar para data e vigência,
-  tokens de domínio `--validity-current`, `--validity-superseded`, `--validity-future`,
-  `--coverage-out` e `--degraded`, mais os do shadcn (`--muted`, `--popover`, `--input`,
-  `--secondary`, `--destructive`). Um teste (`src/lib/contrast.ts`, sem dependência) exige contraste
-  ≥ 4,5:1 em texto e ≥ 3:1 em UI e foco, nos dois temas.
+- **Paleta da logo** (`docs/assets/logo.svg`), em OKLCH e com o par claro/escuro em `light-dark()`:
+
+  | Papel                         | Origem na logo                            | Tokens                                                                                                                        |
+  | ----------------------------- | ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+  | Marca e primária              | petróleo `#005766` → `#003540`            | `--primary` (claro `oklch(0.42 0.074 214.6)`, escuro o verde-água `#7fd8c8`), `--brand`, `--brand-deep`, `--brand-foreground` |
+  | Vigente e detalhes vivos      | verde-folha `#38a37a` → `#7fd8c8`         | `--leaf` (forma, ≥ 3:1), `--leaf-soft`, `--validity-current` (texto)                                                          |
+  | Data de referência e vigência | âmbar `#e0a53b`                           | `--accent`, `--accent-foreground`, `--accent-border`, `--date-mark` (ponto decorativo)                                        |
+  | Neutros                       | puxados para o petróleo, nunca cinza puro | `--background`, `--surface`, `--muted`, `--popover`, `--border`, `--border-strong`, `--input`, `--secondary`                  |
+
+  O tema escuro é petróleo muito escuro (`--background` `oklch(0.2 0.032 215)`, perto de `#021c22`);
+  o claro é quase branco com um toque frio. Tokens de domínio: `--validity-current`,
+  `--validity-superseded`, `--validity-future`, `--coverage-out` e `--degraded`. Um teste
+  (`src/lib/contrast.ts`, sem dependência) exige contraste ≥ 4,5:1 em texto e ≥ 3:1 em UI, foco e
+  na folha como forma, nos dois temas.
+- **Forma e profundidade:** `--radius` 0,75 rem; sombras em camadas tingidas de petróleo
+  (`shadow-soft` em campos e cartões, `shadow-raised` em destaques, `shadow-overlay` em popups);
+  gradientes só com CSS (`bg-brand-gradient`, `bg-leaf-gradient`, `bg-surface-gradient`,
+  `bg-brand-glow`) e o fio `timeline-rule`, a linha do tempo da logo, sob os cabeçalhos e sobre o
+  rodapé. O `cn` estende o tailwind-merge com esses tokens.
+- **Marca no código:** `TekoLogo` (`src/components/brand/`, SVG inline com gradientes em `<defs>`,
+  variantes `seal` e `mark`), `TekoWordmark` (ícone + "Tekó" em serif), `BrandScreen` (tela da marca
+  do `SessionGate`) e `GitHubIcon`. Favicon, ícone da Apple e Open Graph em `public/`, gerados da
+  logo por `scripts/brand-assets.ts` e declarados em `SITE_ICONS` (`metadata.icons`; a convenção
+  `src/app/icon.svg` vira route handler, que o guard do estático recusa).
+- **Botões:** `default` (primária), `brand` (gradiente da logo, para "Abrir o Tekó"), `outline`,
+  `secondary`, `ghost`, `destructive` e `link`; foco em anel sólido com recuo. `Card` com os tons
+  `default`, `raised` e `muted`; `Badge` com `accent`, `leaf` e `neutral`.
 - Tema in-house (script inline com hash na CSP, `localStorage['teko-theme']`, `color-scheme`), com
   seletor no cabeçalho (claro, escuro, igual ao sistema), na paleta e nas configurações. O mesmo
   script aplica a densidade compacta (`data-density`, `localStorage['teko-density']`, escolhida nas
@@ -79,8 +105,9 @@ contrato de `@teko/shared` e o cliente gerado.
 - Tipografia self-hosted pelo `next/font/google` (arquivos baixados no build e servidos da própria
   origem; os pacotes npm das fontes são OFL-1.1, fora da allowlist de licenças): Geist Sans (UI),
   Geist Mono (registros e campos, `tabular-nums`), Source Serif 4 (texto legal e headlines). Base 14 px; respostas 15 px/1,6; `data-density`.
-- Motion com `LazyMotion domAnimation strict` e `reducedMotion="user"`, só quando alguma tela animar
-  de fato (o shell usa só as transições CSS dos popups); `<ViewTransition>` nas rotas.
+- Movimento curto (transições de 150–250 ms com `ease-out-soft`) e `prefers-reduced-motion` global
+  em `globals.css`, que zera animações e transições. Motion com `LazyMotion domAnimation strict` e
+  `reducedMotion="user"`, fora do primeiro carregamento, só quando CSS não bastar.
 
 ## Dados e streaming
 
@@ -146,7 +173,7 @@ stream leva o cookie de sessão, e a API confere o `Origin`.
   de novo. O link `cite:<id>` vira `#cite-<id>` antes do parse e depois `CitationChip`.
 - **Carregamento:** a conversa (AI SDK, `useChat`), o painel de citação e o markdown (Streamdown,
   Shiki) são `lazy(() => import(...))` dentro de um `ClientOnly`, fora do primeiro carregamento; o
-  HTML estático do `/chat/` leva o esqueleto da conversa.
+  HTML estático do `/chat/`, como o de toda página do `(app)`, leva só a tela da marca (`SessionGate`).
 
 ## Segurança no navegador
 
@@ -182,8 +209,9 @@ Content-Security-Policy: default-src 'self'; script-src 'self' 'sha256-…'; sty
 
 ## UX
 
-- **App shell** com cabeçalho (navegação, paleta, idioma e tema) e aviso fixo; no chat, três painéis
-  redimensionáveis (histórico, thread, citação), operáveis por teclado; abaixo de 768 px, o histórico
+- **App shell** com cabeçalho (marca, abas, busca da paleta, menu de idioma, tema e conta) e aviso
+  fixo; o menu de idioma (também no site e nas configurações) mantém a página, a query e a âncora.
+  No chat, três painéis redimensionáveis (histórico, thread, citação), operáveis por teclado; abaixo de 768 px, o histórico
   vira Sheet e a citação vira Drawer, sem desmontar a conversa.
 - **Data de referência:** chip fixo no composer ("Período de apuração: 03/2024"), month picker com
   alternância para data exata, presets (mês anterior, mês atual, último período fechado); enquanto o
@@ -218,8 +246,10 @@ Content-Security-Policy: default-src 'self'; script-src 'self' 'sha256-…'; sty
   `region_restricted` vira página de aviso (`/<locale>/sign-in/?error=region_restricted`).
 - **Conta:** entrada com GitHub, Google e passkey, com retorno (`callbackURL`) só para caminhos da
   própria origem; o cabeçalho e a paleta mostram a sessão (iniciais no lugar da foto, que a CSP
-  barraria); a `SessionGate` do grupo `(app)` manda quem está sem sessão para a entrada (guarda de
-  experiência) e abre o onboarding pendente, e `useSession().composerBlocked` trava o composer.
+  barraria); a `SessionGate` envolve o shell do grupo `(app)` (guarda de experiência): até saber a
+  sessão mostra a tela da marca (também no HTML estático), sem sessão vai direto para a entrada, com
+  o `/me` indisponível oferece "Tentar de novo" e abre o onboarding pendente; o app nunca pinta antes
+  de saber a sessão. `useSession().composerBlocked` trava o composer.
   Configurações com conta, cota do dia, passkeys, exportação (JSON), exclusão com confirmação
   digitada, tema, idioma e densidade.
 - **Teclado:** `Ctrl/⌘+K` paleta, `/` composer, `Ctrl/⌘+Enter` envia, `Esc` para ou fecha,

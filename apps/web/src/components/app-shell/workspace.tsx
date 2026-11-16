@@ -53,7 +53,7 @@ function SidePanel({ title, children }: SidePanelProps) {
     <section aria-labelledby={titleId} className="flex h-full min-h-0 flex-col bg-surface">
       <h2
         id={titleId}
-        className="shrink-0 px-4 pt-4 pb-2 font-medium text-muted-foreground text-sm"
+        className="shrink-0 px-4 pt-4 pb-2 font-semibold text-muted-foreground text-xs uppercase tracking-wider"
       >
         {title}
       </h2>
@@ -89,7 +89,7 @@ export function Workspace({
   return (
     <CloseHistoryContext value={closeHistory}>
       <div className="flex h-full min-h-0 flex-col">
-        <div className="flex shrink-0 items-center justify-between gap-2 border-b px-3 py-2 md:hidden">
+        <div className="flex shrink-0 items-center justify-between gap-2 border-b bg-surface px-3 py-2 md:hidden">
           <Sheet open={historyOpen && !isDesktop} onOpenChange={setHistoryOpen}>
             <SheetTrigger render={<Button variant="outline" size="sm" />}>
               <HistoryIcon aria-hidden="true" />

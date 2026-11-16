@@ -1,4 +1,5 @@
 import type { Locale } from '@teko/shared/i18n'
+import { buttonVariants } from '@/components/ui/button'
 import { localeHomePath, routing } from '@/lib/i18n/routing'
 
 interface LocaleLinksProps {
@@ -15,7 +16,7 @@ export function LocaleLinks({ labels }: LocaleLinksProps) {
             href={localeHomePath(locale)}
             hrefLang={locale}
             lang={locale}
-            className="inline-flex min-h-10 items-center rounded-md border border-border-strong px-5 font-medium hover:bg-surface"
+            className={buttonVariants({ variant: 'outline', size: 'lg' })}
           >
             {labels[locale]}
           </a>

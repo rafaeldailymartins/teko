@@ -75,17 +75,17 @@ export function CommandPalette() {
 
   return (
     <>
+      {/* No desktop, parece um campo de busca; no celular, só a lupa (o nome continua acessível). */}
       <Button
         variant="outline"
-        size="sm"
         onClick={() => setOpen(true)}
         aria-keyshortcuts="Control+K Meta+K"
         aria-haspopup="dialog"
-        className="text-muted-foreground"
+        className="justify-start gap-2 bg-background px-2.5 font-normal text-muted-foreground max-sm:w-9 max-sm:justify-center max-sm:px-0 sm:w-44 md:w-56 lg:w-64"
       >
         <SearchIcon aria-hidden="true" />
         <span className="sr-only sm:not-sr-only">{t('open')}</span>
-        <Kbd aria-hidden="true" className="hidden sm:inline-flex">
+        <Kbd aria-hidden="true" className="ml-auto hidden sm:inline-flex">
           {shortcut}
         </Kbd>
       </Button>

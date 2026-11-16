@@ -52,8 +52,20 @@ describe('buttonVariants', () => {
   it('estiliza um link como botão, com as variantes pedidas', () => {
     const classes = buttonVariants({ size: 'lg', variant: 'outline' })
     expect(classes).toContain('border-border-strong')
-    expect(classes).toContain('h-10')
+    expect(classes).toContain('h-11')
     expect(buttonVariants()).toContain('bg-primary text-primary-foreground')
+  })
+
+  it('a variante da marca usa o gradiente da logo, com texto claro', () => {
+    expect(buttonVariants({ variant: 'brand' })).toContain(
+      'bg-brand-gradient text-brand-foreground',
+    )
+  })
+
+  it('o foco é um anel sólido com recuo, em todas as variantes', () => {
+    for (const variant of ['default', 'brand', 'outline', 'ghost'] as const) {
+      expect(buttonVariants({ variant })).toContain('focus-visible:ring-ring')
+    }
   })
 })
 

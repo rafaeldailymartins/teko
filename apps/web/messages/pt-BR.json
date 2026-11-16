@@ -2,17 +2,34 @@
   "app": {
     "name": "Tekó",
     "tagline": "Legislação fiscal brasileira, na data certa",
-    "description": "Assistente de código aberto que responde dúvidas sobre legislação fiscal brasileira citando a fonte e a redação vigente na data de referência. Em construção."
+    "description": "Assistente de código aberto que responde dúvidas sobre legislação fiscal brasileira citando a fonte e a redação vigente na data de referência.",
+    "ogImageAlt": "Logo do Tekó: um T cuja barra é uma linha do tempo, com a data de referência em âmbar e folhas brotando da haste."
   },
   "common": {
     "skipToContent": "Pular para o conteúdo",
     "homeLink": "Tekó, página inicial",
-    "languageNav": "Idioma",
+    "language": {
+      "label": "Idioma",
+      "current": "Idioma: {language}"
+    },
+    "siteNav": "Navegação do site",
     "disclaimer": "Apoio à consulta; não constitui parecer.",
     "license": "Código aberto sob a licença MIT.",
     "sourceCode": "Código-fonte no GitHub",
     "close": "Fechar",
     "openApp": "Abrir o Tekó",
+    "menu": {
+      "open": "Abrir o menu",
+      "title": "Menu"
+    },
+    "footer": {
+      "product": "Produto",
+      "project": "Projeto",
+      "legal": "Legal",
+      "issues": "Reportar um problema",
+      "licenseLink": "Licença MIT",
+      "madeWith": "Feito com dados públicos e código aberto."
+    },
     "theme": {
       "label": "Tema",
       "light": "Claro",
@@ -40,6 +57,13 @@
       "resizeCitation": "Redimensionar a citação",
       "historyEmpty": "Suas conversas aparecem aqui, cada uma com a data de referência usada.",
       "citationEmpty": "Escolha uma citação na resposta para ver o dispositivo, a versão e o intervalo de vigência."
+    },
+    "gate": {
+      "loading": "Carregando o Tekó…",
+      "redirecting": "Levando você para a entrada…",
+      "unavailableTitle": "Não foi possível conferir a sua sessão",
+      "unavailableBody": "Confira a sua conexão e tente de novo. Se o problema continuar, o serviço pode estar fora do ar por alguns minutos.",
+      "retry": "Tentar de novo"
     }
   },
   "pages": {
@@ -47,7 +71,7 @@
       "title": "Conversa",
       "description": "Pergunte sobre legislação fiscal e receba a resposta com a redação vigente na sua data.",
       "emptyTitle": "Faça uma pergunta",
-      "emptyBody": "Informe o período de apuração e pergunte sobre a EFD ICMS/IPI, a EFD-Reinf ou a legislação do ICMS de Goiás. A conversa ainda está em construção."
+      "emptyBody": "Informe o período de apuração e pergunte sobre a EFD ICMS/IPI, a EFD-Reinf ou a legislação do ICMS de Goiás."
     },
     "history": {
       "title": "Histórico",
@@ -87,7 +111,7 @@
     }
   },
   "landing": {
-    "status": "Em construção",
+    "badge": "Código aberto e gratuito",
     "title": "Legislação fiscal, na redação que valia na sua data.",
     "lead": "O Tekó é um assistente de código aberto para dúvidas sobre legislação fiscal brasileira. Cada resposta é dada para um período de apuração ou data de referência e cita o dispositivo e a versão usados.",
     "cta": {

@@ -5,6 +5,7 @@ import { NextIntlClientProvider } from 'next-intl'
 import type { AnchorHTMLAttributes, ReactNode } from 'react'
 import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
+import { renderToString } from 'react-dom/server'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Providers } from '@/components/providers'
 import { ApiError } from '@/lib/api/errors'
@@ -222,19 +223,71 @@ describe('SignInPanel', () => {
   })
 })
 
+/** O conteúdo do app que a guarda envolve. */
+const APP = <p id="app">conteúdo do app</p>
+
+/** Texto da tela da marca (o `role="status"`), ou `null` sem ela. */
+function brandScreenStatus(): string | null {
+  return document.querySelector('main [role="status"]')?.textContent ?? null
+}
+
 describe('SessionGate', () => {
-  it('sem sessão, manda para a entrada com o retorno à página atual', async () => {
+  it('sem sessão, manda para a entrada com o retorno, sem pintar o app', async () => {
     api.on('GET /api/v1/me', () => problem(401, 'unauthenticated'))
     window.history.replaceState(null, '', '/pt-BR/chat/?q=abc')
-    await render(<SessionGate />)
+    await render(<SessionGate>{APP}</SessionGate>)
     expect(navigation.replace).toHaveBeenCalledWith(
       '/pt-BR/sign-in/?callbackURL=%2Fpt-BR%2Fchat%2F%3Fq%3Dabc',
     )
+    expect(document.getElementById('app')).toBeNull()
+    expect(brandScreenStatus()).toBe(ptBR.shell.gate.redirecting)
   })
 
-  it('com o onboarding pronto, não mostra nada', async () => {
+  it('enquanto o /me carrega, mostra a tela da marca e não o app', async () => {
+    let answer: (response: Response) => void = () => {}
+    api.on('GET /api/v1/me', () => new Promise<Response>((resolve) => (answer = resolve)))
+    await render(<SessionGate>{APP}</SessionGate>)
+    expect(document.getElementById('app')).toBeNull()
+    expect(brandScreenStatus()).toBe(ptBR.shell.gate.loading)
+    expect(document.querySelector('main')?.getAttribute('aria-busy')).toBe('true')
+
+    await act(async () => answer(Response.json(ME)))
+    await settle()
+    expect(document.getElementById('app')).not.toBeNull()
+    expect(brandScreenStatus()).toBeNull()
+  })
+
+  it('no HTML do servidor (sem /me), só a tela da marca', () => {
+    const html = renderToString(
+      <NextIntlClientProvider locale="pt-BR" messages={ptBR} timeZone="America/Sao_Paulo">
+        <Providers>
+          <SessionGate>{APP}</SessionGate>
+        </Providers>
+      </NextIntlClientProvider>,
+    )
+    expect(html).not.toContain('conteúdo do app')
+    expect(html).toContain(ptBR.shell.gate.loading)
+  })
+
+  it('/me indisponível mostra o erro com "Tentar de novo", que volta a consultar', async () => {
+    let failures = 0
+    api.on('GET /api/v1/me', () => {
+      failures++
+      return failures === 1 ? problem(400, 'validation_error') : Response.json(ME)
+    })
+    await render(<SessionGate>{APP}</SessionGate>)
+    expect(document.querySelector('h1')?.textContent).toBe(ptBR.shell.gate.unavailableTitle)
+    expect(document.getElementById('app')).toBeNull()
+
+    await click(button(ptBR.shell.gate.retry))
+    await settle()
+    expect(document.getElementById('app')).not.toBeNull()
+  })
+
+  it('com o onboarding pronto, mostra o app sem diálogo', async () => {
     api.on('GET /api/v1/me', ME)
-    await render(<SessionGate />)
+    await render(<SessionGate>{APP}</SessionGate>)
+    expect(document.getElementById('app')).not.toBeNull()
     expect(document.querySelector('[role="dialog"]')).toBeNull()
     expect(navigation.replace).not.toHaveBeenCalled()
   })
@@ -246,7 +299,7 @@ describe('SessionGate', () => {
     }
     api.on('GET /api/v1/me', pending)
     api.on('POST /api/v1/me/onboarding', ME)
-    await render(<SessionGate />)
+    await render(<SessionGate>{APP}</SessionGate>)
     const dialog = await waitForElement('[role="dialog"]')
     expect(dialog?.textContent).toContain(ptBR.onboarding.title)
     expect(dialog?.textContent).toContain(ptBR.onboarding.training.title)
@@ -289,7 +342,7 @@ describe('SessionGate', () => {
       onboarding: { ...ME.onboarding, required: true, currentTermsVersion: '2027-01-01' },
     })
     api.on('POST /api/v1/me/onboarding', () => problem(400, 'validation_error'))
-    await render(<SessionGate />)
+    await render(<SessionGate>{APP}</SessionGate>)
     expect((await waitForElement('[role="dialog"]'))?.textContent).toContain(
       ptBR.onboarding.titleTermsUpdate,
     )
@@ -307,7 +360,7 @@ describe('SessionGate', () => {
   it('nas configurações o onboarding pendente não bloqueia', async () => {
     navigation.pathname = '/pt-BR/settings/'
     api.on('GET /api/v1/me', { ...ME, onboarding: { ...ME.onboarding, required: true } })
-    await render(<SessionGate />)
+    await render(<SessionGate>{APP}</SessionGate>)
     expect(document.querySelector('[role="dialog"]')).toBeNull()
   })
 
@@ -315,7 +368,7 @@ describe('SessionGate', () => {
     api.on('GET /api/v1/me', ME)
     await render(
       <>
-        <SessionGate />
+        <SessionGate>{APP}</SessionGate>
         <AskRestricted />
       </>,
     )

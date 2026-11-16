@@ -1,5 +1,6 @@
 import type { NextConfig } from 'next'
 import createNextIntlPlugin from 'next-intl/plugin'
+import { devRootRedirects } from './src/lib/i18n/root-locale.ts'
 
 /**
  * Next.js em export estático puro (`output: 'export'`): o build gera só HTML, CSS, JS e fontes em
@@ -42,6 +43,9 @@ const nextConfig: NextConfig = {
         rewrites: async () => [
           { source: '/api/:path*', destination: `${DEV_API_ORIGIN}/api/:path*` },
         ],
+        // A raiz escolhe o idioma pelo `Accept-Language`, como as rotas de produção; sem isto o
+        // `next dev` mostraria a página de entrada estática de `/`.
+        redirects: async () => devRootRedirects(),
       }
     : { output: 'export' }),
   trailingSlash: true,

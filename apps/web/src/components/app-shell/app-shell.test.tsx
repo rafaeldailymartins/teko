@@ -116,13 +116,29 @@ afterEach(async () => {
 })
 
 describe('AppHeader', () => {
-  it('marca a página atual na navegação principal e troca o idioma mantendo a página', async () => {
+  it('marca a página atual na navegação principal', async () => {
     await render(<AppHeader />)
     const nav = document.querySelector('nav[aria-label="Navegação principal"]')
     const current = nav?.querySelector('[aria-current="page"]')
     expect(current?.getAttribute('href')).toBe('/pt-BR/chat/')
     expect(nav?.querySelectorAll('[aria-current]')).toHaveLength(1)
-    expect(document.querySelector('a[hreflang="en"]')?.getAttribute('href')).toBe('/en/chat/')
+  })
+
+  it('o menu de idioma leva à mesma página no outro idioma, com a query e a âncora', async () => {
+    window.history.replaceState(null, '', '/pt-BR/chat/?c=abc&ref=2024-03#fim')
+    await render(<AppHeader />)
+    expect(document.querySelector('a[hreflang="en"]')).toBeNull()
+
+    await click(document.querySelector('button[aria-label="Idioma"]'))
+    const english = document.querySelector('[role="menuitem"][hreflang="en"]')
+    expect(english?.tagName).toBe('A')
+    expect(english?.getAttribute('href')).toBe('/en/chat/?c=abc&ref=2024-03#fim')
+    expect(english?.getAttribute('lang')).toBe('en')
+    expect(english?.textContent).toContain('English')
+    const current = document.querySelector('[role="menuitem"][aria-current="true"]')
+    expect(current?.textContent).toBe('Português')
+    expect(current?.hasAttribute('href')).toBe(false)
+    window.history.replaceState(null, '', '/')
   })
 
   it('abre a paleta com Ctrl+K e navega para a página escolhida', async () => {

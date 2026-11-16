@@ -222,6 +222,9 @@ shell e build), telas (chat, histórico, autenticação, legais e consentimento)
   14 telas em en/pt-BR, claro/escuro, desktop/mobile), correções do nome acessível do botão da conta
   e do `h1` do chat, e a [prova do DoD da F5](evals/dod-f5-2026-11-15.md) item por item (sete
   jornadas, bundle em 416,4 KiB gz).
+- `redesign-brand-and-shell` (redesign, onda 1, arquivada em 2026-11-16): paleta da logo nos tokens,
+  `TekoLogo`, ícones e Open Graph, cabeçalhos e rodapé novos, menu de idioma com a query, raiz sem
+  tela de idioma, app só com a sessão pronta e fim do "em construção"; bundle em 433,9 KiB gz.
 
 - **Orçamento de bundle (desvio aprovado em 2026-11-15):** o teto provisório de 400 KiB gz da onda 1
   não comportava as telas da F5 juntas; o mantenedor subiu o orçamento total para 500 KiB gz. A

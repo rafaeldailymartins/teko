@@ -40,10 +40,8 @@ test.describe('páginas', () => {
   test('o app shell mostra o aviso fixo e troca o idioma sem perder a página', async ({ page }) => {
     await page.goto('/pt-BR/settings/')
     await expect(page.getByText('Apoio à consulta; não constitui parecer.')).toBeInViewport()
-    await page
-      .getByRole('navigation', { name: 'Idioma' })
-      .getByRole('link', { name: 'English' })
-      .click()
+    await page.getByRole('banner').getByRole('button', { name: 'Idioma', exact: true }).click()
+    await page.getByRole('menuitem', { name: /English/ }).click()
     await expect(page).toHaveURL(/\/en\/settings\/$/)
   })
 

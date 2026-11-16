@@ -283,7 +283,7 @@ describe('SettingsView', () => {
     expect(browser.navigateTo).toHaveBeenCalledWith('/pt-BR/')
   })
 
-  it('as preferências trocam tema e densidade e linkam o outro idioma', async () => {
+  it('as preferências trocam tema e densidade e levam ao outro idioma pelo menu', async () => {
     await render()
     const preferences = section('preferences')
     const radio = (label: string) =>
@@ -298,7 +298,10 @@ describe('SettingsView', () => {
     expect(radio('Compacta')?.checked).toBe(true)
     await click(radio('Confortável'))
     expect(document.documentElement.hasAttribute(DENSITY_ATTRIBUTE)).toBe(false)
-    expect(preferences?.querySelector('a[hreflang="en"]')?.getAttribute('href')).toBe(
+    const languageButton = preferences?.querySelector('button[aria-label="Idioma: Português"]')
+    expect(languageButton?.textContent).toContain('Português')
+    await click(languageButton)
+    expect(document.querySelector('a[role="menuitem"][hreflang="en"]')?.getAttribute('href')).toBe(
       '/en/settings/',
     )
   })
