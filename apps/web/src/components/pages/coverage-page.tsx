@@ -7,8 +7,8 @@ import { type LocalePageProps, pageMetadata, resolvePageLocale } from './page-ro
 
 /**
  * Página de cobertura (`/[locale]/coverage/`): pública, fora do grupo `(app)` e sem sessão, com o
- * cabeçalho e o rodapé do site. O título e a introdução vão no HTML estático; a lista por família
- * vem de `GET /api/v1/coverage` no navegador (`CoverageView`).
+ * cabeçalho e o rodapé do site. O cabeçalho editorial (sobretítulo, título e introdução) vai no
+ * HTML estático; a lista por família vem de `GET /api/v1/coverage` no navegador (`CoverageView`).
  */
 export async function CoveragePage({ params }: LocalePageProps) {
   const locale = await resolvePageLocale(params)
@@ -18,13 +18,22 @@ export async function CoveragePage({ params }: LocalePageProps) {
     <>
       <SiteHeader locale={locale} />
       <main id={MAIN_CONTENT_ID} tabIndex={-1} className="focus:outline-none">
-        <div className="mx-auto flex w-full max-w-3xl flex-col gap-8 px-5 py-10 sm:py-14">
-          <header className="flex flex-col gap-3">
-            <h1 className="font-semibold font-serif text-3xl tracking-tight">{t('title')}</h1>
-            <p className="text-pretty text-muted-foreground leading-relaxed">
+        <header className="relative isolate overflow-hidden border-b bg-surface-gradient">
+          <div aria-hidden="true" className="absolute inset-0 -z-10 bg-brand-glow" />
+          <div className="mx-auto flex max-w-5xl flex-col gap-5 px-5 pt-14 pb-12 sm:pt-20 sm:pb-16">
+            <p className="flex items-center gap-3 font-medium font-mono text-primary text-xs uppercase tracking-[0.16em]">
+              <span aria-hidden="true" className="h-px w-8 bg-leaf" />
+              {tCoverage('eyebrow')}
+            </p>
+            <h1 className="font-semibold font-serif text-[2.5rem] leading-[1.08] tracking-tight sm:text-[3.4rem]">
+              {t('title')}
+            </h1>
+            <p className="max-w-2xl text-pretty font-serif text-muted-foreground text-xl leading-relaxed">
               {tCoverage('intro')}
             </p>
-          </header>
+          </div>
+        </header>
+        <div className="mx-auto w-full max-w-5xl px-5 py-12 sm:py-16">
           <CoverageView />
         </div>
       </main>

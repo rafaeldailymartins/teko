@@ -61,7 +61,7 @@ function CoverageBar({
   readonly scale: CoverageScale
 }) {
   return (
-    <div aria-hidden="true" className="relative h-2 w-full overflow-hidden rounded-full bg-muted">
+    <div aria-hidden="true" className="relative h-2.5 w-full overflow-hidden rounded-full bg-muted">
       {coverageSegments(covered, scale).map((segment) => (
         <span
           key={`${segment.kind}-${segment.start}`}
@@ -93,10 +93,10 @@ function FamilyCard({
       <article
         aria-labelledby={titleId}
         data-family={family.family}
-        className="flex flex-col gap-4 rounded-xl border bg-surface p-5"
+        className="flex h-full flex-col gap-4 rounded-xl border bg-popover p-6 shadow-soft transition-shadow duration-200 hover:shadow-raised"
       >
         <header className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-          <h3 id={titleId} className="font-semibold font-serif text-lg tracking-tight">
+          <h3 id={titleId} className="font-semibold font-serif text-xl tracking-tight">
             {key === null ? family.family : t(`families.${key}.name`)}
           </h3>
           <span className="font-mono text-muted-foreground text-xs">{family.family}</span>
@@ -228,8 +228,8 @@ export function CoverageView() {
   const latest = lastVerification(families)
   const scale = coverageScale(families)
   return (
-    <div className="flex flex-col gap-8">
-      <div className="flex flex-col gap-1 text-sm">
+    <div className="flex flex-col gap-10">
+      <div className="flex flex-col gap-1 rounded-xl border bg-surface px-5 py-4 text-sm">
         {latest !== null && (
           <p>
             {t('lastVerified', { date: formatIsoDate(locale, latest, 'numeric') })}{' '}
@@ -249,11 +249,12 @@ export function CoverageView() {
         >
           <h2
             id={`coverage-${group.jurisdiction}`}
-            className="font-semibold font-serif text-xl tracking-tight"
+            className="flex items-center gap-3 font-semibold font-serif text-2xl tracking-tight"
           >
+            <span aria-hidden="true" className="size-2.5 rounded-full bg-leaf" />
             {t(`jurisdiction.${group.jurisdiction}`)}
           </h2>
-          <ul className="flex flex-col gap-3">
+          <ul className="grid gap-4 lg:grid-cols-2">
             {group.families.map((family) => (
               <FamilyCard key={family.family} family={family} scale={scale} />
             ))}
