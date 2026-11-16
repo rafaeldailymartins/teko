@@ -3,6 +3,8 @@
  * catálogo em `chave.pontuada → valor` e comparam as chaves de dois idiomas.
  */
 
+import { compareCodeUnits } from '../scripts/lib/html.ts'
+
 type Catalog = Record<string, unknown>
 
 function isNamespace(value: unknown): value is Catalog {
@@ -35,7 +37,7 @@ export function diffCatalogKeys(reference: Catalog, other: Catalog): CatalogKeyD
   const referenceKeys = new Set(flattenCatalog(reference).keys())
   const otherKeys = new Set(flattenCatalog(other).keys())
   return {
-    missing: [...referenceKeys].filter((key) => !otherKeys.has(key)).sort(),
-    extra: [...otherKeys].filter((key) => !referenceKeys.has(key)).sort(),
+    missing: [...referenceKeys].filter((key) => !otherKeys.has(key)).sort(compareCodeUnits),
+    extra: [...otherKeys].filter((key) => !referenceKeys.has(key)).sort(compareCodeUnits),
   }
 }

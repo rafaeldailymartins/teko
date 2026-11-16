@@ -106,7 +106,7 @@ test.describe('com sessão', () => {
     await expect(
       page.getByRole('heading', { level: 2, name: ptBR.settings.quota.title }),
     ).toBeVisible()
-    await expect(page.getByText(/\d+ de \d+ perguntas hoje/)).toBeVisible()
+    await expect(page.getByText(/\b\d{1,6} de \d{1,6} perguntas hoje/)).toBeVisible()
     await expect(page.getByText(ptBR.settings.passkeys.empty)).toBeVisible()
     await page.waitForLoadState('networkidle')
     expect(await enforcedViolations(page)).toEqual([])

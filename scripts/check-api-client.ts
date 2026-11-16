@@ -12,6 +12,7 @@
 import { spawnSync } from 'node:child_process'
 import { join, resolve } from 'node:path'
 import process from 'node:process'
+import { findOnSafePath } from './lib/cli-guards.ts'
 
 const REPO_ROOT = resolve(import.meta.dirname, '..')
 const WEB_DIR = join(REPO_ROOT, 'apps', 'web')
@@ -61,8 +62,10 @@ function main(): number {
   if (!generated) {
     return 1
   }
+  // `git` pelo caminho absoluto num diretório seguro do PATH, nunca pelo nome (cli-guards).
+  const git = findOnSafePath('git')
   const status = spawnSync(
-    'git',
+    git,
     ['status', '--porcelain', '--untracked-files=all', '--', ...GENERATED_PATHS],
     { cwd: REPO_ROOT, encoding: 'utf8' },
   )
@@ -72,7 +75,7 @@ function main(): number {
   }
   const drift = driftedFiles(status.stdout)
   if (drift.length > 0) {
-    spawnSync('git', ['--no-pager', 'diff', '--stat', '--', ...GENERATED_PATHS], {
+    spawnSync(git, ['--no-pager', 'diff', '--stat', '--', ...GENERATED_PATHS], {
       cwd: REPO_ROOT,
       stdio: 'inherit',
     })

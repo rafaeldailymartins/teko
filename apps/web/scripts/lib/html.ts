@@ -3,6 +3,17 @@ import { join } from 'node:path'
 import { Parser } from 'htmlparser2'
 
 /**
+ * Comparador explícito para `sort`: ordem de unidade de código UTF-16 (a mesma do `sort()` sem
+ * argumento), independente de locale, para o manifesto e os hashes saírem iguais em toda máquina.
+ */
+export function compareCodeUnits(a: string, b: string): number {
+  if (a < b) {
+    return -1
+  }
+  return a > b ? 1 : 0
+}
+
+/**
  * Leitura do export estático (`apps/web/out`) para os passos de pós-build: a árvore de arquivos e,
  * de cada HTML, o conteúdo dos `<script>` e `<style>` inline (que entram na CSP por hash) e os
  * scripts externos que a página carrega no primeiro acesso (que entram no orçamento de bundle).
@@ -104,7 +115,7 @@ export function parseDocument(html: string): ParsedDocument {
  */
 export function listFiles(root: string, relative = ''): string[] {
   const files: string[] = []
-  for (const name of readdirSync(join(root, relative)).sort()) {
+  for (const name of readdirSync(join(root, relative)).sort(compareCodeUnits)) {
     const path = relative === '' ? name : `${relative}/${name}`
     const stat = lstatSync(join(root, path))
     if (stat.isSymbolicLink()) {
