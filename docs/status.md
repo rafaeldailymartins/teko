@@ -13,7 +13,7 @@ no [roteiro](roadmap.md); o desenho, em [`architecture/`](architecture/README.md
 | F3 ingestão C1 e C2, embeddings e watch | fechada em 2026-11-13                        |
 | Revisão antes da F4                     | concluída em 2026-11-13                      |
 | F4 API completa                         | concluída em 2026-11-14                      |
-| F5 frontend completo                    | em andamento                                 |
+| F5 frontend completo                    | concluída em 2026-11-15                      |
 | F6 em diante                            | a fazer                                      |
 
 ## F0: contas e governança
@@ -173,9 +173,15 @@ a primário, com o Flash de reserva, e o breaker do 429 distingue a cota diária
 
 O que o deploy exige do mantenedor está em [Antes da F7](#antes-da-f7-o-que-o-mantenedor-faz).
 
-## F5: frontend completo (em andamento)
+## F5: frontend completo
 
-- `add-web-data-layer`: OpenAPI versionado em `apps/web/openapi.json` (exportado pela CLI da API,
+Concluída em 2026-11-15 (PRs #100 a #108), em três ondas de agentes em paralelo: fundação (dados,
+shell e build), telas (chat, histórico, autenticação, legais e consentimento) e fechamento
+(cobertura, painel de citação, axe e prova do DoD). O DoD está provado item por item no
+[registro](evals/dod-f5-2026-11-15.md), e as decisões que valem para as próximas fases estão na
+[ADR 0035](adr/0035-front-da-f5.md).
+
+- `add-web-data-layer` (arquivada em 2026-11-15): OpenAPI versionado em `apps/web/openapi.json` (exportado pela CLI da API,
   sem servidor nem banco), cliente `@hey-api/openapi-ts` com gate de drift (`pnpm api:check`, no
   `verify` e no job `lint`), TanStack Query, `ApiError` a partir de Problem Details, parsers do nuqs
   (`q`, `c`, `ref`) e hooks de leitura. O item "cliente gerado sem drift" do DoD fica coberto pelo
@@ -184,6 +190,11 @@ O que o deploy exige do mantenedor está em [Antes da F7](#antes-da-f7-o-que-o-m
   copiados do registry, tokens OKLCH novos no teste de contraste, seletor de tema, Geist Mono, app
   shell no grupo `(app)` com paleta `Ctrl/⌘+K` e aviso fixo, área de trabalho do chat em três
   painéis (Sheet e Drawer abaixo de 768 px), páginas-esqueleto nos dois locales e a landing revista.
+- `add-web-build-security` (arquivada em 2026-11-15): guard de estático puro no build, CSP por
+  documento com hash dos inline (Vercel, Plano B e Caddy da stack de CI), redirect da raiz por
+  `Accept-Language` e 404 por locale, orçamento de bundle total e o e2e `platform.spec.ts`. Na
+  integração, o Zod passou a rodar sem JIT no navegador (`instrumentation-client.ts`), porque o
+  teste de `new Function` dele violava a CSP.
 - `add-history-and-provisions` (arquivada em 2026-11-15): `GET /api/v1/conversations` (cursor com
   microssegundos), histórico no painel do chat e em `/history/`, página de dispositivo com badge de
   vigência, linha do tempo e "O que mudou" sob demanda, busca de dispositivos, comparação entre
@@ -211,6 +222,14 @@ O que o deploy exige do mantenedor está em [Antes da F7](#antes-da-f7-o-que-o-m
   14 telas em en/pt-BR, claro/escuro, desktop/mobile), correções do nome acessível do botão da conta
   e do `h1` do chat, e a [prova do DoD da F5](evals/dod-f5-2026-11-15.md) item por item (sete
   jornadas, bundle em 416,4 KiB gz).
+
+- **Orçamento de bundle (desvio aprovado em 2026-11-15):** o teto provisório de 400 KiB gz da onda 1
+  não comportava as telas da F5 juntas; o mantenedor subiu o orçamento total para 500 KiB gz. A
+  medição no fechamento é de 416,4 KiB gz.
+
+Pendência do mantenedor: revisar os textos de `/privacy` e `/terms` (a lista de pontos está no
+PR #103: encarregado, bases legais, transferência internacional, canal dos titulares, cláusulas de
+garantia diante do CDC, foro e datas das versões). A F6 atualiza a política quando ligar o PostHog.
 
 ## Antes da F7: o que o mantenedor faz
 
