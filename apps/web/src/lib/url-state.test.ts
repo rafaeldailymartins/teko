@@ -57,6 +57,9 @@ describe('dispositivo e comparação', () => {
 
   it('links do chat, do dispositivo e da comparação', () => {
     expect(chatConversationHref('pt-BR', QUESTION_ID)).toBe(`/pt-BR/chat/?c=${QUESTION_ID}`)
+    expect(chatConversationHref('pt-BR', QUESTION_ID, { periodoApuracao: '2008-05' })).toBe(
+      `/pt-BR/chat/?c=${QUESTION_ID}&ref=2008-05`,
+    )
     expect(newConversationHref('pt-BR', null)).toBe('/pt-BR/chat/')
     expect(newConversationHref('en', { periodoApuracao: '2008-05' })).toBe('/en/chat/?ref=2008-05')
     expect(provisionHref('en', KEY)).toBe(`/en/provision/?k=${KEY}`)

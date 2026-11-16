@@ -97,7 +97,11 @@ function ConversationItem({
   return (
     <li className="group/row relative">
       <Link
-        href={chatConversationHref(locale, conversation.conversationId) as Route}
+        href={
+          chatConversationHref(locale, conversation.conversationId, {
+            periodoApuracao: periodoApuracaoOf(conversation.lastReferenceDate),
+          }) as Route
+        }
         onClick={onOpen}
         aria-current={current ? 'page' : undefined}
         {...{ [CONVERSATION_LINK_ATTRIBUTE]: conversation.conversationId }}

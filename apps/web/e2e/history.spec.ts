@@ -52,14 +52,15 @@ test.describe('histórico', () => {
     await recordViolations(page)
     await signInWithTestSession(context, baseURL)
     await page.goto('/pt-BR/history/')
-    const href = `/pt-BR/chat/?c=${conversationId}`
+    // O link leva a data da última pergunta, para o composer reabrir nela.
+    const href = `/pt-BR/chat/?c=${conversationId}&ref=2008-05`
     const item = page.locator('main').locator(`a[href="${href}"]`)
     await expect(item).toBeVisible()
     await expect(item).toContainText('Ref. 05/2008')
     await expect(item).toContainText('Qual valor mínimo aplicado no GOYAZES')
 
     await item.click()
-    await expect(page).toHaveURL(new RegExp(`/pt-BR/chat/\\?c=${conversationId}$`))
+    await expect(page).toHaveURL(new RegExp(`/pt-BR/chat/\\?c=${conversationId}&ref=2008-05$`))
     // A conversa abre com a pergunta e a resposta gravadas, sem a abertura do chat vazio.
     await expect(page.locator('[data-message-role="user"]').first()).toContainText(
       'Qual valor mínimo aplicado no GOYAZES',
@@ -117,7 +118,7 @@ test.describe('histórico', () => {
     /** Abre o "⋯" da conversa, escolhe "Excluir conversa" e confirma no diálogo. */
     const deleteFrom = async (scope: ReturnType<typeof page.locator>, conversationId: string) => {
       const row = scope.locator('li', {
-        has: page.locator(`a[href="/pt-BR/chat/?c=${conversationId}"]`),
+        has: page.locator(`a[href^="/pt-BR/chat/?c=${conversationId}"]`),
       })
       await row.hover()
       await row.getByRole('button', { name: /^Ações da conversa/ }).click()
@@ -132,9 +133,9 @@ test.describe('histórico', () => {
     // Pela página do histórico: a conversa some e o aviso confirma.
     await page.goto('/pt-BR/history/')
     const main = page.locator('main')
-    await expect(main.locator(`a[href="/pt-BR/chat/?c=${fromList}"]`)).toBeVisible()
+    await expect(main.locator(`a[href^="/pt-BR/chat/?c=${fromList}"]`)).toBeVisible()
     // Cancelar não apaga nada e devolve o foco ao "⋯".
-    const row = main.locator('li', { has: page.locator(`a[href="/pt-BR/chat/?c=${fromList}"]`) })
+    const row = main.locator('li', { has: page.locator(`a[href^="/pt-BR/chat/?c=${fromList}"]`) })
     await row.hover()
     const trigger = row.getByRole('button', { name: /^Ações da conversa/ })
     await trigger.click()
@@ -144,11 +145,11 @@ test.describe('histórico', () => {
     await expect(trigger).toBeFocused()
 
     await deleteFrom(main, fromList)
-    await expect(main.locator(`a[href="/pt-BR/chat/?c=${fromList}"]`)).toHaveCount(0)
+    await expect(main.locator(`a[href^="/pt-BR/chat/?c=${fromList}"]`)).toHaveCount(0)
     await expect(page.getByText('Conversa excluída.')).toBeVisible()
     // O foco vai para uma conversa vizinha.
     await expect(page.locator(':focus')).toHaveAttribute('data-conversation-link', /.+/)
-    await expect(main.locator(`a[href="/pt-BR/chat/?c=${open}"]`)).toBeVisible()
+    await expect(main.locator(`a[href^="/pt-BR/chat/?c=${open}"]`)).toBeVisible()
 
     // A conversa aberta, pelo painel do chat (no celular, no Sheet do histórico).
     await page.goto(`/pt-BR/chat/?c=${open}&ref=2008-05`)
@@ -161,7 +162,7 @@ test.describe('histórico', () => {
     }
     await deleteFrom(panel, open)
     await expect(page).toHaveURL(/\/pt-BR\/chat\/\?ref=2008-05$/)
-    await expect(panel.locator(`a[href="/pt-BR/chat/?c=${open}"]`)).toHaveCount(0)
+    await expect(panel.locator(`a[href^="/pt-BR/chat/?c=${open}"]`)).toHaveCount(0)
     if (isMobile) {
       await page.keyboard.press('Escape')
     }

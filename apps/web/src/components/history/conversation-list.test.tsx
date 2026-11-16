@@ -75,8 +75,8 @@ describe('ConversationList', () => {
     })
     const links = [...rendered.container.querySelectorAll('nav a')]
     expect(links.map((link) => link.getAttribute('href'))).toEqual([
-      `/pt-BR/chat/?c=${FIRST}`,
-      `/pt-BR/chat/?c=${SECOND}`,
+      `/pt-BR/chat/?c=${FIRST}&ref=2008-05`,
+      `/pt-BR/chat/?c=${SECOND}&ref=2008-05`,
       '/pt-BR/history/',
     ])
     expect(links[1]?.getAttribute('aria-current')).toBe('page')
