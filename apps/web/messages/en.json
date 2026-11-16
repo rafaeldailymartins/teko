@@ -770,7 +770,6 @@
     "since": "since {from}",
     "until": "until {to}",
     "always": "no date limits",
-    "legend": "Bar legend",
     "legendCovered": "Covered",
     "legendGap": "Gap",
     "scale": "Scale from {from} to {to}",

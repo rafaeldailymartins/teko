@@ -770,7 +770,6 @@
     "since": "desde {from}",
     "until": "até {to}",
     "always": "sem limite de datas",
-    "legend": "Legenda das barras",
     "legendCovered": "Coberto",
     "legendGap": "Lacuna",
     "scale": "Escala de {from} a {to}",
