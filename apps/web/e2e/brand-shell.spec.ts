@@ -47,7 +47,8 @@ test.describe('guarda de sessão sem flash', () => {
   test('com sessão, o app aparece depois da tela da marca', async ({ page, context, baseURL }) => {
     await signInWithTestSession(context, baseURL)
     await page.goto('/pt-BR/history/')
-    await expect(page.getByRole('navigation', { name: ptBR.shell.mainNav })).toBeVisible()
+    // O menu da conta está no cabeçalho em qualquer largura (a navegação principal some no celular).
+    await expect(page.getByRole('banner').getByRole('button', { name: /Conta de / })).toBeVisible()
     await expect(page.getByText(ptBR.shell.gate.loading)).toBeHidden()
   })
 

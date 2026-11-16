@@ -61,20 +61,19 @@ test.describe('histórico', () => {
 
     await item.click()
     await expect(page).toHaveURL(new RegExp(`/pt-BR/chat/\\?c=${conversationId}&ref=2008-05$`))
-    // A conversa abre com a pergunta e a resposta gravadas, sem a abertura do chat vazio.
+    // A conversa abre com a pergunta gravada, sem a abertura do chat vazio, e o composer na data
+    // dela. Só o POST não roda o stream: a pergunta fica `pending`, sem resposta para mostrar.
     await expect(page.locator('[data-message-role="user"]').first()).toContainText(
       'Qual valor mínimo aplicado no GOYAZES',
     )
-    await expect(
-      page.locator('article[data-message-role="assistant"] [data-reference-date]').first(),
-    ).toHaveAttribute('data-reference-date', '2008-05-01')
+    await expect(page.locator('[data-reference-chip]')).toContainText('05/2008')
     await expect(page.locator('[data-chat-welcome]')).toHaveCount(0)
     if (!isMobile) {
       // No desktop o painel de histórico do chat marca a conversa aberta.
       await expect(page.locator(`a[href="${href}"][aria-current="page"]`)).toBeVisible()
-      // "Nova conversa" volta ao chat vazio.
+      // "Nova conversa" volta ao chat vazio, na mesma data.
       await page.getByRole('link', { name: 'Nova conversa' }).click()
-      await expect(page).toHaveURL(/\/pt-BR\/chat\/$/)
+      await expect(page).toHaveURL(/\/pt-BR\/chat\/\?ref=2008-05$/)
       await expect(page.locator('[data-chat-welcome]')).toBeVisible()
     }
     await page.waitForLoadState('networkidle')
@@ -166,7 +165,9 @@ test.describe('histórico', () => {
     if (isMobile) {
       await page.keyboard.press('Escape')
     }
-    await expect(page.locator('[data-welcome-date]')).toBeVisible()
+    // De volta ao chat vazio, na mesma data.
+    await expect(page.locator('[data-chat-welcome]')).toBeVisible()
+    await expect(page.locator('[data-reference-chip]')).toContainText('05/2008')
 
     const list = await request.get<unknown>('/api/v1/conversations', {
       headers: { cookie: sessionCookie() },

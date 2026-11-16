@@ -69,6 +69,8 @@ test.describe('páginas', () => {
 test.describe('paleta e tema', () => {
   test('Ctrl+K abre a paleta, que navega para a página escolhida', async ({ page }) => {
     await page.goto('/pt-BR/chat/')
+    // O shell (e o atalho) só monta depois da tela da marca, quando a sessão é conferida.
+    await expect(page.getByRole('banner').getByRole('button', { name: 'Buscar' })).toBeVisible()
     await page.keyboard.press('Control+K')
     const dialog = page.getByRole('dialog', { name: 'Paleta de comandos' })
     await expect(dialog).toBeVisible()
@@ -129,7 +131,7 @@ test.describe('área de trabalho do chat', () => {
     await page.goto('/pt-BR/chat/')
     await page
       .getByRole('banner')
-      .getByRole('button', { name: /^.. Conta de / })
+      .getByRole('button', { name: /Conta de / })
       .click()
     await page.getByRole('menuitem', { name: 'Preferências de cookies' }).click()
     await expect(page.getByRole('dialog', { name: 'Preferências de cookies' })).toBeVisible()
