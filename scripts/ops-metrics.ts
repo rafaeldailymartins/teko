@@ -356,6 +356,8 @@ export async function run(
   return { code: failures.length === 0 ? 0 : 1, summary }
 }
 
+const JOB_NAME = /^[a-z][a-z0-9-]{0,39}$/u
+
 async function main(): Promise<number> {
   const { values } = parseArgs({
     options: {
@@ -364,9 +366,14 @@ async function main(): Promise<number> {
     },
     strict: true,
   })
+  // O nome do job vai para o log, o resumo e o label: só um identificador curto passa.
+  const job = values.job
+  if (!JOB_NAME.test(job)) {
+    throw new RangeError('--job precisa ser um nome curto em minúsculas (ex.: quotas)')
+  }
   const { code, summary } = await run(
     { env: process.env, now: new Date(), fetch, log: (line) => console.log(line) },
-    { dryRun: values['dry-run'], job: values.job },
+    { dryRun: values['dry-run'], job },
   )
   const summaryFile = process.env['GITHUB_STEP_SUMMARY']
   if (summaryFile) {

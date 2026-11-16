@@ -100,7 +100,11 @@ export async function pushMetrics(
   payload: unknown,
   doFetch: typeof fetch = fetch,
 ): Promise<void> {
-  const url = new URL(`${target.endpoint.replace(/\/+$/u, '')}/v1/metrics`)
+  let base = target.endpoint
+  while (base.endsWith('/')) {
+    base = base.slice(0, -1)
+  }
+  const url = new URL(`${base}/v1/metrics`)
   if (url.protocol !== 'https:') {
     throw new RangeError('o endpoint OTLP precisa ser https')
   }
