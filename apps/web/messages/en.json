@@ -112,39 +112,74 @@
   },
   "landing": {
     "badge": "Open source and free",
-    "title": "Tax law, in the wording that applied on your date.",
+    "title": "Tax law, in the wording that applied <date>on your date</date>.",
     "lead": "Tekó is an open-source assistant for questions about Brazilian tax law. Every answer is given for a tax period or reference date and cites the provision and the version it used.",
     "cta": {
-      "ask": "Ask a question",
+      "open": "Open Tekó",
       "coverage": "See the coverage"
     },
+    "proof": {
+      "official": "Versioned official sources",
+      "cited": "A citation for every statement",
+      "license": "MIT license"
+    },
     "demo": {
-      "label": "Illustrative sample answer",
-      "referenceDate": "Tax period: 05/2008",
-      "question": "What did art. 76, § 6, of the RCTE say in my tax period?",
-      "answer": "The answer uses the wording in force in 05/2008 and tags every statement with the citation it came from.",
+      "caption": "Illustrative example with a real case from the Goiás RCTE.",
+      "title": "Tekó",
+      "subtitle": "New conversation · Goiás RCTE",
+      "question": "What does art. 76, § 6, of the RCTE say?",
+      "placeholder": "Ask about tax law…",
+      "chooseDate": "Reference date",
+      "chip": "Period {value}",
+      "thinking": "Searching the corpus on the chosen date…",
+      "validAt": "In force in {value}",
       "citation": "RCTE, art. 76, § 6",
-      "citationNote": "wording in force in 05/2008",
-      "changed": "For 01/2010 the wording is different: the answer, the citation and the interval change together."
+      "pause": "Pause the demo",
+      "play": "Resume the demo",
+      "answers": {
+        "before": "In {period}, the wording of Decreto nº 6.026/2004 applied: if the taxpayer invested R$ 40,000.00 or more in the GOYAZES or PROESPORTE programs individually, the Secretary of Finance could, after an individual review, set payment deadlines other than those in item VI.",
+        "after": "In {period}, § 6 had already been repealed by Decreto nº 7.028/2009, effective {revokedOn}: the rule on other deadlines for investments in GOYAZES or PROESPORTE no longer exists in this paragraph."
+      },
+      "summary": "Animated demo: someone asks what art. 76, § 6, of the <ptBR>Regulamento do Código Tributário do Estado de Goiás</ptBR> says. For the tax period {before}, Tekó answers with the wording in force from {beforeRange}: the Secretary of Finance could set other payment deadlines for taxpayers who invested R$ 40,000.00 or more in the GOYAZES or PROESPORTE programs. For {after}, the same question gets a different answer: the paragraph was repealed on {revokedOn}. Each answer cites the provision and its validity interval."
+    },
+    "timeline": {
+      "caption": "RCTE, art. 76, § 6, over time",
+      "added": "Added",
+      "amended": "New wording",
+      "revoked": "Repealed"
     },
     "howItWorks": {
-      "title": "How it works",
+      "eyebrow": "How it works",
+      "title": "From the date to the source, in three steps",
+      "lead": "Tekó does not answer \"in general\": it answers for a date, with the wording of that date, and shows where every sentence came from.",
       "referenceDate": {
         "title": "Reference date first",
-        "body": "You set the tax period (for example, 03/2024) and the answer uses the wording in force at that time. If the rule changed within the period, Tekó tells you."
+        "body": "You set the tax period (for example, 03/2024) and the answer uses the wording in force at that time. If the rule changed within the period, Tekó tells you.",
+        "sample": "Period 03/2024"
       },
       "citations": {
         "title": "Verifiable citations",
-        "body": "Every statement points to the provision, version and validity interval it relied on, with a link to the official source."
+        "body": "Every statement points to the provision, version and validity interval it relied on, with a link to the official source.",
+        "sample": "RCTE, art. 76, § 6"
       },
       "coverage": {
         "title": "Declared coverage",
-        "body": "Tekó tells you which laws and periods it covers. Outside that coverage, it declines to answer instead of guessing."
+        "body": "Tekó tells you which laws and periods it covers. Outside that coverage, it declines to answer instead of guessing.",
+        "sample": "Out of coverage: declined, with the reason"
       }
     },
     "corpus": {
+      "eyebrow": "Sources",
       "title": "Covered corpus",
       "lead": "Official sources, versioned and checked regularly against the official websites.",
+      "rulerCaption": "Approximate start of each source in the corpus, up to the latest check. The exact dates and the gaps are on the coverage page.",
+      "seeCoverage": "See the exact coverage",
+      "since": "since {year}",
+      "today": "today",
+      "jurisdiction": {
+        "BR": "Federal",
+        "GO": "Goiás"
+      },
       "efdIcmsIpi": {
         "name": "EFD ICMS/IPI",
         "body": "The Digital Tax Bookkeeping practical guide and its technical notes."
@@ -167,7 +202,9 @@
       }
     },
     "guarantees": {
+      "eyebrow": "Commitments",
       "title": "Guarantees",
+      "lead": "What holds for every answer, without exception.",
       "sources": {
         "title": "Nothing without a source",
         "body": "Every statement in the answer points to a passage of the corpus. Without a passage to back it, it stays out."
@@ -186,7 +223,10 @@
       }
     },
     "faq": {
+      "eyebrow": "Questions",
       "title": "Frequently asked questions",
+      "lead": "The essentials before your first question.",
+      "more": "Anything else? <issues>Ask on GitHub</issues>.",
       "advice": {
         "question": "Does Tekó replace an accountant or a lawyer?",
         "answer": "No. It is a research aid and not professional advice. Always check the cited source before deciding."
@@ -203,6 +243,11 @@
         "question": "What happens to my questions?",
         "answer": "Questions go through a free AI provider, which may use them to improve its own models. Do not include personal data or confidential information."
       }
+    },
+    "finalCta": {
+      "title": "Ask with the right date.",
+      "body": "Choose the tax period, ask your question and check the source of every statement.",
+      "source": "See the source code"
     }
   },
   "gateway": {
@@ -210,9 +255,12 @@
     "continue": "Continue in English"
   },
   "notFound": {
+    "eyebrow": "Error 404",
     "title": "Page not found",
     "description": "This page does not exist or has moved.",
-    "backHome": "Back to the home page"
+    "timeline": "This date is not on the timeline.",
+    "backHome": "Back to the home page",
+    "coverage": "See the coverage"
   },
   "auth": {
     "signIn": {
@@ -353,6 +401,8 @@
     "internal": "Something went wrong. Please try again."
   },
   "legal": {
+    "eyebrow": "Legal document",
+    "backToTop": "Back to top",
     "toc": "On this page",
     "updated": "Version {version} · last updated {date}",
     "inForce": "Version {version} · in force since {date}",
@@ -474,6 +524,7 @@
     }
   },
   "about": {
+    "eyebrow": "The project",
     "title": "About Tekó",
     "lead": "Tekó is an open-source assistant for questions about Brazilian tax law. Every answer applies to a date: the tax period you set.",
     "sections": {
@@ -771,6 +822,7 @@
     }
   },
   "coverage": {
+    "eyebrow": "Sources and periods",
     "intro": "Tekó only answers from the sources below, within the periods in which they were collected and checked. Outside them, the question is declined instead of answered by guesswork.",
     "lastVerified": "Sources last checked on {date}.",
     "corpusVersion": "Corpus version: {version}",

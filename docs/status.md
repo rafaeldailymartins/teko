@@ -225,6 +225,10 @@ shell e build), telas (chat, histórico, autenticação, legais e consentimento)
 - `redesign-brand-and-shell` (redesign, onda 1, arquivada em 2026-11-16): paleta da logo nos tokens,
   `TekoLogo`, ícones e Open Graph, cabeçalhos e rodapé novos, menu de idioma com a query, raiz sem
   tela de idioma, app só com a sessão pronta e fim do "em construção"; bundle em 433,9 KiB gz.
+- `redesign-landing` (redesign, onda 2, arquivada em 2026-11-16): landing com hero novo, linha do
+  tempo do RCTE, art. 76, § 6º, demonstração animada do chat (05/2008 contra 01/2010, pausa,
+  movimento reduzido, animador fora do primeiro acesso), seções com layouts próprios e páginas
+  públicas em tipografia editorial; bundle de 434,4 para 440,5 KiB gz.
 
 - **Orçamento de bundle (desvio aprovado em 2026-11-15):** o teto provisório de 400 KiB gz da onda 1
   não comportava as telas da F5 juntas; o mantenedor subiu o orçamento total para 500 KiB gz. A

@@ -200,11 +200,14 @@
   );
 }
 
-/* Superfície com um gradiente muito sutil (cabeçalhos, rodapé, painéis). */
+/*
+ * Superfície com um gradiente muito sutil (cabeçalhos, rodapé, painéis). A mistura é em `oklab`:
+ * em `oklch`, dois neutros quase sem croma dão matiz `none`, que o Chromium pinta como 0 (rosado).
+ */
 @utility bg-surface-gradient {
   background-image: linear-gradient(
     180deg,
-    color-mix(in oklch, var(--surface), var(--background) 30%) 0%,
+    color-mix(in oklab, var(--surface), var(--background) 30%) 0%,
     var(--background) 100%
   );
 }

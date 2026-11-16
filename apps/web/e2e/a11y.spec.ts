@@ -110,6 +110,15 @@ for (const locale of ['en', 'pt-BR'] as const) {
         })
       }
 
+      test('landing com a demonstração no meio da resposta', async ({ page }, testInfo) => {
+        await page.goto(`/${locale}/`)
+        const demo = page.getByTestId('hero-demo')
+        // A demonstração recomeça sozinha; o axe roda com a resposta chegando em stream.
+        await expect(demo).toHaveAttribute('data-phase', 'streaming', { timeout: 15_000 })
+        await settled(page)
+        await expectNoViolations(page, testInfo)
+      })
+
       test('chat com resposta e o painel de citação aberto', async ({
         page,
         context,

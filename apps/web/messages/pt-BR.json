@@ -112,39 +112,74 @@
   },
   "landing": {
     "badge": "Código aberto e gratuito",
-    "title": "Legislação fiscal, na redação que valia na sua data.",
+    "title": "Legislação fiscal, na redação que valia <date>na sua data</date>.",
     "lead": "O Tekó é um assistente de código aberto para dúvidas sobre legislação fiscal brasileira. Cada resposta é dada para um período de apuração ou data de referência e cita o dispositivo e a versão usados.",
     "cta": {
-      "ask": "Fazer uma pergunta",
+      "open": "Abrir o Tekó",
       "coverage": "Ver a cobertura"
     },
+    "proof": {
+      "official": "Fontes oficiais versionadas",
+      "cited": "Citação em cada afirmação",
+      "license": "Licença MIT"
+    },
     "demo": {
-      "label": "Exemplo ilustrativo de resposta",
-      "referenceDate": "Período de apuração: 05/2008",
-      "question": "O que o art. 76, § 6º, do RCTE dizia no meu período?",
-      "answer": "A resposta usa a redação vigente em 05/2008 e marca cada afirmação com a citação de onde ela saiu.",
+      "caption": "Exemplo ilustrativo com um caso real do RCTE de Goiás.",
+      "title": "Tekó",
+      "subtitle": "Nova conversa · RCTE de Goiás",
+      "question": "O que diz o art. 76, § 6º, do RCTE?",
+      "placeholder": "Pergunte sobre a legislação fiscal…",
+      "chooseDate": "Data de referência",
+      "chip": "Período {value}",
+      "thinking": "Consultando o corpus na data escolhida…",
+      "validAt": "Vigente em {value}",
       "citation": "RCTE, art. 76, § 6º",
-      "citationNote": "redação vigente em 05/2008",
-      "changed": "Para 01/2010, a redação é outra: a resposta, a citação e o intervalo mudam juntos."
+      "pause": "Pausar a demonstração",
+      "play": "Retomar a demonstração",
+      "answers": {
+        "before": "Em {period}, valia a redação do Decreto nº 6.026/2004: se o contribuinte aplicasse, isoladamente, R$ 40.000,00 ou mais nos programas GOYAZES ou PROESPORTE, o Secretário da Fazenda podia, mediante análise individual, definir prazos de pagamento diversos dos do inciso VI do caput.",
+        "after": "Em {period}, o § 6º já estava revogado pelo Decreto nº 7.028/2009, com efeitos desde {revokedOn}: a regra dos prazos diversos para quem aplica nos programas GOYAZES ou PROESPORTE deixou de existir neste parágrafo."
+      },
+      "summary": "Demonstração animada: alguém pergunta o que diz o art. 76, § 6º, do <ptBR>Regulamento do Código Tributário do Estado de Goiás</ptBR>. Para o período de apuração {before}, o Tekó responde com a redação vigente de {beforeRange}: o Secretário da Fazenda podia definir prazos diversos de pagamento para quem aplicasse R$ 40.000,00 ou mais nos programas GOYAZES ou PROESPORTE. Para {after}, a mesma pergunta recebe outra resposta: o parágrafo foi revogado em {revokedOn}. Cada resposta cita o dispositivo e o intervalo de vigência."
+    },
+    "timeline": {
+      "caption": "RCTE, art. 76, § 6º, ao longo do tempo",
+      "added": "Acrescido",
+      "amended": "Nova redação",
+      "revoked": "Revogado"
     },
     "howItWorks": {
-      "title": "Como funciona",
+      "eyebrow": "Como funciona",
+      "title": "Da data à fonte, em três passos",
+      "lead": "O Tekó não responde \"em geral\": responde para uma data, com a redação daquela data, e mostra de onde tirou cada frase.",
       "referenceDate": {
         "title": "Data de referência primeiro",
-        "body": "Você informa o período de apuração (por exemplo, 03/2024) e a resposta usa a redação vigente naquele momento. Se a norma mudou dentro do período, o Tekó avisa."
+        "body": "Você informa o período de apuração (por exemplo, 03/2024) e a resposta usa a redação vigente naquele momento. Se a norma mudou dentro do período, o Tekó avisa.",
+        "sample": "Período 03/2024"
       },
       "citations": {
         "title": "Citações verificáveis",
-        "body": "Cada afirmação aponta para o dispositivo, a versão e o intervalo de vigência usados, com link para a fonte oficial."
+        "body": "Cada afirmação aponta para o dispositivo, a versão e o intervalo de vigência usados, com link para a fonte oficial.",
+        "sample": "RCTE, art. 76, § 6º"
       },
       "coverage": {
         "title": "Cobertura declarada",
-        "body": "O Tekó diz quais normas e períodos conhece. Fora dessa cobertura, ele recusa em vez de adivinhar."
+        "body": "O Tekó diz quais normas e períodos conhece. Fora dessa cobertura, ele recusa em vez de adivinhar.",
+        "sample": "Fora da cobertura: recusa com o motivo"
       }
     },
     "corpus": {
+      "eyebrow": "Fontes",
       "title": "Corpus coberto",
       "lead": "Fontes oficiais, versionadas e verificadas periodicamente contra os sites de origem.",
+      "rulerCaption": "Início aproximado de cada fonte no corpus, até a última verificação. As datas exatas e as lacunas estão na página de cobertura.",
+      "seeCoverage": "Ver a cobertura exata",
+      "since": "desde {year}",
+      "today": "hoje",
+      "jurisdiction": {
+        "BR": "Federal",
+        "GO": "Goiás"
+      },
       "efdIcmsIpi": {
         "name": "EFD ICMS/IPI",
         "body": "Guia Prático da Escrituração Fiscal Digital e as notas técnicas."
@@ -167,7 +202,9 @@
       }
     },
     "guarantees": {
+      "eyebrow": "Compromissos",
       "title": "Garantias",
+      "lead": "O que vale para toda resposta, sem exceção.",
       "sources": {
         "title": "Nada sem fonte",
         "body": "Toda afirmação da resposta aponta para um trecho do corpus. Sem trecho que a sustente, ela não entra."
@@ -186,7 +223,10 @@
       }
     },
     "faq": {
+      "eyebrow": "Dúvidas",
       "title": "Perguntas frequentes",
+      "lead": "O essencial antes da primeira pergunta.",
+      "more": "Ficou outra dúvida? <issues>Pergunte no GitHub</issues>.",
       "advice": {
         "question": "O Tekó substitui um contador ou um advogado?",
         "answer": "Não. Ele é um apoio à consulta e não constitui parecer. Confira sempre a fonte citada antes de decidir."
@@ -203,6 +243,11 @@
         "question": "O que acontece com as minhas perguntas?",
         "answer": "As perguntas passam por um provedor de IA gratuito, que pode usá-las para melhorar os próprios modelos. Não inclua dados pessoais nem informações sigilosas."
       }
+    },
+    "finalCta": {
+      "title": "Pergunte com a data certa.",
+      "body": "Escolha o período de apuração, faça a pergunta e confira a fonte de cada afirmação.",
+      "source": "Ver o código-fonte"
     }
   },
   "gateway": {
@@ -210,9 +255,12 @@
     "continue": "Continuar em português"
   },
   "notFound": {
+    "eyebrow": "Erro 404",
     "title": "Página não encontrada",
     "description": "O endereço não existe ou foi movido.",
-    "backHome": "Voltar para a página inicial"
+    "timeline": "Esta data não está na linha do tempo.",
+    "backHome": "Voltar para a página inicial",
+    "coverage": "Ver a cobertura"
   },
   "auth": {
     "signIn": {
@@ -353,6 +401,8 @@
     "internal": "Ocorreu um erro inesperado. Tente de novo."
   },
   "legal": {
+    "eyebrow": "Documento legal",
+    "backToTop": "Voltar ao topo",
     "toc": "Nesta página",
     "updated": "Versão {version} · atualizada em {date}",
     "inForce": "Versão {version} · em vigor desde {date}",
@@ -474,6 +524,7 @@
     }
   },
   "about": {
+    "eyebrow": "O projeto",
     "title": "Sobre o Tekó",
     "lead": "O Tekó é um assistente de código aberto para dúvidas sobre legislação fiscal brasileira. Cada resposta vale para uma data: a do período de apuração que você informa.",
     "sections": {
@@ -771,6 +822,7 @@
     }
   },
   "coverage": {
+    "eyebrow": "Fontes e períodos",
     "intro": "O Tekó só responde com base nas fontes abaixo, nos períodos em que elas foram coletadas e verificadas. Fora deles, a pergunta é recusada em vez de respondida por palpite.",
     "lastVerified": "Fontes verificadas pela última vez em {date}.",
     "corpusVersion": "Versão do corpus: {version}",

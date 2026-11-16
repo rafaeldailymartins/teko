@@ -31,6 +31,8 @@ export default defineConfig({
         // Next; ficam cobertos pelo build, pelos e2e e pelo axe. Eles saem daqui com o browser mode.
         'src/components/locale-layout.tsx',
         'src/components/landing-page.tsx',
+        'src/components/landing/hero.tsx',
+        'src/components/landing/sections.tsx',
         'src/components/not-found-page.tsx',
         'src/components/site-header.tsx',
         'src/components/site-footer.tsx',

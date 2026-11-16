@@ -259,8 +259,21 @@ Content-Security-Policy: default-src 'self'; script-src 'self' 'sha256-…'; sty
 - **Estados:** sugestões sensíveis à data (RCTE art. 76 § 6º em 05/2008 contra 01/2010 e 03/2004
   contra 05/2006), skeletons, bolha otimista, `ErrorBoundary` por bloco, disclaimer fixo "Apoio à
   consulta; não constitui parecer".
-- **Landing** estática, sem chamada à API: hero com demo roteirizada, "Como funciona", corpus
-  coberto, garantias, FAQ.
+- **Landing** estática, sem chamada à API (`src/components/landing/`): hero com a manchete em
+  serif, a linha do tempo do RCTE, art. 76, § 6º atravessando o hero (redações, revogação e o ponto
+  âmbar da data) e a **demonstração animada do chat**; "Como funciona" como linha do tempo de três
+  passos; o corpus numa régua de 1990 a hoje; garantias; FAQ em `<details>` (um aberto por vez); a
+  faixa final no gradiente da marca.
+- **Demonstração** (`src/lib/landing/`): o roteiro é uma lista de quadros pré-calculada
+  (`buildDemoSteps`: digitar, chip da data, pensar, stream palavra a palavra, fontes, nas cenas
+  05/2008 e 01/2010) tocada por um `DemoPlayer` com relógio injetável, que pausa fora da tela
+  (IntersectionObserver), com a aba oculta e no botão de pausa (WCAG 2.2.2). O servidor desenha o
+  quadro final (`demo-view.tsx`, sem `'use client'`), que é o HTML estático e o estado com
+  `prefers-reduced-motion`; sem movimento reduzido, `HeroDemoMount` carrega o animador
+  (`chat-demo.tsx`) num `import()`, fora do primeiro acesso. A janela é `aria-hidden`, sem nada
+  focável, com um resumo `sr-only`; só transições de transform (o texto nunca fica translúcido, o
+  que mantém o axe estável no meio da animação) e nenhuma animação infinita. As datas são as da
+  fixture do corpus, conferidas por teste.
 
 ## i18n e acessibilidade
 
@@ -272,8 +285,10 @@ Content-Security-Policy: default-src 'self'; script-src 'self' 'sha256-…'; sty
   deslocamento de fuso (por extenso ou numérica, a das vigências), limites de vigência com o último
   dia incluído, instante no fuso de exibição e período de apuração `MM/AAAA` (ou por extenso no
   idioma da UI).
-- Páginas legais e "Sobre" (`legal-pages.tsx`): texto em Source Serif, sumário com âncoras, versão
-  dos Termos de `@teko/shared/legal` (a mesma que a API exige). Os namespaces `legal` e `about` são
+- Páginas legais e "Sobre" (`legal-pages.tsx`): tipografia editorial (cabeçalho com sobretítulo,
+  título e texto em Source Serif, marca por seção `§ n` ou `01`), sumário com âncoras fixo ao lado
+  do texto no desktop e antes dele no celular, versão dos Termos de `@teko/shared/legal` (a mesma
+  que a API exige). Os namespaces `legal` e `about` são
   renderizados só no servidor e ficam fora das mensagens do `NextIntlClientProvider`.
 - WCAG 2.2 AA: região `aria-live="polite"` anuncia início e fim da resposta, `aria-busy` no stream,
   foco no composer, skip link, critérios 2.4.11, 2.5.8, 2.5.7 e 3.3.8; trechos legais com
