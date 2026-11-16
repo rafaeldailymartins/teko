@@ -1,6 +1,7 @@
 'use client'
 
 import { ErrorCode } from '@teko/shared/errors'
+import { periodoApuracaoOf } from '@teko/shared/vigencia'
 import { MessagesSquareIcon } from 'lucide-react'
 import type { Route } from 'next'
 import Link from 'next/link'
@@ -13,10 +14,10 @@ import { Button, buttonVariants } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import type { ListConversationsResponse } from '@/lib/api/__generated__/types.gen'
 import { useConversations } from '@/lib/api/hooks'
+import { formatTaxPeriod } from '@/lib/i18n/format'
 import { localePagePath } from '@/lib/navigation'
 import { chatConversationHref, chatSearchParams } from '@/lib/url-state'
 import { cn } from '@/lib/utils'
-import { calendarDate, MONTH_FORMAT } from '@/lib/validity'
 
 type Conversation = ListConversationsResponse['items'][number]
 type Variant = 'panel' | 'page'
@@ -77,7 +78,7 @@ function ConversationItem({ conversation, current, onOpen }: ConversationItemPro
         <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-muted-foreground text-xs">
           <span className="font-mono tabular-nums">
             {t('reference', {
-              date: format.dateTime(calendarDate(conversation.lastReferenceDate), MONTH_FORMAT),
+              date: formatTaxPeriod(locale, periodoApuracaoOf(conversation.lastReferenceDate)),
             })}
           </span>
           <span>{t('questionCount', { count: conversation.questionCount })}</span>

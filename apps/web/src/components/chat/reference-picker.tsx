@@ -11,8 +11,8 @@ import { useLocale, useTranslations } from 'next-intl'
 import { useId, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@/components/ui/popover'
-import { formatIsoDate, formatPeriodo } from '@/lib/chat/format'
 import { type ReferenceChoice, referenceDisplay, referencePresets } from '@/lib/chat/reference'
+import { formatIsoDate, formatMonthName, formatTaxPeriod } from '@/lib/i18n/format'
 import { cn } from '@/lib/utils'
 
 interface ReferencePickerProps {
@@ -28,13 +28,6 @@ const MONTHS = Array.from({ length: 12 }, (_, index) => index + 1)
 
 function periodoOf(year: number, month: number): PeriodoApuracao {
   return `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}`
-}
-
-/** Mês por extenso abreviado no locale (jan., fev. / Jan, Feb). */
-function monthName(locale: string, month: number): string {
-  return new Intl.DateTimeFormat(locale, { month: 'short', timeZone: 'UTC' }).format(
-    new Date(Date.UTC(2000, month - 1, 1)),
-  )
 }
 
 /**
@@ -74,8 +67,8 @@ export function ReferencePicker({
 
   const label =
     display.kind === 'periodo'
-      ? t('chipPeriodo', { value: formatPeriodo(display.periodo) })
-      : t('chipDate', { value: formatIsoDate(display.date, locale) })
+      ? t('chipPeriodo', { value: formatTaxPeriod(locale, display.periodo) })
+      : t('chipDate', { value: formatIsoDate(locale, display.date, 'numeric') })
   const selectedPeriodo = choice?.periodoApuracao ?? null
 
   function choose(next: ReferenceChoice): void {
@@ -149,7 +142,7 @@ export function ReferencePicker({
                     key={periodo}
                     type="button"
                     aria-pressed={selectedPeriodo === periodo}
-                    aria-label={formatPeriodo(periodo)}
+                    aria-label={formatTaxPeriod(locale, periodo)}
                     data-periodo={periodo}
                     onClick={() => choose({ periodoApuracao: periodo })}
                     className={cn(
@@ -158,7 +151,7 @@ export function ReferencePicker({
                         'bg-primary text-primary-foreground hover:bg-primary/85',
                     )}
                   >
-                    {monthName(locale, month)}
+                    {formatMonthName(locale, month)}
                   </button>
                 )
               })}

@@ -5,13 +5,6 @@ import { ApiError } from '../api/errors.ts'
 import { CoverageStatus, coverageAt } from './coverage.ts'
 import { blocksComposer, chatFailure } from './failure.ts'
 import {
-  formatIsoDate,
-  formatPeriodo,
-  intervalDisplay,
-  ValidityStatus,
-  validityStatus,
-} from './format.ts'
-import {
   allowedLinkPrefixes,
   citationIdFromHref,
   citationLinksToAnchors,
@@ -142,31 +135,6 @@ describe('cobertura na data', () => {
       uncovered: ['efd-icms-ipi'],
     })
     expect(coverageAt(families, '1990-01-01').status).toBe(CoverageStatus.Out)
-  })
-})
-
-describe('formatação', () => {
-  it('formata data no locale, sem escorregar o dia, e o período em MM/AAAA', () => {
-    expect(formatIsoDate('2008-05-01', 'pt-BR')).toBe('01/05/2008')
-    expect(formatIsoDate('2008-05-01', 'en')).toBe('05/01/2008')
-    expect(formatPeriodo('2008-05')).toBe('05/2008')
-  })
-
-  it('exibe o último dia incluído do intervalo', () => {
-    expect(intervalDisplay({ from: '2004-11-04', to: '2009-11-23' }, 'pt-BR')).toEqual({
-      from: '04/11/2004',
-      to: '22/11/2009',
-    })
-    expect(intervalDisplay({ from: null, to: null }, 'pt-BR')).toEqual({ from: null, to: null })
-  })
-
-  it('situação da redação hoje', () => {
-    const today = '2026-11-15'
-    expect(validityStatus({ from: '2009-11-23', to: null }, today)).toBe(ValidityStatus.Current)
-    expect(validityStatus({ from: '2004-11-04', to: '2009-11-23' }, today)).toBe(
-      ValidityStatus.Superseded,
-    )
-    expect(validityStatus({ from: '2027-01-01', to: null }, today)).toBe(ValidityStatus.Future)
   })
 })
 

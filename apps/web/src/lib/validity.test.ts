@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest'
 import {
-  calendarDate,
   dateWithin,
   displayedVersionIndex,
   todayIsoDate,
@@ -61,12 +60,8 @@ describe('dateWithin', () => {
   })
 })
 
-describe('datas de calendário', () => {
-  it('meia-noite UTC, sem deslocamento de fuso', () => {
-    expect(calendarDate('2008-05-01').toISOString()).toBe('2008-05-01T00:00:00.000Z')
-  })
-
-  it('hoje em São Paulo', () => {
+describe('hoje', () => {
+  it('é a data em São Paulo', () => {
     // 01:00 UTC ainda é o dia anterior em São Paulo (UTC−3).
     expect(todayIsoDate(new Date('2026-11-16T01:00:00Z'))).toBe('2026-11-15')
   })

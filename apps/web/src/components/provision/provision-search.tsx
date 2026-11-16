@@ -3,13 +3,13 @@
 import type { IsoDate } from '@teko/shared/vigencia'
 import type { Route } from 'next'
 import Link from 'next/link'
-import { useFormatter, useLocale, useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 import { useDeferredValue, useId, useState } from 'react'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useProvisionSearch } from '@/lib/api/hooks'
+import { formatIsoDate } from '@/lib/i18n/format'
 import { provisionHref } from '@/lib/url-state'
-import { CALENDAR_DATE_FORMAT, calendarDate } from '@/lib/validity'
 import { ValidityBadge } from './validity-badge.tsx'
 
 /** Mínimo de caracteres para buscar (o mesmo da API). */
@@ -28,7 +28,6 @@ interface ProvisionSearchProps {
 export function ProvisionSearch({ at }: ProvisionSearchProps) {
   const t = useTranslations('provision.search')
   const tRoot = useTranslations()
-  const format = useFormatter()
   const locale = useLocale()
   const inputId = useId()
   const hintId = useId()
@@ -53,7 +52,7 @@ export function ProvisionSearch({ at }: ProvisionSearchProps) {
         maxLength={120}
       />
       <p id={hintId} className="text-muted-foreground text-xs">
-        {t('hint', { date: format.dateTime(calendarDate(at), CALENDAR_DATE_FORMAT) })}
+        {t('hint', { date: formatIsoDate(locale, at, 'numeric') })}
       </p>
       <div aria-live="polite">
         {ready && query.isPending && (
