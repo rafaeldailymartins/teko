@@ -97,11 +97,6 @@ export function ReferencePicker({
       >
         <CalendarIcon aria-hidden="true" />
         <span className="tabular-nums">{label}</span>
-        {display.isDefault && (
-          <span className="font-normal text-xs opacity-85 max-sm:sr-only">
-            ({t('defaultHint')})
-          </span>
-        )}
       </PopoverTrigger>
       <PopoverContent align="start" className="w-80">
         <PopoverTitle>{t('title')}</PopoverTitle>

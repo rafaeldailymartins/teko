@@ -5,13 +5,14 @@ interface EmptyStateProps {
   /** Ícone decorativo (fica `aria-hidden`). */
   readonly icon: ReactNode
   readonly title: string
-  readonly children: ReactNode
+  /** Frase opcional do que vai aparecer ali. */
+  readonly children?: ReactNode
   /** Nível do título: 1 quando o estado vazio é o conteúdo principal da página. */
   readonly headingLevel?: 1 | 2 | 3
   readonly className?: string
 }
 
-/** Estado vazio de uma página ou painel: ícone, título e uma frase do que vai aparecer ali. */
+/** Estado vazio de uma página ou painel: ícone, título e, se houver, uma frase do que vai aparecer ali. */
 export function EmptyState({
   icon,
   title,
@@ -29,7 +30,9 @@ export function EmptyState({
         {icon}
       </span>
       <Heading className="font-semibold font-serif text-xl tracking-tight">{title}</Heading>
-      <p className="max-w-md text-pretty text-muted-foreground leading-relaxed">{children}</p>
+      {children !== undefined && (
+        <p className="max-w-md text-pretty text-muted-foreground leading-relaxed">{children}</p>
+      )}
     </div>
   )
 }

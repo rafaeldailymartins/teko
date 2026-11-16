@@ -144,7 +144,7 @@ describe('ConversationList', () => {
     expect(container.querySelector('nav [role="status"]')?.textContent).toContain('reinf ecd')
   })
 
-  it('vazio: estado vazio na página e uma frase no painel', async () => {
+  it('vazio: estado vazio na página e o título no painel', async () => {
     rendered = await renderClient(<ConversationList variant="page" />, {
       client: seeded([{ items: [], nextCursor: null }]),
     })
@@ -154,7 +154,7 @@ describe('ConversationList', () => {
       client: seeded([{ items: [], nextCursor: null }]),
     })
     expect(rendered.container.querySelector('h2')).toBeNull()
-    expect(rendered.container.textContent).toContain('Suas conversas aparecem aqui')
+    expect(rendered.container.textContent).toContain('Nenhuma conversa ainda')
   })
 
   it('sem sessão: a mensagem do erro e o caminho para entrar', async () => {
@@ -254,7 +254,7 @@ describe('excluir uma conversa', () => {
     expect(dialog.textContent).toContain('Excluir esta conversa?')
     expect(dialog.textContent).toContain('“GOYAZES”')
     expect(dialog.textContent).toContain('Não dá para desfazer')
-    expect(dialog.textContent).toContain('cota')
+    expect(dialog.textContent).not.toContain('cota')
 
     await click(byText('[role="alertdialog"] button', 'Excluir conversa'))
     await settle(50)

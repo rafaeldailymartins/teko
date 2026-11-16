@@ -55,7 +55,6 @@
       "citation": "Citação",
       "collapseHistory": "Recolher o histórico",
       "resizeCitation": "Redimensionar a citação",
-      "historyEmpty": "Suas conversas aparecem aqui, cada uma com a data de referência usada.",
       "closeCitation": "Fechar a citação",
       "expandHistory": "Mostrar o histórico"
     },
@@ -668,7 +667,6 @@
     "listLabel": "Conversas",
     "loading": "Carregando as conversas…",
     "emptyTitle": "Nenhuma conversa ainda",
-    "emptyBody": "Suas conversas aparecem aqui, cada uma com a data de referência da última pergunta.",
     "error": "Não foi possível carregar o histórico.",
     "retry": "Tentar de novo",
     "signIn": "Entrar",
@@ -695,7 +693,6 @@
     "delete": {
       "title": "Excluir esta conversa?",
       "body": "“{title}” e todas as perguntas, respostas e avaliações dela serão apagadas. Não dá para desfazer.",
-      "quota": "Excluir não devolve perguntas à cota: as desta conversa continuam contando no limite de hoje.",
       "cancel": "Cancelar",
       "confirm": "Excluir conversa",
       "deleting": "Excluindo…",
@@ -811,7 +808,6 @@
     "reference": {
       "chipPeriodo": "Período de apuração: {value}",
       "chipDate": "Data de referência: {value}",
-      "defaultHint": "padrão: mês anterior",
       "open": "Alterar a data de referência",
       "title": "Data de referência",
       "modePeriodo": "Período",

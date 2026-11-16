@@ -5,7 +5,6 @@ import {
   CircleAlertIcon,
   CircleCheckIcon,
   EllipsisIcon,
-  InfoIcon,
   LoaderCircleIcon,
   Trash2Icon,
 } from 'lucide-react'
@@ -198,10 +197,6 @@ export function DeleteConversationDialog({
             </AlertDialogDescription>
           </div>
         </div>
-        <p className="flex items-start gap-2 rounded-lg bg-muted/70 px-3 py-2.5 text-muted-foreground text-xs leading-relaxed">
-          <InfoIcon aria-hidden="true" className="mt-px size-3.5 shrink-0" />
-          {t('quota')}
-        </p>
         {message !== null && (
           <p role="alert" className="flex items-start gap-2 text-destructive text-sm">
             <CircleAlertIcon aria-hidden="true" className="mt-0.5 size-4 shrink-0" />

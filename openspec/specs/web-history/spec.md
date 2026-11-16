@@ -110,8 +110,8 @@ exige `from` anterior a `to` antes de escrever a URL, o exemplo do roteiro (RCTE
 
 Cada conversa do histórico, no painel do chat e na página `/[locale]/history/`, MUST ter um menu "⋯"
 com "Excluir conversa", visível no hover e no foco da linha e sempre visível no toque. A ação SHALL
-pedir confirmação num diálogo de alerta com o título da conversa, o aviso de que não dá para desfazer
-e de que a cota não volta, e um botão destrutivo; cancelar MUST devolver o foco ao "⋯".
+pedir confirmação num diálogo de alerta com o título da conversa, o aviso de que não dá para desfazer e
+um botão destrutivo; cancelar MUST devolver o foco ao "⋯".
 
 #### Scenario: Excluir pela lista
 

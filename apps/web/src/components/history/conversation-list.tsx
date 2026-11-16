@@ -207,15 +207,13 @@ function ConversationListContent({ variant, onRequestDelete }: ConversationListC
     variant === 'panel' ? (pages[0]?.items ?? []) : pages.flatMap((page) => page.items)
   if (conversations.length === 0) {
     return variant === 'panel' ? (
-      <p className="px-4 pb-4 text-muted-foreground text-sm leading-relaxed">{t('emptyBody')}</p>
+      <p className="px-4 pb-4 text-muted-foreground text-sm leading-relaxed">{t('emptyTitle')}</p>
     ) : (
       <EmptyState
         icon={<MessagesSquareIcon />}
         title={t('emptyTitle')}
         className="rounded-2xl border border-dashed bg-surface"
-      >
-        {t('emptyBody')}
-      </EmptyState>
+      />
     )
   }
 

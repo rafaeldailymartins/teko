@@ -55,7 +55,6 @@
       "citation": "Citation",
       "collapseHistory": "Collapse history",
       "resizeCitation": "Resize citation",
-      "historyEmpty": "Your conversations show up here, each with the reference date it used.",
       "closeCitation": "Close citation",
       "expandHistory": "Show history"
     },
@@ -668,7 +667,6 @@
     "listLabel": "Conversations",
     "loading": "Loading conversations…",
     "emptyTitle": "No conversations yet",
-    "emptyBody": "Your conversations show up here, each with the reference date of its last question.",
     "error": "We could not load your history.",
     "retry": "Try again",
     "signIn": "Sign in",
@@ -695,7 +693,6 @@
     "delete": {
       "title": "Delete this conversation?",
       "body": "“{title}” and all of its questions, answers and feedback will be deleted. This cannot be undone.",
-      "quota": "Deleting does not give questions back: the ones in this conversation still count toward today’s limit.",
       "cancel": "Cancel",
       "confirm": "Delete conversation",
       "deleting": "Deleting…",
@@ -811,7 +808,6 @@
     "reference": {
       "chipPeriodo": "Tax period: {value}",
       "chipDate": "Reference date: {value}",
-      "defaultHint": "default: previous month",
       "open": "Change the reference date",
       "title": "Reference date",
       "modePeriodo": "Period",
