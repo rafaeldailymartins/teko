@@ -1,6 +1,6 @@
 # Roteiro do Tekó
 
-Fases F4 a F10, com o que cada uma entrega e o DoD. F0 a F3 estão concluídas
+Fases F4 a F10, com o que cada uma entrega e o DoD. F0 a F5 estão concluídas
 ([status](status.md)). O desenho de cada área está em [`architecture/`](architecture/README.md);
 as decisões, nas [ADRs](adr/README.md). Este roteiro substitui a seção "Roteiro por fases" do
 plano de 2026-11-10, congelado em 2026-11-12.
@@ -87,7 +87,9 @@ seguimento que troca `develop` por `main` no código.
   - e2e (5 a 8 jornadas, Chromium + viewport mobile) verde;
   - 05/2008 → 01/2010 altera resposta, citação e intervalo;
   - antes do consentimento, zero cookies e zero chaves do PostHog no storage;
-  - paridade i18n e cliente gerado sem drift; orçamento de bundle total respeitado.
+  - paridade i18n e cliente gerado sem drift; orçamento de bundle total respeitado (500 KiB gz, decisão do mantenedor
+    em 2026-11-15; medido 416,4 no fechamento). Provado item por item no
+    [registro](evals/dod-f5-2026-11-15.md).
 
 ## F6: Observabilidade (em paralelo com a F5 depois que a F4 estabilizar)
 

@@ -1,7 +1,9 @@
 # Frontend (`apps/web`)
 
 Export estático do Next.js servido pela CDN da Vercel, no mesmo projeto e na mesma origem da API
-(ADR 0029). Nenhuma lógica de negócio: toda verificação real fica no Fastify.
+(ADR 0029). Nenhuma lógica de negócio: toda verificação real fica no Fastify. As decisões da F5
+que valem para as próximas fases (componentes copiados, CSP por documento, Zod sem JIT, passkey sem
+o cliente do Better Auth, PostHog depois do consentimento e orçamento total) estão na ADR 0035.
 
 ## Runtime: export estático puro
 
