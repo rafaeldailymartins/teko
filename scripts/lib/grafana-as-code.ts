@@ -9,6 +9,7 @@
  */
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { compareCodeUnits } from './cli-guards.ts'
 
 // --- Formato compacto ------------------------------------------------------------------------
 
@@ -185,7 +186,8 @@ const MINUTES_PER_MONTH = 43_200
 const UID = /^teko-[a-z0-9-]{1,35}$/u
 const DURATION = /^\d+[smh]$/u
 const BUILTIN_VARIABLES = new Set(['__rate_interval', '__interval', '__range', 'datasource'])
-const EMAIL = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/u
+// Partes do domínio separadas por ponto, sem classes que se sobreponham (sem backtracking).
+const EMAIL = /[\w%+.-]+@[\w-]+(?:\.[\w-]+)+/u
 
 // --- Leitura ---------------------------------------------------------------------------------
 
@@ -198,7 +200,7 @@ export function loadGrafanaAsCode(dir: string): GrafanaAsCode {
   const dashboardsDir = join(dir, 'dashboards')
   const dashboards = readdirSync(dashboardsDir)
     .filter((name) => name.endsWith('.json'))
-    .sort()
+    .sort(compareCodeUnits)
     .map((name) => readJson<DashboardSpec>(join(dashboardsDir, name)))
   return {
     stack: readJson<StackSpec>(join(dir, 'stack.json')),
