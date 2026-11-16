@@ -53,5 +53,5 @@ partir de um item de `Menu`, `finalFocus` e `onOpenChangeComplete`) e TanStack Q
   duas), o chat monta a sessão vazia como no "Nova conversa", e o "voltar" do navegador não abre uma
   conversa que não existe. O `useRouter` do App Router ficou de fora: a lista também é montada nos
   testes do chat, sem o roteador. O aviso é uma região `aria-live` no topo da lista, que some em 6 s: o Tekó não tem toasts, e
-  uma dependência só para isso não se paga. A ação no cabeçalho da conversa aberta fica de fora (a
-  tela do chat está em redesenho em paralelo).
+  uma dependência só para isso não se paga. A exclusão fica só no menu "⋯" do histórico, por
+  decisão do mantenedor: a conversa aberta não ganha ação de excluir no cabeçalho.
