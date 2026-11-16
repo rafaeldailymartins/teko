@@ -60,7 +60,12 @@ export function ProvisionTimeline({
               )}
             />
             {onSelect === undefined ? (
-              <div className="flex flex-col items-start gap-1 py-1">{content}</div>
+              <div
+                aria-current={selected ? 'true' : undefined}
+                className="flex flex-col items-start gap-1 py-1"
+              >
+                {content}
+              </div>
             ) : (
               <button
                 type="button"

@@ -5,7 +5,7 @@ import { type IsoDate, isoDateSchema } from '@teko/shared/vigencia'
 import { GitCompareArrowsIcon } from 'lucide-react'
 import type { Route } from 'next'
 import Link from 'next/link'
-import { useFormatter, useLocale, useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 import { useQueryStates } from 'nuqs'
 import { Suspense, useId, useState } from 'react'
 import { Button, buttonVariants } from '@/components/ui/button'
@@ -13,16 +13,10 @@ import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useProvisionTimeline } from '@/lib/api/hooks'
 import { referenceKeyDate } from '@/lib/api/reference'
+import { formatIsoDate } from '@/lib/i18n/format'
 import { localePagePath } from '@/lib/navigation'
 import { compareHref, provisionSearchParams } from '@/lib/url-state'
-import {
-  CALENDAR_DATE_FORMAT,
-  calendarDate,
-  dateWithin,
-  displayedVersionIndex,
-  todayIsoDate,
-  versionIndexAt,
-} from '@/lib/validity'
+import { dateWithin, displayedVersionIndex, todayIsoDate, versionIndexAt } from '@/lib/validity'
 import { ProvisionDiff } from './provision-diff.tsx'
 import { ProvisionSearch } from './provision-search.tsx'
 import { ProvisionText } from './provision-text.tsx'
@@ -82,7 +76,6 @@ interface ProvisionDetailProps {
 function ProvisionDetail({ stableKey, date, today, onDateChange }: ProvisionDetailProps) {
   const t = useTranslations('provision')
   const tRoot = useTranslations()
-  const format = useFormatter()
   const locale = useLocale()
   const query = useProvisionTimeline(stableKey)
   const [diffOpen, setDiffOpen] = useState(false)
@@ -120,7 +113,7 @@ function ProvisionDetail({ stableKey, date, today, onDateChange }: ProvisionDeta
   }
   const exact = versionIndexAt(versions, date) === index
   const previous = versions[index - 1]
-  const formatted = format.dateTime(calendarDate(date), CALENDAR_DATE_FORMAT)
+  const formatted = formatIsoDate(locale, date, 'numeric')
   const diffFrom = previous === undefined ? null : dateWithin(previous.validity, date)
   const diffTo = dateWithin(version.validity, date)
 

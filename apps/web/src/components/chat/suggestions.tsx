@@ -1,10 +1,10 @@
 'use client'
 
 import type { PeriodoApuracao } from '@teko/shared/vigencia'
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
-import { formatPeriodo } from '@/lib/chat/format'
 import { DATE_SENSITIVE_SUGGESTIONS } from '@/lib/chat/suggestions'
+import { formatTaxPeriod } from '@/lib/i18n/format'
 
 interface SuggestionsProps {
   readonly onAsk: (question: string, periodo: PeriodoApuracao) => void
@@ -14,6 +14,7 @@ interface SuggestionsProps {
 /** Sugestões do chat vazio: a mesma pergunta em dois períodos com redações diferentes. */
 export function Suggestions({ onAsk, disabled }: SuggestionsProps) {
   const t = useTranslations('chat.suggestions')
+  const locale = useLocale()
   return (
     <section aria-labelledby="chat-suggestions" className="flex w-full max-w-xl flex-col gap-3">
       <div>
@@ -43,7 +44,7 @@ export function Suggestions({ onAsk, disabled }: SuggestionsProps) {
                     disabled={disabled}
                     onClick={() => onAsk(question, periodo)}
                   >
-                    {t('ask', { period: formatPeriodo(periodo) })}
+                    {t('ask', { period: formatTaxPeriod(locale, periodo) })}
                   </Button>
                 ))}
               </div>

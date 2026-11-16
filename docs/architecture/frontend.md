@@ -193,8 +193,9 @@ Content-Security-Policy: default-src 'self'; script-src 'self' 'sha256-…'; sty
 - **Cota:** `quota_exceeded` e `service_paused` desabilitam o composer e mostram o reset.
 - **Citações:** chips numerados durante o stream, hover card e painel com documento, versão, badge
   de intervalo, texto (`lang="pt-BR"`), tabela de campos, link para a fonte, "copiar citação",
-  "reportar", linha do tempo e "O que mudou" (diff lazy). Badge, texto, linha do tempo e diff são os
-  componentes de `src/components/provision/` (`ValidityBadge`, `ProvisionText`, `ProvisionTimeline`,
+  "reportar", "Abrir o dispositivo", linha do tempo (a redação vigente na data de referência da
+  resposta marcada) e "O que mudou" (essa redação contra a anterior; código e consulta só no clique).
+  Linha do tempo e diff são os componentes de `src/components/provision/` (`ProvisionTimeline`,
   `ProvisionDiff`), os mesmos da página de dispositivo.
 - **Histórico:** `ConversationList` (`GET /v1/conversations`) no painel esquerdo do chat (primeira
   página, conversa aberta marcada, link para o resto; no Sheet, abrir uma conversa o fecha por
@@ -204,7 +205,12 @@ Content-Security-Policy: default-src 'self'; script-src 'self' 'sha256-…'; sty
   mais próxima, com aviso), o badge (vigente, encerrada ou futura, com o último dia incluído), "O que
   mudou" montado só no clique e a linha do tempo, que troca o `ref`; sem `k`, a busca de dispositivos
   (`useDeferredValue`). `/compare/?k=&from=&to=` compara duas datas, com o exemplo do roteiro. Datas
-  de calendário são formatadas em UTC (`calendarDate`), para o fuso não trocar o dia.
+  de calendário são formatadas em UTC (`formatIsoDate` de `src/lib/i18n/format.ts`), para o fuso não
+  trocar o dia.
+- **Cobertura:** `/coverage/` é pública (fora do grupo `(app)`, sem sessão): título e introdução no
+  HTML estático e, de `GET /api/v1/coverage`, as famílias por jurisdição, com as fontes (texto do
+  catálogo por slug), os períodos cobertos, as lacunas entre eles, a última verificação e uma barra
+  decorativa numa escala comum (`--validity-current` e `--coverage-out`); carregamento, erro e vazio.
 - **Privacidade:** aviso de treino do provedor gratuito, 18+, versão dos Termos e país de residência
   no primeiro uso (diálogo bloqueante, de novo a cada versão dos Termos); detector de PII no composer;
   `region_restricted` vira página de aviso (`/<locale>/sign-in/?error=region_restricted`).
@@ -228,8 +234,10 @@ Content-Security-Policy: default-src 'self'; script-src 'self' 'sha256-…'; sty
   `setRequestLocale`, `timeZone: 'America/Sao_Paulo'`. Testes de paridade de chaves en/pt-BR (todos
   os namespaces, com o diff do que falta e do que sobra, e as mesmas tags de rich text) e de uma
   chave `errors.<code>` por `ErrorCode`. Na mesma origem da Vercel, `/pt-BR/` mantém a caixa.
-- Datas por `src/lib/i18n/format.ts`: data de calendário sem deslocamento de fuso, instante no fuso
-  de exibição e período de apuração `MM/AAAA` (ou por extenso no idioma da UI).
+- Datas por `src/lib/i18n/format.ts`, o único helper de datas do web: data de calendário sem
+  deslocamento de fuso (por extenso ou numérica, a das vigências), limites de vigência com o último
+  dia incluído, instante no fuso de exibição e período de apuração `MM/AAAA` (ou por extenso no
+  idioma da UI).
 - Páginas legais e "Sobre" (`legal-pages.tsx`): texto em Source Serif, sumário com âncoras, versão
   dos Termos de `@teko/shared/legal` (a mesma que a API exige). Os namespaces `legal` e `about` são
   renderizados só no servidor e ficam fora das mensagens do `NextIntlClientProvider`.

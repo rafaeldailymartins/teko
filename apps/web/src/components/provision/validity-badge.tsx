@@ -1,15 +1,10 @@
 'use client'
 
 import { type IsoDate, lastIncludedDay, type ValidityInterval } from '@teko/shared/vigencia'
-import { useFormatter, useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
+import { formatIsoDate } from '@/lib/i18n/format'
 import { cn } from '@/lib/utils'
-import {
-  CALENDAR_DATE_FORMAT,
-  calendarDate,
-  todayIsoDate,
-  ValidityStatus,
-  validityStatus,
-} from '@/lib/validity'
+import { todayIsoDate, ValidityStatus, validityStatus } from '@/lib/validity'
 
 const STATUS_CLASSES: Readonly<Record<ValidityStatus, string>> = {
   [ValidityStatus.Current]: 'border-validity-current/40 text-validity-current',
@@ -31,9 +26,9 @@ interface ValidityBadgeProps {
  */
 export function ValidityBadge({ interval, today = todayIsoDate(), className }: ValidityBadgeProps) {
   const t = useTranslations('provision.validity')
-  const format = useFormatter()
+  const locale = useLocale()
   const status = validityStatus(interval, today)
-  const date = (value: IsoDate) => format.dateTime(calendarDate(value), CALENDAR_DATE_FORMAT)
+  const date = (value: IsoDate) => formatIsoDate(locale, value, 'numeric')
   const lastDay = lastIncludedDay(interval)
 
   let range: string

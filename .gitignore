@@ -11,10 +11,12 @@ dist/
 next-env.d.ts
 
 # Testes e relatórios
-coverage/
+# Só as pastas de relatório de cada pacote: a rota e os componentes da página de cobertura do corpus
+# (`src/**/coverage/`) também se chamam `coverage`.
+/coverage/
+/apps/*/coverage/
+/packages/*/coverage/
 coverage-integration/
-# A rota /coverage/ do web (página de cobertura do corpus) não é relatório de testes.
-!/apps/web/src/app/**/coverage/
 reports/
 .stryker-tmp/
 test-results/
