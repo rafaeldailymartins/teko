@@ -24,7 +24,10 @@ echo "::group::imagem da API e export do web"
 docker build -f apps/api/Dockerfile \
   --build-arg APP_VERSION=0.0.0 --build-arg "GIT_SHA=$(git rev-parse HEAD)" \
   -t teko-api:ci .
-pnpm --filter @teko/web build
+# Chave pública fictícia (não é segredo nem projeto real): com ela, aceitar a medição carrega o
+# posthog-js como na produção, e o e2e de consentimento intercepta os hosts da UE (nada sai para a
+# rede). As outras jornadas começam com a medição recusada e não carregam o SDK.
+NEXT_PUBLIC_POSTHOG_KEY=phc_teko_ci_e2e_ficticia pnpm --filter @teko/web build
 # Snippets do Caddy (headers, CSP por documento, 404 por locale) a partir do export recém-gerado.
 node scripts/caddy-static-site.ts
 echo "::endgroup::"

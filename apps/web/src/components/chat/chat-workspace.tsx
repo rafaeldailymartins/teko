@@ -13,6 +13,7 @@ import { useSession } from '@/components/auth/use-session'
 import { ConversationList } from '@/components/history/conversation-list'
 import { buttonVariants } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import { analytics } from '@/lib/analytics'
 import { type CitationSelection, selectedCitation, stepSelection } from '@/lib/chat/selection'
 import { citationStep, isEditableTarget } from '@/lib/hotkeys'
 import { chatSearchParams, newConversationHref } from '@/lib/url-state'
@@ -213,6 +214,13 @@ export function ChatWorkspace() {
     ) => {
       setSelection({ citations, index, questionId, referenceDate })
       setCitationOpen(true)
+      const citation = citations[index]
+      if (citation !== undefined) {
+        analytics.capture('citation_opened', {
+          doc_type: citation.family,
+          version_is_current: citation.isCurrent,
+        })
+      }
     },
     [],
   )

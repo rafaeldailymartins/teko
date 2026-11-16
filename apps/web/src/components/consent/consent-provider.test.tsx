@@ -40,6 +40,23 @@ vi.mock('@/lib/analytics', async () => {
   }
 })
 
+// O relatório de Web Vitals (carregado por `next/dynamic`): o teste só conta se está montado.
+const vitals = vi.hoisted(() => ({ mounted: 0 }))
+vi.mock('./web-vitals-reporter.tsx', async () => {
+  const { useEffect } = await import('react')
+  return {
+    WebVitalsReporter: () => {
+      useEffect(() => {
+        vitals.mounted += 1
+        return () => {
+          vitals.mounted -= 1
+        }
+      }, [])
+      return null
+    },
+  }
+})
+
 declare global {
   var IS_REACT_ACT_ENVIRONMENT: boolean
 }
@@ -162,6 +179,8 @@ describe('ConsentProvider: escolhas', () => {
     expect(stored()?.choices).toEqual({ analytics: true, surveys: true })
     expect(loader.calls).toBe(1)
     expect(loader.client.capture).toHaveBeenCalledWith('consent_updated', { analytics: true })
+    await settle()
+    expect(vitals.mounted).toBe(1)
   })
 
   it('sem a chave pública, aceitar não carrega nada', async () => {
@@ -169,6 +188,7 @@ describe('ConsentProvider: escolhas', () => {
     await click(button(ptBR.consent.banner.accept))
     expect(stored()?.choices.analytics).toBe(true)
     expect(loader.calls).toBe(0)
+    expect(vitals.mounted).toBe(0)
   })
 
   it('Personalizar abre as preferências, desligadas por padrão, e salva por categoria', async () => {
@@ -224,10 +244,13 @@ describe('ConsentProvider: escolha já feita', () => {
     writeConsent(localStorage, { analytics: true, surveys: false })
     await render(null)
     expect(loader.calls).toBe(1)
+    await settle()
+    expect(vitals.mounted).toBe(1)
 
     await click(button(ptBR.consent.footerLink))
     await click(button(ptBR.consent.preferences.rejectAll))
     expect(loader.client.disable).toHaveBeenCalled()
+    expect(vitals.mounted).toBe(0)
   })
 
   it('escolha de outra versão da política volta a pedir consentimento', async () => {

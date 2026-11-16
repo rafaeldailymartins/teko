@@ -1,11 +1,13 @@
-import { type BrowserContext, expect, type Page, test } from '@playwright/test'
+import { type BrowserContext, expect, type Page, type Route, test } from '@playwright/test'
 import ptBR from '../messages/pt-BR.json' with { type: 'json' }
+import { POSTHOG_API_HOST, POSTHOG_ORIGINS } from '../src/lib/analytics/posthog-hosts.ts'
 import { enforcedViolations, recordViolations } from './support/csp.ts'
 
 /**
- * Consentimento LGPD (DoD da F5): antes da escolha, zero cookies e nenhuma chave do PostHog no
- * storage; recusar mantém assim; aceitar grava a escolha (e só então o analytics poderia carregar,
- * o que na stack de CI nunca acontece, porque o build não tem `NEXT_PUBLIC_POSTHOG_KEY`); o link do
+ * Consentimento LGPD (DoD da F5 e F6): antes da escolha, zero cookies e nenhuma chave do PostHog no
+ * storage nem pedido a ele; recusar mantém assim; aceitar carrega o `posthog-js` (a stack de CI
+ * builda com uma chave fictícia, `infra/ci/up.sh`) e ele só fala com os hosts da UE, interceptados
+ * aqui (nenhum pedido sai para a rede); retirar o consentimento apaga o que ele gravou; o link do
  * rodapé reabre as preferências.
  */
 
@@ -43,6 +45,38 @@ function trackPosthogRequests(page: Page): string[] {
   return requests
 }
 
+/** Origem de um pedido ao PostHog (`https://eu.i.posthog.com`). */
+function originOf(url: string): string {
+  return new URL(url).origin
+}
+
+/**
+ * Intercepta todo host do PostHog: a UE responde vazio (com CORS, porque o SDK chama de outra
+ * origem), e qualquer outro host é abortado, para o teste acusar sem a rede real.
+ */
+async function mockPosthog(page: Page): Promise<void> {
+  await page.route(/^https:\/\/[^/]*posthog\.com\//, async (route: Route) => {
+    const request = route.request()
+    if (!POSTHOG_ORIGINS.some((origin) => origin === originOf(request.url()))) {
+      await route.abort('blockedbyclient')
+      return
+    }
+    const origin = (await request.headerValue('origin')) ?? '*'
+    await route.fulfill({
+      status: request.method() === 'OPTIONS' ? 204 : 200,
+      contentType: 'application/json',
+      headers: {
+        'access-control-allow-origin': origin,
+        'access-control-allow-credentials': 'true',
+        'access-control-allow-methods': 'GET, POST, OPTIONS',
+        'access-control-allow-headers':
+          (await request.headerValue('access-control-request-headers')) ?? '*',
+      },
+      body: request.method() === 'OPTIONS' ? '' : '{}',
+    })
+  })
+}
+
 async function expectNothingStored(page: Page, context: BrowserContext): Promise<void> {
   expect(await context.cookies()).toEqual([])
   const storage = await browserStorage(page)
@@ -59,6 +93,7 @@ function storedChoice(storage: BrowserStorage): { analytics: boolean; surveys: b
 test.describe('consentimento', () => {
   test.beforeEach(async ({ page }) => {
     await recordViolations(page)
+    await mockPosthog(page)
   })
 
   test('primeira visita: banner, zero cookies e nada gravado no storage', async ({
@@ -117,26 +152,45 @@ test.describe('consentimento', () => {
     expect(await enforcedViolations(page)).toEqual([])
   })
 
-  test('Aceitar grava a escolha; sem a chave pública no build, nada do PostHog carrega', async ({
+  test('Aceitar carrega o PostHog, que só fala com a UE e não grava cookie', async ({
     page,
     context,
   }) => {
     const posthog = trackPosthogRequests(page)
     await page.goto('/pt-BR/')
+    await page.waitForLoadState('networkidle')
+    expect(posthog, 'nada antes do aceite').toEqual([])
+
+    // O `consent_updated` sai no primeiro lote de eventos, para o host de ingestão da UE.
+    const ingestion = page.waitForRequest(
+      (request) => request.url().startsWith(`${POSTHOG_API_HOST}/`) && request.method() === 'POST',
+      { timeout: 20_000 },
+    )
     await page
       .getByTestId('consent-banner')
       .getByRole('button', { name: bannerText.accept, exact: true })
       .click()
     await expect(page.getByTestId('consent-banner')).toBeHidden()
-    await page.waitForLoadState('networkidle')
+    await ingestion
 
     expect(storedChoice(await browserStorage(page))).toEqual({ analytics: true, surveys: true })
-    await expectNothingStored(page, context)
-    expect(posthog).toEqual([])
+    expect(posthog.length).toBeGreaterThan(0)
+    const outsideEu = posthog.filter(
+      (url) => !POSTHOG_ORIGINS.some((origin) => origin === originOf(url)),
+    )
+    expect(outsideEu, 'pedidos fora dos hosts da UE').toEqual([])
+    // Persistência só no `localStorage`: nenhum cookie, nem do PostHog.
+    expect(await context.cookies()).toEqual([])
+    await expect
+      .poll(async () => posthogKeys((await browserStorage(page)).local).length)
+      .toBeGreaterThan(0)
     expect(await enforcedViolations(page)).toEqual([])
   })
 
-  test('Personalizar e o link do rodapé abrem as preferências por categoria', async ({ page }) => {
+  test('Personalizar e o link do rodapé abrem as preferências por categoria', async ({
+    page,
+    context,
+  }) => {
     await page.goto('/pt-BR/')
     await page
       .getByTestId('consent-banner')
@@ -150,6 +204,10 @@ test.describe('consentimento', () => {
     await dialog.getByRole('button', { name: preferences.save, exact: true }).click()
     await expect(dialog).toBeHidden()
     expect(storedChoice(await browserStorage(page))).toEqual({ analytics: true, surveys: false })
+    // Com a medição aceita, o SDK carrega e grava o identificador anônimo no `localStorage`.
+    await expect
+      .poll(async () => posthogKeys((await browserStorage(page)).local).length)
+      .toBeGreaterThan(0)
 
     // O link do rodapé reabre com a escolha salva, e dá para retirar o consentimento.
     await page.getByRole('contentinfo').getByRole('button', { name: footerLink }).click()
@@ -158,6 +216,10 @@ test.describe('consentimento', () => {
     await dialog.getByRole('button', { name: preferences.rejectAll, exact: true }).click()
     await expect(dialog).toBeHidden()
     expect(storedChoice(await browserStorage(page))).toEqual({ analytics: false, surveys: false })
+    // Retirar o consentimento apaga o que o PostHog gravou (e ele não volta a gravar).
+    await expect.poll(async () => posthogKeys((await browserStorage(page)).local).length).toBe(0)
+    await page.waitForTimeout(1000)
+    await expectNothingStored(page, context)
     expect(await enforcedViolations(page)).toEqual([])
   })
 })

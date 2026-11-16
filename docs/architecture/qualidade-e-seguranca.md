@@ -167,8 +167,10 @@ fetch externo só pelo `SafeFetcher`.
 - `/privacy` e `/terms` em en e pt-BR (18+, aviso de treino, política EEE/UK/CH, operadores com a
   Vercel em `gru1`); registro de tratamento em `docs/privacy/ropa.md`.
 - **Retenção:** conversas 90 dias (purge semanal); logs de runtime da Vercel 1 h, sem a pergunta
-  crua; logs no Grafana 14 dias; Langfuse e PostHog 30 dias onde a configuração permite; cache de
-  respostas só com a chave e a pergunta redigida.
+  crua; logs, traces e métricas no Grafana Cloud Free 14 dias; PostHog Free 1 ano (eventos e erros,
+  sem ajuste no plano gratuito); Langfuse Hobby com acesso de 30 dias e sem apagamento automático
+  (os traces da conta saem pela exclusão dela); cache de respostas só com a chave e a pergunta
+  redigida. Detalhes no [`ropa.md`](../privacy/ropa.md).
 - **Vercel como operador:** opt-out de Model Training obrigatório (ADR 0004), pergunta crua nunca
   no stdout.
 - **DSR:** `GET /me/export` e `DELETE /me` (cascade no Postgres, `AnalyticsErasurePort` e

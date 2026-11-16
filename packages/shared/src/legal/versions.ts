@@ -11,4 +11,4 @@
  */
 export const TERMS_VERSION = '2026-11-16'
 
-export const PRIVACY_POLICY_VERSION = '2026-11-16'
+export const PRIVACY_POLICY_VERSION = '2026-11-17'

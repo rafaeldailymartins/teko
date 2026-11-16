@@ -3,8 +3,10 @@
 import type { IsoDate } from '@teko/shared/vigencia'
 import { ArrowDownIcon, ArrowRightIcon } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
+import { useEffect } from 'react'
 import { QueryError } from '@/components/query-error'
 import { Skeleton } from '@/components/ui/skeleton'
+import { analytics } from '@/lib/analytics'
 import type { GetProvisionDiffResponse } from '@/lib/api/__generated__/types.gen'
 import { useProvisionDiff } from '@/lib/api/hooks'
 import { formatIsoDate } from '@/lib/i18n/format'
@@ -257,6 +259,10 @@ export function ProvisionDiff({
   const t = useTranslations('provision.diff')
   const locale = useLocale()
   const query = useProvisionDiff(stableKey, { referenceDate: from }, { referenceDate: to })
+  // Um `diff_opened` por diff montado (sem o dispositivo nem as datas).
+  useEffect(() => {
+    analytics.capture('diff_opened', {})
+  }, [])
   const date = (value: IsoDate) => t('at', { date: formatIsoDate(locale, value, 'numeric') })
 
   if (query.isPending) {

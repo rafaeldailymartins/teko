@@ -17,6 +17,8 @@ import { useFormatter, useLocale, useTranslations } from 'next-intl'
 import { useQueryStates } from 'nuqs'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
+import { analytics } from '@/lib/analytics'
+import { answerEvents, captureEvents, quotaReachedEvent } from '@/lib/analytics/chat-events'
 import { type ChatRequestContext, TekoChatTransport } from '@/lib/api/chat-transport'
 import { useHistory, useQuestion, useQuota } from '@/lib/api/hooks'
 import { rereadQuestion } from '@/lib/api/mutations'
@@ -29,7 +31,13 @@ import {
   questionDetailMessages,
   type TekoUIMessage,
 } from '@/lib/chat/parts'
-import { type ReferenceChoice, referenceDisplay, referenceRequest } from '@/lib/chat/reference'
+import {
+  clarifiedRequest,
+  type ReferenceChoice,
+  type ReferenceRequest,
+  referenceDisplay,
+  referenceRequest,
+} from '@/lib/chat/reference'
 import {
   isApplePlatform,
   isComposerShortcut,
@@ -118,6 +126,8 @@ export default function ChatSession({
   const contextRef = useRef<ChatRequestContext>({ locale, reference: referenceRequest(ref, today) })
   const [restored, setRestored] = useState(false)
   const [transport] = useState(() => new TekoChatTransport({ context: () => contextRef.current }))
+  // Início do envio em andamento, para a faixa de latência do `answer_completed`.
+  const askedAtRef = useRef(0)
 
   useEffect(() => {
     contextRef.current = { locale, reference: referenceRequest(ref, today) }
@@ -129,6 +139,9 @@ export default function ChatSession({
       transport,
       dataPartSchemas: chatDataPartSchemas,
       onFinish: ({ message, isAbort, isError }) => {
+        if (!isAbort && !isError) {
+          captureEvents(analytics, answerEvents(message, performance.now() - askedAtRef.current))
+        }
         if (!isAbort && !isError && isUuid(message.id)) {
           void setUrl({ q: message.id, c: conversationId })
         }
@@ -141,6 +154,30 @@ export default function ChatSession({
   const quota = useQuota(blocksComposer(failure))
   const resetAt = failure?.resetAt ?? quota.data?.resetAt ?? null
   const blocked = blocksComposer(failure) && (resetAt === null || Date.parse(resetAt) > now)
+
+  // Cota estourada: um evento por falha (o `error` do `useChat` muda a cada envio que falha).
+  useEffect(() => {
+    const event = quotaReachedEvent(error)
+    if (event !== null) captureEvents(analytics, [event])
+  }, [error])
+
+  /** Marca o início de um envio e registra o `question_asked` (nunca o texto da pergunta). */
+  const markAsked = useCallback(
+    (request: ReferenceRequest) => {
+      askedAtRef.current = performance.now()
+      analytics.capture('question_asked', { locale, reference_source: request.source })
+    },
+    [locale],
+  )
+
+  /** Troca a data de referência do chip e registra o `reference_date_set`. */
+  const changeReference = useCallback(
+    (choice: ReferenceChoice) => {
+      void setUrl({ ref: choice })
+      analytics.capture('reference_date_set', { source: referenceRequest(choice, today).source })
+    },
+    [setUrl, today],
+  )
 
   // Ao abrir: as perguntas da conversa da URL (histórico) ou, sem ela, a pergunta `q`. Uma vez.
   const pending = !restored && messages.length === 0
@@ -201,13 +238,15 @@ export default function ChatSession({
 
   const askWith = useCallback(
     (text: string, reference: ReferenceChoice) => {
-      contextRef.current = { locale, reference: referenceRequest(reference, today) }
+      const request = referenceRequest(reference, today)
+      contextRef.current = { locale, reference: request }
+      markAsked(request)
       clearError()
       void setUrl({ c: conversationId })
       void sendMessage({ text })
       scrollToEnd()
     },
-    [clearError, conversationId, locale, scrollToEnd, sendMessage, setUrl, today],
+    [clearError, conversationId, locale, markAsked, scrollToEnd, sendMessage, setUrl, today],
   )
 
   const stopAnswer = useCallback(() => {
@@ -346,6 +385,7 @@ export default function ChatSession({
                     )
                   }
                   onClarify={(date) => {
+                    markAsked(clarifiedRequest(date))
                     clearError()
                     void sendMessage(
                       { text: lastQuestion === undefined ? '' : messageText(lastQuestion) },
@@ -376,7 +416,14 @@ export default function ChatSession({
               <CircleAlertIcon aria-hidden="true" className="size-4 shrink-0 text-destructive" />
               <p className="min-w-0 flex-1">{tErrors(failure.code)}</p>
               {failure.retryable && lastMessage?.role === 'user' && (
-                <Button variant="outline" size="sm" onClick={() => void regenerate()}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    markAsked(contextRef.current.reference)
+                    void regenerate()
+                  }}
+                >
                   <RotateCwIcon aria-hidden="true" />
                   {t('thread.retry')}
                 </Button>
@@ -413,11 +460,11 @@ export default function ChatSession({
             blockedMessage={blockedMessage ?? (composerLocked ? '' : null)}
             reference={ref}
             referenceDate={effectiveDate(ref, today)}
-            onReferenceChange={(choice) => void setUrl({ ref: choice })}
+            onReferenceChange={changeReference}
             pickerOpen={pickerOpen}
             onPickerOpenChange={setPickerOpen}
             inferredDate={inferred}
-            onConfirmInferred={(date) => void setUrl({ ref: inferredChoice(date) })}
+            onConfirmInferred={(date) => changeReference(inferredChoice(date))}
             today={today}
             shortcutLabel={shortcutLabel}
             textareaRef={textareaRef}

@@ -1,19 +1,12 @@
-import type { AnalyticsClient, AnalyticsClientLoader } from './adapter.ts'
-
-/** Cliente que não envia nada. */
-const NOOP_CLIENT: AnalyticsClient = {
-  capture: () => undefined,
-  setSurveysEnabled: () => undefined,
-  disable: () => undefined,
-}
+import type { AnalyticsClientLoader } from './adapter.ts'
 
 /**
- * Carregador do cliente de analytics. Na F5 o SDK do PostHog ainda não entra (decisão em
- * `openspec/changes/archive/2026-11-15-add-i18n-en-ptbr/design.md`): o cliente é no-op. A F6
- * (`add-product-analytics`) troca o corpo por `import('./posthog-client.ts')`, que inicializa o
- * `posthog-js` com `api_host` EU, `disable_external_dependency_loading: true`,
- * `cookieless_mode: 'on_reject'`, `person_profiles: 'identified_only'` e replay desligado. O
- * `import()` mantém o SDK fora do first-load, e o adapter só chama este carregador depois do
- * consentimento e com a chave pública presente.
+ * Carregador do cliente de analytics: o `posthog-js` (e o catálogo com o Zod) entra por `import()`,
+ * num chunk à parte, fora do primeiro carregamento. O adapter só chama este carregador depois do
+ * consentimento `analytics: true` e com a chave pública (`NEXT_PUBLIC_POSTHOG_KEY`) no build; sem
+ * isso, nem o chunk é baixado.
  */
-export const loadAnalyticsClient: AnalyticsClientLoader = async () => NOOP_CLIENT
+export const loadAnalyticsClient: AnalyticsClientLoader = async (options) => {
+  const { loadPosthogClient } = await import('./posthog-client.ts')
+  return loadPosthogClient(options)
+}

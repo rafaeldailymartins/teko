@@ -58,7 +58,23 @@ timer de exportação: a instância da Vercel pausa entre requisições.
 ## PostHog (produto)
 
 Catálogo tipado em `packages/shared/src/analytics/events.ts`; o texto da pergunta **nunca** é
-enviado.
+enviado. Só com consentimento (`analytics: true`) e a chave pública no build; cliente em
+`apps/web/src/lib/analytics/posthog-client.ts` (configuração e filtros em `posthog-config.ts`, hosts
+em `posthog-hosts.ts`), sem `identify`, sem autocapture nem pageview. Cada evento passa pelo schema
+estrito antes do `capture`. Retenção do PostHog Free: 1 ano.
+
+| Evento                                                                           | Onde sai no web                                                         |
+| -------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| `question_asked`                                                                 | envio, resposta a um esclarecimento e "tentar de novo" (`chat-session`) |
+| `reference_date_set`                                                             | chip de data e confirmação da data inferida                             |
+| `clarification_shown`, `answer_completed`, `answer_refused`, `provider_fallback` | `onFinish` do `useChat` (`chat-events.ts`), sem abort nem erro          |
+| `quota_reached`                                                                  | `ApiError` de cota com o escopo                                         |
+| `citation_opened`                                                                | abertura do painel de citação (`chat-workspace`)                        |
+| `diff_opened`                                                                    | cada `ProvisionDiff` montado (painel, dispositivo e comparação)         |
+| `answer_feedback`                                                                | 👍/👎 gravado                                                           |
+| `consent_updated`                                                                | escolha salva no banner ou nas preferências                             |
+| `locale_changed`                                                                 | clique no menu de idioma                                                |
+| `web_vital`                                                                      | `useReportWebVitals`, carregado só com o cliente ligado                 |
 
 | Evento                                           | Propriedades                                                 |
 | ------------------------------------------------ | ------------------------------------------------------------ |

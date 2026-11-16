@@ -13,6 +13,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { analytics } from '@/lib/analytics'
 import { LOCALE_ENDONYMS, routing } from '@/lib/i18n/routing'
 import { switchLocaleHref } from '@/lib/navigation'
 
@@ -86,6 +87,7 @@ export function LanguageMenu({ variant = 'icon' }: LanguageMenuProps) {
               hrefLang={target}
               lang={target}
               closeOnClick
+              onClick={() => analytics.capture('locale_changed', { from: locale, to: target })}
             >
               <span className="flex-1">{LOCALE_ENDONYMS[target]}</span>
               <span

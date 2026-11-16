@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto'
+import { POSTHOG_ORIGINS } from '../../src/lib/analytics/posthog-hosts.ts'
 import { compareCodeUnits, type ParsedDocument } from './html.ts'
 
 /**
@@ -22,8 +23,11 @@ export const MAX_CSP_BYTES = 6 * 1024
 /** Trusted Types em observação até a v0.1.0 (enforce depois de 14 dias sem violação no staging). */
 export const TRUSTED_TYPES_REPORT_ONLY = "require-trusted-types-for 'script'"
 
-/** Origens de `connect-src` além da própria: o PostHog (EU), chamado direto do navegador. */
-const CONNECT_ORIGINS = ['https://eu.i.posthog.com'] as const
+/**
+ * Origens de `connect-src` além da própria: o PostHog (UE), chamado direto do navegador depois do
+ * consentimento (ingestão e a configuração remota do projeto, lida do host de assets).
+ */
+const CONNECT_ORIGINS = POSTHOG_ORIGINS
 
 export class CspTooLargeError extends Error {}
 
