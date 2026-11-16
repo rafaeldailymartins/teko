@@ -2,6 +2,7 @@ import pg from 'pg'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { createDatabase, type Database } from '#adapters/out/persistence/drizzle/client.ts'
 import {
+  createPgCoverageVerifiedReader,
   createPgCoverageWatchRepository,
   GapEntriesMigrationPendingError,
 } from '#adapters/out/persistence/drizzle/repositories/pg-coverage-watch-repository.ts'
@@ -62,6 +63,18 @@ beforeEach(async () => {
       ('cte', 'GO', '{[1991-12-01,)}', '2026-11-11', 1, '{}', NULL),
       ('efd-icms-ipi', 'BR', '{[2009-01-01,)}', '2026-11-10', 1, '{[2026-12-01,2027-01-01)}', 'antiga'),
       ('tabelas-go', 'GO', '{[2009-01-01,)}', '2026-11-01', 1, '{}', NULL)`)
+})
+
+describe('createPgCoverageVerifiedReader (role teko_watch, cli coverage-age)', () => {
+  it('lê o verified_at de cada família, em ordem, com o privilégio do teko_watch', async () => {
+    const families = await createPgCoverageVerifiedReader(watch.db).listVerifiedAt()
+    expect(families).toEqual([
+      { family: 'cte', verifiedAt: '2026-11-11' },
+      { family: 'efd-icms-ipi', verifiedAt: '2026-11-10' },
+      { family: 'rcte', verifiedAt: '2026-11-09' },
+      { family: 'tabelas-go', verifiedAt: '2026-11-01' },
+    ])
+  })
 })
 
 describe('createPgCoverageWatchRepository (role teko_watch)', () => {

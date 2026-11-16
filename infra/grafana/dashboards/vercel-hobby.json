@@ -1,0 +1,54 @@
+{
+  "uid": "teko-vercel-hobby",
+  "title": "Tekó · Vercel Hobby",
+  "description": "Uso das cotas do Vercel Hobby (soma de tekoia e tekoia-staging, janela de 30 dias) e a pausa do projeto vista pelo Synthetic Monitoring.",
+  "tags": ["teko", "vercel"],
+  "variables": [],
+  "panels": [
+    {
+      "title": "Fonte e limiares",
+      "type": "text",
+      "w": 24,
+      "h": 3,
+      "content": "`teko_vercel_usage_ratio{resource}` vem do job `vercel-usage` do `ops.yml` (F7): `vercel usage --since 30d` comparado com as cotas fixadas no script. **50% e 75%**: e-mail. **85%**: kill switch de geração. **95%**: a regra 1 do WAF nega tudo exceto `/healthz` e a página de aviso. Runbooks `budget-kill-switch.md` e `vercel-paused.md`."
+    },
+    {
+      "title": "Uso da cota por recurso (30 dias)",
+      "type": "bargauge",
+      "unit": "percentunit",
+      "min": 0,
+      "max": 1,
+      "thresholds": [0.5, 0.75, 0.85],
+      "targets": [
+        {
+          "expr": "max by (resource) (last_over_time(teko_vercel_usage_ratio[2d]))",
+          "legend": "{{resource}}"
+        }
+      ]
+    },
+    {
+      "title": "Uso da cota no tempo",
+      "type": "timeseries",
+      "unit": "percentunit",
+      "thresholds": [0.5, 0.75, 0.85],
+      "targets": [
+        {
+          "expr": "max by (resource) (last_over_time(teko_vercel_usage_ratio[1d]))",
+          "legend": "{{resource}}"
+        }
+      ]
+    },
+    {
+      "title": "/healthz: status HTTP (503 = DEPLOYMENT_PAUSED)",
+      "type": "timeseries",
+      "unit": "none",
+      "w": 24,
+      "targets": [
+        {
+          "expr": "max by (job) (probe_http_status_code{job=~\"teko-healthz-.+\"})",
+          "legend": "{{job}}"
+        }
+      ]
+    }
+  ]
+}

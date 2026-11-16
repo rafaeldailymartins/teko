@@ -1,0 +1,172 @@
+{
+  "uid": "teko-api-red",
+  "title": "Tekó · API (RED)",
+  "description": "Taxa, erros e duração da API (OTel, http_server_request_duration_seconds) e o Synthetic Monitoring do /healthz e da landing.",
+  "tags": ["teko", "api"],
+  "variables": [
+    {
+      "name": "env",
+      "label": "Ambiente",
+      "query": "label_values(http_server_request_duration_seconds_count{service_name=\"teko-api\"}, deployment_environment_name)"
+    }
+  ],
+  "panels": [
+    {
+      "title": "Requisições/s",
+      "type": "stat",
+      "unit": "reqps",
+      "w": 6,
+      "h": 4,
+      "targets": [
+        {
+          "expr": "sum(rate(http_server_request_duration_seconds_count{service_name=\"teko-api\", deployment_environment_name=~\"$env\"}[5m]))"
+        }
+      ]
+    },
+    {
+      "title": "5xx (10 min)",
+      "type": "stat",
+      "unit": "percentunit",
+      "w": 6,
+      "h": 4,
+      "thresholds": [0.01, 0.02],
+      "targets": [
+        {
+          "expr": "sum(rate(http_server_request_duration_seconds_count{service_name=\"teko-api\", deployment_environment_name=~\"$env\", http_response_status_code=~\"5..\"}[10m])) / sum(rate(http_server_request_duration_seconds_count{service_name=\"teko-api\", deployment_environment_name=~\"$env\"}[10m]))"
+        }
+      ]
+    },
+    {
+      "title": "p95 de POST /api/v1/questions (10 min)",
+      "type": "stat",
+      "unit": "s",
+      "w": 6,
+      "h": 4,
+      "thresholds": [2, 3],
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(http_server_request_duration_seconds_bucket{service_name=\"teko-api\", deployment_environment_name=~\"$env\", http_request_method=\"POST\", http_route=\"/api/v1/questions\"}[10m])))"
+        }
+      ]
+    },
+    {
+      "title": "Synthetic Monitoring: sucesso (24 h)",
+      "type": "stat",
+      "unit": "percentunit",
+      "w": 6,
+      "h": 4,
+      "targets": [
+        {
+          "expr": "avg by (job) (avg_over_time(probe_success{job=~\"teko-.+\"}[24h]))",
+          "legend": "{{job}}"
+        }
+      ]
+    },
+    {
+      "title": "Requisições por rota",
+      "type": "timeseries",
+      "unit": "reqps",
+      "targets": [
+        {
+          "expr": "sum by (deployment_environment_name, http_route) (rate(http_server_request_duration_seconds_count{service_name=\"teko-api\", deployment_environment_name=~\"$env\"}[$__rate_interval]))",
+          "legend": "{{deployment_environment_name}} {{http_route}}"
+        }
+      ]
+    },
+    {
+      "title": "Taxa de erro (4xx e 5xx)",
+      "type": "timeseries",
+      "unit": "percentunit",
+      "thresholds": [0.02],
+      "targets": [
+        {
+          "expr": "sum by (deployment_environment_name) (rate(http_server_request_duration_seconds_count{service_name=\"teko-api\", deployment_environment_name=~\"$env\", http_response_status_code=~\"5..\"}[$__rate_interval])) / sum by (deployment_environment_name) (rate(http_server_request_duration_seconds_count{service_name=\"teko-api\", deployment_environment_name=~\"$env\"}[$__rate_interval]))",
+          "legend": "5xx {{deployment_environment_name}}"
+        },
+        {
+          "expr": "sum by (deployment_environment_name) (rate(http_server_request_duration_seconds_count{service_name=\"teko-api\", deployment_environment_name=~\"$env\", http_response_status_code=~\"4..\"}[$__rate_interval])) / sum by (deployment_environment_name) (rate(http_server_request_duration_seconds_count{service_name=\"teko-api\", deployment_environment_name=~\"$env\"}[$__rate_interval]))",
+          "legend": "4xx {{deployment_environment_name}}"
+        }
+      ]
+    },
+    {
+      "title": "Duração p95 por rota",
+      "type": "timeseries",
+      "unit": "s",
+      "w": 24,
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum by (le, http_request_method, http_route) (rate(http_server_request_duration_seconds_bucket{service_name=\"teko-api\", deployment_environment_name=~\"$env\"}[$__rate_interval])))",
+          "legend": "{{http_request_method}} {{http_route}}"
+        }
+      ]
+    },
+    {
+      "title": "POST /api/v1/questions: p50, p95 e p99",
+      "type": "timeseries",
+      "unit": "s",
+      "thresholds": [3],
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.5, sum by (le) (rate(http_server_request_duration_seconds_bucket{service_name=\"teko-api\", deployment_environment_name=~\"$env\", http_request_method=\"POST\", http_route=\"/api/v1/questions\"}[$__rate_interval])))",
+          "legend": "p50"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(http_server_request_duration_seconds_bucket{service_name=\"teko-api\", deployment_environment_name=~\"$env\", http_request_method=\"POST\", http_route=\"/api/v1/questions\"}[$__rate_interval])))",
+          "legend": "p95"
+        },
+        {
+          "expr": "histogram_quantile(0.99, sum by (le) (rate(http_server_request_duration_seconds_bucket{service_name=\"teko-api\", deployment_environment_name=~\"$env\", http_request_method=\"POST\", http_route=\"/api/v1/questions\"}[$__rate_interval])))",
+          "legend": "p99"
+        }
+      ]
+    },
+    {
+      "title": "Respostas por status",
+      "type": "timeseries",
+      "unit": "reqps",
+      "targets": [
+        {
+          "expr": "sum by (http_response_status_code) (rate(http_server_request_duration_seconds_count{service_name=\"teko-api\", deployment_environment_name=~\"$env\"}[$__rate_interval]))",
+          "legend": "{{http_response_status_code}}"
+        }
+      ]
+    },
+    {
+      "title": "Synthetic Monitoring: sucesso por check",
+      "type": "timeseries",
+      "unit": "percentunit",
+      "min": 0,
+      "max": 1,
+      "targets": [
+        {
+          "expr": "avg by (job) (probe_success{job=~\"teko-.+\"})",
+          "legend": "{{job}}"
+        }
+      ]
+    },
+    {
+      "title": "Synthetic Monitoring: duração",
+      "type": "timeseries",
+      "unit": "s",
+      "targets": [
+        {
+          "expr": "avg by (job) (probe_duration_seconds{job=~\"teko-.+\"})",
+          "legend": "{{job}}"
+        }
+      ]
+    },
+    {
+      "title": "Synthetic Monitoring: status HTTP",
+      "type": "timeseries",
+      "unit": "none",
+      "description": "503 no /healthz na Vercel = projeto pausado (DEPLOYMENT_PAUSED); 0 = timeout ou falha de conexão.",
+      "targets": [
+        {
+          "expr": "max by (job) (probe_http_status_code{job=~\"teko-.+\"})",
+          "legend": "{{job}}"
+        }
+      ]
+    }
+  ]
+}

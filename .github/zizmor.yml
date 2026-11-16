@@ -13,6 +13,7 @@ rules:
       - e2e.yml
       - ingest.yml
       - mutation.yml
+      - ops.yml
       - perf.yml
       - pr-gate.yml
       - sonar.yml

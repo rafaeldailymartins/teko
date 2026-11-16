@@ -17,6 +17,7 @@ import { PARSER_REVISIONS, PARSERS } from '#adapters/in/cli/ingest/parsers/index
 import { allowedHostsOf, httpHostsOf, loadCorpusConfig } from '#adapters/in/cli/ingest/sources.ts'
 import { DEFAULT_FIXTURE_DIR, seedFixtures } from '#adapters/in/cli/seed-fixtures/seed-fixtures.ts'
 import { runSnapshotExport, runSnapshotPromote } from '#adapters/in/cli/snapshot/snapshot.ts'
+import { runCoverageAge } from '#adapters/in/cli/sources-watch/run-coverage-age.ts'
 import {
   resolveWatchDatabaseUrls,
   runCoverageMark,
@@ -27,6 +28,7 @@ import type { IngestionContainer } from '#app/container.ts'
 import type { BlobStore } from '#app/ports/blob-store.ts'
 import { compareCodeUnits } from '#domain/shared/compare-code-units.ts'
 import {
+  createCoverageAgeTargets,
   createCoverageMarkTargets,
   createDevSessionSeeder,
   createFixtureCorpusReader,
@@ -52,6 +54,9 @@ import { type Env, EnvValidationError, loadCliEnv, loadWatchEnv } from './config
  *   condicionais e `discovered.json`, sem banco;
  * - `coverage-mark --discovered <discovered.json>` (F3, job `mark-coverage`): só lê
  *   `NEON_PROD_WATCH_URL` e `NEON_STAGING_WATCH_URL` (não passa pelo `loadCliEnv`).
+ * - `coverage-age --out <arquivo>` (F6, job `coverage-age` do `ops.yml`): `verified_at` por
+ *   família nos dois bancos, com as mesmas URLs do `teko_watch`, para a métrica
+ *   `teko_coverage_verified_age_days`.
  *
  * - `seed-dev-session [--email …] [--name …] [--country BR]` (F4): usuário com onboarding e sessão
  *   do Better Auth direto no banco, para o login local e o e2e (só development e ci).
@@ -83,6 +88,7 @@ const USAGE = [
   '     cli ingest load --target staging|production --plan <plan.json> --docling-dir <dir> [--bulk] [--migrate] [--report <arquivo>]',
   '     cli snapshot export [--corpus-version <n>] | snapshot promote (--manifest <chave> | --corpus-version <n>)',
   '     cli eval-fixture export --from staging --out <dir> [--fixture <dir>]',
+  '     cli coverage-age --out <arquivo.json>',
   '     cli seed-dev-session [--email <e-mail>] [--name <nome>] [--country <ISO>]',
   '     cli maintenance purge',
   '     cli openapi export [--out <arquivo>]',
@@ -263,6 +269,15 @@ async function runCoverage(args: readonly string[]): Promise<number> {
   }
 }
 
+async function runAge(args: readonly string[]): Promise<number> {
+  const { targets, close } = createCoverageAgeTargets(resolveWatchDatabaseUrls(loadWatchEnv()))
+  try {
+    return await runCoverageAge({ targets, now: () => new Date() }, args)
+  } finally {
+    await close()
+  }
+}
+
 async function runSeedDevSession(args: readonly string[]): Promise<number> {
   const options = parseDevSessionArgs(args)
   const seeder = createDevSessionSeeder(loadCliEnv())
@@ -320,6 +335,7 @@ const COMMANDS: Readonly<Record<string, (args: readonly string[]) => Promise<num
   'eval-fixture': runEvalFixture,
   'sources-watch': runWatch,
   'coverage-mark': runCoverage,
+  'coverage-age': runAge,
   'seed-dev-session': runSeedDevSession,
   maintenance: runMaintenance,
   openapi: runOpenApi,

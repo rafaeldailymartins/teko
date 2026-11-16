@@ -149,7 +149,7 @@ function sqlState(error: unknown): string | undefined {
   return typeof error.code === 'string' ? error.code : undefined
 }
 
-function isMissingCorpusSchema(error: unknown): boolean {
+export function isMissingCorpusSchema(error: unknown): boolean {
   return errorChain(error).some((item) => MISSING_SCHEMA_CODES.has(sqlState(item) ?? ''))
 }
 
@@ -157,7 +157,7 @@ function isMissingCorpusSchema(error: unknown): boolean {
  * Mensagem com a causa: o Drizzle embrulha o erro do `pg` ("Failed query: …") e só a `cause`
  * diz o motivo (SQLSTATE e texto do Postgres).
  */
-function describeError(error: unknown): string {
+export function describeError(error: unknown): string {
   return errorChain(error)
     .map((item) => {
       const message = item instanceof Error ? item.message : String(item)

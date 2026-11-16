@@ -1,0 +1,256 @@
+# Operação diária (F6, mudança OpenSpec add-uptime-monitoring; docs/architecture/observabilidade.md).
+#
+# Jobs:
+#   - grafana (environment ops, só em main): valida infra/grafana/ offline e aplica o Grafana as code
+#     pela API HTTP do Grafana e do Synthetic Monitoring (scripts/grafana-apply.ts). Roda no cron
+#     (corrige drift), no push que muda infra/grafana/ e no dispatch; dispatch com dry_run só lê.
+#   - coverage-age (environment corpus-watch): `cli coverage-age` lê o verified_at por família nos
+#     dois bancos com o role teko_watch. O cron fica logo depois do source-watch (09:00 UTC) para
+#     pegar o compute do Neon ainda acordado; no pior caso é uma ativação a mais por dia.
+#   - quotas (environment ops): scripts/ops-metrics.ts empurra por OTLP ao Grafana Cloud o CU-h do
+#     Neon (API do Neon, sem acordar o compute), a idade da cobertura, a expiração dos tokens
+#     (variável TOKEN_EXPIRY_DATES) e o sucesso do próprio job.
+#
+# O environment ops pode estar vazio: cada job confere os segredos e, sem eles, avisa no resumo e
+# termina verde (o grafana ainda valida os arquivos). Quem cadastra é o mantenedor
+# (infra/grafana/README.md).
+#
+# Para acrescentar um job (o langfuse-models da mudança add-llm-tracing-langfuse; vercel-usage,
+# weekly-maintenance e prod-vuln-scan da F7), copie o `quotas`: environment ops, harden-runner em
+# block com os hosts exatos do serviço, checkout sem credenciais, setup-node, um script em scripts/
+# com teste no test:scripts, segredos só no `env` do passo que os usa e falta de segredo como
+# ::warning com saída 0. Métrica nova vai por scripts/lib/otlp-metrics.ts, com o nome em
+# KNOWN_METRICS (scripts/lib/grafana-as-code.ts) e o sucesso em
+# teko_ops_job_last_success_timestamp_seconds{ops_job=...}. O ci-config.test.sh confere as
+# invariantes em todo job deste arquivo.
+name: Ops
+
+on:
+  schedule:
+    # 09:40 UTC = 06:40 em America/Sao_Paulo, 40 min depois do source-watch.
+    - cron: "40 9 * * *"
+  push:
+    branches: [main]
+    paths:
+      - infra/grafana/**
+      - scripts/grafana-apply.ts
+      - scripts/lib/grafana-as-code.ts
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Só ler o estado real e mostrar o plano (Grafana) e as métricas (quotas), sem escrever nem enviar.
+        type: boolean
+        default: true
+
+permissions: {}
+
+concurrency:
+  group: ops
+  cancel-in-progress: false
+
+env:
+  TURBO_TELEMETRY_DISABLED: "1"
+  # Dry-run só no dispatch; cron e push aplicam.
+  DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
+
+jobs:
+  grafana:
+    name: grafana
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment: ops
+    permissions:
+      contents: read
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          # GitHub (checkout e setup-node), nodejs.org e a stack do Grafana Cloud (a URL da stack e a
+          # API do Synthetic Monitoring da região, ambas em grafana.net).
+          egress-policy: block
+          allowed-endpoints: >
+            github.com:443
+            api.github.com:443
+            codeload.github.com:443
+            objects.githubusercontent.com:443
+            raw.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+            results-receiver.actions.githubusercontent.com:443
+            *.actions.githubusercontent.com:443
+            nodejs.org:443
+            *.grafana.net:443
+
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Node (.nvmrc)
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+
+      - name: Validar infra/grafana (offline)
+        run: node scripts/grafana-apply.ts --validate
+
+      - name: Conferir o environment ops
+        id: secrets
+        env:
+          GRAFANA_URL: ${{ vars.GRAFANA_URL }}
+          GRAFANA_SA_TOKEN: ${{ secrets.GRAFANA_SA_TOKEN }}
+        run: |
+          if [[ -z "$GRAFANA_URL" || -z "$GRAFANA_SA_TOKEN" ]]; then
+            echo "::warning title=ops::Sem a variável GRAFANA_URL ou o segredo GRAFANA_SA_TOKEN no environment 'ops': Grafana as code só validado, sem apply (infra/grafana/README.md)."
+            echo "ready=false" >>"$GITHUB_OUTPUT"
+          else
+            echo "ready=true" >>"$GITHUB_OUTPUT"
+          fi
+
+      - name: Aplicar o Grafana as code (ou dry-run)
+        if: steps.secrets.outputs.ready == 'true'
+        env:
+          GRAFANA_URL: ${{ vars.GRAFANA_URL }}
+          GRAFANA_SA_TOKEN: ${{ secrets.GRAFANA_SA_TOKEN }}
+          GRAFANA_SM_URL: ${{ vars.GRAFANA_SM_URL }}
+          GRAFANA_SM_TOKEN: ${{ secrets.GRAFANA_SM_TOKEN }}
+          GRAFANA_ALERT_EMAILS: ${{ secrets.GRAFANA_ALERT_EMAILS }}
+          GRAFANA_PROM_DATASOURCE_UID: ${{ vars.GRAFANA_PROM_DATASOURCE_UID }}
+        run: |
+          if [[ "$DRY_RUN" == true ]]; then
+            node scripts/grafana-apply.ts --dry-run
+          else
+            node scripts/grafana-apply.ts
+          fi
+
+  coverage-age:
+    name: coverage-age
+    if: github.event_name != 'push'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment: corpus-watch
+    permissions:
+      contents: read
+    outputs:
+      report: ${{ steps.age.outputs.report }}
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          # Os mesmos hosts do mark-coverage do source-watch.yml: checkout, setup e o Neon.
+          egress-policy: block
+          allowed-endpoints: >
+            github.com:443
+            api.github.com:443
+            codeload.github.com:443
+            objects.githubusercontent.com:443
+            raw.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+            results-receiver.actions.githubusercontent.com:443
+            *.actions.githubusercontent.com:443
+            *.blob.core.windows.net:443
+            registry.npmjs.org:443
+            nodejs.org:443
+            *.neon.tech:5432
+
+      - name: Conferir as URLs do teko_watch (environment corpus-watch)
+        id: secrets
+        env:
+          NEON_PROD_WATCH_URL: ${{ secrets.NEON_PROD_WATCH_URL }}
+          NEON_STAGING_WATCH_URL: ${{ secrets.NEON_STAGING_WATCH_URL }}
+        run: |
+          if [[ -z "$NEON_PROD_WATCH_URL" || -z "$NEON_STAGING_WATCH_URL" ]]; then
+            echo "::warning title=ops::Sem NEON_PROD_WATCH_URL ou NEON_STAGING_WATCH_URL no environment 'corpus-watch': idade da cobertura não medida."
+            echo "ready=false" >>"$GITHUB_OUTPUT"
+          else
+            echo "ready=true" >>"$GITHUB_OUTPUT"
+          fi
+
+      - name: Checkout
+        if: steps.secrets.outputs.ready == 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup
+        if: steps.secrets.outputs.ready == 'true'
+        uses: ./.github/actions/setup
+
+      - name: Build da CLI (@teko/api → dist/cli.mjs)
+        if: steps.secrets.outputs.ready == 'true'
+        run: pnpm --filter @teko/api build
+
+      - name: Ler o verified_at (cli coverage-age, role teko_watch)
+        id: age
+        if: steps.secrets.outputs.ready == 'true'
+        env:
+          OUT: ${{ runner.temp }}/coverage-age.json
+          NEON_PROD_WATCH_URL: ${{ secrets.NEON_PROD_WATCH_URL }}
+          NEON_STAGING_WATCH_URL: ${{ secrets.NEON_STAGING_WATCH_URL }}
+        run: |
+          set +e
+          node apps/api/dist/cli.mjs coverage-age --out "$OUT"
+          code=$?
+          set -e
+          # O JSON sai mesmo com um banco em erro: o quotas envia o resto e reprova o run.
+          if [[ -f "$OUT" ]]; then
+            echo "report=$(jq -c . "$OUT")" >>"$GITHUB_OUTPUT"
+          fi
+          exit "$code"
+
+  quotas:
+    name: quotas
+    needs: coverage-age
+    if: ${{ !cancelled() && github.event_name != 'push' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment: ops
+    permissions:
+      contents: read
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          # GitHub (checkout e setup-node), nodejs.org, a API do Neon (console, nunca o compute) e o
+          # gateway OTLP do Grafana Cloud.
+          egress-policy: block
+          allowed-endpoints: >
+            github.com:443
+            api.github.com:443
+            codeload.github.com:443
+            objects.githubusercontent.com:443
+            raw.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+            results-receiver.actions.githubusercontent.com:443
+            *.actions.githubusercontent.com:443
+            nodejs.org:443
+            console.neon.tech:443
+            *.grafana.net:443
+
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Node (.nvmrc)
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+
+      - name: Métricas de cota (OTLP ao Grafana Cloud)
+        env:
+          NEON_PROD_PROJECT_ID: ${{ vars.NEON_PROD_PROJECT_ID }}
+          NEON_STAGING_PROJECT_ID: ${{ vars.NEON_STAGING_PROJECT_ID }}
+          NEON_API_KEY_PROD: ${{ secrets.NEON_API_KEY_PROD }}
+          NEON_API_KEY_STAGING: ${{ secrets.NEON_API_KEY_STAGING }}
+          TOKEN_EXPIRY_DATES: ${{ vars.TOKEN_EXPIRY_DATES }}
+          COVERAGE_AGE_JSON: ${{ needs.coverage-age.outputs.report }}
+          GRAFANA_OTLP_ENDPOINT: ${{ vars.GRAFANA_OTLP_ENDPOINT }}
+          GRAFANA_OTLP_INSTANCE_ID: ${{ vars.GRAFANA_OTLP_INSTANCE_ID }}
+          GRAFANA_OTLP_TOKEN: ${{ secrets.GRAFANA_OTLP_TOKEN }}
+        run: |
+          if [[ "$DRY_RUN" == true ]]; then
+            node scripts/ops-metrics.ts --dry-run --job quotas
+          else
+            node scripts/ops-metrics.ts --job quotas
+          fi

@@ -41,3 +41,18 @@ export interface CoverageWatchRepository {
    */
   markVerified(command: MarkVerifiedCommand): Promise<MarkVerifiedResult>
 }
+
+/** `verified_at` de uma família em `corpus.coverage`. */
+export interface FamilyVerifiedAt {
+  readonly family: string
+  readonly verifiedAt: IsoDate
+}
+
+/**
+ * Leitura do `cli coverage-age` (job `coverage-age` do `ops.yml`), com o mesmo role `teko_watch`:
+ * só `SELECT family, verified_at`. A idade em dias vira a métrica `teko_coverage_verified_age_days`
+ * no job `quotas`.
+ */
+export interface CoverageVerifiedReader {
+  listVerifiedAt(): Promise<readonly FamilyVerifiedAt[]>
+}

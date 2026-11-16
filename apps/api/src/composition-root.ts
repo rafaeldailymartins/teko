@@ -7,6 +7,7 @@ import {
   type DevSessionArgs,
 } from '#adapters/in/cli/dev-session/dev-session.ts'
 import type { FixtureCorpusReader } from '#adapters/in/cli/eval-fixture/eval-fixture.ts'
+import type { CoverageAgeTarget } from '#adapters/in/cli/sources-watch/run-coverage-age.ts'
 import type {
   CoverageMarkTarget,
   WatchDatabaseUrl,
@@ -38,7 +39,10 @@ import {
   createPgMaintenanceRepository,
 } from '#adapters/out/persistence/drizzle/repositories/pg-account-repository.ts'
 import { createPgCoverageRepository } from '#adapters/out/persistence/drizzle/repositories/pg-coverage-repository.ts'
-import { createPgCoverageWatchRepository } from '#adapters/out/persistence/drizzle/repositories/pg-coverage-watch-repository.ts'
+import {
+  createPgCoverageVerifiedReader,
+  createPgCoverageWatchRepository,
+} from '#adapters/out/persistence/drizzle/repositories/pg-coverage-watch-repository.ts'
 import { createPgEmbeddingCache } from '#adapters/out/persistence/drizzle/repositories/pg-embedding-cache.ts'
 import { createPgFixtureCorpusReader } from '#adapters/out/persistence/drizzle/repositories/pg-fixture-corpus-reader.ts'
 import { createPgFixtureCorpusStore } from '#adapters/out/persistence/drizzle/repositories/pg-fixture-corpus-store.ts'
@@ -550,26 +554,45 @@ export function createFixtureCorpusReader(
 }
 
 /**
- * Alvos do `cli coverage-mark`: um pool de 1 conexão por banco (role `teko_watch`). Não passa pelo
- * `parseEnv`: o environment `corpus-watch` só tem as duas URLs.
+ * Um pool de 1 conexão por banco com o role `teko_watch`, montando o alvo de cada um. Não passa
+ * pelo `parseEnv`: o environment `corpus-watch` só tem as duas URLs.
  */
-export function createCoverageMarkTargets(urls: readonly WatchDatabaseUrl[]): {
-  readonly targets: CoverageMarkTarget[]
-  close(): Promise<void>
-} {
+function createWatchTargets<T>(
+  urls: readonly WatchDatabaseUrl[],
+  target: (name: WatchDatabaseUrl['name'], db: Database['db']) => T,
+): { readonly targets: T[]; close(): Promise<void> } {
   const databases = urls.map((entry) => ({
     name: entry.name,
     database: createDatabase({ url: entry.url, applicationName: 'teko-watch', maxConnections: 1 }),
   }))
   return {
-    targets: databases.map(({ name, database }) => ({
-      name,
-      repository: createPgCoverageWatchRepository(database.db),
-    })),
+    targets: databases.map(({ name, database }) => target(name, database.db)),
     close: async () => {
       await Promise.all(databases.map(({ database }) => database.close()))
     },
   }
+}
+
+/** Alvos do `cli coverage-mark` (job `mark-coverage` do `source-watch.yml`). */
+export function createCoverageMarkTargets(urls: readonly WatchDatabaseUrl[]): {
+  readonly targets: CoverageMarkTarget[]
+  close(): Promise<void>
+} {
+  return createWatchTargets(urls, (name, db) => ({
+    name,
+    repository: createPgCoverageWatchRepository(db),
+  }))
+}
+
+/** Alvos do `cli coverage-age` (job `coverage-age` do `ops.yml`), só leitura. */
+export function createCoverageAgeTargets(urls: readonly WatchDatabaseUrl[]): {
+  readonly targets: CoverageAgeTarget[]
+  close(): Promise<void>
+} {
+  return createWatchTargets(urls, (name, db) => ({
+    name,
+    reader: createPgCoverageVerifiedReader(db),
+  }))
 }
 
 export interface ContainerOverrides {

@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Testes de regressão da configuração de CI: invariantes que já quebraram uma vez e que nenhum
 # linter (actionlint, zizmor) enxerga, porque o YAML continua válido sem elas. É o lugar das
-# checagens de workflow (ci-gate, Sonar, audit, mutação, ingest.yml, source-watch.yml e seus
-# harden-runner); o que o actionlint ou o zizmor já reprovam não se repete aqui (ADR 0032).
+# checagens de workflow (ci-gate, Sonar, audit, mutação, ingest.yml, source-watch.yml, ops.yml e
+# seus harden-runner); o que o actionlint ou o zizmor já reprovam não se repete aqui (ADR 0032).
 #
 # Uso: bash .github/scripts/ci-config.test.sh (na raiz). Requer yq (mikefarah v4) e jq.
 set -euo pipefail
@@ -320,6 +320,31 @@ mark_coverage_only_watch_secrets() {
 check "source-watch: mark-coverage só com os segredos do teko_watch" mark_coverage_only_watch_secrets
 check "source-watch: dispara o ingest.yml no staging sem secrets: inherit" \
   yq_true '.jobs.ingest.uses == "./.github/workflows/ingest.yml" and .jobs.ingest.with.target == "staging" and (.jobs.ingest.secrets | type) == "!!map"' "$watch"
+
+# --- F6: ops.yml (add-uptime-monitoring) ----------------------------------------------------------
+ops=.github/workflows/ops.yml
+check "ops: harden-runner em block com allowed-endpoints, como primeiro step, em todo job" \
+  yq_true '[.jobs[] | .steps[0] | ((.uses | test("^step-security/harden-runner@")) and (.with."egress-policy" == "block") and (((.with."allowed-endpoints" // "") | length) > 0))] | all' "$ops"
+check "ops: permissions {} no topo e nenhum job com escrita" \
+  yq_true '((.permissions | length) == 0) and (([.jobs[].permissions // {} | to_entries[] | select(.value == "write")] | length) == 0)' "$ops"
+check "ops: cron diário, push só de infra/grafana e dispatch com dry_run (padrão true)" \
+  yq_true '((.on.schedule | length) == 1) and ((.on.push.branches | join(",")) == "main") and (.on.push.paths | contains(["infra/grafana/**"])) and (.on.workflow_dispatch.inputs.dry_run.type == "boolean") and (.on.workflow_dispatch.inputs.dry_run.default == true)' "$ops"
+check "ops: grafana só em main, no environment ops, e a validação offline roda sempre" \
+  yq_true '(.jobs.grafana.if == "github.ref == '"'"'refs/heads/main'"'"'") and (.jobs.grafana.environment == "ops") and ([.jobs.grafana.steps[] | select(.run // "" | test("grafana-apply\\.ts --validate$")) | has("if") | not] | ((length == 1) and all))' "$ops"
+check "ops: o apply do grafana pula com aviso sem o segredo (passo de conferência antes)" \
+  bash -c "yq -r '.jobs.grafana.steps[] | select(.id == \"secrets\") | .run' '$ops' | grep -q '::warning' && yq -e '[.jobs.grafana.steps[] | select(.run // \"\" | test(\"grafana-apply[.]ts --dry-run\"))] | ((length == 1) and (.[0].if == \"steps.secrets.outputs.ready == '\"'\"'true'\"'\"'\"))' '$ops' >/dev/null"
+check "ops: coverage-age no corpus-watch só com as URLs do teko_watch" \
+  bash -c "[[ \"\$(yq -o=json '.jobs.\"coverage-age\"' '$ops' | grep -Eo 'secrets[.][A-Z_]+' | sort -u | tr '\n' ' ')\" == 'secrets.NEON_PROD_WATCH_URL secrets.NEON_STAGING_WATCH_URL ' ]] && yq -e '.jobs.\"coverage-age\".environment == \"corpus-watch\"' '$ops' >/dev/null"
+ops_quotas_without_database() {
+  ! grep -Eq 'WATCH_URL|neon\.tech:5432' <<<"$(job_text "$ops" quotas)$(job_text "$ops" grafana)"
+}
+check "ops: quotas e grafana nunca veem URL de banco nem liberam a porta 5432" ops_quotas_without_database
+check "ops: Neon (5432) só no egress do coverage-age; grafana.net só no grafana e no quotas" \
+  yq_true '(([.jobs | to_entries[] | select(.value.steps[0].with."allowed-endpoints" | test("neon\\.tech:5432")) | .key] | join(",")) == "coverage-age") and (([.jobs | to_entries[] | select(.value.steps[0].with."allowed-endpoints" | test("grafana\\.net")) | .key] | sort | join(",")) == "grafana,quotas")' "$ops"
+check "ops: quotas no environment ops, depois do coverage-age e mesmo se ele falhar" \
+  yq_true '(.jobs.quotas.environment == "ops") and (.jobs.quotas.needs == "coverage-age") and (.jobs.quotas.if | test("!cancelled\\(\\)"))' "$ops"
+check "ops: dry-run só no workflow_dispatch" \
+  yq_true '.env.DRY_RUN == "${{ github.event_name == '"'"'workflow_dispatch'"'"' && inputs.dry_run }}"' "$ops"
 
 # --- Semgrep: as fixtures rodam no CI (GHA-4) ---------------------------------------------------
 check "security.yml roda semgrep test .semgrep/" \
