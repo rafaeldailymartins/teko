@@ -210,7 +210,7 @@ O que o deploy exige do mantenedor está em [Antes da F7](#antes-da-f7-o-que-o-m
 - `add-web-a11y-gate` (arquivada em 2026-11-15): axe WCAG 2.2 AA no e2e (`a11y.spec.ts`, 112 testes:
   14 telas em en/pt-BR, claro/escuro, desktop/mobile), correções do nome acessível do botão da conta
   e do `h1` do chat, e a [prova do DoD da F5](evals/dod-f5-2026-11-15.md) item por item (sete
-  jornadas, bundle em 402,7 KiB gz).
+  jornadas, bundle em 416,4 KiB gz).
 
 ## Antes da F7: o que o mantenedor faz
 
