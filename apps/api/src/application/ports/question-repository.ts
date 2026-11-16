@@ -14,7 +14,8 @@ import type { IsoDate, PeriodoApuracao, ReferenceSource } from '@teko/shared/vig
 
 /**
  * Persistência de `app.questions`, `app.usage_daily`, `app.answer_cache` e `app.feedback` (role
- * `teko_app`), sempre em transações curtas. A reserva da pergunta e o claim do stream são atômicos.
+ * `teko_app`), sempre em transações curtas. A reserva da pergunta, o claim do stream e a exclusão
+ * de uma conversa são atômicos.
  */
 
 /** Data pedida pelo cliente, gravada para o stream refazer a mesma resolução. */
@@ -140,6 +141,15 @@ export interface ConversationRecord {
   readonly lastReferenceDate: IsoDate
 }
 
+/**
+ * Resultado da exclusão de uma conversa: `not_found` quando o usuário não tem pergunta nela (a
+ * conversa não existe ou é de outro), `busy` quando uma resposta dela ainda está em stream.
+ */
+export type DeleteConversationOutcome =
+  | { readonly kind: 'deleted'; readonly questions: number }
+  | { readonly kind: 'not_found' }
+  | { readonly kind: 'busy' }
+
 export interface QuestionRepository {
   insertFinished(question: FinishedQuestion): Promise<string>
   /**
@@ -181,6 +191,12 @@ export interface QuestionRepository {
     rating: FeedbackRating,
     reason: FeedbackReason | null,
   ): Promise<boolean>
+  /**
+   * Numa transação, trava as perguntas do usuário na conversa (`FOR UPDATE`) e, se nenhuma estiver
+   * em stream ativo, apaga todas; o feedback sai pelo `ON DELETE CASCADE`. O uso do dia
+   * (`usage_daily`) e o cache de respostas não mudam.
+   */
+  deleteConversation(userId: string, conversationId: string): Promise<DeleteConversationOutcome>
   usage(day: IsoDate, userId: string): Promise<UsageSnapshot>
   cachedAnswer(cacheKey: string, now: Date): Promise<Answer | null>
 }

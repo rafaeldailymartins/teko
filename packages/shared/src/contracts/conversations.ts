@@ -6,7 +6,8 @@ import { idSchema } from './common.ts'
  * Lista das conversas do usuário (`GET /api/v1/conversations`), da mais recente para a mais
  * antiga, em páginas por cursor. Cada conversa leva o título derivado da primeira pergunta (já
  * redigida), a contagem de perguntas, o instante da última e a data de referência dela. As
- * perguntas de uma conversa continuam em `GET /api/v1/questions?conversationId=`.
+ * perguntas de uma conversa continuam em `GET /api/v1/questions?conversationId=`, e
+ * `DELETE /api/v1/conversations/:id` exclui uma conversa inteira.
  */
 
 /** Conversas por página. */
@@ -25,6 +26,10 @@ export const conversationListQuerySchema = z
   .strictObject({ cursor: conversationCursorSchema.optional() })
   .meta({ description: 'Página da lista de conversas; sem cursor, a primeira' })
 export type ConversationListQuery = z.infer<typeof conversationListQuerySchema>
+
+/** Caminho de `DELETE /api/v1/conversations/:id`. */
+export const conversationIdParamsSchema = z.strictObject({ id: idSchema })
+export type ConversationIdParams = z.infer<typeof conversationIdParamsSchema>
 
 export const conversationSummarySchema = z.object({
   conversationId: idSchema,

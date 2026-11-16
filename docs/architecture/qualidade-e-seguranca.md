@@ -172,6 +172,7 @@ fetch externo só pelo `SafeFetcher`.
 - **Vercel como operador:** opt-out de Model Training obrigatório (ADR 0004), pergunta crua nunca
   no stdout.
 - **DSR:** `GET /me/export` e `DELETE /me` (cascade no Postgres, `AnalyticsErasurePort` e
-  `TraceErasurePort`), SLA de 15 dias. Por causa do `cookieCache` do Better Auth, uma sessão
+  `TraceErasurePort`), SLA de 15 dias. Uma conversa sai sozinha por `DELETE /conversations/:id`
+  (perguntas e feedback na hora; os contadores de uso ficam, e a cota não volta). Por causa do `cookieCache` do Better Auth, uma sessão
   revogada pode valer por até 5 min no cookie; as rotas de DSR leem a sessão do banco e a janela
   fica registrada no `ropa.md`.

@@ -23,10 +23,11 @@ import type {
 import { quotaDay } from './ask-question.ts'
 
 /**
- * Leituras e o feedback das perguntas do usuário: detalhe (`GET /questions/:id`, que também serve
- * para reler uma resposta depois de uma desconexão), histórico da conversa, lista de conversas,
- * polegar com motivo e a cota do dia. Cada leitura filtra pelo dono: pergunta de outro usuário é
- * 404, e a lista só traz as conversas do próprio usuário.
+ * Leituras, o feedback e a exclusão das conversas do usuário: detalhe (`GET /questions/:id`, que
+ * também serve para reler uma resposta depois de uma desconexão), histórico da conversa, lista de
+ * conversas, polegar com motivo, exclusão de uma conversa e a cota do dia. Cada operação filtra
+ * pelo dono: pergunta ou conversa de outro usuário é 404, e a lista só traz as conversas do próprio
+ * usuário.
  */
 export interface QuestionHistory {
   get(userId: string, questionId: string): Promise<QuestionDetail>
@@ -34,6 +35,13 @@ export interface QuestionHistory {
   /** Uma página da lista de conversas (`GET /conversations`); cursor inválido é 400. */
   conversations(userId: string, cursor?: string): Promise<ConversationListResponse>
   recordFeedback(userId: string, questionId: string, request: FeedbackRequest): Promise<void>
+  /**
+   * Exclui uma conversa do usuário com as perguntas, respostas, citações e feedback dela
+   * (`DELETE /conversations/:id`). Conversa inexistente ou de outro usuário é 404, com o mesmo
+   * problem; com uma resposta ainda em stream, 409 `stream_busy` (o cliente tenta de novo quando o
+   * stream acaba). A cota do dia não muda.
+   */
+  deleteConversation(userId: string, conversationId: string): Promise<void>
   quota(userId: string): Promise<QuotaResponse>
 }
 
@@ -153,6 +161,18 @@ export function createQuestionHistory(deps: {
       )
       if (!saved) {
         throw notFound()
+      }
+    },
+    async deleteConversation(userId, conversationId) {
+      const outcome = await deps.questions.deleteConversation(userId, conversationId)
+      if (outcome.kind === 'not_found') {
+        throw new ApplicationError({ code: ErrorCode.NotFound, detail: 'Conversation not found' })
+      }
+      if (outcome.kind === 'busy') {
+        throw new ApplicationError({
+          code: ErrorCode.StreamBusy,
+          detail: 'An answer in this conversation is still streaming',
+        })
       }
     },
     async quota(userId) {

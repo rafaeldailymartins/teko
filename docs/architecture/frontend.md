@@ -245,7 +245,14 @@ Content-Security-Policy: default-src 'self'; script-src 'self' 'sha256-…'; sty
   página, conversa aberta marcada, link para o resto; no Sheet, abrir uma conversa o fecha por
   `useCloseHistoryPanel`) e em `/history/` com "Carregar mais", agrupado por dia (fuso de São Paulo)
   e com busca pelo título. Abrir uma conversa vai para `/chat/?c=<id>`, e o chat relê as perguntas
-  dela (`GET /v1/questions?conversationId=`); "Nova conversa" fica no topo do painel.
+  dela (`GET /v1/questions?conversationId=`); "Nova conversa" fica no topo do painel. Cada item tem
+  um menu "⋯" (visível no hover e no foco da linha, sempre no toque) com "Excluir conversa", que
+  confirma num `AlertDialog` (`src/components/ui/alert-dialog.tsx`, Base UI) com o título e o aviso
+  de que não dá para desfazer nem devolve a cota. `useDeleteConversation` chama
+  `DELETE /v1/conversations/:id` (404 conta como excluída) e `forgetConversation` tira a conversa da
+  lista em cache na hora, apaga o histórico e as perguntas dela e relê a lista. Cancelar devolve o
+  foco ao "⋯"; excluir o leva à conversa vizinha, e um aviso `aria-live` no topo da lista confirma.
+  Excluir a conversa aberta faz `router.replace` para o `newConversationHref` com a mesma data.
 - **Dispositivo e comparação:** `/provision/?k=&ref=` mostra a redação vigente na data (ou a anterior
   mais próxima, com aviso), o badge (vigente, encerrada ou futura, com o último dia incluído), "O que
   mudou" montado só no clique e a linha do tempo, que troca o `ref`; sem `k`, a busca de dispositivos

@@ -491,7 +491,7 @@
       "sections": {
         "summary": {
           "title": "Resumo",
-          "body": "<ul><li>O Tekó guarda só o necessário para a sua conta e o seu histórico: os dados do login, a declaração de maioridade, o aceite dos Termos, o país de residência e as perguntas, já sem dados pessoais identificáveis.</li><li>Antes de gravar uma pergunta ou de enviá-la a qualquer provedor, o Tekó troca CPF, CNPJ, e-mail, telefone e chave de NF-e por marcadores.</li><li>Perguntas e respostas ficam 90 dias e depois são apagadas.</li><li>As respostas são geradas por provedores de IA nos Estados Unidos. <strong>O provedor gratuito pode usar o texto enviado para treinar modelos</strong>: não escreva dados pessoais nem informações sigilosas.</li><li>Você exporta ou apaga tudo a qualquer momento em <settings>Configurações</settings>.</li><li>Não há venda de dados, publicidade nem rastreamento por terceiros.</li></ul>"
+          "body": "<ul><li>O Tekó guarda só o necessário para a sua conta e o seu histórico: os dados do login, a declaração de maioridade, o aceite dos Termos, o país de residência e as perguntas, já sem dados pessoais identificáveis.</li><li>Antes de gravar uma pergunta ou de enviá-la a qualquer provedor, o Tekó troca CPF, CNPJ, e-mail, telefone e chave de NF-e por marcadores.</li><li>Perguntas e respostas ficam 90 dias e depois são apagadas.</li><li>As respostas são geradas por provedores de IA nos Estados Unidos. <strong>O provedor gratuito pode usar o texto enviado para treinar modelos</strong>: não escreva dados pessoais nem informações sigilosas.</li><li>Você exclui uma conversa no Histórico ou exporta e apaga tudo a qualquer momento em <settings>Configurações</settings>.</li><li>Não há venda de dados, publicidade nem rastreamento por terceiros.</li></ul>"
         },
         "controller": {
           "title": "Quem é o controlador",
@@ -515,11 +515,11 @@
         },
         "retention": {
           "title": "Por quanto tempo os dados ficam",
-          "body": "<ul><li>Perguntas, respostas e avaliações: 90 dias. Uma rotina semanal apaga as mais antigas.</li><li>Conta (com o hash da senha, se houver), cadastro inicial, passkeys e contadores de uso: até você apagar a conta.</li><li>Sessões: 7 dias sem uso. As expiradas saem na rotina semanal.</li><li>Janelas de limite de requisições: de 60 segundos a 10 minutos. As vencidas saem na rotina semanal.</li><li>Registros de execução da hospedagem: 1 hora.</li></ul>"
+          "body": "<ul><li>Perguntas, respostas e avaliações: 90 dias, ou até você excluir a conversa. Uma rotina semanal apaga as mais antigas.</li><li>Conta (com o hash da senha, se houver), cadastro inicial, passkeys e contadores de uso: até você apagar a conta.</li><li>Sessões: 7 dias sem uso. As expiradas saem na rotina semanal.</li><li>Janelas de limite de requisições: de 60 segundos a 10 minutos. As vencidas saem na rotina semanal.</li><li>Registros de execução da hospedagem: 1 hora.</li></ul>"
         },
         "rights": {
           "title": "Seus direitos",
-          "body": "<p>A LGPD (art. 18) garante a você a confirmação do tratamento e o acesso aos dados, a correção, a anonimização, o bloqueio ou a eliminação do que for desnecessário, a portabilidade, a informação sobre com quem os dados são compartilhados e a revogação do consentimento.</p><ul><li><strong>Acesso e portabilidade:</strong> em <settings>Configurações</settings>, a exportação baixa um arquivo JSON com o seu perfil, as contas ligadas (sem tokens), o número de passkeys, as perguntas e as avaliações.</li><li><strong>Eliminação:</strong> também em <settings>Configurações</settings>, a exclusão apaga a conta e tudo o que é dela: sessões, contas ligadas, passkeys, perguntas, avaliações, contadores de uso e janelas de limite. Os cookies de sessão são apagados na mesma hora.</li><li><strong>Correção:</strong> nome, e-mail e foto vêm do GitHub ou do Google; atualize-os lá. Para outros dados, use o contato abaixo.</li><li><strong>Consentimento:</strong> mude ou retire quando quiser em “Preferências de cookies”, no rodapé.</li></ul><p>O que não for automático é atendido em até 15 dias. Você também pode apresentar reclamação à <anpd>Autoridade Nacional de Proteção de Dados (ANPD)</anpd>.</p>"
+          "body": "<p>A LGPD (art. 18) garante a você a confirmação do tratamento e o acesso aos dados, a correção, a anonimização, o bloqueio ou a eliminação do que for desnecessário, a portabilidade, a informação sobre com quem os dados são compartilhados e a revogação do consentimento.</p><ul><li><strong>Acesso e portabilidade:</strong> em <settings>Configurações</settings>, a exportação baixa um arquivo JSON com o seu perfil, as contas ligadas (sem tokens), o número de passkeys, as perguntas e as avaliações.</li><li><strong>Eliminação:</strong> também em <settings>Configurações</settings>, a exclusão apaga a conta e tudo o que é dela: sessões, contas ligadas, passkeys, perguntas, avaliações, contadores de uso e janelas de limite. Os cookies de sessão são apagados na mesma hora.</li><li><strong>Eliminação de uma conversa:</strong> no Histórico, o menu ⋯ de cada conversa a exclui na hora, com as perguntas, respostas e avaliações dela. O contador de uso do dia não muda: excluir não devolve perguntas à cota.</li><li><strong>Correção:</strong> nome, e-mail e foto vêm do GitHub ou do Google; atualize-os lá. Para outros dados, use o contato abaixo.</li><li><strong>Consentimento:</strong> mude ou retire quando quiser em “Preferências de cookies”, no rodapé.</li></ul><p>O que não for automático é atendido em até 15 dias. Você também pode apresentar reclamação à <anpd>Autoridade Nacional de Proteção de Dados (ANPD)</anpd>.</p>"
         },
         "security": {
           "title": "Segurança",
@@ -565,7 +565,7 @@
         },
         "quota": {
           "title": "Cotas e disponibilidade",
-          "body": "<p>O Tekó roda em planos gratuitos de hospedagem e de IA. Por isso há um limite diário de perguntas por pessoa e um limite global; quando um deles acaba, novas perguntas ficam bloqueadas até a renovação, indicada na tela. O serviço também pode ser pausado para proteger as cotas dos provedores.</p><p>Não há garantia de disponibilidade, de prazo de resposta nem de suporte.</p>"
+          "body": "<p>O Tekó roda em planos gratuitos de hospedagem e de IA. Por isso há um limite diário de perguntas por pessoa e um limite global; quando um deles acaba, novas perguntas ficam bloqueadas até a renovação, indicada na tela. Excluir uma conversa não devolve as perguntas dela à cota. O serviço também pode ser pausado para proteger as cotas dos provedores.</p><p>Não há garantia de disponibilidade, de prazo de resposta nem de suporte.</p>"
         },
         "answers": {
           "title": "Respostas geradas por IA",
@@ -581,7 +581,7 @@
         },
         "privacy": {
           "title": "Privacidade",
-          "body": "<p>O tratamento dos seus dados segue a <privacy>Política de privacidade</privacy>. Em resumo: as perguntas são redigidas antes de qualquer uso e ficam 90 dias, e você exporta ou apaga tudo em <settings>Configurações</settings>. O provedor de IA gratuito pode usar o texto redigido para treinar modelos.</p>"
+          "body": "<p>O tratamento dos seus dados segue a <privacy>Política de privacidade</privacy>. Em resumo: as perguntas são redigidas antes de qualquer uso e ficam 90 dias, e você exclui uma conversa no Histórico ou exporta e apaga tudo em <settings>Configurações</settings>. O provedor de IA gratuito pode usar o texto redigido para treinar modelos.</p>"
         },
         "termination": {
           "title": "Encerramento",
@@ -676,7 +676,7 @@
     "viewAll": "Ver todo o histórico",
     "loadMore": "Carregar mais",
     "loadingMore": "Carregando…",
-    "retention": "As conversas ficam guardadas por 90 dias e podem ser apagadas nas configurações.",
+    "retention": "As conversas ficam guardadas por 90 dias. Exclua uma pelo menu ⋯ dela, ou todas de uma vez nas configurações.",
     "searchLabel": "Buscar nas conversas",
     "searchPlaceholder": "Buscar pelo título…",
     "searchEmpty": "Nenhuma conversa com “{query}” no título.",
@@ -686,6 +686,20 @@
       "week": "Últimos 7 dias",
       "month": "Últimos 30 dias",
       "older": "Anteriores"
+    },
+    "actions": {
+      "menu": "Ações da conversa “{title}”",
+      "delete": "Excluir conversa"
+    },
+    "delete": {
+      "title": "Excluir esta conversa?",
+      "body": "“{title}” e todas as perguntas, respostas e avaliações dela serão apagadas. Não dá para desfazer.",
+      "quota": "Excluir não devolve perguntas à cota: as desta conversa continuam contando no limite de hoje.",
+      "cancel": "Cancelar",
+      "confirm": "Excluir conversa",
+      "deleting": "Excluindo…",
+      "busy": "Uma resposta desta conversa ainda está sendo gerada. Espere terminar e tente de novo.",
+      "done": "Conversa excluída."
     }
   },
   "provision": {
