@@ -1,0 +1,62 @@
+{
+  "$comment": "Checks do Synthetic Monitoring (corpo do POST /api/v1/check, com as sondas por nome; o grafana-apply.ts troca pelo ID). Cota do Free: 100 mil execuções/mês; conta = sondas x 43.200 / frequência em minutos (ver README.md). /healthz nunca toca o banco (get-health.ts). O domínio de produção dos dois projetos Vercel é público (Standard Protection), então nenhum check precisa do bypass.",
+  "checks": [
+    {
+      "job": "teko-healthz-production",
+      "target": "https://tekoia.vercel.app/healthz",
+      "frequency": 300000,
+      "timeout": 10000,
+      "probes": ["SaoPaulo"],
+      "enabled": true,
+      "basicMetricsOnly": true,
+      "alertSensitivity": "none",
+      "labels": [{ "name": "env", "value": "production" }],
+      "settings": {
+        "http": {
+          "validStatusCodes": [200],
+          "noFollowRedirects": true,
+          "failIfNotSSL": true,
+          "failIfBodyNotMatchesRegexp": ["\"status\":\"ok\""]
+        }
+      }
+    },
+    {
+      "job": "teko-healthz-staging",
+      "target": "https://tekoia-staging.vercel.app/healthz",
+      "frequency": 300000,
+      "timeout": 10000,
+      "probes": ["SaoPaulo"],
+      "enabled": true,
+      "basicMetricsOnly": true,
+      "alertSensitivity": "none",
+      "labels": [{ "name": "env", "value": "staging" }],
+      "settings": {
+        "http": {
+          "validStatusCodes": [200],
+          "noFollowRedirects": true,
+          "failIfNotSSL": true,
+          "failIfBodyNotMatchesRegexp": ["\"status\":\"ok\""]
+        }
+      }
+    },
+    {
+      "job": "teko-landing-production",
+      "target": "https://tekoia.vercel.app/pt-BR/",
+      "frequency": 900000,
+      "timeout": 10000,
+      "probes": ["SaoPaulo"],
+      "enabled": true,
+      "basicMetricsOnly": true,
+      "alertSensitivity": "none",
+      "labels": [{ "name": "env", "value": "production" }],
+      "settings": {
+        "http": {
+          "validStatusCodes": [200],
+          "noFollowRedirects": false,
+          "failIfNotSSL": true,
+          "failIfBodyNotMatchesRegexp": ["Tekó"]
+        }
+      }
+    }
+  ]
+}

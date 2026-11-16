@@ -15,7 +15,7 @@ conferidas pelo `ops.yml` a partir da F6/F7.
 | Groq (ZDR ligado)                                                         | fallback e juiz                                                      | Free         | chaves → Vercel e `evals`                                                                              | não ativar Dev Tier                                                                    |
 | Cloudflare                                                                | Workers AI (BGE-M3 e reranker)                                       | Workers Free | token com escopo Workers AI → Vercel e environments                                                    | nunca Workers Paid                                                                     |
 | Langfuse Cloud (EU)                                                       | traces e custo de LLM                                                | Hobby        | chaves por projeto → Vercel; par de admin → `ops`                                                      | sampler com corte em 35k units                                                         |
-| Grafana Cloud                                                             | OTLP direto, alertas e Synthetic Monitoring                          | Free         | endpoint e token OTLP → Vercel; SA token → `ops`                                                       | sem spans de health                                                                    |
+| Grafana Cloud                                                             | OTLP direto, alertas e Synthetic Monitoring                          | Free         | endpoint e token OTLP → Vercel; SA token, token do SM e token OTLP de métricas → `ops`                 | sem spans de health                                                                    |
 | PostHog (EU)                                                              | analytics, surveys e, se atender, Error Tracking                     | Free         | project key → build; personal key → Vercel (erasure)                                                   | replay off                                                                             |
 | Sentry (EU)                                                               | só se o PostHog Error Tracking não atender (F6)                      | Developer    | DSN → build/Vercel                                                                                     | sem trial; spike protection                                                            |
 | SonarQube Cloud                                                           | análise informativa de PRs e do branch principal                     | Free (OSS)   | `SONAR_TOKEN` → repositório e Dependabot                                                               | —                                                                                      |
@@ -73,9 +73,12 @@ stream em média, cerca de 30k chamadas curtas e 150k requests de estático por 
 ## Neon
 
 100 CU-h por projeto por mês. Metas: produção ≤ 70 e staging ≤ 40, já contando cerca de 0,7 CU-h
-do `mark-coverage` diário. Limite de 1 GB por projeto: guarda de 800 MB na ingestão, aviso acima
-de 400 MB no staging. O `ops.yml` lê o consumo pela API (sem acordar o compute) e emite
-`teko_neon_cu_hours{env}`.
+do `mark-coverage` diário e até 0,6 CU-h da leitura diária do `coverage-age` (job do `ops.yml`
+agendado logo depois do `source-watch`, para pegar o compute ainda acordado). Limite de 1 GB por
+projeto: guarda de 800 MB na ingestão, aviso acima de 400 MB no staging. O job `quotas` do
+`ops.yml` lê o consumo pela API (`compute_time_seconds` do período, sem acordar o compute) e emite
+`teko_neon_compute_hours{project}` e `teko_neon_cu_hours_ratio{project}` (projeção linear do
+período sobre as 100 CU-h; alerta acima de 0,7).
 
 ## Workers AI
 
@@ -94,8 +97,10 @@ públicos: só documentos oficiais, snapshots do corpus e métricas, nunca dado 
 - **Gemini free e Groq:** RPD/RPM reais lidos no AI Studio e no Groq (runbook `quotas.md`); 429 é o
   sinal primário, com breaker e fallback.
 - **Langfuse Hobby:** 50k units/mês; o sampler corta em 35k projetados.
-- **Grafana Cloud Free e PostHog Free:** volumes estimados bem abaixo dos limites; conferidos pelo
-  `ops.yml` na F6.
+- **Grafana Cloud Free** (10k séries ativas, 50 GB de logs, 14 dias de retenção, 100k execuções
+  de Synthetic Monitoring): os checks usam cerca de 20 mil execuções por mês, e a validação de
+  `infra/grafana/` reprova acima de 50 mil. **PostHog Free:** volumes estimados bem abaixo dos
+  limites. Os dois conferidos à mão no runbook `quotas.md`.
 - **Render Free:** 750 instance-hours por mês, só durante o corte do Plano B.
 
 ## Limites que não se leem por API

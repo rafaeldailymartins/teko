@@ -1,0 +1,158 @@
+{
+  "uid": "teko-rag-signals",
+  "title": "Tekó · Sinais de RAG",
+  "description": "Sinais de RAG em produção (ADR 0031) por ambiente e corpus_version: recusa por motivo, lexical_only, citações invalidadas, score do reranker no top-1 e no top-12 e o sentinel INSUFICIENTE.",
+  "tags": ["teko", "rag"],
+  "variables": [
+    {
+      "name": "env",
+      "label": "Ambiente",
+      "query": "label_values(teko_rag_answers_total, deployment_environment_name)"
+    },
+    {
+      "name": "corpus_version",
+      "label": "corpus_version",
+      "query": "label_values(teko_rag_answers_total, corpus_version)"
+    }
+  ],
+  "panels": [
+    {
+      "title": "Respostas (24 h)",
+      "type": "stat",
+      "unit": "short",
+      "w": 6,
+      "h": 4,
+      "targets": [
+        {
+          "expr": "sum(increase(teko_rag_answers_total{deployment_environment_name=~\"$env\", corpus_version=~\"$corpus_version\"}[24h]))"
+        }
+      ]
+    },
+    {
+      "title": "Recusa (24 h)",
+      "type": "stat",
+      "unit": "percentunit",
+      "w": 6,
+      "h": 4,
+      "targets": [
+        {
+          "expr": "sum(increase(teko_rag_answers_total{deployment_environment_name=~\"$env\", corpus_version=~\"$corpus_version\", outcome=\"refused\"}[24h])) / sum(increase(teko_rag_answers_total{deployment_environment_name=~\"$env\", corpus_version=~\"$corpus_version\"}[24h]))"
+        }
+      ]
+    },
+    {
+      "title": "lexical_only (24 h)",
+      "type": "stat",
+      "unit": "percentunit",
+      "w": 6,
+      "h": 4,
+      "thresholds": [0.05, 0.1],
+      "targets": [
+        {
+          "expr": "sum(increase(teko_rag_answers_total{deployment_environment_name=~\"$env\", corpus_version=~\"$corpus_version\", retrieval_mode=\"lexical_only\"}[24h])) / sum(increase(teko_rag_answers_total{deployment_environment_name=~\"$env\", corpus_version=~\"$corpus_version\"}[24h]))"
+        }
+      ]
+    },
+    {
+      "title": "Cache hit (24 h)",
+      "type": "stat",
+      "unit": "percentunit",
+      "w": 6,
+      "h": 4,
+      "targets": [
+        {
+          "expr": "sum(increase(teko_rag_answers_total{deployment_environment_name=~\"$env\", corpus_version=~\"$corpus_version\", cached=\"true\"}[24h])) / sum(increase(teko_rag_answers_total{deployment_environment_name=~\"$env\", corpus_version=~\"$corpus_version\"}[24h]))"
+        }
+      ]
+    },
+    {
+      "title": "Taxa de recusa por motivo",
+      "type": "timeseries",
+      "unit": "percentunit",
+      "targets": [
+        {
+          "expr": "sum by (deployment_environment_name, refusal_reason) (rate(teko_rag_answers_total{deployment_environment_name=~\"$env\", corpus_version=~\"$corpus_version\", outcome=\"refused\"}[$__rate_interval])) / ignoring (refusal_reason) group_left sum by (deployment_environment_name) (rate(teko_rag_answers_total{deployment_environment_name=~\"$env\", corpus_version=~\"$corpus_version\"}[$__rate_interval]))",
+          "legend": "{{deployment_environment_name}} {{refusal_reason}}"
+        }
+      ]
+    },
+    {
+      "title": "Desfecho por corpus_version",
+      "type": "timeseries",
+      "unit": "short",
+      "targets": [
+        {
+          "expr": "sum by (corpus_version, outcome) (increase(teko_rag_answers_total{deployment_environment_name=~\"$env\", corpus_version=~\"$corpus_version\"}[$__rate_interval]))",
+          "legend": "v{{corpus_version}} {{outcome}}"
+        }
+      ]
+    },
+    {
+      "title": "Fração lexical_only (embedding fora do ar)",
+      "type": "timeseries",
+      "unit": "percentunit",
+      "thresholds": [0.1],
+      "targets": [
+        {
+          "expr": "sum by (deployment_environment_name) (rate(teko_rag_answers_total{deployment_environment_name=~\"$env\", corpus_version=~\"$corpus_version\", retrieval_mode=\"lexical_only\"}[$__rate_interval])) / sum by (deployment_environment_name) (rate(teko_rag_answers_total{deployment_environment_name=~\"$env\", corpus_version=~\"$corpus_version\"}[$__rate_interval]))",
+          "legend": "{{deployment_environment_name}}"
+        }
+      ]
+    },
+    {
+      "title": "Citações invalidadas pelo CitationValidator",
+      "type": "timeseries",
+      "unit": "short",
+      "targets": [
+        {
+          "expr": "sum by (deployment_environment_name) (increase(teko_rag_citations_invalidated_total{deployment_environment_name=~\"$env\"}[$__rate_interval]))",
+          "legend": "{{deployment_environment_name}}"
+        }
+      ]
+    },
+    {
+      "title": "Sentinel INSUFICIENTE",
+      "type": "timeseries",
+      "unit": "short",
+      "targets": [
+        {
+          "expr": "sum by (deployment_environment_name) (increase(teko_rag_insufficient_sentinel_total{deployment_environment_name=~\"$env\"}[$__rate_interval]))",
+          "legend": "{{deployment_environment_name}}"
+        }
+      ]
+    },
+    {
+      "title": "Score do reranker: mediana no top-1 e no top-12",
+      "type": "timeseries",
+      "unit": "none",
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.5, sum by (le, rank) (rate(teko_rag_reranker_score_bucket{deployment_environment_name=~\"$env\"}[$__rate_interval])))",
+          "legend": "{{rank}}"
+        }
+      ]
+    },
+    {
+      "title": "Distribuição do score do reranker (top-1)",
+      "type": "heatmap",
+      "unit": "none",
+      "targets": [
+        {
+          "expr": "sum by (le) (increase(teko_rag_reranker_score_bucket{deployment_environment_name=~\"$env\", rank=\"top1\"}[$__rate_interval]))",
+          "legend": "{{le}}"
+        }
+      ]
+    },
+    {
+      "title": "Distribuição do score do reranker (top-12)",
+      "type": "heatmap",
+      "unit": "none",
+      "targets": [
+        {
+          "expr": "sum by (le) (increase(teko_rag_reranker_score_bucket{deployment_environment_name=~\"$env\", rank=\"top12\"}[$__rate_interval]))",
+          "legend": "{{le}}"
+        }
+      ]
+    }
+  ]
+}

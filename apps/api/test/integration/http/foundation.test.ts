@@ -61,6 +61,33 @@ afterAll(async () => {
   await database?.drop()
 })
 
+describe('GET /healthz sem banco (DoD da F6: o Synthetic Monitoring não incrementa CU-h)', () => {
+  it('a app inteira, com DATABASE_URL, responde sem abrir conexão com o Postgres', async () => {
+    const applicationName = `teko-healthz-${crypto.randomUUID().slice(0, 8)}`
+    const container = testContainer(database.appUrl, { overrides: { applicationName } })
+    containers.push(container)
+    const env = testEnv(database.appUrl)
+    const healthApp = await buildApp({
+      container,
+      http: createHttpOptions(env, container.rateLimitStore),
+    })
+    apps.push(healthApp)
+    for (const url of ['/healthz', '/api/healthz', '/healthz']) {
+      expect((await healthApp.inject({ url })).statusCode).toBe(200)
+    }
+    const observer = createDatabase({ url: database.ownerUrl, applicationName: 'teko-observer' })
+    try {
+      const sessions = await observer.pool.query<{ count: string }>(
+        'SELECT count(*) FROM pg_stat_activity WHERE application_name = $1',
+        [applicationName],
+      )
+      expect(sessions.rows[0]?.count).toBe('0')
+    } finally {
+      await observer.close()
+    }
+  })
+})
+
 describe('GET /api/v1/coverage', () => {
   it('devolve a cobertura efetiva e a corpus_version, sem rate limit', async () => {
     const res = await app.inject({ url: '/api/v1/coverage' })

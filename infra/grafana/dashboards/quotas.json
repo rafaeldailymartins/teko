@@ -1,0 +1,158 @@
+{
+  "uid": "teko-quotas",
+  "title": "Tekó · Cotas",
+  "description": "Cotas dos free tiers: tetos diários da aplicação (perguntas, stream_seconds e neurons do Workers AI), Gemini e Groq, Langfuse, CU-h do Neon, idade da cobertura e expiração de tokens.",
+  "tags": ["teko", "cotas"],
+  "variables": [
+    {
+      "name": "env",
+      "label": "Ambiente",
+      "query": "label_values(teko_quota_used_ratio, deployment_environment_name)"
+    }
+  ],
+  "panels": [
+    {
+      "title": "De onde vêm os números",
+      "type": "text",
+      "w": 24,
+      "h": 4,
+      "content": "**Aplicação** (`teko_quota_used_ratio`, emitida pela API): tetos diários por `scope`, inclusive os neurons do Workers AI. **Gemini e Groq**: o RPD real não é legível por API; compare as respostas por modelo com os valores do runbook [quotas.md](https://github.com/rafaeldailymartins/teko/blob/main/docs/runbooks/quotas.md). **Neon, cobertura e tokens**: job `quotas` do `ops.yml`, uma vez por dia. **Langfuse**: job do `ops.yml` da mudança `add-llm-tracing-langfuse`."
+    },
+    {
+      "title": "Cotas da aplicação (máximo em 15 min)",
+      "type": "bargauge",
+      "unit": "percentunit",
+      "min": 0,
+      "max": 1,
+      "thresholds": [0.5, 0.7],
+      "targets": [
+        {
+          "expr": "max by (deployment_environment_name, scope) (max_over_time(teko_quota_used_ratio{deployment_environment_name=~\"$env\"}[15m]))",
+          "legend": "{{deployment_environment_name}} {{scope}}"
+        }
+      ]
+    },
+    {
+      "title": "Cotas da aplicação no tempo",
+      "type": "timeseries",
+      "unit": "percentunit",
+      "thresholds": [0.7],
+      "targets": [
+        {
+          "expr": "max by (deployment_environment_name, scope) (teko_quota_used_ratio{deployment_environment_name=~\"$env\"})",
+          "legend": "{{deployment_environment_name}} {{scope}}"
+        }
+      ]
+    },
+    {
+      "title": "Gemini e Groq: respostas por modelo (24 h)",
+      "type": "bargauge",
+      "unit": "short",
+      "description": "Respostas com primeiro token nas últimas 24 h; compare com o RPD de cada modelo no runbook quotas.md.",
+      "targets": [
+        {
+          "expr": "sum by (provider, model) (increase(teko_llm_ttft_seconds_count{deployment_environment_name=~\"$env\"}[24h]))",
+          "legend": "{{provider}} {{model}}"
+        }
+      ]
+    },
+    {
+      "title": "Gemini e Groq: 429 (24 h)",
+      "type": "bargauge",
+      "unit": "short",
+      "targets": [
+        {
+          "expr": "sum by (provider) (increase(teko_llm_provider_errors_total{deployment_environment_name=~\"$env\", status=\"429\"}[24h]))",
+          "legend": "{{provider}}"
+        }
+      ]
+    },
+    {
+      "title": "Neon: CU-h do período de cobrança",
+      "type": "bargauge",
+      "unit": "short",
+      "min": 0,
+      "max": 100,
+      "thresholds": [40, 70],
+      "description": "Metas: produção até 70 CU-h e staging até 40 (cota do Free: 100 por projeto).",
+      "targets": [
+        {
+          "expr": "max by (project) (last_over_time(teko_neon_compute_hours[2d]))",
+          "legend": "{{project}}"
+        }
+      ]
+    },
+    {
+      "title": "Neon: projeção do mês sobre 100 CU-h",
+      "type": "bargauge",
+      "unit": "percentunit",
+      "min": 0,
+      "max": 1,
+      "thresholds": [0.4, 0.7],
+      "targets": [
+        {
+          "expr": "max by (project) (last_over_time(teko_neon_cu_hours_ratio[2d]))",
+          "legend": "{{project}}"
+        }
+      ]
+    },
+    {
+      "title": "Langfuse: units projetadas no mês",
+      "type": "stat",
+      "unit": "short",
+      "thresholds": [35000, 45000],
+      "description": "Hobby: 50k units/mês; o sampler corta em 35k projetados.",
+      "targets": [
+        {
+          "expr": "max(last_over_time(teko_langfuse_units_projected[2d]))"
+        }
+      ]
+    },
+    {
+      "title": "Neon: CU-h no tempo",
+      "type": "timeseries",
+      "unit": "short",
+      "targets": [
+        {
+          "expr": "max by (project) (last_over_time(teko_neon_compute_hours[1d]))",
+          "legend": "{{project}}"
+        }
+      ]
+    },
+    {
+      "title": "Cobertura: dias desde o verified_at",
+      "type": "bargauge",
+      "unit": "none",
+      "thresholds": [2, 3],
+      "targets": [
+        {
+          "expr": "max by (deployment_environment_name, family) (last_over_time(teko_coverage_verified_age_days[2d]))",
+          "legend": "{{deployment_environment_name}} {{family}}"
+        }
+      ]
+    },
+    {
+      "title": "Tokens: dias até vencer",
+      "type": "bargauge",
+      "unit": "none",
+      "description": "Variável TOKEN_EXPIRY_DATES do environment ops; o alerta dispara abaixo de 30.",
+      "targets": [
+        {
+          "expr": "min by (token) (last_over_time(teko_token_expiry_days[2d]))",
+          "legend": "{{token}}"
+        }
+      ]
+    },
+    {
+      "title": "Último sucesso dos jobs do ops.yml",
+      "type": "table",
+      "unit": "dateTimeAsIso",
+      "targets": [
+        {
+          "expr": "max by (ops_job) (last_over_time(teko_ops_job_last_success_timestamp_seconds[10d])) * 1000",
+          "legend": "{{ops_job}}"
+        }
+      ]
+    }
+  ]
+}

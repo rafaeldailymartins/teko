@@ -106,12 +106,24 @@ aprovados entram no golden `holdout` (com `source_quote` conferida).
 
 ## Grafana Cloud (as code em `infra/grafana/`)
 
-- **Dashboards:** API RED; LLM (TTFT, tokens, custo-sombra, fallback); cotas (Gemini, Groq,
-  neurons, Langfuse units, CU-h); Vercel Hobby (`teko_vercel_usage_ratio` por recurso); sinais de
-  RAG.
+Formato compacto em JSON, validado offline nos testes dos scripts e aplicado pela API HTTP do
+Grafana e do Synthetic Monitoring por `scripts/grafana-apply.ts`, no job `grafana` do `ops.yml`
+(só em `main`, com dry-run no `workflow_dispatch`). Detalhes, segredos e a conta da cota em
+[`infra/grafana/README.md`](../../infra/grafana/README.md).
+
+- **Dashboards:** API RED; LLM (TTFT, tokens, custo-sombra, fallback, 429); cotas (Gemini, Groq,
+  neurons, Langfuse units, CU-h, idade da cobertura, expiração de tokens); Vercel Hobby
+  (`teko_vercel_usage_ratio` por recurso); sinais de RAG por ambiente e `corpus_version`.
 - **Synthetic Monitoring** substitui UptimeRobot e Checkly: `/healthz` de `tekoia.vercel.app` e
-  `tekoia-staging.vercel.app` (sem DB) e um check da landing de produção, com frequência dentro da
-  cota gratuita.
+  `tekoia-staging.vercel.app` a cada 5 min (sem DB) e a landing de produção (`/pt-BR/`) a cada
+  15 min, da sonda de São Paulo: cerca de 20 mil das 100 mil execuções mensais do Free.
+- **Métricas do `ops.yml`** (job `quotas`, uma vez por dia, OTLP/HTTP com `service.name=teko-ops`):
+  `teko_neon_compute_hours` e `teko_neon_cu_hours_ratio` por `project`,
+  `teko_coverage_verified_age_days` por `family`, `teko_token_expiry_days` por `token` e
+  `teko_ops_job_last_success_timestamp_seconds` por `ops_job`. Contrato das fontes que chegam
+  depois: `teko_langfuse_units_projected` (Langfuse), `teko_vercel_usage_ratio{resource}`,
+  `teko_prod_vuln_findings{severity}` e o `teko_ops_job_last_success_timestamp_seconds` do
+  `vercel-usage` e do `weekly-maintenance` (F7).
 - **Alertas por e-mail:** 5xx > 2% em 10 min; p95 de `POST /api/v1/questions` ou TTFT p95 > 3 s;
   429 por provedor > 20% em 15 min; `teko_quota_used_ratio` > 0,7; CU-h > 70% pró-rata; Langfuse
   projetado > 35k; `teko_vercel_usage_ratio` > 0,5 e > 0,75 (o kill switch entra em 0,85); 503
@@ -125,12 +137,13 @@ aprovados entram no golden `holdout` (com `source_quote` conferida).
 | ----------------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `neon-roles.md`         | existe   | criação dos roles `teko_app` e `teko_watch` e das URLs por environment                                                                                     |
 | `rollback-corpus.md`    | ADR 0031 | repromover um snapshot antigo como `corpus_version` nova                                                                                                   |
-| `provider-outage.md`    | F6       | breaker e fallback; `LLM_KILL_SWITCH`; troca de modelos por env                                                                                            |
-| `quota-exhausted.md`    | F6       | qual cota estourou; reduzir tetos e amostragens por env                                                                                                    |
-| `neon-suspended.md`     | F6       | `LLM_KILL_SWITCH`; esperar o ciclo do Neon; contingência opcional com projeto novo e o corpus pelo snapshot                                                |
+| `provider-outage.md`    | existe   | breaker e fallback; `LLM_KILL_SWITCH`; troca de modelos por env; 5xx, latência e embeddings fora do ar                                                     |
+| `quota-exhausted.md`    | existe   | qual cota estourou; reduzir tetos e amostragens por env                                                                                                    |
+| `neon-suspended.md`     | existe   | `LLM_KILL_SWITCH`; esperar o ciclo do Neon; contingência opcional com projeto novo e o corpus pelo snapshot                                                |
+| `ops-alerts.md`         | existe   | cobertura sem verificação, jobs do `ops.yml` sem sucesso, achado do `prod-vuln-scan`, recusa fora do normal                                                |
 | `vercel-paused.md`      | F7       | diagnóstico; esperar os 30 dias e **retomar à mão** (`vercel project resume` ou a API `unpause`); corte para o Plano B Render; nunca Pro nem segunda conta |
 | `vercel-deploy.md`      | F7       | fluxo do deploy `--prebuilt`, WAF, Deployment Protection, opt-out de Model Training                                                                        |
 | `budget-kill-switch.md` | F7       | limiares 50/75/85/95%; `LLM_KILL_SWITCH` com redeploy; regra 1 do WAF                                                                                      |
 | `release-rollback.md`   | F7       | `vercel rollback` + `promote`; redeploy do tarball do release com `gh attestation verify`                                                                  |
 | `secret-rotation.md`    | F7       | tokens da Vercel (90 dias) e bypass; Sensitive + redeploy; chaves de LLM                                                                                   |
-| `quotas.md`             | F6       | RPD reais lidos no AI Studio e no Groq                                                                                                                     |
+| `quotas.md`             | existe   | RPD reais lidos no AI Studio e no Groq                                                                                                                     |

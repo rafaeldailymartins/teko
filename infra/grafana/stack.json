@@ -1,0 +1,7 @@
+{
+  "$comment": "Recursos fixos da stack Grafana Cloud Free do Tekó. Os e-mails do contact point vêm do segredo GRAFANA_ALERT_EMAILS do environment ops, nunca deste arquivo. Ver README.md.",
+  "folder": { "uid": "teko-ops", "title": "Tekó" },
+  "contactPoint": { "uid": "teko-email", "name": "teko-email" },
+  "runbookBaseUrl": "https://github.com/rafaeldailymartins/teko/blob/main/docs/runbooks/",
+  "defaultPrometheusUid": "grafanacloud-prom"
+}

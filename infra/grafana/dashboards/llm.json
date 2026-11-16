@@ -1,0 +1,134 @@
+{
+  "uid": "teko-llm",
+  "title": "Tekó · LLM",
+  "description": "Cadeia de LLM (Gemini → Groq): TTFT, tokens, custo-sombra a preço de tabela, fallback e erros, com 429 por provedor.",
+  "tags": ["teko", "llm"],
+  "variables": [
+    {
+      "name": "env",
+      "label": "Ambiente",
+      "query": "label_values(teko_llm_tokens_total, deployment_environment_name)"
+    }
+  ],
+  "panels": [
+    {
+      "title": "Tokens (24 h)",
+      "type": "stat",
+      "unit": "short",
+      "w": 8,
+      "h": 4,
+      "targets": [
+        {
+          "expr": "sum by (type) (increase(teko_llm_tokens_total{deployment_environment_name=~\"$env\"}[24h]))",
+          "legend": "{{type}}"
+        }
+      ]
+    },
+    {
+      "title": "Custo-sombra (24 h)",
+      "type": "stat",
+      "unit": "currencyUSD",
+      "w": 8,
+      "h": 4,
+      "description": "Preço de tabela (services/pricing.ts); o custo cobrado é zero no free tier.",
+      "targets": [
+        {
+          "expr": "sum(increase(teko_llm_shadow_cost_usd_total{deployment_environment_name=~\"$env\"}[24h]))"
+        }
+      ]
+    },
+    {
+      "title": "Fallbacks (24 h)",
+      "type": "stat",
+      "unit": "short",
+      "w": 8,
+      "h": 4,
+      "targets": [
+        {
+          "expr": "sum(increase(teko_llm_provider_fallback_total{deployment_environment_name=~\"$env\"}[24h]))"
+        }
+      ]
+    },
+    {
+      "title": "TTFT p95 por modelo",
+      "type": "timeseries",
+      "unit": "s",
+      "thresholds": [3],
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum by (le, provider, model) (rate(teko_llm_ttft_seconds_bucket{deployment_environment_name=~\"$env\"}[$__rate_interval])))",
+          "legend": "{{provider}} {{model}}"
+        }
+      ]
+    },
+    {
+      "title": "TTFT p50 por modelo",
+      "type": "timeseries",
+      "unit": "s",
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.5, sum by (le, provider, model) (rate(teko_llm_ttft_seconds_bucket{deployment_environment_name=~\"$env\"}[$__rate_interval])))",
+          "legend": "{{provider}} {{model}}"
+        }
+      ]
+    },
+    {
+      "title": "Tokens por minuto",
+      "type": "timeseries",
+      "unit": "short",
+      "targets": [
+        {
+          "expr": "sum by (provider, model, type) (rate(teko_llm_tokens_total{deployment_environment_name=~\"$env\"}[$__rate_interval])) * 60",
+          "legend": "{{provider}} {{model}} {{type}}"
+        }
+      ]
+    },
+    {
+      "title": "Custo-sombra por hora",
+      "type": "timeseries",
+      "unit": "currencyUSD",
+      "targets": [
+        {
+          "expr": "sum by (provider, model) (increase(teko_llm_shadow_cost_usd_total{deployment_environment_name=~\"$env\"}[1h]))",
+          "legend": "{{provider}} {{model}}"
+        }
+      ]
+    },
+    {
+      "title": "Fallback entre provedores",
+      "type": "timeseries",
+      "unit": "short",
+      "targets": [
+        {
+          "expr": "sum by (from, to) (increase(teko_llm_provider_fallback_total{deployment_environment_name=~\"$env\"}[$__rate_interval]))",
+          "legend": "{{from}} → {{to}}"
+        }
+      ]
+    },
+    {
+      "title": "Erros por provedor e status",
+      "type": "timeseries",
+      "unit": "short",
+      "targets": [
+        {
+          "expr": "sum by (provider, status) (increase(teko_llm_provider_errors_total{deployment_environment_name=~\"$env\"}[$__rate_interval]))",
+          "legend": "{{provider}} {{status}}"
+        }
+      ]
+    },
+    {
+      "title": "Fração de 429 por provedor (15 min)",
+      "type": "timeseries",
+      "unit": "percentunit",
+      "w": 24,
+      "thresholds": [0.2],
+      "description": "Tentativas = erros do provedor + respostas com primeiro token (a mesma conta do alerta teko-llm-429).",
+      "targets": [
+        {
+          "expr": "sum by (provider) (increase(teko_llm_provider_errors_total{deployment_environment_name=~\"$env\", status=\"429\"}[15m])) / (sum by (provider) (increase(teko_llm_provider_errors_total{deployment_environment_name=~\"$env\"}[15m])) + (sum by (provider) (increase(teko_llm_ttft_seconds_count{deployment_environment_name=~\"$env\"}[15m])) or sum by (provider) (increase(teko_llm_provider_errors_total{deployment_environment_name=~\"$env\"}[15m])) * 0))",
+          "legend": "{{provider}}"
+        }
+      ]
+    }
+  ]
+}

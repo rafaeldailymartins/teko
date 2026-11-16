@@ -1,5 +1,6 @@
-import { and, eq, lt, notInArray, sql } from 'drizzle-orm'
+import { and, asc, eq, lt, notInArray, sql } from 'drizzle-orm'
 import type {
+  CoverageVerifiedReader,
   CoverageWatchRepository,
   FamilyGap,
   MarkVerifiedCommand,
@@ -123,6 +124,20 @@ async function addGaps(tx: Tx, family: string, gaps: readonly FamilyGap[]): Prom
     })
     .where(eq(coverage.family, family))
   return rowCount(result)
+}
+
+/**
+ * `cli coverage-age` (job `coverage-age` do `ops.yml`): um `SELECT family, verified_at` por banco,
+ * com o mesmo role `teko_watch`, ordenado por família.
+ */
+export function createPgCoverageVerifiedReader(db: DrizzleDb): CoverageVerifiedReader {
+  return {
+    listVerifiedAt: () =>
+      db
+        .select({ family: coverage.family, verifiedAt: coverage.verifiedAt })
+        .from(coverage)
+        .orderBy(asc(coverage.family)),
+  }
 }
 
 export function createPgCoverageWatchRepository(db: DrizzleDb): CoverageWatchRepository {
