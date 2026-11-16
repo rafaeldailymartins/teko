@@ -1,6 +1,7 @@
 'use client'
 
 import { useChat } from '@ai-sdk/react'
+import { useQueryClient } from '@tanstack/react-query'
 import type { Citation } from '@teko/shared/contracts'
 import { idSchema } from '@teko/shared/contracts'
 import { ErrorCode } from '@teko/shared/errors'
@@ -20,6 +21,7 @@ import { Button } from '@/components/ui/button'
 import { type ChatRequestContext, TekoChatTransport } from '@/lib/api/chat-transport'
 import { useQuestion, useQuota } from '@/lib/api/hooks'
 import { rereadQuestion } from '@/lib/api/mutations'
+import { refreshAfterQuestion } from '@/lib/api/queries'
 import { blocksComposer, chatFailure } from '@/lib/chat/failure'
 import {
   answerView,
@@ -93,6 +95,7 @@ export default function ChatSession({
   const format = useFormatter()
   const locale = useLocale()
   const [{ c, q, ref }, setUrl] = useQueryStates(chatSearchParams)
+  const queryClient = useQueryClient()
   const [today] = useState(() => isoDateInTimeZone(new Date()))
   const [conversationId] = useState(() => c ?? crypto.randomUUID())
   const [pickerOpen, setPickerOpen] = useState(false)
@@ -117,6 +120,8 @@ export default function ChatSession({
         if (!isAbort && !isError && isUuid(message.id)) {
           void setUrl({ q: message.id, c: conversationId })
         }
+        // A pergunta já está gravada: o histórico e a cota do dia mudaram.
+        void refreshAfterQuestion(queryClient)
       },
     })
   const busy = status === 'submitted' || status === 'streaming'

@@ -405,6 +405,20 @@ describe('chat', () => {
     expect(panel.querySelector('[role="alert"]')).toBeNull()
   })
 
+  it('a resposta atualiza a lista de conversas do painel, sem recarregar a página', async () => {
+    transport.scenarios.push(answered)
+    await render(<ChatWorkspace />)
+    const conversationsFetches = () =>
+      fetchCalls.filter((request) => new URL(request.url).pathname === '/api/v1/conversations')
+        .length
+    await waitFor(() => conversationsFetches() > 0)
+    const before = conversationsFetches()
+    await click(await waitFor(() => enabledButton('Perguntar em 05/2008')))
+    await waitFor(() => document.querySelector('[data-answer-body]'))
+    await waitFor(() => conversationsFetches() > before)
+    expect(conversationsFetches()).toBeGreaterThan(before)
+  })
+
   it('feedback 👍 grava a avaliação da resposta', async () => {
     transport.scenarios.push(answered)
     await render(<ChatWorkspace />)
