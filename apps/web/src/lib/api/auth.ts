@@ -172,6 +172,41 @@ export async function signUpWithEmail(account: EmailSignUpRequest): Promise<void
   }
 }
 
+/**
+ * Como a conta da sessão entra (`github`, `google` ou `email`), na ordem das contas ligadas. O
+ * Better Auth chama a conta de senha de `credential`; aqui ela vira `email`, o nome do método na
+ * tela de entrada. Provedores que a tela não conhece ficam de fora.
+ */
+export const SignInMethod = {
+  GitHub: 'github',
+  Google: 'google',
+  Email: 'email',
+} as const
+
+export type SignInMethod = (typeof SignInMethod)[keyof typeof SignInMethod]
+
+const PROVIDER_METHODS: Readonly<Record<string, SignInMethod>> = {
+  github: SignInMethod.GitHub,
+  google: SignInMethod.Google,
+  credential: SignInMethod.Email,
+}
+
+/** Resposta do `GET /list-accounts`: só o provedor de cada conta ligada. */
+const linkedAccountsSchema = z.array(z.object({ providerId: z.string() }))
+
+/** Métodos de entrada da conta da sessão (`GET /api/auth/list-accounts`), sem repetição. */
+export async function listSignInMethods(): Promise<SignInMethod[]> {
+  const { data } = await apiClient.get<{ 200: unknown }, unknown, true>({
+    url: '/auth/list-accounts',
+    throwOnError: true,
+  })
+  const methods = linkedAccountsSchema
+    .parse(data)
+    .map((account) => PROVIDER_METHODS[account.providerId])
+    .filter((method) => method !== undefined)
+  return [...new Set(methods)]
+}
+
 /** Encerra a sessão: o Better Auth apaga o cookie e revoga a sessão no banco. */
 export async function signOut(): Promise<void> {
   await apiClient.post<{ 200: unknown }, unknown, true>({

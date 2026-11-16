@@ -21,7 +21,7 @@ import {
   searchProvisionsOptions,
 } from './__generated__/@tanstack/react-query.gen.ts'
 import type { ListConversationsResponse } from './__generated__/types.gen.ts'
-import { listPasskeys } from './auth.ts'
+import { listPasskeys, listSignInMethods } from './auth.ts'
 import { apiClient } from './client.ts'
 import type { ApiError } from './errors.ts'
 import { referenceKeyDate } from './reference.ts'
@@ -64,6 +64,14 @@ export function quotaQuery(enabled = true) {
 /** Passkeys da conta (`GET /auth/passkey/list-user-passkeys`, fora do OpenAPI). */
 export function passkeysQuery(enabled = true) {
   return apiQuery({ queryKey: ['auth', 'passkeys'] as const, queryFn: listPasskeys }, enabled)
+}
+
+/**
+ * Como a conta da sessão entra (`GET /auth/list-accounts`, fora do OpenAPI): GitHub, Google ou
+ * e-mail e senha.
+ */
+export function signInMethodsQuery(enabled = true) {
+  return apiQuery({ queryKey: ['auth', 'accounts'] as const, queryFn: listSignInMethods }, enabled)
 }
 
 /**

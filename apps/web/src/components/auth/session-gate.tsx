@@ -12,7 +12,7 @@ import { ApiError } from '@/lib/api/errors'
 import { meQuery } from '@/lib/api/queries'
 import { currentReturnPath, regionRestrictedPath, signInPath } from '@/lib/auth/return-path'
 import { SessionStatus } from '@/lib/auth/session'
-import { OnboardingDialog } from './onboarding-dialog.tsx'
+import { LazyOnboardingDialog } from './lazy-onboarding-dialog.tsx'
 import { useSession, useSignOutAction } from './use-session.ts'
 
 /** Nas configurações o onboarding não bloqueia: exportar e excluir a conta não podem depender dele. */
@@ -98,7 +98,7 @@ export function SessionGate({ children }: SessionGateProps) {
           {session.status === SessionStatus.Onboarding &&
             session.me !== null &&
             !isSettingsPath(pathname) && (
-              <OnboardingDialog me={session.me} open onSignOut={signOut} />
+              <LazyOnboardingDialog me={session.me} open onSignOut={signOut} />
             )}
         </>
       )

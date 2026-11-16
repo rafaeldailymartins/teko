@@ -119,8 +119,8 @@ contrato de `@teko/shared` e o cliente gerado.
   difere do git. Os imports do gerado levam `.ts` (`output.module.extension`): o Turbopack do
   `next build` não resolve o `.js` para o arquivo `.ts`.
 - **Better Auth sem o cliente dele:** as rotas que o web usa (`/api/auth/sign-in/social`,
-  `/sign-up/email`, `/sign-in/email`, `/sign-out` e as do plugin de passkey) passam pelo mesmo
-  `apiClient` em `src/lib/api/auth.ts`; a cerimônia WebAuthn usa o `@simplewebauthn/browser`,
+  `/sign-up/email`, `/sign-in/email`, `/sign-out`, `/list-accounts` e as do plugin de passkey)
+  passam pelo mesmo `apiClient` em `src/lib/api/auth.ts`; a cerimônia WebAuthn usa o `@simplewebauthn/browser`,
   carregado por `import()` no clique. O cliente do Better Auth com o plugin de passkey somaria
   ~15 KiB gz, e o Biome segue proibindo `better-auth` no web. Os métodos de entrada ativos vêm de
   `GET /api/v1/auth/providers` (`useAuthProviders`), e as falhas de e-mail e senha que a tela
@@ -246,14 +246,20 @@ Content-Security-Policy: default-src 'self'; script-src 'self' 'sha256-…'; sty
 - **Privacidade:** aviso de treino do provedor gratuito, 18+, versão dos Termos e país de residência
   no primeiro uso (diálogo bloqueante, de novo a cada versão dos Termos); detector de PII no composer;
   `region_restricted` vira página de aviso (`/<locale>/sign-in/?error=region_restricted`).
-- **Conta:** entrada com GitHub, Google e passkey, com retorno (`callbackURL`) só para caminhos da
-  própria origem; o cabeçalho e a paleta mostram a sessão (iniciais no lugar da foto, que a CSP
+- **Conta:** entrada em duas colunas no desktop (painel da marca e formulário), só com os métodos
+  que `GET /api/v1/auth/providers` devolve: GitHub e Google com os símbolos das marcas (só com os
+  OAuth apps; localmente, nunca), passkey e e-mail e senha em abas "Entrar" e "Criar conta", com a
+  validação inline pelos schemas de `@teko/shared/contracts` e o aviso de que não há confirmação de
+  e-mail nem recuperação de senha. O formulário e o diálogo do onboarding são chunks sob demanda.
+  Retorno (`callbackURL`) só para caminhos da própria origem; o cabeçalho e a paleta mostram a sessão (iniciais no lugar da foto, que a CSP
   barraria); a `SessionGate` envolve o shell do grupo `(app)` (guarda de experiência): até saber a
   sessão mostra a tela da marca (também no HTML estático), sem sessão vai direto para a entrada, com
   o `/me` indisponível oferece "Tentar de novo" e abre o onboarding pendente; o app nunca pinta antes
   de saber a sessão. `useSession().composerBlocked` trava o composer.
-  Configurações com conta, cota do dia, passkeys, exportação (JSON), exclusão com confirmação
-  digitada, tema, idioma e densidade.
+  O onboarding é um diálogo em passos (18+, Termos e país com busca). Configurações em cartões com
+  navegação lateral: conta com o método de entrada (`GET /api/auth/list-accounts`), cota do dia,
+  passkeys, preferências (tema, idioma e densidade), exportação (JSON) e a zona de perigo com a
+  exclusão por confirmação digitada.
 - **Teclado:** `Ctrl/⌘+K` paleta, `/` composer, `Ctrl/⌘+Enter` envia, `Esc` para ou fecha,
   `[`/`]` citações, `Alt+D` data.
 - **Estados:** sugestões sensíveis à data (RCTE art. 76 § 6º em 05/2008 contra 01/2010 e 03/2004

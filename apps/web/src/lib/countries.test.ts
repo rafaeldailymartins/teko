@@ -1,5 +1,31 @@
 import { describe, expect, it } from 'vitest'
-import { countryOptions, DEFAULT_COUNTRY, isCountryCode } from './countries.ts'
+import { countryOptions, DEFAULT_COUNTRY, isCountryCode, searchCountries } from './countries.ts'
+
+describe('searchCountries', () => {
+  const options = countryOptions('pt-BR')
+  const codes = (query: string) => searchCountries(options, query).map((option) => option.code)
+
+  it('busca vazia devolve tudo, na mesma ordem', () => {
+    expect(searchCountries(options, '  ')).toEqual(options)
+  })
+
+  it('ignora acento e caixa', () => {
+    expect(codes('sao tome')).toEqual(['ST'])
+    expect(codes('ALEMANHA')).toEqual(['DE'])
+  })
+
+  it('o código exato e os nomes que começam pelo texto vêm antes dos que só o contêm', () => {
+    expect(codes('pt')[0]).toBe('PT')
+    const guinea = codes('guin')
+    expect(guinea).toContain('GN')
+    expect(guinea).toContain('PG')
+    expect(guinea.indexOf('PG')).toBeGreaterThan(guinea.indexOf('GN'))
+  })
+
+  it('sem resultado, lista vazia', () => {
+    expect(codes('atlântida')).toEqual([])
+  })
+})
 
 describe('countryOptions', () => {
   it('tem os 249 códigos ISO 3166-1 alpha-2, sem repetição', () => {

@@ -216,20 +216,21 @@
   },
   "auth": {
     "signIn": {
-      "lead": "Sign in with your GitHub or Google account. After your first visit, you can add a passkey in the settings.",
+      "lead": "Ask about Brazilian tax law and get the answer in the wording that was in force on the right date.",
       "github": "Sign in with GitHub",
       "google": "Sign in with Google",
       "passkey": "Sign in with a passkey",
-      "noPassword": "Tekó does not use email and password.",
       "alreadySignedIn": "You are already signed in as {name}.",
       "continue": "Continue",
-      "legal": "By signing in, you agree to the <terms>Terms of use</terms> and the <privacy>Privacy policy</privacy>."
+      "legal": "By signing in, you agree to the <terms>Terms of use</terms> and the <privacy>Privacy policy</privacy>.",
+      "divider": "or with email",
+      "loading": "Loading the sign-in options…"
     },
     "errors": {
       "title": "Could not sign you in",
       "cancelled": "Sign-in was cancelled. Try again whenever you like.",
       "blocked": "This account is blocked and cannot sign in to Tekó.",
-      "accountNotLinked": "This provider account could not be linked to your Tekó account. Sign in with the provider you used the first time.",
+      "accountNotLinked": "This email uses another sign-in method. Sign in with the method you used the first time.",
       "emailMissing": "The provider did not share a verified email. Check your account's privacy settings and try again.",
       "generic": "Something went wrong while signing in. Try again."
     },
@@ -244,7 +245,9 @@
       "title": "Unavailable in your region",
       "body": "For your region, Tekó only uses an AI provider that does not keep the questions, and it is unavailable right now.",
       "hint": "Try again later. If your country of residence is wrong, it shows in your account settings.",
-      "back": "Back to the home page"
+      "back": "Back to the home page",
+      "eyebrow": "Regional policy",
+      "settings": "Open the settings"
     },
     "menu": {
       "label": "{name}'s account",
@@ -256,6 +259,61 @@
       "group": "Account",
       "signIn": "Sign in",
       "signOut": "Sign out"
+    },
+    "email": {
+      "tabs": "Sign in or create an account",
+      "signIn": "Sign in",
+      "signUp": "Create account",
+      "name": "Name",
+      "namePlaceholder": "What should we call you",
+      "email": "Email",
+      "emailPlaceholder": "you@example.com",
+      "password": "Password",
+      "showPassword": "Show password",
+      "hidePassword": "Hide password",
+      "passwordHint": "At least {min} characters. A phrase only you know works well.",
+      "passwordCount": "{count} of {min} characters",
+      "passwordReady": "Minimum reached · {count} characters",
+      "submitSignIn": "Sign in",
+      "submitSignUp": "Create account and sign in",
+      "signingIn": "Signing in…",
+      "signingUp": "Creating the account…",
+      "forgot": "Forgot your password? With no recovery email, it cannot be reset. <terms>Learn why</terms>",
+      "notice": "Tekó does not confirm your email or recover passwords. Keep yours in a password manager. Details in the <terms>Terms of use</terms>.",
+      "validation": {
+        "nameRequired": "Enter a name.",
+        "nameTooLong": "Use up to {max} characters.",
+        "nameInvalid": "The name has characters that are not accepted.",
+        "emailInvalid": "Enter a valid email, like you@example.com.",
+        "passwordRequired": "Enter your password.",
+        "passwordTooShort": "The password needs at least {min} characters.",
+        "passwordTooLong": "The password can have up to {max} characters."
+      },
+      "failures": {
+        "invalidCredentials": "Email or password does not match. Check them and try again.",
+        "accountUnavailable": "The account could not be created with this email. If you already use Tekó, sign in the way you usually do.",
+        "passwordTooShort": "The password needs at least {min} characters.",
+        "passwordTooLong": "The password can have up to {max} characters.",
+        "invalidEmail": "Enter a valid email.",
+        "invalidName": "Check the name: it cannot be empty or longer than {max} characters.",
+        "invalidInput": "Check the details and try again.",
+        "rateLimited": "Too many attempts in a row. Wait a few minutes and try again."
+      }
+    },
+    "brand": {
+      "label": "About Tekó",
+      "tagline": "The right law for each moment.",
+      "body": "Every answer comes from the wording in force on the date you choose, with the citations and the period of validity in plain sight.",
+      "example": "Example",
+      "provision": "Art. 76, § 6 · RCTE-GO",
+      "reference": "Your date",
+      "current": "In force on this date",
+      "points": {
+        "dated": "Answers on the reference date",
+        "cited": "Citations you can check",
+        "open": "Open source and free"
+      },
+      "home": "Tekó home page"
     }
   },
   "onboarding": {
@@ -273,19 +331,31 @@
     "countryHint": "Decides which AI providers may answer your questions.",
     "submit": "Continue",
     "submitting": "Saving…",
-    "signOut": "Sign out"
+    "signOut": "Sign out",
+    "steps": "Setup steps",
+    "progress": "{done} of {total} confirmations",
+    "stepDone": "done",
+    "age": "Age",
+    "countrySearch": "Search for a country…",
+    "countryEmpty": "No country found.",
+    "termsStep": "Terms and privacy"
   },
   "settings": {
     "loading": "Loading your account…",
     "unavailable": "Your account could not be loaded right now. Try again in a moment.",
     "account": {
       "title": "Account",
-      "name": "Name",
-      "email": "Email",
       "country": "Country of residence",
       "onboardingPending": "Finish the initial setup to ask questions.",
       "completeOnboarding": "Finish now",
-      "signOut": "Sign out"
+      "signOut": "Sign out",
+      "method": "Sign-in",
+      "methods": {
+        "github": "GitHub",
+        "google": "Google",
+        "email": "Email and password"
+      },
+      "methodUnknown": "Not identified"
     },
     "quota": {
       "title": "Today's quota",
@@ -293,7 +363,8 @@
       "loading": "Loading the quota…",
       "user": "{used} of {limit} questions today",
       "global": "Service ceiling today: {used} of {limit} questions",
-      "resets": "Resets at {time}."
+      "resets": "Resets at {time}.",
+      "remaining": "{count, plural, one {# question left} other {# questions left}}"
     },
     "passkeys": {
       "title": "Passkeys",
@@ -312,7 +383,7 @@
     },
     "data": {
       "title": "Your data",
-      "lead": "Download everything Tekó keeps about you or delete your account. Questions are deleted automatically after 90 days.",
+      "lead": "Download everything Tekó keeps about you in a JSON file. Questions are deleted automatically after 90 days.",
       "export": "Export my data",
       "exporting": "Preparing the file…",
       "exported": "JSON file downloaded."
@@ -335,7 +406,16 @@
         "comfortable": "Comfortable",
         "compact": "Compact"
       },
-      "language": "Language"
+      "language": "Language",
+      "lead": "They apply to this browser, signed in or not.",
+      "densityHints": {
+        "comfortable": "More breathing room between elements",
+        "compact": "More content on the screen"
+      }
+    },
+    "nav": "Settings sections",
+    "danger": {
+      "title": "Danger zone"
     }
   },
   "errors": {
