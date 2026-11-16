@@ -99,6 +99,20 @@ seguimento que troca `develop` por `main` no código.
   com `TraceSampler`, `pricing.json` e `costDetails`; PostHog (produto e Error Tracking, se cobrir
   source maps e relatório de CSP; senão Sentry); Grafana as code e Synthetic Monitoring; `ops.yml`;
   sinais de RAG em produção e annotation queue do 👎 (ADR 0031); runbooks de operação.
+- **Herdado das fases anteriores** (entra nas mudanças acima; cada item diz onde mexer):
+  - **SDK do PostHog** (F5, ADR 0035): `apps/web/src/lib/analytics/client-loader.ts` troca o
+    cliente no-op por `import('./posthog-client.ts')` com o `posthog-js` (EU,
+    `disable_external_dependency_loading`, `cookieless_mode: 'on_reject'`,
+    `person_profiles: 'identified_only'`, replay desligado), só depois do consentimento e com
+    `NEXT_PUBLIC_POSTHOG_KEY`. No mesmo PR, o texto de `/privacy` (hoje diz que medição e pesquisas
+    não estão ligadas) e a `PRIVACY_POLICY_VERSION` de `@teko/shared/legal`, que pede o aceite de
+    novo.
+  - **Relatórios de CSP** (F5): `report-to` e o endpoint do destino escolhido na CSP gerada por
+    `apps/web/scripts/lib/csp.ts`, com o host no `connect-src` se for preciso.
+  - **Evento do `source-watch`** (F3): o `TODO(F6)` de `.github/workflows/source-watch.yml` manda
+    um evento ao destino de erros quando `has_changes=true`.
+  - O purge semanal da F4 (`cli maintenance purge`) não é da F6: ele entra no `weekly-maintenance`
+    do `ops.yml` na F7, com DoD próprio.
 - **DoD:**
   - mesmo `trace_id` no navegador, no Grafana, no Langfuse e no destino de erros, inclusive quando o
     navegador não amostrou;

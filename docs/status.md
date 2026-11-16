@@ -150,7 +150,7 @@ proveniência) no lugar do `@google/genai` (sem proveniência em nenhuma versão
 - `add-privacy-guards` (arquivada em 2026-11-14): `GET /api/v1/me/export`, `DELETE /api/v1/me` com
   cascata e cookies apagados, sessão do banco nas rotas de DSR e na pergunta, `cli maintenance purge`
   (retenção de 90 dias) e o registro de tratamento em [`privacy/ropa.md`](privacy/ropa.md). O
-  agendamento semanal fica com o `ops.yml` da F6.
+  agendamento semanal fica com o `weekly-maintenance` do `ops.yml` na F7.
 - `add-ci-stack-e2e` (arquivada em 2026-11-14): stack descartável de CI em `infra/ci/` (Postgres,
   imagem candidata da API com os limites da Fluid e Caddy na mesma origem), `e2e.yml` com Playwright
   (Chromium e viewport mobile) e o job `e2e` no `ci-gate`. As jornadas de interface chegam com a F5.
