@@ -28,7 +28,9 @@ recusa `semver-*-days` no `cooldown` de `github-actions`); corrigido, com checag
 Pendência:
 
 - primeiro PR do Dependabot (`chore(deps): …`): quando vier, marcar a tarefa 3.7 e arquivar
-  `bootstrap-repository-governance`.
+  `bootstrap-repository-governance`. Os jobs rodam às segundas, às 06:00 de Brasília. O de
+  2026-11-16 rodou sem erro, mas sem PR: todas as versões novas estavam dentro do cooldown de 7
+  dias. O próximo é em 2026-11-23.
 
 ## F1: esqueleto, gates e spikes
 
@@ -200,7 +202,7 @@ shell e build), telas (chat, histórico, autenticação, legais e consentimento)
   vigência, linha do tempo e "O que mudou" sob demanda, busca de dispositivos, comparação entre
   datas (RCTE, art. 76, § 6º, 05/2008 contra 01/2010) e o e2e `history.spec.ts`.
 - `add-i18n-en-ptbr` (arquivada em 2026-11-15): `/privacy`, `/terms` e `/about` com texto real nos
-  dois idiomas (revisão jurídica do mantenedor pendente, lista no PR), `TERMS_VERSION` em
+  dois idiomas (revisados pelo mantenedor em 2026-11-16, lista no PR), `TERMS_VERSION` em
   `@teko/shared/legal`, banner LGPD com preferências e adapter de analytics no-op (o `posthog-js`
   fica para a F6), paridade com diff, helper de datas e e2e de consentimento e páginas legais. O item
   "zero cookies e zero chaves do PostHog antes do consentimento" do DoD fica coberto pelo e2e.
@@ -234,9 +236,8 @@ shell e build), telas (chat, histórico, autenticação, legais e consentimento)
   não comportava as telas da F5 juntas; o mantenedor subiu o orçamento total para 500 KiB gz. A
   medição no fechamento é de 416,4 KiB gz.
 
-Pendência do mantenedor: revisar os textos de `/privacy` e `/terms` (a lista de pontos está no
-PR #103: encarregado, bases legais, transferência internacional, canal dos titulares, cláusulas de
-garantia diante do CDC, foro e datas das versões). A F6 atualiza a política quando ligar o PostHog.
+Os textos de `/privacy` e `/terms` (a lista de pontos do PR #103) foram revisados pelo mantenedor
+em 2026-11-16, sem mudanças. A F6 atualiza a política quando ligar o PostHog.
 
 ## Depois da F5
 
@@ -255,8 +256,19 @@ garantia diante do CDC, foro e datas das versões). A F6 atualiza a política qu
   `DELETE /api/v1/conversations/:id` (só o dono; o mesmo 404 para a de outro; 409 `stream_busy` com
   resposta em andamento; uso do dia e cache intactos, então a cota não volta), menu "⋯" com
   "Excluir conversa" no painel do chat e em `/history`, confirmação em `AlertDialog` e aviso
-  `aria-live`; política e Termos (mesma versão 2026-11-16) citam a exclusão de uma conversa. A ação
-  no cabeçalho da conversa aberta fica para depois do redesenho do chat.
+  `aria-live`; política e Termos (mesma versão 2026-11-16) citam a exclusão de uma conversa.
+- `simplify-chat-screen` (arquivada em 2026-11-16, pedido do mantenedor): chat em duas colunas no
+  máximo, com o painel de citação só aberto (`Esc` fecha) e o histórico recolhível; a data só no
+  chip do composer; quatro sugestões em linhas finas; uma linha de metadados na resposta, fontes
+  recolhidas, aviso de parecer abaixo do composer e preferências de cookies no menu da conta. A
+  conversa aberta pelo histórico volta na data dela.
+- `trim-chat-texts` (arquivada em 2026-11-16, pedido do mantenedor): saem a frase do histórico
+  vazio, o aviso de cota no diálogo de exclusão e o "(padrão: mês anterior)" do chip da data.
+- PR #114 juntou o redesign (identidade, landing, telas do app, entrada, exclusão e chat limpo),
+  com o bundle em 455,5 KiB gz e a suíte e2e completa verde. O Sonar passou a tratar
+  `apps/web/e2e` como teste e a cobertura do web segue o `vitest.config.ts`. O `dev` da API usa
+  `scripts/dev-watch.ts`, que só reinicia quando o código muda (no Windows, o `node --watch`
+  reiniciava a cada leitura de arquivo).
 
 ## Antes da F7: o que o mantenedor faz
 
