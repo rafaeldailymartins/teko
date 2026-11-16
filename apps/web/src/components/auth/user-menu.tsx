@@ -1,9 +1,10 @@
 'use client'
 
-import { LogInIcon, LogOutIcon, SettingsIcon } from 'lucide-react'
+import { CookieIcon, LogInIcon, LogOutIcon, SettingsIcon } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useLocale, useTranslations } from 'next-intl'
+import { useOpenConsentPreferences } from '@/components/consent/consent-provider'
 import { Button, buttonVariants } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -22,7 +23,7 @@ import { useSession, useSignOutAction } from './use-session.ts'
 /**
  * Sessão no cabeçalho do app: "Entrar" sem sessão; com sessão, as iniciais (a foto do provedor fica
  * de fora, a CSP só aceita imagens da própria origem) abrem o menu com nome, e-mail,
- * configurações e sair. Enquanto `/me` carrega, um marcador do mesmo tamanho evita salto.
+ * configurações, as preferências de cookies e sair. Enquanto `/me` carrega, um marcador do mesmo tamanho evita salto.
  */
 export function UserMenu() {
   const t = useTranslations('auth.menu')
@@ -31,6 +32,8 @@ export function UserMenu() {
   const router = useRouter()
   const { status, me } = useSession()
   const { signOut, pending } = useSignOutAction()
+  const tConsent = useTranslations('consent')
+  const openConsentPreferences = useOpenConsentPreferences()
 
   if (status === SessionStatus.Loading) {
     return <span aria-hidden="true" className="size-8 animate-pulse rounded-full bg-muted" />
@@ -70,6 +73,12 @@ export function UserMenu() {
           <SettingsIcon aria-hidden="true" />
           {t('settings')}
         </DropdownMenuItem>
+        {openConsentPreferences !== null && (
+          <DropdownMenuItem onClick={openConsentPreferences}>
+            <CookieIcon aria-hidden="true" />
+            {tConsent('footerLink')}
+          </DropdownMenuItem>
+        )}
         <DropdownMenuItem disabled={pending} onClick={signOut}>
           <LogOutIcon aria-hidden="true" />
           {t('signOut')}

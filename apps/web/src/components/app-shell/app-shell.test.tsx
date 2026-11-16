@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { NextIntlClientProvider } from 'next-intl'
 import type { AnchorHTMLAttributes, ReactNode } from 'react'
-import { act } from 'react'
+import { act, useState } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Providers } from '@/components/providers'
@@ -116,13 +116,29 @@ afterEach(async () => {
 })
 
 describe('AppHeader', () => {
-  it('marca a página atual na navegação principal e troca o idioma mantendo a página', async () => {
+  it('marca a página atual na navegação principal', async () => {
     await render(<AppHeader />)
     const nav = document.querySelector('nav[aria-label="Navegação principal"]')
     const current = nav?.querySelector('[aria-current="page"]')
     expect(current?.getAttribute('href')).toBe('/pt-BR/chat/')
     expect(nav?.querySelectorAll('[aria-current]')).toHaveLength(1)
-    expect(document.querySelector('a[hreflang="en"]')?.getAttribute('href')).toBe('/en/chat/')
+  })
+
+  it('o menu de idioma leva à mesma página no outro idioma, com a query e a âncora', async () => {
+    window.history.replaceState(null, '', '/pt-BR/chat/?c=abc&ref=2024-03#fim')
+    await render(<AppHeader />)
+    expect(document.querySelector('a[hreflang="en"]')).toBeNull()
+
+    await click(document.querySelector('button[aria-label="Idioma"]'))
+    const english = document.querySelector('[role="menuitem"][hreflang="en"]')
+    expect(english?.tagName).toBe('A')
+    expect(english?.getAttribute('href')).toBe('/en/chat/?c=abc&ref=2024-03#fim')
+    expect(english?.getAttribute('lang')).toBe('en')
+    expect(english?.textContent).toContain('English')
+    const current = document.querySelector('[role="menuitem"][aria-current="true"]')
+    expect(current?.textContent).toBe('Português')
+    expect(current?.hasAttribute('href')).toBe(false)
+    window.history.replaceState(null, '', '/')
   })
 
   it('abre a paleta com Ctrl+K e navega para a página escolhida', async () => {
@@ -176,33 +192,114 @@ function OpenConversation() {
   )
 }
 
-describe('Workspace', () => {
-  const workspace = (
-    <Workspace history={<p>lista vazia</p>} citation={<p>sem citação</p>}>
+/** Workspace com a citação controlada por fora, como a área de trabalho do chat faz. */
+function ControlledWorkspace({
+  initialOpen = false,
+  history = <p>lista vazia</p>,
+}: {
+  readonly initialOpen?: boolean
+  readonly history?: ReactNode
+}) {
+  const [open, setOpen] = useState(initialOpen)
+  return (
+    <Workspace
+      history={history}
+      compactActions={<a href="/pt-BR/chat/">nova</a>}
+      citation={<p>texto da citação</p>}
+      citationOpen={open}
+      onCitationOpenChange={setOpen}
+    >
       <p id="thread">conversa</p>
+      <button type="button" data-citation-id="S1" onClick={() => setOpen(true)}>
+        chip
+      </button>
     </Workspace>
   )
+}
 
-  it('mostra três painéis com separadores nomeados no desktop', async () => {
-    await render(workspace)
-    const regions = [...document.querySelectorAll('section[aria-labelledby]')].map(
-      (section) =>
-        document.getElementById(section.getAttribute('aria-labelledby') ?? '')?.textContent,
-    )
-    expect(regions).toEqual(['Histórico', 'Citação'])
-    const separators = [...document.querySelectorAll('[role="separator"]')].map((separator) =>
-      separator.getAttribute('aria-label'),
-    )
-    expect(separators).toEqual(['Redimensionar o histórico', 'Redimensionar a citação'])
+/** Títulos das regiões nomeadas (painéis laterais) na ordem do documento. */
+function regionTitles(): (string | null | undefined)[] {
+  return [...document.querySelectorAll('section[aria-labelledby]')].map(
+    (section) =>
+      document.getElementById(section.getAttribute('aria-labelledby') ?? '')?.textContent,
+  )
+}
+
+describe('Workspace', () => {
+  it('no desktop mostra o histórico e a conversa, sem painel de citação vazio', async () => {
+    await render(<ControlledWorkspace />)
+    expect(regionTitles()).toEqual(['Histórico'])
+    expect(document.querySelector('[role="separator"]')).toBeNull()
+    expect(document.body.textContent).not.toContain('texto da citação')
     expect(document.getElementById('thread')).not.toBeNull()
+  })
+
+  it('a citação aberta entra ao lado da conversa no lugar do histórico e fecha com Esc', async () => {
+    await render(<ControlledWorkspace />)
+    await click(byText('button', 'chip'))
+    expect(regionTitles()).toEqual(['Citação'])
+    expect(document.body.textContent).toContain('texto da citação')
+    const separator = document.querySelector('[role="separator"]')
+    expect(separator?.getAttribute('aria-label')).toBe('Redimensionar a citação')
+    // O histórico vira o trilho, com o atalho de nova conversa à vista.
+    expect(document.querySelector('button[aria-label="Mostrar o histórico"]')).not.toBeNull()
+    expect(byText('a', 'nova')).toBeDefined()
+
+    const chip = byText('button', 'chip')
+    await act(async () => {
+      chip?.focus()
+      chip?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+    })
+    await settle()
+    expect(regionTitles()).toEqual(['Histórico'])
+  })
+
+  it('o Esc no composer não fecha a citação, e o botão de fechar fecha', async () => {
+    await render(<ControlledWorkspace initialOpen />)
+    const input = document.createElement('textarea')
+    document.body.append(input)
+    await act(async () => {
+      input.focus()
+      input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+    })
+    await settle()
+    expect(regionTitles()).toEqual(['Citação'])
+    await click(document.querySelector('button[aria-label="Fechar a citação"]'))
+    expect(regionTitles()).toEqual(['Histórico'])
+  })
+
+  it('mostrar o histórico com a citação aberta fecha a citação (duas colunas no máximo)', async () => {
+    await render(<ControlledWorkspace initialOpen />)
+    await click(document.querySelector('button[aria-label="Mostrar o histórico"]'))
+    expect(regionTitles()).toEqual(['Histórico'])
+    expect(document.body.textContent).not.toContain('texto da citação')
+  })
+
+  it('recolhe o histórico, lembra a escolha e leva o foco ao botão de abrir', async () => {
+    await render(<ControlledWorkspace />)
+    await click(document.querySelector('button[aria-label="Recolher o histórico"]'))
+    expect(regionTitles()).toEqual([])
+    const expand = document.querySelector('button[aria-label="Mostrar o histórico"]')
+    expect(document.activeElement).toBe(expand)
+    expect(localStorage.getItem('teko-history-panel')).toBe('collapsed')
+
+    await act(async () => root.unmount())
+    container.remove()
+    await render(<ControlledWorkspace />)
+    expect(regionTitles()).toEqual([])
+    await click(document.querySelector('button[aria-label="Mostrar o histórico"]'))
+    expect(regionTitles()).toEqual(['Histórico'])
+    expect(localStorage.getItem('teko-history-panel')).toBeNull()
   })
 
   it('no celular deixa só a conversa e abre o histórico num sheet', async () => {
     setViewportWidth(375)
-    await render(workspace)
+    await render(<ControlledWorkspace />)
     expect(document.querySelectorAll('section[aria-labelledby]')).toHaveLength(0)
     expect(document.querySelector('[role="separator"]')).toBeNull()
     expect(document.getElementById('thread')).not.toBeNull()
+    // Sem citação aberta, nada de botão "Citação": o Drawer abre pelo chip.
+    expect(byText('button', 'Citação')).toBeUndefined()
 
     await click(byText('button', 'Histórico'))
     const dialog = document.querySelector('[role="dialog"]')
@@ -212,11 +309,7 @@ describe('Workspace', () => {
 
   it('o conteúdo do histórico fecha o sheet ao abrir uma conversa', async () => {
     setViewportWidth(375)
-    await render(
-      <Workspace history={<OpenConversation />} citation={<p>sem citação</p>}>
-        <p id="thread">conversa</p>
-      </Workspace>,
-    )
+    await render(<ControlledWorkspace history={<OpenConversation />} />)
     await click(byText('button', 'Histórico'))
     expect(document.querySelector('[role="dialog"]')).not.toBeNull()
     await click(byText('button', 'abrir conversa'))
@@ -224,15 +317,15 @@ describe('Workspace', () => {
     expect(document.querySelector('[role="dialog"]')).toBeNull()
   })
 
-  it('no celular abre a citação num drawer', async () => {
+  it('no celular abre a citação num drawer pelo chip', async () => {
     setViewportWidth(375)
-    await render(workspace)
-    await click(byText('button', 'Citação'))
-    expect(document.querySelector('[role="dialog"]')?.textContent).toContain('sem citação')
+    await render(<ControlledWorkspace />)
+    await click(byText('button', 'chip'))
+    expect(document.querySelector('[role="dialog"]')?.textContent).toContain('texto da citação')
   })
 
   it('a conversa continua montada quando a janela cruza 768 px', async () => {
-    await render(workspace)
+    await render(<ControlledWorkspace />)
     const thread = document.getElementById('thread')
     await act(async () => setViewportWidth(375))
     await settle()

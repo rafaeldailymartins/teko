@@ -222,6 +222,13 @@ shell e build), telas (chat, histórico, autenticação, legais e consentimento)
   14 telas em en/pt-BR, claro/escuro, desktop/mobile), correções do nome acessível do botão da conta
   e do `h1` do chat, e a [prova do DoD da F5](evals/dod-f5-2026-11-15.md) item por item (sete
   jornadas, bundle em 416,4 KiB gz).
+- `redesign-brand-and-shell` (redesign, onda 1, arquivada em 2026-11-16): paleta da logo nos tokens,
+  `TekoLogo`, ícones e Open Graph, cabeçalhos e rodapé novos, menu de idioma com a query, raiz sem
+  tela de idioma, app só com a sessão pronta e fim do "em construção"; bundle em 433,9 KiB gz.
+- `redesign-landing` (redesign, onda 2, arquivada em 2026-11-16): landing com hero novo, linha do
+  tempo do RCTE, art. 76, § 6º, demonstração animada do chat (05/2008 contra 01/2010, pausa,
+  movimento reduzido, animador fora do primeiro acesso), seções com layouts próprios e páginas
+  públicas em tipografia editorial; bundle de 434,4 para 440,5 KiB gz.
 
 - **Orçamento de bundle (desvio aprovado em 2026-11-15):** o teto provisório de 400 KiB gz da onda 1
   não comportava as telas da F5 juntas; o mantenedor subiu o orçamento total para 500 KiB gz. A
@@ -230,6 +237,26 @@ shell e build), telas (chat, histórico, autenticação, legais e consentimento)
 Pendência do mantenedor: revisar os textos de `/privacy` e `/terms` (a lista de pontos está no
 PR #103: encarregado, bases legais, transferência internacional, canal dos titulares, cláusulas de
 garantia diante do CDC, foro e datas das versões). A F6 atualiza a política quando ligar o PostHog.
+
+## Depois da F5
+
+- `add-email-password-login` (arquivada em 2026-11-16, [ADR 0036](adr/0036-login-por-email-e-senha.md)):
+  login por e-mail e senha em todos os ambientes, sem confirmação de e-mail nem recuperação de senha
+  (decisão do mantenedor), sem vínculo implícito com GitHub ou Google, rate limit mais rígido nas
+  rotas de e-mail, `GET /api/v1/auth/providers`, cliente no web (`signUpWithEmail`,
+  `signInWithEmail`, `useAuthProviders`) e Termos e política na versão 2026-11-16. A tela de entrada
+  com o formulário vem com o redesign do front.
+- `redesign-auth-ui` (redesign, onda 2, arquivada em 2026-11-16): entrada em duas colunas com o
+  painel da marca, só os métodos do ambiente (GitHub e Google com os símbolos, passkey e e-mail e
+  senha em abas, com validação inline e o aviso sem recuperação), onboarding em passos com o país
+  com busca, configurações com navegação lateral, método de entrada e zona de perigo; jornada local
+  de cadastro, onboarding e chat pela tela; bundle em 441,9 KiB gz.
+- `add-conversation-deletion` (arquivada em 2026-11-16, pedido do mantenedor):
+  `DELETE /api/v1/conversations/:id` (só o dono; o mesmo 404 para a de outro; 409 `stream_busy` com
+  resposta em andamento; uso do dia e cache intactos, então a cota não volta), menu "⋯" com
+  "Excluir conversa" no painel do chat e em `/history`, confirmação em `AlertDialog` e aviso
+  `aria-live`; política e Termos (mesma versão 2026-11-16) citam a exclusão de uma conversa. A ação
+  no cabeçalho da conversa aberta fica para depois do redesenho do chat.
 
 ## Antes da F7: o que o mantenedor faz
 

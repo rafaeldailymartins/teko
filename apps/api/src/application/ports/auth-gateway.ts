@@ -1,3 +1,5 @@
+import type { AuthMethod } from '@teko/shared/contracts'
+
 /**
  * Autenticação (Better Auth na F4): o handler de `/api/auth/*` e a leitura da sessão. O adapter de
  * entrada HTTP só conhece esta porta; a configuração do Better Auth fica em `adapters/out/auth`.
@@ -30,6 +32,11 @@ export interface GetSessionOptions {
 }
 
 export interface AuthGateway {
+  /**
+   * Métodos de entrada ativos no ambiente (`GET /api/v1/auth/providers`), na ordem da tela: os
+   * OAuth apps configurados, a passkey e o e-mail com senha.
+   */
+  readonly methods: readonly AuthMethod[]
   /** Atende uma requisição de `/api/auth/*` (Fetch API). */
   handle(request: Request): Promise<Response>
   /** Sessão do cookie, ou `null` sem sessão válida. */

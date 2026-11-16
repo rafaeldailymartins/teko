@@ -76,6 +76,15 @@ test('na página em inglês, os nomes de leis em português ficam com lang="pt-B
   await expect(term).toHaveText('Lei Geral de Proteção de Dados Pessoais')
 })
 
+test('no desktop, o sumário fica fixo ao lado do texto', async ({ page, isMobile }) => {
+  test.skip(isMobile, 'no celular, o sumário vem antes do texto')
+  await page.goto('/pt-BR/privacy/')
+  const toc = page.getByRole('navigation', { name: ptBR.legal.toc })
+  await page.locator('section#contact').scrollIntoViewIfNeeded()
+  await expect(toc).toBeInViewport()
+  await expect(page.locator('section#contact h2')).toBeInViewport()
+})
+
 test('o rodapé leva às páginas legais', async ({ page }) => {
   await page.goto('/pt-BR/')
   const footer = page.getByRole('contentinfo')

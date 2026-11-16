@@ -61,17 +61,17 @@ export function referencePresets(today: IsoDate): ReferencePresets {
   return { previousMonth, currentMonth: periodoApuracaoOf(today), lastClosed }
 }
 
-/** O que o chip mostra: período ou data, e se é o default. */
+/** O que o chip mostra: período ou data (sem escolha, o período default). */
 export type ReferenceDisplay =
-  | { readonly kind: 'periodo'; readonly periodo: PeriodoApuracao; readonly isDefault: boolean }
-  | { readonly kind: 'date'; readonly date: IsoDate; readonly isDefault: false }
+  | { readonly kind: 'periodo'; readonly periodo: PeriodoApuracao }
+  | { readonly kind: 'date'; readonly date: IsoDate }
 
 export function referenceDisplay(choice: ReferenceChoice, today: IsoDate): ReferenceDisplay {
   if (choice === null) {
-    return { kind: 'periodo', periodo: defaultPeriodo(today), isDefault: true }
+    return { kind: 'periodo', periodo: defaultPeriodo(today) }
   }
   if (choice.periodoApuracao !== undefined) {
-    return { kind: 'periodo', periodo: choice.periodoApuracao, isDefault: false }
+    return { kind: 'periodo', periodo: choice.periodoApuracao }
   }
-  return { kind: 'date', date: choice.referenceDate, isDefault: false }
+  return { kind: 'date', date: choice.referenceDate }
 }

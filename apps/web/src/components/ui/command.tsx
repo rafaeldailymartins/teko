@@ -15,7 +15,7 @@ function Command({ className, ...props }: ComponentProps<typeof CommandPrimitive
     <CommandPrimitive
       data-slot="command"
       className={cn(
-        'flex size-full flex-col overflow-hidden rounded-xl bg-popover p-1 text-popover-foreground',
+        'flex size-full flex-col overflow-hidden rounded-2xl bg-popover p-1.5 text-popover-foreground',
         className,
       )}
       {...props}
@@ -36,7 +36,7 @@ function CommandDialog({ title, description, children, className, ...props }: Co
     <Dialog {...props}>
       <DialogContent
         className={cn(
-          'top-1/3 translate-y-0 overflow-hidden rounded-xl p-0 sm:max-w-lg',
+          'top-[22%] translate-y-0 overflow-hidden rounded-2xl p-0 sm:max-w-xl',
           className,
         )}
       >
@@ -53,7 +53,7 @@ function CommandDialog({ title, description, children, className, ...props }: Co
 function CommandInput({ className, ...props }: ComponentProps<typeof CommandPrimitive.Input>) {
   return (
     <div data-slot="command-input-wrapper" className="p-1 pb-0">
-      <div className="flex h-9 items-center gap-2 rounded-lg border border-input px-2 focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50">
+      <div className="flex h-11 items-center gap-2.5 rounded-xl border border-input bg-background px-3 focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/30">
         <SearchIcon aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
         <CommandPrimitive.Input
           data-slot="command-input"
@@ -73,7 +73,7 @@ function CommandList({ className, ...props }: ComponentProps<typeof CommandPrimi
     <CommandPrimitive.List
       data-slot="command-list"
       className={cn(
-        'max-h-80 scroll-py-1 overflow-y-auto overflow-x-hidden outline-none',
+        'max-h-[min(24rem,60dvh)] scroll-py-1.5 overflow-y-auto overflow-x-hidden outline-none',
         className,
       )}
       {...props}
@@ -122,7 +122,7 @@ function CommandItem({ className, ...props }: ComponentProps<typeof CommandPrimi
     <CommandPrimitive.Item
       data-slot="command-item"
       className={cn(
-        "relative flex min-h-9 cursor-default select-none items-center gap-2 rounded-lg px-2 py-1.5 text-sm outline-hidden data-[disabled=true]:pointer-events-none data-[selected=true]:bg-muted data-[selected=true]:text-foreground data-[disabled=true]:opacity-50 [&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg]:text-muted-foreground",
+        "relative flex min-h-10 cursor-default select-none items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm transition-colors duration-100 outline-hidden data-[disabled=true]:pointer-events-none data-[selected=true]:bg-muted data-[selected=true]:text-foreground data-[selected=true]:[&_svg]:text-primary data-[disabled=true]:opacity-50 [&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg]:text-muted-foreground",
         className,
       )}
       {...props}

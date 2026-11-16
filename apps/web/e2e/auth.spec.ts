@@ -13,10 +13,17 @@ test.use({ locale: 'pt-BR' })
 
 const OAUTH_REDIRECT = '/api/auth/e2e-oauth-redirect'
 
-/** Simula o início do OAuth (o Better Auth responderia com a URL do provedor) e guarda o corpo. */
+/**
+ * Simula um ambiente com os OAuth apps (a stack de CI não tem: `GET /auth/providers` passa a listar
+ * GitHub e Google) e o início do OAuth (o Better Auth responderia com a URL do provedor), e guarda o
+ * corpo.
+ */
 async function interceptSocialSignIn(page: Page, baseURL: string | undefined) {
   const origin = new URL(baseURL ?? 'http://localhost:8080').origin
   const bodies: unknown[] = []
+  await page.route('**/api/v1/auth/providers', (route) =>
+    route.fulfill({ json: { methods: ['github', 'google', 'passkey', 'email'] } }),
+  )
   await page.route('**/api/auth/sign-in/social', async (route) => {
     bodies.push(route.request().postDataJSON())
     await route.fulfill({ json: { url: `${origin}${OAUTH_REDIRECT}`, redirect: true } })
@@ -35,8 +42,11 @@ test.describe('sem sessão', () => {
       /\/pt-BR\/sign-in\/\?callbackURL=%2Fpt-BR%2Fchat%2F%3Fref%3D2024-03$/,
     )
     await expect(page.getByRole('heading', { level: 1, name: 'Entrar' })).toBeVisible()
-    await expect(page.getByRole('button', { name: ptBR.auth.signIn.github })).toBeVisible()
-    await expect(page.getByRole('button', { name: ptBR.auth.signIn.google })).toBeVisible()
+    // Sem OAuth apps na stack: só passkey e e-mail, com as abas de entrar e criar conta.
+    await expect(page.getByRole('button', { name: ptBR.auth.signIn.passkey })).toBeVisible()
+    await expect(page.getByRole('tab', { name: ptBR.auth.email.signUp })).toBeVisible()
+    await expect(page.getByRole('button', { name: ptBR.auth.signIn.github })).toBeHidden()
+    await expect(page.getByRole('button', { name: ptBR.auth.signIn.google })).toBeHidden()
     await page.waitForLoadState('networkidle')
     expect(await enforcedViolations(page)).toEqual([])
   })
@@ -81,11 +91,34 @@ test.describe('sem sessão', () => {
     await expect(
       page.getByRole('alert').filter({ hasText: ptBR.auth.errors.cancelled }),
     ).toBeVisible()
+    await page.goto('/pt-BR/sign-in/?error=account_not_linked')
+    await expect(
+      page.getByRole('alert').filter({ hasText: ptBR.auth.errors.accountNotLinked }),
+    ).toBeVisible()
     await page.goto('/pt-BR/sign-in/?error=region_restricted')
     await expect(
       page.getByRole('heading', { level: 1, name: ptBR.auth.region.title }),
     ).toBeVisible()
-    await expect(page.getByRole('button', { name: ptBR.auth.signIn.github })).toBeHidden()
+    await expect(page.getByRole('button', { name: ptBR.auth.signIn.passkey })).toBeHidden()
+    await expect(page.getByRole('tab', { name: ptBR.auth.email.signIn })).toBeHidden()
+    await expect(page.getByRole('link', { name: ptBR.auth.region.settings })).toBeVisible()
+  })
+
+  test('a entrada em duas colunas no desktop: o painel da marca ao lado do formulário', async ({
+    page,
+    isMobile,
+  }) => {
+    await page.goto('/pt-BR/sign-in/')
+    const brand = page.getByRole('complementary', { name: ptBR.auth.brand.label })
+    if (isMobile) {
+      await expect(brand).toBeHidden()
+    } else {
+      await expect(brand).toBeVisible()
+      await expect(brand.getByText(ptBR.auth.brand.tagline)).toBeVisible()
+      const panel = await brand.boundingBox()
+      const form = await page.getByRole('tablist', { name: ptBR.auth.email.tabs }).boundingBox()
+      expect(panel !== null && form !== null && panel.x + panel.width <= form.x).toBe(true)
+    }
   })
 })
 
@@ -160,7 +193,9 @@ test.describe('com sessão', () => {
     await expect(dialog).toBeVisible()
     await dialog.getByRole('checkbox', { name: ptBR.onboarding.adult }).check()
     await dialog.getByRole('checkbox', { name: /Termos de uso/ }).check()
-    await expect(dialog.getByRole('combobox', { name: ptBR.onboarding.country })).toHaveValue('BR')
+    await expect(dialog.getByRole('combobox', { name: ptBR.onboarding.country })).toContainText(
+      'Brasil',
+    )
     await dialog.getByRole('button', { name: ptBR.onboarding.submit }).click()
     await expect(dialog).toBeHidden()
   })

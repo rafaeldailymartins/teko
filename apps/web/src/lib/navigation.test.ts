@@ -5,6 +5,7 @@ import {
   localePagePath,
   NAVIGATION_PAGES,
   SITE_PAGES,
+  switchLocaleHref,
   switchLocalePath,
 } from './navigation.ts'
 
@@ -48,5 +49,31 @@ describe('switchLocalePath', () => {
     expect(switchLocalePath('/', 'en')).toBe('/en/')
     expect(switchLocalePath('/fr/chat/', 'pt-BR')).toBe('/pt-BR/')
     expect(switchLocalePath('', 'en')).toBe('/en/')
+  })
+})
+
+describe('switchLocaleHref', () => {
+  const at = (pathname: string, search = '', hash = '') => ({ pathname, search, hash })
+
+  it('mantém a página, a query e a âncora', () => {
+    expect(switchLocaleHref(at('/pt-BR/chat/', '?c=abc&ref=2024-03'), 'en')).toBe(
+      '/en/chat/?c=abc&ref=2024-03',
+    )
+    expect(switchLocaleHref(at('/en/privacy/', '', '#retencao'), 'pt-BR')).toBe(
+      '/pt-BR/privacy/#retencao',
+    )
+    expect(switchLocaleHref(at('/en/provision', '?k=go:rcte:art:76', '#v2'), 'pt-BR')).toBe(
+      '/pt-BR/provision/?k=go:rcte:art:76#v2',
+    )
+  })
+
+  it('ignora query e âncora vazias', () => {
+    expect(switchLocaleHref(at('/pt-BR/settings/', '?', '#'), 'en')).toBe('/en/settings/')
+    expect(switchLocaleHref(at('/pt-BR/'), 'en')).toBe('/en/')
+  })
+
+  it('fora de um locale vai para a inicial do destino, sem a query', () => {
+    expect(switchLocaleHref(at('/', '?c=abc'), 'en')).toBe('/en/')
+    expect(switchLocaleHref(at('/fr/chat/', '?c=abc', '#x'), 'pt-BR')).toBe('/pt-BR/')
   })
 })

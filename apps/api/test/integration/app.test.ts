@@ -270,6 +270,15 @@ describe('erros RFC 9457', () => {
   })
 })
 
+describe('GET /api/v1/auth/providers', () => {
+  it('sem o Better Auth configurado responde 503 service_paused', async () => {
+    const { app } = await start('ci')
+    const res = await app.inject({ url: '/api/v1/auth/providers' })
+    expect(res.statusCode).toBe(503)
+    expect(res.json()).toMatchObject({ code: 'service_paused' })
+  })
+})
+
 describe('OpenAPI + Scalar', () => {
   it.each(['ci', 'staging'] as const)(
     'em %s publica o documento em /api/docs/json',
@@ -285,7 +294,9 @@ describe('OpenAPI + Scalar', () => {
         [
           '/api/healthz',
           '/healthz',
+          '/api/v1/auth/providers',
           '/api/v1/conversations',
+          '/api/v1/conversations/{id}',
           '/api/v1/coverage',
           '/api/v1/me',
           '/api/v1/me/export',
@@ -304,6 +315,9 @@ describe('OpenAPI + Scalar', () => {
       expect(document.paths['/api/healthz']?.['get']?.operationId).toBe('getHealth')
       expect(document.paths['/api/v1/conversations']?.['get']?.operationId).toBe(
         'listConversations',
+      )
+      expect(document.paths['/api/v1/conversations/{id}']?.['delete']?.operationId).toBe(
+        'deleteConversation',
       )
       expect(Object.keys(document.paths['/healthz']?.['get']?.responses ?? {}).sort()).toEqual([
         '200',

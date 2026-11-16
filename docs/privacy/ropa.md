@@ -13,16 +13,17 @@ comerciais.
 
 ## Dados, finalidades e bases legais
 
-| Dado                                                                                 | Finalidade                                          | Base legal (LGPD, art. 7º)             | Onde fica                            | Retenção                                 |
-| ------------------------------------------------------------------------------------ | --------------------------------------------------- | -------------------------------------- | ------------------------------------ | ---------------------------------------- |
-| Nome, e-mail e foto do provedor OAuth (GitHub ou Google)                             | identificar a conta                                 | execução de contrato (Termos), V       | `auth.user` (Neon, São Paulo)        | até a exclusão da conta                  |
-| Declaração 18+, versão dos Termos aceita e data, país de residência                  | maioridade, aceite, política regional de provedores | execução de contrato, V; obrigação, II | `auth.user`                          | até a exclusão da conta                  |
-| Sessão (token, IP, user agent, validade)                                             | manter o login e limitar abuso                      | legítimo interesse, IX                 | `auth.session`                       | 7 dias sem uso; expiradas saem na semana |
-| Passkeys (chave pública, contador)                                                   | login sem senha                                     | execução de contrato, V                | `auth.passkey`                       | até a exclusão da conta                  |
-| Pergunta **redigida** (CPF, CNPJ, e-mail, telefone e chave NF-e trocados) e resposta | responder e mostrar o histórico                     | execução de contrato, V                | `app.questions`                      | 90 dias (expurgo semanal)                |
-| Polegar e motivo (sem texto livre)                                                   | qualidade das respostas                             | legítimo interesse, IX                 | `app.feedback`                       | junto da pergunta                        |
-| Contadores de uso por dia                                                            | cotas do serviço gratuito                           | legítimo interesse, IX                 | `app.usage_daily`                    | até a exclusão da conta                  |
-| IP e chave de usuário nas janelas de rate limit                                      | proteção contra abuso                               | legítimo interesse, IX                 | `app.rate_limits`, `auth.rate_limit` | janela de 60 s; vencidas saem na semana  |
+| Dado                                                                                   | Finalidade                                          | Base legal (LGPD, art. 7º)             | Onde fica                            | Retenção                                         |
+| -------------------------------------------------------------------------------------- | --------------------------------------------------- | -------------------------------------- | ------------------------------------ | ------------------------------------------------ |
+| Nome, e-mail e foto do provedor OAuth (GitHub ou Google), ou nome e e-mail do cadastro | identificar a conta                                 | execução de contrato (Termos), V       | `auth.user` (Neon, São Paulo)        | até a exclusão da conta                          |
+| Declaração 18+, versão dos Termos aceita e data, país de residência                    | maioridade, aceite, política regional de provedores | execução de contrato, V; obrigação, II | `auth.user`                          | até a exclusão da conta                          |
+| Sessão (token, IP, user agent, validade)                                               | manter o login e limitar abuso                      | legítimo interesse, IX                 | `auth.session`                       | 7 dias sem uso; expiradas saem na semana         |
+| Passkeys (chave pública, contador)                                                     | login sem senha                                     | execução de contrato, V                | `auth.passkey`                       | até a exclusão da conta                          |
+| Hash da senha (scrypt com sal), só na conta por e-mail; o e-mail não é confirmado      | conferir a entrada por e-mail e senha               | execução de contrato, V                | `auth.account`                       | até a exclusão da conta                          |
+| Pergunta **redigida** (CPF, CNPJ, e-mail, telefone e chave NF-e trocados) e resposta   | responder e mostrar o histórico                     | execução de contrato, V                | `app.questions`                      | 90 dias ou até excluir a conversa                |
+| Polegar e motivo (sem texto livre)                                                     | qualidade das respostas                             | legítimo interesse, IX                 | `app.feedback`                       | junto da pergunta                                |
+| Contadores de uso por dia                                                              | cotas do serviço gratuito                           | legítimo interesse, IX                 | `app.usage_daily`                    | até a exclusão da conta                          |
+| IP e chave de usuário nas janelas de rate limit                                        | proteção contra abuso                               | legítimo interesse, IX                 | `app.rate_limits`, `auth.rate_limit` | janela de 60 s a 10 min; vencidas saem na semana |
 
 No navegador, sem consentimento por serem necessários: o cookie de sessão, a preferência de tema
 (`localStorage['teko-theme']`) e a escolha de consentimento (`localStorage['teko-consent']`, com a
@@ -51,21 +52,34 @@ logs de runtime não a registram.
 
 ## Direitos do titular
 
-- **Acesso e portabilidade:** `GET /api/v1/me/export` devolve, em JSON, perfil, contas ligadas (sem
-  tokens), número de passkeys, perguntas e feedback.
-- **Exclusão:** `DELETE /api/v1/me` apaga a conta e, por cascata, sessões, contas OAuth, passkeys,
-  perguntas e feedback, além dos contadores de uso e das janelas de rate limit; os cookies de sessão
+- **Acesso e portabilidade:** `GET /api/v1/me/export` devolve, em JSON, perfil, contas ligadas
+  (`github`, `google` ou `email`, sem tokens nem o hash da senha), número de passkeys, perguntas e
+  feedback.
+- **Exclusão:** `DELETE /api/v1/me` apaga a conta e, por cascata, sessões, contas (OAuth e a de
+  senha, com o hash), passkeys, perguntas e feedback, além dos contadores de uso e das janelas de rate limit; os cookies de sessão
   são apagados na resposta. O apagamento nos terceiros (PostHog e Langfuse, F6) roda logo depois;
   falha fica no log para tratamento manual.
+- **Exclusão de uma conversa:** `DELETE /api/v1/conversations/:id` (o menu ⋯ de cada conversa no
+  histórico) apaga na hora, numa transação, as perguntas da conversa com as respostas, citações e o
+  feedback. Os contadores de uso do dia ficam como estão (excluir não devolve a cota; eles não têm
+  texto nem referência à pergunta), e o cache de respostas também (é anônimo e serve a todos). Com uma
+  resposta ainda em andamento, a exclusão é recusada e o usuário tenta de novo depois.
 - **Prazo:** até 15 dias para o que não for automático.
+- **Conta por e-mail sem confirmação** ([ADR 0036](../adr/0036-login-por-email-e-senha.md)): o
+  e-mail não é confirmado e não há recuperação de senha, porque o Tekó não envia e-mails. Um pedido
+  sobre uma conta de senha só é atendido para quem está com a sessão dela (exportação e exclusão nas
+  configurações); quem relata que o próprio e-mail está numa conta que não criou fala com o
+  mantenedor pelo canal de contato.
 - **Sessão revogada:** o login guarda um cache da sessão no cookie por até **5 minutos**. Uma sessão
   revogada (sign-out em outro dispositivo, ou a própria exclusão) pode continuar aceita por rotas que
-  usam esse cache nesse intervalo, mas as que leem ou gravam dados pessoais (exportação, exclusão e
-  pergunta) consultam o banco e a recusam na hora; depois da exclusão, não há mais dado a ler.
+  usam esse cache nesse intervalo, mas as que leem ou gravam dados pessoais (exportação, exclusão da
+  conta ou de uma conversa e pergunta) consultam o banco e a recusam na hora; depois da exclusão, não há mais dado a ler.
 
 ## Segurança
 
 Sessão por cookie `HttpOnly`, `SameSite=Lax` e `__Secure-`; checagem de `Origin` em toda mutação;
+senha só como hash scrypt com sal, com rate limit por IP na entrada e no cadastro, e sem vínculo
+entre a conta de senha e um OAuth com o mesmo e-mail;
 redação de PII antes do LLM e dos logs; banco acessado só pelo role `teko_app` (sem DDL); segredos
 como env vars Sensitive da Vercel; opt-out de Model Training da Vercel; dependências com
 proveniência e varredura de vulnerabilidades (ver

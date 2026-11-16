@@ -3,7 +3,7 @@
 
 import { client } from './client.gen.ts';
 import type { Client, ClientMeta, Options as Options2, RequestResult, TDataShape } from './client/index.ts';
-import type { AskQuestionData, AskQuestionErrors, AskQuestionResponses, CompleteOnboardingData, CompleteOnboardingErrors, CompleteOnboardingResponses, DeleteMyDataData, DeleteMyDataErrors, DeleteMyDataResponses, ExportMyDataData, ExportMyDataErrors, ExportMyDataResponses, GetCoverageData, GetCoverageErrors, GetCoverageResponses, GetHealthData, GetHealthErrors, GetHealthResponses, GetMeData, GetMeErrors, GetMeResponses, GetProvisionDiffData, GetProvisionDiffErrors, GetProvisionDiffResponses, GetProvisionTimelineData, GetProvisionTimelineErrors, GetProvisionTimelineResponses, GetQuestionData, GetQuestionErrors, GetQuestionResponses, GetQuotaData, GetQuotaErrors, GetQuotaResponses, ListConversationsData, ListConversationsErrors, ListConversationsResponses, ListHistoryData, ListHistoryErrors, ListHistoryResponses, RecordFeedbackData, RecordFeedbackErrors, RecordFeedbackResponses, SearchProvisionsData, SearchProvisionsErrors, SearchProvisionsResponses, StreamAnswerData, StreamAnswerResponses } from './types.gen.ts';
+import type { AskQuestionData, AskQuestionErrors, AskQuestionResponses, CompleteOnboardingData, CompleteOnboardingErrors, CompleteOnboardingResponses, DeleteConversationData, DeleteConversationErrors, DeleteConversationResponses, DeleteMyDataData, DeleteMyDataErrors, DeleteMyDataResponses, ExportMyDataData, ExportMyDataErrors, ExportMyDataResponses, GetAuthProvidersData, GetAuthProvidersErrors, GetAuthProvidersResponses, GetCoverageData, GetCoverageErrors, GetCoverageResponses, GetHealthData, GetHealthErrors, GetHealthResponses, GetMeData, GetMeErrors, GetMeResponses, GetProvisionDiffData, GetProvisionDiffErrors, GetProvisionDiffResponses, GetProvisionTimelineData, GetProvisionTimelineErrors, GetProvisionTimelineResponses, GetQuestionData, GetQuestionErrors, GetQuestionResponses, GetQuotaData, GetQuotaErrors, GetQuotaResponses, ListConversationsData, ListConversationsErrors, ListConversationsResponses, ListHistoryData, ListHistoryErrors, ListHistoryResponses, RecordFeedbackData, RecordFeedbackErrors, RecordFeedbackResponses, SearchProvisionsData, SearchProvisionsErrors, SearchProvisionsResponses, StreamAnswerData, StreamAnswerResponses } from './types.gen.ts';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -25,11 +25,23 @@ export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends 
 export const getHealth = <ThrowOnError extends boolean = false>(options?: Options<GetHealthData, ThrowOnError>): RequestResult<GetHealthResponses, GetHealthErrors, ThrowOnError> => (options?.client ?? client).get<GetHealthResponses, GetHealthErrors, ThrowOnError>({ url: '/healthz', ...options });
 
 /**
+ * Métodos de entrada ativos no ambiente
+ */
+export const getAuthProviders = <ThrowOnError extends boolean = false>(options?: Options<GetAuthProvidersData, ThrowOnError>): RequestResult<GetAuthProvidersResponses, GetAuthProvidersErrors, ThrowOnError> => (options?.client ?? client).get<GetAuthProvidersResponses, GetAuthProvidersErrors, ThrowOnError>({ url: '/v1/auth/providers', ...options });
+
+/**
  * Conversas do usuário, da mais recente para a mais antiga
  *
  * Paginação por cursor: repita o `nextCursor` da página anterior em `cursor`; `null` marca a última página.
  */
 export const listConversations = <ThrowOnError extends boolean = false>(options?: Options<ListConversationsData, ThrowOnError>): RequestResult<ListConversationsResponses, ListConversationsErrors, ThrowOnError> => (options?.client ?? client).get<ListConversationsResponses, ListConversationsErrors, ThrowOnError>({ url: '/v1/conversations', ...options });
+
+/**
+ * Exclui uma conversa do usuário, com as perguntas, respostas e feedback dela
+ *
+ * Só o dono exclui: conversa inexistente ou de outro usuário dá o mesmo 404. Com uma resposta da conversa ainda em stream, 409 `stream_busy`. A cota do dia não muda.
+ */
+export const deleteConversation = <ThrowOnError extends boolean = false>(options: Options<DeleteConversationData, ThrowOnError>): RequestResult<DeleteConversationResponses, DeleteConversationErrors, ThrowOnError> => (options.client ?? client).delete<DeleteConversationResponses, DeleteConversationErrors, ThrowOnError>({ url: '/v1/conversations/{id}', ...options });
 
 /**
  * Cobertura efetiva do corpus por família

@@ -6,6 +6,7 @@ import { CoverageStatus, coverageAt } from './coverage.ts'
 import { blocksComposer, chatFailure } from './failure.ts'
 import {
   allowedLinkPrefixes,
+  answerClipboardText,
   citationIdFromHref,
   citationLinksToAnchors,
   hardenOptions,
@@ -13,7 +14,7 @@ import {
 } from './markdown.ts'
 import { detectPii, removePii } from './pii.ts'
 import { citationReference, provisionHref, selectedCitation, stepSelection } from './selection.ts'
-import { DATE_SENSITIVE_SUGGESTIONS } from './suggestions.ts'
+import { DATE_COMPARISON_SUGGESTION, SUGGESTIONS } from './suggestions.ts'
 
 describe('detector de PII do composer', () => {
   it('acha CPF, e-mail e telefone com as regras do shared', () => {
@@ -46,6 +47,27 @@ describe('markdown das respostas', () => {
     expect(citationIdFromHref('#cite-S0')).toBeNull()
     expect(citationIdFromHref('https://evil.example/#cite-S1')).toBeNull()
     expect(citationIdFromHref(undefined)).toBeNull()
+  })
+
+  it('copiar resposta: citações como [n] e a lista das fontes no fim', () => {
+    const sources = [citation('S1'), citation('S2', { label: 'RCTE, art. 76, § 5º' })]
+    expect(
+      answerClipboardText('Conforme [S1](cite:S1) e [S2](cite:S2), vale.', sources, 'Fontes'),
+    ).toBe(
+      [
+        'Conforme [1] e [2], vale.',
+        '',
+        'Fontes:',
+        '[1] RCTE, art. 76, § 6º: Regulamento do Código Tributário do Estado de Goiás (RCTE consolidado até o Decreto nº 10.986)',
+        '[2] RCTE, art. 76, § 5º: Regulamento do Código Tributário do Estado de Goiás (RCTE consolidado até o Decreto nº 10.986)',
+      ].join('\n'),
+    )
+    expect(answerClipboardText(' Sem fontes. ', [], 'Fontes')).toBe('Sem fontes.')
+    // Colchete solto antes da citação fica no texto; só o link vira [n].
+    expect(answerClipboardText('Ver [nota [S1](cite:S1).', [], 'Fontes')).toBe('Ver [nota [1].')
+    // Muitos `[` sem fechar não travam a troca (busca linear).
+    const unclosed = `${'['.repeat(50_000)}[S1](cite:S1)`
+    expect(answerClipboardText(unclosed, [], 'Fontes')).toBe(`${'['.repeat(50_000)}[1]`)
   })
 
   it('só deixa links para a própria origem e as fontes oficiais', () => {
@@ -176,10 +198,18 @@ describe('seleção de citação', () => {
 })
 
 describe('sugestões', () => {
-  it('cobrem os pares de períodos do DoD', () => {
-    expect(DATE_SENSITIVE_SUGGESTIONS.map((item) => item.periods)).toEqual([
-      ['2008-05', '2010-01'],
-      ['2004-03', '2006-05'],
-    ])
+  it('o destaque é a pergunta do DoD em 05/2008 contra 01/2010', () => {
+    expect(DATE_COMPARISON_SUGGESTION.periods).toEqual(['2008-05', '2010-01'])
+    expect(DATE_COMPARISON_SUGGESTION.question).toBe('rcte76')
+  })
+
+  it('são quatro, nenhuma pergunta se repete, e cada família do corpus aparece uma vez', () => {
+    const all = [DATE_COMPARISON_SUGGESTION, ...SUGGESTIONS]
+    expect(all).toHaveLength(4)
+    const questions = all.map((item) => item.question)
+    expect(new Set(questions).size).toBe(questions.length)
+    const families = all.map((item) => item.family)
+    expect(new Set(families)).toEqual(new Set(['efd-icms-ipi', 'efd-reinf', 'rcte', 'efd-go']))
+    expect(new Set(families).size).toBe(families.length)
   })
 })

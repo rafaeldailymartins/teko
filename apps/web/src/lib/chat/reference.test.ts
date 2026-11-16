@@ -56,11 +56,10 @@ describe('referencePresets', () => {
 })
 
 describe('referenceDisplay', () => {
-  it('mostra o default como período marcado', () => {
+  it('sem escolha, mostra o período default', () => {
     expect(referenceDisplay(null, '2024-04-02')).toEqual({
       kind: 'periodo',
       periodo: '2024-03',
-      isDefault: true,
     })
   })
 
@@ -68,12 +67,10 @@ describe('referenceDisplay', () => {
     expect(referenceDisplay({ periodoApuracao: '2008-05' }, '2024-04-02')).toEqual({
       kind: 'periodo',
       periodo: '2008-05',
-      isDefault: false,
     })
     expect(referenceDisplay({ referenceDate: '2010-01-15' }, '2024-04-02')).toEqual({
       kind: 'date',
       date: '2010-01-15',
-      isDefault: false,
     })
   })
 })

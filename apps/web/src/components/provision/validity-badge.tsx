@@ -7,9 +7,16 @@ import { cn } from '@/lib/utils'
 import { todayIsoDate, ValidityStatus, validityStatus } from '@/lib/validity'
 
 const STATUS_CLASSES: Readonly<Record<ValidityStatus, string>> = {
-  [ValidityStatus.Current]: 'border-validity-current/40 text-validity-current',
-  [ValidityStatus.Superseded]: 'border-validity-superseded/40 text-validity-superseded',
-  [ValidityStatus.Future]: 'border-validity-future/40 text-validity-future',
+  [ValidityStatus.Current]: 'border-leaf/50 bg-leaf-soft text-validity-current',
+  [ValidityStatus.Superseded]: 'border-validity-superseded/40 bg-popover text-validity-superseded',
+  [ValidityStatus.Future]: 'border-validity-future/40 bg-popover text-validity-future',
+}
+
+/** Marcador da situação: o círculo da linha do tempo, cheio quando vigente. */
+const DOT_CLASSES: Readonly<Record<ValidityStatus, string>> = {
+  [ValidityStatus.Current]: 'bg-leaf',
+  [ValidityStatus.Superseded]: 'border border-validity-superseded',
+  [ValidityStatus.Future]: 'border border-validity-future',
 }
 
 interface ValidityBadgeProps {
@@ -21,8 +28,9 @@ interface ValidityBadgeProps {
 
 /**
  * Badge de intervalo de vigência `[from, to)`: o estado em relação a hoje (vigente, encerrada ou
- * futura, nas cores `--validity-*`) e as datas. O fim mostrado é o último dia de vigência, como se
- * lê na legislação ("de 12/09/2003 a 03/11/2004"), não o `to` exclusivo.
+ * futura, nas cores `--validity-*`, com o marcador da linha do tempo) e as datas. O fim mostrado é
+ * o último dia de vigência, como se lê na legislação ("de 12/09/2003 a 03/11/2004"), não o `to`
+ * exclusivo.
  */
 export function ValidityBadge({ interval, today = todayIsoDate(), className }: ValidityBadgeProps) {
   const t = useTranslations('provision.validity')
@@ -45,11 +53,15 @@ export function ValidityBadge({ interval, today = todayIsoDate(), className }: V
   return (
     <span
       className={cn(
-        'inline-flex flex-wrap items-center gap-x-2 rounded-full border px-2.5 py-0.5 font-medium text-xs',
+        'inline-flex items-center gap-x-1.5 whitespace-nowrap rounded-full border px-2.5 py-0.5 font-medium text-xs',
         STATUS_CLASSES[status],
         className,
       )}
     >
+      <span
+        aria-hidden="true"
+        className={cn('size-1.5 shrink-0 rounded-full', DOT_CLASSES[status])}
+      />
       <span>{t(status)}</span>
       <span aria-hidden="true">·</span>
       <span className="font-mono tabular-nums">{range}</span>

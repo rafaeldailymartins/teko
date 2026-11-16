@@ -37,7 +37,7 @@ function DropdownMenuContent({
         <MenuPrimitive.Popup
           data-slot="dropdown-menu-content"
           className={cn(
-            'data-[side=bottom]:slide-in-from-top-2 data-[side=top]:slide-in-from-bottom-2 data-closed:fade-out-0 data-closed:zoom-out-95 data-open:fade-in-0 data-open:zoom-in-95 z-50 max-h-(--available-height) min-w-36 origin-(--transform-origin) overflow-y-auto overflow-x-hidden rounded-lg bg-popover p-1 text-popover-foreground shadow-md outline-none ring-1 ring-foreground/10 duration-100 data-closed:animate-out data-open:animate-in',
+            'data-[side=bottom]:slide-in-from-top-2 data-[side=top]:slide-in-from-bottom-2 data-closed:fade-out-0 data-closed:zoom-out-95 data-open:fade-in-0 data-open:zoom-in-95 z-50 max-h-(--available-height) min-w-40 origin-(--transform-origin) overflow-y-auto overflow-x-hidden rounded-xl bg-popover p-1.5 text-popover-foreground shadow-overlay outline-none ring-1 ring-border duration-150 ease-out-soft data-closed:animate-out data-open:animate-in',
             className,
           )}
           {...props}
@@ -56,7 +56,7 @@ function DropdownMenuRadioItem({ className, children, ...props }: MenuPrimitive.
     <MenuPrimitive.RadioItem
       data-slot="dropdown-menu-radio-item"
       className={cn(
-        "relative flex min-h-8 cursor-default select-none items-center gap-2 rounded-md py-1 pr-8 pl-2 text-sm outline-hidden data-disabled:pointer-events-none data-highlighted:bg-muted data-highlighted:text-foreground data-disabled:opacity-50 [&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0",
+        "relative flex min-h-9 cursor-default select-none items-center gap-2.5 rounded-lg py-1.5 pr-8 pl-2.5 text-sm transition-colors duration-100 outline-hidden data-disabled:pointer-events-none data-highlighted:bg-muted data-highlighted:text-foreground data-disabled:opacity-50 [&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0",
         className,
       )}
       {...props}
@@ -82,7 +82,7 @@ function DropdownMenuLabel({ className, ...props }: MenuPrimitive.GroupLabel.Pro
   return (
     <MenuPrimitive.GroupLabel
       data-slot="dropdown-menu-label"
-      className={cn('px-2 py-1.5 font-medium text-muted-foreground text-xs', className)}
+      className={cn('px-2.5 py-1.5 font-medium text-muted-foreground text-xs', className)}
       {...props}
     />
   )
@@ -98,7 +98,21 @@ function DropdownMenuItem({
       data-slot="dropdown-menu-item"
       data-variant={variant}
       className={cn(
-        "relative flex min-h-8 cursor-default select-none items-center gap-2 rounded-md px-2 py-1 text-sm outline-hidden data-disabled:pointer-events-none data-highlighted:bg-muted data-highlighted:text-foreground data-[variant=destructive]:text-destructive data-disabled:opacity-50 [&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0",
+        "relative flex min-h-9 cursor-default select-none items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm transition-colors duration-100 outline-hidden data-disabled:pointer-events-none data-highlighted:bg-muted data-highlighted:text-foreground data-[variant=destructive]:text-destructive data-disabled:opacity-50 [&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0",
+        className,
+      )}
+      {...props}
+    />
+  )
+}
+
+/** Link dentro do menu (`<a>`), para navegar: o menu de idioma, por exemplo. */
+function DropdownMenuLinkItem({ className, ...props }: MenuPrimitive.LinkItem.Props) {
+  return (
+    <MenuPrimitive.LinkItem
+      data-slot="dropdown-menu-link-item"
+      className={cn(
+        "relative flex min-h-9 cursor-pointer select-none items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm no-underline outline-hidden transition-colors duration-100 data-highlighted:bg-muted data-highlighted:text-foreground [&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0",
         className,
       )}
       {...props}
@@ -110,7 +124,7 @@ function DropdownMenuSeparator({ className, ...props }: MenuPrimitive.Separator.
   return (
     <MenuPrimitive.Separator
       data-slot="dropdown-menu-separator"
-      className={cn('-mx-1 my-1 h-px bg-border', className)}
+      className={cn('-mx-1.5 my-1.5 h-px bg-border', className)}
       {...props}
     />
   )
@@ -122,6 +136,7 @@ export {
   DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuLinkItem,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuSeparator,

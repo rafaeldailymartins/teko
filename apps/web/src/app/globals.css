@@ -6,8 +6,13 @@
 @source "../../node_modules/@streamdown/code/dist/*.js";
 
 /*
- * Design tokens do Tekó (OKLCH). Cada token traz o par claro/escuro em `light-dark()`, resolvido
- * pelo `color-scheme` do elemento:
+ * Design tokens do Tekó (OKLCH), tirados da logo (`docs/assets/logo.svg`): petróleo profundo
+ * (`#005766` → `#003540`) na marca e na primária, verde-folha (`#38a37a` → `#7fd8c8`) no que está
+ * vigente e nos detalhes vivos, âmbar (`#e0a53b`) só na data de referência e na vigência, e neutros
+ * puxados para o petróleo, nunca cinza puro. O tema escuro é petróleo muito escuro (perto de
+ * `#021c22`), não cinza.
+ *
+ * Cada token traz o par claro/escuro em `light-dark()`, resolvido pelo `color-scheme` do elemento:
  * - sem `data-theme`, vale o `prefers-color-scheme` do sistema (`color-scheme: light dark`);
  * - `data-theme="light"`/`"dark"` no <html> (gravado pelo script de tema) fixa o esquema.
  * O teste `src/app/tokens.test.ts` exige contraste WCAG AA dos pares de texto e de UI nos
@@ -37,45 +42,69 @@
 :root {
   color-scheme: light dark;
 
-  /* Superfícies e texto */
-  --background: light-dark(oklch(0.99 0.004 205), oklch(0.18 0.015 220));
-  --surface: light-dark(oklch(0.965 0.008 205), oklch(0.22 0.018 220));
-  --foreground: light-dark(oklch(0.22 0.02 220), oklch(0.95 0.008 205));
-  --muted-foreground: light-dark(oklch(0.46 0.02 220), oklch(0.76 0.015 205));
-  --border: light-dark(oklch(0.87 0.012 205), oklch(0.33 0.02 220));
-  --border-strong: light-dark(oklch(0.56 0.02 220), oklch(0.6 0.02 205));
+  /* Superfícies e texto: neutros frios, puxados para o petróleo */
+  --background: light-dark(oklch(0.988 0.005 200), oklch(0.2 0.032 215));
+  --surface: light-dark(oklch(0.966 0.01 200), oklch(0.235 0.034 215));
+  --foreground: light-dark(oklch(0.25 0.035 216), oklch(0.955 0.012 190));
+  --muted-foreground: light-dark(oklch(0.47 0.03 214), oklch(0.79 0.025 200));
+  --border: light-dark(oklch(0.895 0.014 205), oklch(0.335 0.035 214));
+  --border-strong: light-dark(oklch(0.57 0.03 212), oklch(0.6 0.035 205));
   /* Fundo de hover e de item selecionado (menus, paleta) e o painel lateral */
-  --muted: light-dark(oklch(0.945 0.01 205), oklch(0.27 0.02 220));
+  --muted: light-dark(oklch(0.945 0.014 198), oklch(0.29 0.038 214));
   /* Popups (menu, diálogo, paleta, drawer): um degrau acima do fundo */
-  --popover: light-dark(oklch(1 0 0), oklch(0.23 0.018 220));
-  --popover-foreground: light-dark(oklch(0.22 0.02 220), oklch(0.95 0.008 205));
+  --popover: light-dark(oklch(0.997 0.003 200), oklch(0.255 0.036 215));
+  --popover-foreground: light-dark(oklch(0.25 0.035 216), oklch(0.955 0.012 190));
   /* Borda de campos de formulário: componente de UI, então ≥ 3:1 (WCAG 1.4.11) */
-  --input: light-dark(oklch(0.56 0.02 220), oklch(0.6 0.02 205));
+  --input: light-dark(oklch(0.57 0.03 212), oklch(0.6 0.035 205));
   /* Botão secundário */
-  --secondary: light-dark(oklch(0.93 0.015 205), oklch(0.28 0.02 220));
-  --secondary-foreground: light-dark(oklch(0.22 0.02 220), oklch(0.95 0.008 205));
+  --secondary: light-dark(oklch(0.935 0.02 195), oklch(0.3 0.04 214));
+  --secondary-foreground: light-dark(oklch(0.25 0.035 216), oklch(0.955 0.012 190));
   /* Ações destrutivas e erros de campo (texto sobre --background e --popover) */
-  --destructive: light-dark(oklch(0.52 0.18 27), oklch(0.75 0.14 27));
+  --destructive: light-dark(oklch(0.52 0.18 27), oklch(0.76 0.14 27));
 
-  /* Primária: petróleo */
-  --primary: light-dark(oklch(0.5 0.09 205), oklch(0.74 0.1 200));
-  --primary-foreground: light-dark(oklch(0.99 0.004 205), oklch(0.18 0.015 220));
-  --ring: light-dark(oklch(0.5 0.09 205), oklch(0.74 0.1 200));
+  /*
+   * Primária: o petróleo da logo (`#005766`) no claro; no escuro, o verde-água claro da folha
+   * (`#7fd8c8`), que lê bem sobre o petróleo profundo.
+   */
+  --primary: light-dark(oklch(0.42 0.074 214.6), oklch(0.82 0.089 181));
+  --primary-foreground: light-dark(oklch(0.99 0.004 200), oklch(0.2 0.032 215));
+  --ring: light-dark(oklch(0.5 0.1 208), oklch(0.8 0.1 183));
+
+  /*
+   * Marca: o petróleo da logo como superfície de destaque (selo, hero, telas da marca), com texto
+   * claro por cima nos dois temas. `--brand-deep` é o fim do gradiente da logo.
+   */
+  --brand: light-dark(oklch(0.42 0.074 214.6), oklch(0.32 0.056 216));
+  --brand-deep: light-dark(oklch(0.303 0.054 216.5), oklch(0.24 0.045 216));
+  --brand-foreground: light-dark(oklch(0.985 0.006 190), oklch(0.97 0.01 190));
+
+  /*
+   * Folha: o verde da logo, para o que está vigente e os detalhes vivos (marcadores, fios da linha
+   * do tempo, gradientes). Como texto, use `--validity-current`; `--leaf` é forma (≥ 3:1).
+   */
+  --leaf: light-dark(oklch(0.59 0.115 164), oklch(0.82 0.089 181));
+  --leaf-soft: light-dark(oklch(0.94 0.04 170), oklch(0.3 0.05 180));
 
   /* Acento âmbar: data de referência e vigência */
-  --accent: light-dark(oklch(0.93 0.07 85), oklch(0.32 0.06 70));
-  --accent-foreground: light-dark(oklch(0.36 0.08 60), oklch(0.9 0.1 85));
-  --accent-border: light-dark(oklch(0.62 0.13 70), oklch(0.7 0.13 75));
+  --accent: light-dark(oklch(0.94 0.06 85), oklch(0.33 0.06 70));
+  --accent-foreground: light-dark(oklch(0.4 0.09 65), oklch(0.9 0.1 85));
+  --accent-border: light-dark(oklch(0.6 0.13 70), oklch(0.72 0.13 75));
+  /* O ponto âmbar da logo: decorativo, sempre ao lado de um texto com a data. */
+  --date-mark: light-dark(oklch(0.76 0.137 78.2), oklch(0.78 0.137 78.2));
 
   /* Tokens de domínio (texto sobre --background) */
-  --validity-current: light-dark(oklch(0.48 0.12 150), oklch(0.78 0.14 150));
-  --validity-superseded: light-dark(oklch(0.5 0.02 250), oklch(0.72 0.02 250));
-  --validity-future: light-dark(oklch(0.5 0.13 260), oklch(0.78 0.1 260));
-  --coverage-out: light-dark(oklch(0.52 0.18 27), oklch(0.75 0.14 27));
-  --degraded: light-dark(oklch(0.5 0.11 65), oklch(0.8 0.13 80));
+  --validity-current: light-dark(oklch(0.47 0.1 164), oklch(0.82 0.11 165));
+  --validity-superseded: light-dark(oklch(0.5 0.02 230), oklch(0.75 0.02 230));
+  --validity-future: light-dark(oklch(0.5 0.13 260), oklch(0.8 0.09 260));
+  --coverage-out: light-dark(oklch(0.52 0.18 27), oklch(0.76 0.14 27));
+  --degraded: light-dark(oklch(0.5 0.11 65), oklch(0.82 0.13 80));
 
   /* Raio base dos componentes (o shadcn deriva --radius-sm a --radius-xl dele) */
-  --radius: 0.625rem;
+  --radius: 0.75rem;
+
+  /* Sombras suaves em camadas, tingidas de petróleo (no escuro, mais densas e sem tinta). */
+  --shadow-tint: light-dark(oklch(0.3 0.05 216 / 0.07), oklch(0.05 0.02 216 / 0.45));
+  --shadow-tint-strong: light-dark(oklch(0.3 0.05 216 / 0.12), oklch(0.05 0.02 216 / 0.6));
 }
 
 :root[data-theme="light"] {
@@ -103,9 +132,15 @@
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
   --color-ring: var(--ring);
+  --color-brand: var(--brand);
+  --color-brand-deep: var(--brand-deep);
+  --color-brand-foreground: var(--brand-foreground);
+  --color-leaf: var(--leaf);
+  --color-leaf-soft: var(--leaf-soft);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-accent-border: var(--accent-border);
+  --color-date-mark: var(--date-mark);
   --color-validity-current: var(--validity-current);
   --color-validity-superseded: var(--validity-superseded);
   --color-validity-future: var(--validity-future);
@@ -120,6 +155,87 @@
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+
+  /* `shadow-soft` (cartões e campos), `shadow-raised` (cartões de destaque), `shadow-overlay` (popups). */
+  --shadow-soft: 0 1px 2px var(--shadow-tint), 0 1px 1px var(--shadow-tint);
+  --shadow-raised:
+    0 1px 2px var(--shadow-tint), 0 4px 12px -2px var(--shadow-tint),
+    0 12px 32px -8px var(--shadow-tint);
+  --shadow-overlay:
+    0 2px 4px var(--shadow-tint), 0 12px 28px -6px var(--shadow-tint-strong),
+    0 24px 56px -12px var(--shadow-tint);
+}
+
+/*
+ * Movimento: curto (150–250 ms nas transições) e com desaceleração; o `prefers-reduced-motion`
+ * zera tudo em `@layer base`. `static`: a variável sai no CSS mesmo quando só aparece em `var()`.
+ * `animate-timeline` é o ponto âmbar indo e voltando na linha do tempo da tela da marca.
+ */
+@theme static {
+  --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
+  --animate-timeline: teko-timeline 1.4s cubic-bezier(0.65, 0, 0.35, 1) infinite alternate;
+
+  @keyframes teko-timeline {
+    from {
+      left: 0;
+    }
+    to {
+      left: calc(100% - 0.5rem);
+    }
+  }
+}
+
+/* Petróleo da logo em gradiente: selo, telas da marca e faixas de destaque. */
+@utility bg-brand-gradient {
+  background-image: linear-gradient(135deg, var(--brand) 0%, var(--brand-deep) 100%);
+}
+
+/* Verde-folha da logo, em gradiente (marcadores e fios vivos). */
+@utility bg-leaf-gradient {
+  background-image: linear-gradient(
+    45deg,
+    var(--leaf) 0%,
+    color-mix(in oklch, var(--leaf), oklch(0.85 0.09 181) 55%) 100%
+  );
+}
+
+/*
+ * Superfície com um gradiente muito sutil (cabeçalhos, rodapé, painéis). A mistura é em `oklab`:
+ * em `oklch`, dois neutros quase sem croma dão matiz `none`, que o Chromium pinta como 0 (rosado).
+ */
+@utility bg-surface-gradient {
+  background-image: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--surface), var(--background) 30%) 0%,
+    var(--background) 100%
+  );
+}
+
+/* Brilho radial discreto da marca (hero, telas de entrada), só com CSS. */
+@utility bg-brand-glow {
+  background-image:
+    radial-gradient(
+      48rem 26rem at 12% -12%,
+      color-mix(in oklch, var(--primary) 16%, transparent),
+      transparent 70%
+    ),
+    radial-gradient(
+      36rem 22rem at 96% 4%,
+      color-mix(in oklch, var(--leaf) 13%, transparent),
+      transparent 70%
+    );
+}
+
+/* Fio da linha do tempo da logo: uma linha fina que some nas pontas. */
+@utility timeline-rule {
+  background-image: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in oklch, var(--leaf) 55%, transparent) 20%,
+    color-mix(in oklch, var(--primary) 55%, transparent) 80%,
+    transparent
+  );
 }
 
 @layer base {
@@ -160,6 +276,25 @@
   /* O destino do skip link não pode ficar sob cabeçalhos fixos (WCAG 2.4.11). */
   [id] {
     scroll-margin-top: 5rem;
+  }
+
+  /*
+   * Movimento reduzido: nenhuma transição nem animação passa de um instante. O `!important` é o
+   * que faz a regra valer sobre as utilidades (camada posterior) e as animações dos popups.
+   */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    ::before,
+    ::after {
+      /* biome-ignore lint/complexity/noImportantStyles: vale sobre as utilidades de animação */
+      animation-duration: 0.01ms !important;
+      /* biome-ignore lint/complexity/noImportantStyles: vale sobre as utilidades de animação */
+      animation-iteration-count: 1 !important;
+      /* biome-ignore lint/complexity/noImportantStyles: vale sobre as utilidades de transição */
+      transition-duration: 0.01ms !important;
+      /* biome-ignore lint/complexity/noImportantStyles: vale sobre o scroll suave */
+      scroll-behavior: auto !important;
+    }
   }
 
   /*

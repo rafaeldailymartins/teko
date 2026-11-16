@@ -5,6 +5,7 @@ import { NextIntlClientProvider } from 'next-intl'
 import type { AnchorHTMLAttributes, ReactNode } from 'react'
 import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
+import { renderToString } from 'react-dom/server'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Providers } from '@/components/providers'
 import { ApiError } from '@/lib/api/errors'
@@ -14,6 +15,12 @@ import { type FakeApi, installFakeApi, ME, problem } from '../../../test/fake-ap
 import { SessionGate } from './session-gate.tsx'
 import { SignInPanel } from './sign-in-panel.tsx'
 import { UserMenu } from './user-menu.tsx'
+
+/**
+ * O diálogo do onboarding chega por `import()` sob demanda (fora do first-load): sozinho o teste
+ * leva uns 2 s, mas com a suíte inteira em paralelo passava dos 5 s padrão. Mesmo teto do chat.
+ */
+vi.setConfig({ testTimeout: 30_000 })
 
 const navigation = vi.hoisted(() => ({
   pathname: '/pt-BR/chat/',
@@ -134,6 +141,8 @@ afterEach(async () => {
 describe('SignInPanel', () => {
   beforeEach(() => {
     api.on('GET /api/v1/me', () => problem(401, 'unauthenticated'))
+    // Ambiente com os OAuth apps: os quatro métodos (sem eles, veja sign-in.test.tsx).
+    api.on('GET /api/v1/auth/providers', { methods: ['github', 'google', 'passkey', 'email'] })
   })
 
   it('inicia o OAuth com o retorno saneado e vai para o provedor', async () => {
@@ -222,19 +231,71 @@ describe('SignInPanel', () => {
   })
 })
 
+/** O conteúdo do app que a guarda envolve. */
+const APP = <p id="app">conteúdo do app</p>
+
+/** Texto da tela da marca (o `role="status"`), ou `null` sem ela. */
+function brandScreenStatus(): string | null {
+  return document.querySelector('main [role="status"]')?.textContent ?? null
+}
+
 describe('SessionGate', () => {
-  it('sem sessão, manda para a entrada com o retorno à página atual', async () => {
+  it('sem sessão, manda para a entrada com o retorno, sem pintar o app', async () => {
     api.on('GET /api/v1/me', () => problem(401, 'unauthenticated'))
     window.history.replaceState(null, '', '/pt-BR/chat/?q=abc')
-    await render(<SessionGate />)
+    await render(<SessionGate>{APP}</SessionGate>)
     expect(navigation.replace).toHaveBeenCalledWith(
       '/pt-BR/sign-in/?callbackURL=%2Fpt-BR%2Fchat%2F%3Fq%3Dabc',
     )
+    expect(document.getElementById('app')).toBeNull()
+    expect(brandScreenStatus()).toBe(ptBR.shell.gate.redirecting)
   })
 
-  it('com o onboarding pronto, não mostra nada', async () => {
+  it('enquanto o /me carrega, mostra a tela da marca e não o app', async () => {
+    let answer: (response: Response) => void = () => {}
+    api.on('GET /api/v1/me', () => new Promise<Response>((resolve) => (answer = resolve)))
+    await render(<SessionGate>{APP}</SessionGate>)
+    expect(document.getElementById('app')).toBeNull()
+    expect(brandScreenStatus()).toBe(ptBR.shell.gate.loading)
+    expect(document.querySelector('main')?.getAttribute('aria-busy')).toBe('true')
+
+    await act(async () => answer(Response.json(ME)))
+    await settle()
+    expect(document.getElementById('app')).not.toBeNull()
+    expect(brandScreenStatus()).toBeNull()
+  })
+
+  it('no HTML do servidor (sem /me), só a tela da marca', () => {
+    const html = renderToString(
+      <NextIntlClientProvider locale="pt-BR" messages={ptBR} timeZone="America/Sao_Paulo">
+        <Providers>
+          <SessionGate>{APP}</SessionGate>
+        </Providers>
+      </NextIntlClientProvider>,
+    )
+    expect(html).not.toContain('conteúdo do app')
+    expect(html).toContain(ptBR.shell.gate.loading)
+  })
+
+  it('/me indisponível mostra o erro com "Tentar de novo", que volta a consultar', async () => {
+    let failures = 0
+    api.on('GET /api/v1/me', () => {
+      failures++
+      return failures === 1 ? problem(400, 'validation_error') : Response.json(ME)
+    })
+    await render(<SessionGate>{APP}</SessionGate>)
+    expect(document.querySelector('h1')?.textContent).toBe(ptBR.shell.gate.unavailableTitle)
+    expect(document.getElementById('app')).toBeNull()
+
+    await click(button(ptBR.shell.gate.retry))
+    await settle()
+    expect(document.getElementById('app')).not.toBeNull()
+  })
+
+  it('com o onboarding pronto, mostra o app sem diálogo', async () => {
     api.on('GET /api/v1/me', ME)
-    await render(<SessionGate />)
+    await render(<SessionGate>{APP}</SessionGate>)
+    expect(document.getElementById('app')).not.toBeNull()
     expect(document.querySelector('[role="dialog"]')).toBeNull()
     expect(navigation.replace).not.toHaveBeenCalled()
   })
@@ -246,7 +307,7 @@ describe('SessionGate', () => {
     }
     api.on('GET /api/v1/me', pending)
     api.on('POST /api/v1/me/onboarding', ME)
-    await render(<SessionGate />)
+    await render(<SessionGate>{APP}</SessionGate>)
     const dialog = await waitForElement('[role="dialog"]')
     expect(dialog?.textContent).toContain(ptBR.onboarding.title)
     expect(dialog?.textContent).toContain(ptBR.onboarding.training.title)
@@ -261,17 +322,34 @@ describe('SessionGate', () => {
     await settle()
     expect(document.querySelector('[role="dialog"]')).not.toBeNull()
 
+    const progress = () => dialog?.querySelector('[aria-live="polite"]')?.textContent
+    expect(progress()).toBe('1 de 3 confirmações')
     for (const checkbox of document.querySelectorAll<HTMLInputElement>('input[type="checkbox"]')) {
       await click(checkbox)
     }
-    const select = document.querySelector('select')
-    expect(select?.value).toBe('BR')
+    expect(progress()).toBe('3 de 3 confirmações')
+
+    // País com busca: o gatilho mostra o atual; a busca acha sem acento e pelo nome.
+    const picker = dialog?.querySelector<HTMLButtonElement>('[role="combobox"]')
+    expect(picker?.textContent).toContain('Brasil')
+    expect(picker?.getAttribute('aria-labelledby')).toBeTruthy()
+    expect(
+      document.getElementById(picker?.getAttribute('aria-labelledby') ?? '')?.textContent,
+    ).toBe(ptBR.onboarding.country)
+    await click(picker)
+    const search = await waitForElement('[cmdk-input]')
     await act(async () => {
-      if (select) {
-        select.value = 'PT'
-        select.dispatchEvent(new Event('change', { bubbles: true }))
+      if (search instanceof HTMLInputElement) {
+        const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set
+        setter?.call(search, 'portu')
+        search.dispatchEvent(new Event('input', { bubbles: true }))
       }
     })
+    await settle()
+    const items = [...document.querySelectorAll('[cmdk-item]')]
+    expect(items.map((item) => item.textContent)).toEqual(['PortugalPT'])
+    await click(items[0])
+    expect(picker?.textContent).toContain('Portugal')
     expect(button('Continuar')?.disabled).toBe(false)
     await click(button('Continuar'))
     expect(api.calls.find((call) => call.route === 'POST /api/v1/me/onboarding')?.body).toEqual({
@@ -289,7 +367,7 @@ describe('SessionGate', () => {
       onboarding: { ...ME.onboarding, required: true, currentTermsVersion: '2027-01-01' },
     })
     api.on('POST /api/v1/me/onboarding', () => problem(400, 'validation_error'))
-    await render(<SessionGate />)
+    await render(<SessionGate>{APP}</SessionGate>)
     expect((await waitForElement('[role="dialog"]'))?.textContent).toContain(
       ptBR.onboarding.titleTermsUpdate,
     )
@@ -307,7 +385,7 @@ describe('SessionGate', () => {
   it('nas configurações o onboarding pendente não bloqueia', async () => {
     navigation.pathname = '/pt-BR/settings/'
     api.on('GET /api/v1/me', { ...ME, onboarding: { ...ME.onboarding, required: true } })
-    await render(<SessionGate />)
+    await render(<SessionGate>{APP}</SessionGate>)
     expect(document.querySelector('[role="dialog"]')).toBeNull()
   })
 
@@ -315,7 +393,7 @@ describe('SessionGate', () => {
     api.on('GET /api/v1/me', ME)
     await render(
       <>
-        <SessionGate />
+        <SessionGate>{APP}</SessionGate>
         <AskRestricted />
       </>,
     )

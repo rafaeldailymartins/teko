@@ -39,3 +39,15 @@ first-party. A API roda em várias instâncias da Fluid compute, sem estado em m
   `GITHUB_CLIENT_*`, `GOOGLE_CLIENT_*`) são criados pelo mantenedor; o boot de staging e produção
   com banco falha sem eles.
 - Passkeys valem por host (`rpID`): no corte para o Plano B, os usuários registram de novo.
+
+## Revisão (2026-11-16): login por e-mail e senha ([ADR 0036](0036-login-por-email-e-senha.md))
+
+- O mantenedor decidiu oferecer e-mail e senha em todos os ambientes, sem confirmação de e-mail e sem
+  recuperação de senha (continua sem remetente de e-mail). O item 1 deixa de valer na parte "Sem
+  e-mail e senha".
+- A conta por senha nasce com o e-mail não verificado, e o Better Auth só vincula um OAuth a um
+  usuário com o e-mail verificado: GitHub ou Google com o e-mail de uma conta de senha não entram
+  nela (`account_not_linked`), e o cadastro por senha de um e-mail que já existe não cria credencial.
+- As rotas de confirmação, troca de e-mail e recuperação de senha ficam desligadas, o rate limit das
+  rotas de e-mail fica mais rígido, e `GET /api/v1/auth/providers` diz ao web quais entradas mostrar.
+  Development e ci sobem sem OAuth apps; staging e produção continuam exigindo os dois.

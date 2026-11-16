@@ -2,17 +2,34 @@
   "app": {
     "name": "Tekó",
     "tagline": "Legislação fiscal brasileira, na data certa",
-    "description": "Assistente de código aberto que responde dúvidas sobre legislação fiscal brasileira citando a fonte e a redação vigente na data de referência. Em construção."
+    "description": "Assistente de código aberto que responde dúvidas sobre legislação fiscal brasileira citando a fonte e a redação vigente na data de referência.",
+    "ogImageAlt": "Logo do Tekó: um T cuja barra é uma linha do tempo, com a data de referência em âmbar e folhas brotando da haste."
   },
   "common": {
     "skipToContent": "Pular para o conteúdo",
     "homeLink": "Tekó, página inicial",
-    "languageNav": "Idioma",
+    "language": {
+      "label": "Idioma",
+      "current": "Idioma: {language}"
+    },
+    "siteNav": "Navegação do site",
     "disclaimer": "Apoio à consulta; não constitui parecer.",
     "license": "Código aberto sob a licença MIT.",
     "sourceCode": "Código-fonte no GitHub",
     "close": "Fechar",
     "openApp": "Abrir o Tekó",
+    "menu": {
+      "open": "Abrir o menu",
+      "title": "Menu"
+    },
+    "footer": {
+      "product": "Produto",
+      "project": "Projeto",
+      "legal": "Legal",
+      "issues": "Reportar um problema",
+      "licenseLink": "Licença MIT",
+      "madeWith": "Feito com dados públicos e código aberto."
+    },
     "theme": {
       "label": "Tema",
       "light": "Claro",
@@ -36,10 +53,17 @@
     "panels": {
       "history": "Histórico",
       "citation": "Citação",
-      "resizeHistory": "Redimensionar o histórico",
+      "collapseHistory": "Recolher o histórico",
       "resizeCitation": "Redimensionar a citação",
-      "historyEmpty": "Suas conversas aparecem aqui, cada uma com a data de referência usada.",
-      "citationEmpty": "Escolha uma citação na resposta para ver o dispositivo, a versão e o intervalo de vigência."
+      "closeCitation": "Fechar a citação",
+      "expandHistory": "Mostrar o histórico"
+    },
+    "gate": {
+      "loading": "Carregando o Tekó…",
+      "redirecting": "Levando você para a entrada…",
+      "unavailableTitle": "Não foi possível conferir a sua sessão",
+      "unavailableBody": "Confira a sua conexão e tente de novo. Se o problema continuar, o serviço pode estar fora do ar por alguns minutos.",
+      "retry": "Tentar de novo"
     }
   },
   "pages": {
@@ -47,11 +71,12 @@
       "title": "Conversa",
       "description": "Pergunte sobre legislação fiscal e receba a resposta com a redação vigente na sua data.",
       "emptyTitle": "Faça uma pergunta",
-      "emptyBody": "Informe o período de apuração e pergunte sobre a EFD ICMS/IPI, a EFD-Reinf ou a legislação do ICMS de Goiás. A conversa ainda está em construção."
+      "emptyBody": "Informe o período de apuração e pergunte sobre a EFD ICMS/IPI, a EFD-Reinf ou a legislação do ICMS de Goiás."
     },
     "history": {
       "title": "Histórico",
-      "description": "Suas perguntas anteriores, com a data de referência de cada uma."
+      "description": "Suas perguntas anteriores, com a data de referência de cada uma.",
+      "eyebrow": "Suas conversas"
     },
     "settings": {
       "title": "Configurações",
@@ -87,40 +112,73 @@
     }
   },
   "landing": {
-    "status": "Em construção",
-    "title": "Legislação fiscal, na redação que valia na sua data.",
+    "title": "Legislação fiscal, na redação que valia <date>na sua data</date>.",
     "lead": "O Tekó é um assistente de código aberto para dúvidas sobre legislação fiscal brasileira. Cada resposta é dada para um período de apuração ou data de referência e cita o dispositivo e a versão usados.",
     "cta": {
-      "ask": "Fazer uma pergunta",
+      "open": "Abrir o Tekó",
       "coverage": "Ver a cobertura"
     },
+    "proof": {
+      "official": "Fontes oficiais versionadas",
+      "cited": "Citação em cada afirmação"
+    },
     "demo": {
-      "label": "Exemplo ilustrativo de resposta",
-      "referenceDate": "Período de apuração: 05/2008",
-      "question": "O que o art. 76, § 6º, do RCTE dizia no meu período?",
-      "answer": "A resposta usa a redação vigente em 05/2008 e marca cada afirmação com a citação de onde ela saiu.",
+      "caption": "Exemplo ilustrativo com um caso real do RCTE de Goiás.",
+      "title": "Tekó",
+      "subtitle": "Nova conversa · RCTE de Goiás",
+      "question": "O que diz o art. 76, § 6º, do RCTE?",
+      "placeholder": "Pergunte sobre a legislação fiscal…",
+      "chooseDate": "Data de referência",
+      "chip": "Período {value}",
+      "thinking": "Consultando o corpus na data escolhida…",
+      "validAt": "Vigente em {value}",
       "citation": "RCTE, art. 76, § 6º",
-      "citationNote": "redação vigente em 05/2008",
-      "changed": "Para 01/2010, a redação é outra: a resposta, a citação e o intervalo mudam juntos."
+      "pause": "Pausar a demonstração",
+      "play": "Retomar a demonstração",
+      "answers": {
+        "before": "Em {period}, valia a redação do Decreto nº 6.026/2004: se o contribuinte aplicasse, isoladamente, R$ 40.000,00 ou mais nos programas GOYAZES ou PROESPORTE, o Secretário da Fazenda podia, mediante análise individual, definir prazos de pagamento diversos dos do inciso VI do caput.",
+        "after": "Em {period}, o § 6º já estava revogado pelo Decreto nº 7.028/2009, com efeitos desde {revokedOn}: a regra dos prazos diversos para quem aplica nos programas GOYAZES ou PROESPORTE deixou de existir neste parágrafo."
+      },
+      "summary": "Demonstração animada: alguém pergunta o que diz o art. 76, § 6º, do <ptBR>Regulamento do Código Tributário do Estado de Goiás</ptBR>. Para o período de apuração {before}, o Tekó responde com a redação vigente de {beforeRange}: o Secretário da Fazenda podia definir prazos diversos de pagamento para quem aplicasse R$ 40.000,00 ou mais nos programas GOYAZES ou PROESPORTE. Para {after}, a mesma pergunta recebe outra resposta: o parágrafo foi revogado em {revokedOn}. Cada resposta cita o dispositivo e o intervalo de vigência."
+    },
+    "timeline": {
+      "caption": "RCTE, art. 76, § 6º, ao longo do tempo",
+      "added": "Acrescido",
+      "amended": "Nova redação",
+      "revoked": "Revogado"
     },
     "howItWorks": {
-      "title": "Como funciona",
+      "eyebrow": "Como funciona",
+      "title": "Da data à fonte, em três passos",
+      "lead": "O Tekó não responde \"em geral\": responde para uma data, com a redação daquela data, e mostra de onde tirou cada frase.",
       "referenceDate": {
         "title": "Data de referência primeiro",
-        "body": "Você informa o período de apuração (por exemplo, 03/2024) e a resposta usa a redação vigente naquele momento. Se a norma mudou dentro do período, o Tekó avisa."
+        "body": "Você informa o período de apuração (por exemplo, 03/2024) e a resposta usa a redação vigente naquele momento. Se a norma mudou dentro do período, o Tekó avisa.",
+        "sample": "Período 03/2024"
       },
       "citations": {
         "title": "Citações verificáveis",
-        "body": "Cada afirmação aponta para o dispositivo, a versão e o intervalo de vigência usados, com link para a fonte oficial."
+        "body": "Cada afirmação aponta para o dispositivo, a versão e o intervalo de vigência usados, com link para a fonte oficial.",
+        "sample": "RCTE, art. 76, § 6º"
       },
       "coverage": {
         "title": "Cobertura declarada",
-        "body": "O Tekó diz quais normas e períodos conhece. Fora dessa cobertura, ele recusa em vez de adivinhar."
+        "body": "O Tekó diz quais normas e períodos conhece. Fora dessa cobertura, ele recusa em vez de adivinhar.",
+        "sample": "Fora da cobertura: recusa com o motivo"
       }
     },
     "corpus": {
+      "eyebrow": "Fontes",
       "title": "Corpus coberto",
       "lead": "Fontes oficiais, versionadas e verificadas periodicamente contra os sites de origem.",
+      "rulerCaption": "Início aproximado de cada fonte no corpus, até a última verificação. As datas exatas e as lacunas estão na página de cobertura.",
+      "seeCoverage": "Ver a cobertura exata",
+      "since": "desde {year}",
+      "today": "hoje",
+      "jurisdiction": {
+        "BR": "Federal",
+        "GO": "Goiás"
+      },
       "efdIcmsIpi": {
         "name": "EFD ICMS/IPI",
         "body": "Guia Prático da Escrituração Fiscal Digital e as notas técnicas."
@@ -143,7 +201,9 @@
       }
     },
     "guarantees": {
+      "eyebrow": "Compromissos",
       "title": "Garantias",
+      "lead": "O que vale para toda resposta, sem exceção.",
       "sources": {
         "title": "Nada sem fonte",
         "body": "Toda afirmação da resposta aponta para um trecho do corpus. Sem trecho que a sustente, ela não entra."
@@ -162,7 +222,10 @@
       }
     },
     "faq": {
+      "eyebrow": "Dúvidas",
       "title": "Perguntas frequentes",
+      "lead": "O essencial antes da primeira pergunta.",
+      "more": "Ficou outra dúvida? <issues>Pergunte no GitHub</issues>.",
       "advice": {
         "question": "O Tekó substitui um contador ou um advogado?",
         "answer": "Não. Ele é um apoio à consulta e não constitui parecer. Confira sempre a fonte citada antes de decidir."
@@ -179,6 +242,11 @@
         "question": "O que acontece com as minhas perguntas?",
         "answer": "As perguntas passam por um provedor de IA gratuito, que pode usá-las para melhorar os próprios modelos. Não inclua dados pessoais nem informações sigilosas."
       }
+    },
+    "finalCta": {
+      "title": "Pergunte com a data certa.",
+      "body": "Escolha o período de apuração, faça a pergunta e confira a fonte de cada afirmação.",
+      "source": "Ver o código-fonte"
     }
   },
   "gateway": {
@@ -186,26 +254,30 @@
     "continue": "Continuar em português"
   },
   "notFound": {
+    "eyebrow": "Erro 404",
     "title": "Página não encontrada",
     "description": "O endereço não existe ou foi movido.",
-    "backHome": "Voltar para a página inicial"
+    "timeline": "Esta data não está na linha do tempo.",
+    "backHome": "Voltar para a página inicial",
+    "coverage": "Ver a cobertura"
   },
   "auth": {
     "signIn": {
-      "lead": "Entre com a sua conta do GitHub ou do Google. Depois do primeiro acesso, você pode cadastrar uma passkey nas configurações.",
+      "lead": "Pergunte sobre a legislação fiscal brasileira e receba a resposta na redação que valia na data certa.",
       "github": "Entrar com GitHub",
       "google": "Entrar com Google",
       "passkey": "Entrar com passkey",
-      "noPassword": "O Tekó não usa e-mail e senha.",
       "alreadySignedIn": "Você já entrou como {name}.",
       "continue": "Continuar",
-      "legal": "Ao entrar, você concorda com os <terms>Termos de uso</terms> e com a <privacy>Política de privacidade</privacy>."
+      "legal": "Ao entrar, você concorda com os <terms>Termos de uso</terms> e com a <privacy>Política de privacidade</privacy>.",
+      "divider": "ou com e-mail",
+      "loading": "Carregando as formas de entrada…"
     },
     "errors": {
       "title": "Não foi possível entrar",
       "cancelled": "O login foi cancelado. Tente de novo quando quiser.",
       "blocked": "Esta conta está bloqueada e não pode entrar no Tekó.",
-      "accountNotLinked": "Esta conta do provedor não pôde ser ligada à sua conta do Tekó. Entre com o provedor que você usou da primeira vez.",
+      "accountNotLinked": "Este e-mail usa outro método de entrada. Entre pelo método que você usou da primeira vez.",
       "emailMissing": "O provedor não compartilhou um e-mail verificado. Confira as configurações de privacidade da sua conta e tente de novo.",
       "generic": "Algo deu errado no login. Tente de novo."
     },
@@ -220,7 +292,9 @@
       "title": "Indisponível na sua região",
       "body": "Para a sua região, o Tekó só usa um provedor de IA que não guarda as perguntas, e ele está indisponível agora.",
       "hint": "Tente de novo mais tarde. Se o país de residência estiver errado, ele aparece nas configurações da conta.",
-      "back": "Voltar para a página inicial"
+      "back": "Voltar para a página inicial",
+      "eyebrow": "Política regional",
+      "settings": "Abrir as configurações"
     },
     "menu": {
       "label": "Conta de {name}",
@@ -232,6 +306,61 @@
       "group": "Conta",
       "signIn": "Entrar",
       "signOut": "Sair da conta"
+    },
+    "email": {
+      "tabs": "Entrar ou criar conta",
+      "signIn": "Entrar",
+      "signUp": "Criar conta",
+      "name": "Nome",
+      "namePlaceholder": "Como prefere ser chamado",
+      "email": "E-mail",
+      "emailPlaceholder": "voce@exemplo.com",
+      "password": "Senha",
+      "showPassword": "Mostrar a senha",
+      "hidePassword": "Ocultar a senha",
+      "passwordHint": "Pelo menos {min} caracteres. Uma frase que só você conheça funciona bem.",
+      "passwordCount": "{count} de {min} caracteres",
+      "passwordReady": "Mínimo atingido · {count} caracteres",
+      "submitSignIn": "Entrar",
+      "submitSignUp": "Criar conta e entrar",
+      "signingIn": "Entrando…",
+      "signingUp": "Criando a conta…",
+      "forgot": "Esqueceu a senha? Sem e-mail de recuperação, ela não volta. <terms>Entenda</terms>",
+      "notice": "O Tekó não confirma o e-mail nem recupera senhas. Guarde a sua num gerenciador de senhas. Detalhes nos <terms>Termos de uso</terms>.",
+      "validation": {
+        "nameRequired": "Informe um nome.",
+        "nameTooLong": "Use até {max} caracteres.",
+        "nameInvalid": "O nome tem caracteres que não são aceitos.",
+        "emailInvalid": "Informe um e-mail válido, como voce@exemplo.com.",
+        "passwordRequired": "Informe a senha.",
+        "passwordTooShort": "A senha precisa de pelo menos {min} caracteres.",
+        "passwordTooLong": "A senha pode ter até {max} caracteres."
+      },
+      "failures": {
+        "invalidCredentials": "E-mail ou senha não conferem. Confira e tente de novo.",
+        "accountUnavailable": "Não foi possível criar a conta com este e-mail. Se você já usa o Tekó, entre pelo método de sempre.",
+        "passwordTooShort": "A senha precisa de pelo menos {min} caracteres.",
+        "passwordTooLong": "A senha pode ter até {max} caracteres.",
+        "invalidEmail": "Informe um e-mail válido.",
+        "invalidName": "Confira o nome: ele não pode ficar vazio nem passar de {max} caracteres.",
+        "invalidInput": "Confira os dados e tente de novo.",
+        "rateLimited": "Muitas tentativas seguidas. Espere alguns minutos e tente de novo."
+      }
+    },
+    "brand": {
+      "label": "Sobre o Tekó",
+      "tagline": "A lei certa para cada momento.",
+      "body": "Cada resposta sai da redação vigente na data que você escolher, com as citações e o período de vigência à vista.",
+      "example": "Exemplo",
+      "provision": "Art. 76, § 6º · RCTE-GO",
+      "reference": "Sua data",
+      "current": "Vigente nesta data",
+      "points": {
+        "dated": "Respostas na data de referência",
+        "cited": "Citações que você confere",
+        "open": "Código aberto e gratuito"
+      },
+      "home": "Página inicial do Tekó"
     }
   },
   "onboarding": {
@@ -249,19 +378,31 @@
     "countryHint": "Define quais provedores de IA podem responder às suas perguntas.",
     "submit": "Continuar",
     "submitting": "Salvando…",
-    "signOut": "Sair"
+    "signOut": "Sair",
+    "steps": "Etapas do cadastro",
+    "progress": "{done} de {total} confirmações",
+    "stepDone": "concluída",
+    "age": "Maioridade",
+    "countrySearch": "Buscar país…",
+    "countryEmpty": "Nenhum país encontrado.",
+    "termsStep": "Termos e privacidade"
   },
   "settings": {
     "loading": "Carregando a sua conta…",
     "unavailable": "Não foi possível carregar a sua conta agora. Tente de novo em instantes.",
     "account": {
       "title": "Conta",
-      "name": "Nome",
-      "email": "E-mail",
       "country": "País de residência",
       "onboardingPending": "Conclua o cadastro inicial para fazer perguntas.",
       "completeOnboarding": "Concluir agora",
-      "signOut": "Sair"
+      "signOut": "Sair",
+      "method": "Entrada",
+      "methods": {
+        "github": "GitHub",
+        "google": "Google",
+        "email": "E-mail e senha"
+      },
+      "methodUnknown": "Não identificada"
     },
     "quota": {
       "title": "Cota do dia",
@@ -269,7 +410,8 @@
       "loading": "Carregando a cota…",
       "user": "{used} de {limit} perguntas hoje",
       "global": "Teto do serviço hoje: {used} de {limit} perguntas",
-      "resets": "Renova em {time}."
+      "resets": "Renova em {time}.",
+      "remaining": "{count, plural, one {# pergunta restante} other {# perguntas restantes}}"
     },
     "passkeys": {
       "title": "Passkeys",
@@ -288,7 +430,7 @@
     },
     "data": {
       "title": "Seus dados",
-      "lead": "Baixe tudo o que o Tekó guarda sobre você ou exclua a conta. As perguntas são apagadas automaticamente depois de 90 dias.",
+      "lead": "Baixe num arquivo JSON tudo o que o Tekó guarda sobre você. As perguntas são apagadas automaticamente depois de 90 dias.",
       "export": "Exportar meus dados",
       "exporting": "Preparando o arquivo…",
       "exported": "Arquivo JSON baixado."
@@ -311,7 +453,16 @@
         "comfortable": "Confortável",
         "compact": "Compacta"
       },
-      "language": "Idioma"
+      "language": "Idioma",
+      "lead": "Valem para este navegador, com ou sem sessão.",
+      "densityHints": {
+        "comfortable": "Mais respiro entre os elementos",
+        "compact": "Mais conteúdo na tela"
+      }
+    },
+    "nav": "Seções das configurações",
+    "danger": {
+      "title": "Zona de perigo"
     }
   },
   "errors": {
@@ -329,6 +480,8 @@
     "internal": "Ocorreu um erro inesperado. Tente de novo."
   },
   "legal": {
+    "eyebrow": "Documento legal",
+    "backToTop": "Voltar ao topo",
     "toc": "Nesta página",
     "updated": "Versão {version} · atualizada em {date}",
     "inForce": "Versão {version} · em vigor desde {date}",
@@ -338,7 +491,7 @@
       "sections": {
         "summary": {
           "title": "Resumo",
-          "body": "<ul><li>O Tekó guarda só o necessário para a sua conta e o seu histórico: os dados do login, a declaração de maioridade, o aceite dos Termos, o país de residência e as perguntas, já sem dados pessoais identificáveis.</li><li>Antes de gravar uma pergunta ou de enviá-la a qualquer provedor, o Tekó troca CPF, CNPJ, e-mail, telefone e chave de NF-e por marcadores.</li><li>Perguntas e respostas ficam 90 dias e depois são apagadas.</li><li>As respostas são geradas por provedores de IA nos Estados Unidos. <strong>O provedor gratuito pode usar o texto enviado para treinar modelos</strong>: não escreva dados pessoais nem informações sigilosas.</li><li>Você exporta ou apaga tudo a qualquer momento em <settings>Configurações</settings>.</li><li>Não há venda de dados, publicidade nem rastreamento por terceiros.</li></ul>"
+          "body": "<ul><li>O Tekó guarda só o necessário para a sua conta e o seu histórico: os dados do login, a declaração de maioridade, o aceite dos Termos, o país de residência e as perguntas, já sem dados pessoais identificáveis.</li><li>Antes de gravar uma pergunta ou de enviá-la a qualquer provedor, o Tekó troca CPF, CNPJ, e-mail, telefone e chave de NF-e por marcadores.</li><li>Perguntas e respostas ficam 90 dias e depois são apagadas.</li><li>As respostas são geradas por provedores de IA nos Estados Unidos. <strong>O provedor gratuito pode usar o texto enviado para treinar modelos</strong>: não escreva dados pessoais nem informações sigilosas.</li><li>Você exclui uma conversa no Histórico ou exporta e apaga tudo a qualquer momento em <settings>Configurações</settings>.</li><li>Não há venda de dados, publicidade nem rastreamento por terceiros.</li></ul>"
         },
         "controller": {
           "title": "Quem é o controlador",
@@ -346,7 +499,7 @@
         },
         "data": {
           "title": "Dados tratados, finalidades e bases legais",
-          "body": "<ul><li><strong>Conta:</strong> nome, e-mail e foto que o GitHub ou o Google enviam no login, para identificar a sua conta. Base legal: execução de contrato (LGPD, art. 7º, V).</li><li><strong>Cadastro inicial:</strong> a declaração de que você tem 18 anos ou mais, a versão dos Termos aceita e a data do aceite, e o país de residência, que define quais provedores de IA podem atender você. Bases legais: execução de contrato (art. 7º, V) e cumprimento de obrigação legal (art. 7º, II).</li><li><strong>Sessão:</strong> token de sessão, endereço IP, navegador (user agent) e validade, para manter o login e limitar abusos. Base legal: legítimo interesse (art. 7º, IX).</li><li><strong>Passkeys:</strong> a chave pública e um contador, se você entrar com passkey. Base legal: execução de contrato.</li><li><strong>Perguntas e respostas:</strong> a pergunta já redigida, sem dados identificáveis, e a resposta, para responder e mostrar o seu histórico. Base legal: execução de contrato.</li><li><strong>Avaliações:</strong> o polegar para cima ou para baixo e o motivo escolhido numa lista, sem texto livre, para melhorar as respostas. Base legal: legítimo interesse.</li><li><strong>Uso e proteção:</strong> contadores diários de perguntas, para as cotas do serviço gratuito, e o IP e a conta nas janelas de limite de requisições, contra abusos. Base legal: legítimo interesse.</li></ul><p>O Tekó não pede documentos e não trata dados sensíveis de propósito.</p>"
+          "body": "<ul><li><strong>Conta:</strong> nome, e-mail e foto que o GitHub ou o Google enviam no login, ou o nome e o e-mail que você informa no cadastro por e-mail, para identificar a sua conta. Base legal: execução de contrato (LGPD, art. 7º, V).</li><li><strong>Senha:</strong> se você criar a conta por e-mail, o Tekó guarda só um resumo criptográfico da senha (hash scrypt com sal), nunca a senha, para conferir a entrada. O e-mail não é confirmado e não há recuperação de senha, porque o Tekó não envia e-mails. Base legal: execução de contrato.</li><li><strong>Cadastro inicial:</strong> a declaração de que você tem 18 anos ou mais, a versão dos Termos aceita e a data do aceite, e o país de residência, que define quais provedores de IA podem atender você. Bases legais: execução de contrato (art. 7º, V) e cumprimento de obrigação legal (art. 7º, II).</li><li><strong>Sessão:</strong> token de sessão, endereço IP, navegador (user agent) e validade, para manter o login e limitar abusos. Base legal: legítimo interesse (art. 7º, IX).</li><li><strong>Passkeys:</strong> a chave pública e um contador, se você entrar com passkey. Base legal: execução de contrato.</li><li><strong>Perguntas e respostas:</strong> a pergunta já redigida, sem dados identificáveis, e a resposta, para responder e mostrar o seu histórico. Base legal: execução de contrato.</li><li><strong>Avaliações:</strong> o polegar para cima ou para baixo e o motivo escolhido numa lista, sem texto livre, para melhorar as respostas. Base legal: legítimo interesse.</li><li><strong>Uso e proteção:</strong> contadores diários de perguntas, para as cotas do serviço gratuito, e o IP e a conta nas janelas de limite de requisições, contra abusos. Base legal: legítimo interesse.</li></ul><p>O Tekó não pede documentos e não trata dados sensíveis de propósito.</p>"
         },
         "questions": {
           "title": "Suas perguntas",
@@ -362,15 +515,15 @@
         },
         "retention": {
           "title": "Por quanto tempo os dados ficam",
-          "body": "<ul><li>Perguntas, respostas e avaliações: 90 dias. Uma rotina semanal apaga as mais antigas.</li><li>Conta, cadastro inicial, passkeys e contadores de uso: até você apagar a conta.</li><li>Sessões: 7 dias sem uso. As expiradas saem na rotina semanal.</li><li>Janelas de limite de requisições: 60 segundos. As vencidas saem na rotina semanal.</li><li>Registros de execução da hospedagem: 1 hora.</li></ul>"
+          "body": "<ul><li>Perguntas, respostas e avaliações: 90 dias, ou até você excluir a conversa. Uma rotina semanal apaga as mais antigas.</li><li>Conta (com o hash da senha, se houver), cadastro inicial, passkeys e contadores de uso: até você apagar a conta.</li><li>Sessões: 7 dias sem uso. As expiradas saem na rotina semanal.</li><li>Janelas de limite de requisições: de 60 segundos a 10 minutos. As vencidas saem na rotina semanal.</li><li>Registros de execução da hospedagem: 1 hora.</li></ul>"
         },
         "rights": {
           "title": "Seus direitos",
-          "body": "<p>A LGPD (art. 18) garante a você a confirmação do tratamento e o acesso aos dados, a correção, a anonimização, o bloqueio ou a eliminação do que for desnecessário, a portabilidade, a informação sobre com quem os dados são compartilhados e a revogação do consentimento.</p><ul><li><strong>Acesso e portabilidade:</strong> em <settings>Configurações</settings>, a exportação baixa um arquivo JSON com o seu perfil, as contas ligadas (sem tokens), o número de passkeys, as perguntas e as avaliações.</li><li><strong>Eliminação:</strong> também em <settings>Configurações</settings>, a exclusão apaga a conta e tudo o que é dela: sessões, contas ligadas, passkeys, perguntas, avaliações, contadores de uso e janelas de limite. Os cookies de sessão são apagados na mesma hora.</li><li><strong>Correção:</strong> nome, e-mail e foto vêm do GitHub ou do Google; atualize-os lá. Para outros dados, use o contato abaixo.</li><li><strong>Consentimento:</strong> mude ou retire quando quiser em “Preferências de cookies”, no rodapé.</li></ul><p>O que não for automático é atendido em até 15 dias. Você também pode apresentar reclamação à <anpd>Autoridade Nacional de Proteção de Dados (ANPD)</anpd>.</p>"
+          "body": "<p>A LGPD (art. 18) garante a você a confirmação do tratamento e o acesso aos dados, a correção, a anonimização, o bloqueio ou a eliminação do que for desnecessário, a portabilidade, a informação sobre com quem os dados são compartilhados e a revogação do consentimento.</p><ul><li><strong>Acesso e portabilidade:</strong> em <settings>Configurações</settings>, a exportação baixa um arquivo JSON com o seu perfil, as contas ligadas (sem tokens), o número de passkeys, as perguntas e as avaliações.</li><li><strong>Eliminação:</strong> também em <settings>Configurações</settings>, a exclusão apaga a conta e tudo o que é dela: sessões, contas ligadas, passkeys, perguntas, avaliações, contadores de uso e janelas de limite. Os cookies de sessão são apagados na mesma hora.</li><li><strong>Eliminação de uma conversa:</strong> no Histórico, o menu ⋯ de cada conversa a exclui na hora, com as perguntas, respostas e avaliações dela. O contador de uso do dia não muda: excluir não devolve perguntas à cota.</li><li><strong>Correção:</strong> nome, e-mail e foto vêm do GitHub ou do Google; atualize-os lá. Para outros dados, use o contato abaixo.</li><li><strong>Consentimento:</strong> mude ou retire quando quiser em “Preferências de cookies”, no rodapé.</li></ul><p>O que não for automático é atendido em até 15 dias. Você também pode apresentar reclamação à <anpd>Autoridade Nacional de Proteção de Dados (ANPD)</anpd>.</p>"
         },
         "security": {
           "title": "Segurança",
-          "body": "<p>O cookie de sessão é HttpOnly, SameSite=Lax e protegido pelo prefixo __Secure-; toda alteração confere a origem da requisição; o banco é acessado por um usuário sem permissão para mudar a estrutura; os segredos ficam em variáveis protegidas da hospedagem; e as dependências passam por verificação de proveniência e de vulnerabilidades. O código é aberto e qualquer pessoa pode auditá-lo.</p><p>Uma sessão encerrada em outro dispositivo pode continuar aceita por até 5 minutos em telas que não leem dados pessoais. Exportação, exclusão e perguntas consultam o banco e recusam a sessão encerrada na hora.</p><p>Encontrou uma falha? Relate de forma privada pelo <privateReport>relato de vulnerabilidade do GitHub</privateReport>.</p>"
+          "body": "<p>O cookie de sessão é HttpOnly, SameSite=Lax e protegido pelo prefixo __Secure-; toda alteração confere a origem da requisição; o banco é acessado por um usuário sem permissão para mudar a estrutura; as senhas ficam só como hash (scrypt, com sal), e a entrada por e-mail tem limite de tentativas por endereço IP; os segredos ficam em variáveis protegidas da hospedagem; e as dependências passam por verificação de proveniência e de vulnerabilidades. O código é aberto e qualquer pessoa pode auditá-lo.</p><p>Uma sessão encerrada em outro dispositivo pode continuar aceita por até 5 minutos em telas que não leem dados pessoais. Exportação, exclusão e perguntas consultam o banco e recusam a sessão encerrada na hora.</p><p>Encontrou uma falha? Relate de forma privada pelo <privateReport>relato de vulnerabilidade do GitHub</privateReport>.</p>"
         },
         "age": {
           "title": "Maiores de 18 anos",
@@ -404,7 +557,7 @@
         },
         "eligibility": {
           "title": "Quem pode usar",
-          "body": "<ul><li>Você precisa ter 18 anos ou mais e declarar isso no cadastro inicial.</li><li>A conta é pessoal e entra pelo GitHub, pelo Google ou por passkey. Cuidar do acesso a ela é responsabilidade sua.</li><li>O país de residência informado precisa ser verdadeiro, porque ele define quais provedores de IA podem atender você.</li></ul>"
+          "body": "<ul><li>Você precisa ter 18 anos ou mais e declarar isso no cadastro inicial.</li><li>A conta é pessoal e entra pelo GitHub, pelo Google, por passkey ou por e-mail e senha. Cuidar do acesso a ela é responsabilidade sua.</li><li>A conta por e-mail e senha não tem confirmação de e-mail nem recuperação de senha, porque o Tekó não envia e-mails. Se você esquecer a senha, a conta fica inacessível; as perguntas dela expiram em 90 dias. Use um e-mail seu e uma senha longa, de preferência guardada num gerenciador de senhas.</li><li>Como o e-mail não é confirmado, qualquer pessoa pode cadastrar um endereço que não é dela. Por isso a conta por e-mail nunca dá acesso a uma conta do GitHub ou do Google com o mesmo endereço, nem o contrário: são contas separadas. Se o seu e-mail estiver numa conta que você não criou, fale com o mantenedor pelo canal de contato.</li><li>O país de residência informado precisa ser verdadeiro, porque ele define quais provedores de IA podem atender você.</li></ul>"
         },
         "acceptableUse": {
           "title": "Uso aceitável",
@@ -412,7 +565,7 @@
         },
         "quota": {
           "title": "Cotas e disponibilidade",
-          "body": "<p>O Tekó roda em planos gratuitos de hospedagem e de IA. Por isso há um limite diário de perguntas por pessoa e um limite global; quando um deles acaba, novas perguntas ficam bloqueadas até a renovação, indicada na tela. O serviço também pode ser pausado para proteger as cotas dos provedores.</p><p>Não há garantia de disponibilidade, de prazo de resposta nem de suporte.</p>"
+          "body": "<p>O Tekó roda em planos gratuitos de hospedagem e de IA. Por isso há um limite diário de perguntas por pessoa e um limite global; quando um deles acaba, novas perguntas ficam bloqueadas até a renovação, indicada na tela. Excluir uma conversa não devolve as perguntas dela à cota. O serviço também pode ser pausado para proteger as cotas dos provedores.</p><p>Não há garantia de disponibilidade, de prazo de resposta nem de suporte.</p>"
         },
         "answers": {
           "title": "Respostas geradas por IA",
@@ -428,7 +581,7 @@
         },
         "privacy": {
           "title": "Privacidade",
-          "body": "<p>O tratamento dos seus dados segue a <privacy>Política de privacidade</privacy>. Em resumo: as perguntas são redigidas antes de qualquer uso e ficam 90 dias, e você exporta ou apaga tudo em <settings>Configurações</settings>. O provedor de IA gratuito pode usar o texto redigido para treinar modelos.</p>"
+          "body": "<p>O tratamento dos seus dados segue a <privacy>Política de privacidade</privacy>. Em resumo: as perguntas são redigidas antes de qualquer uso e ficam 90 dias, e você exclui uma conversa no Histórico ou exporta e apaga tudo em <settings>Configurações</settings>. O provedor de IA gratuito pode usar o texto redigido para treinar modelos.</p>"
         },
         "termination": {
           "title": "Encerramento",
@@ -450,6 +603,7 @@
     }
   },
   "about": {
+    "eyebrow": "O projeto",
     "title": "Sobre o Tekó",
     "lead": "O Tekó é um assistente de código aberto para dúvidas sobre legislação fiscal brasileira. Cada resposta vale para uma data: a do período de apuração que você informa.",
     "sections": {
@@ -513,7 +667,6 @@
     "listLabel": "Conversas",
     "loading": "Carregando as conversas…",
     "emptyTitle": "Nenhuma conversa ainda",
-    "emptyBody": "Suas conversas aparecem aqui, cada uma com a data de referência da última pergunta.",
     "error": "Não foi possível carregar o histórico.",
     "retry": "Tentar de novo",
     "signIn": "Entrar",
@@ -522,7 +675,30 @@
     "viewAll": "Ver todo o histórico",
     "loadMore": "Carregar mais",
     "loadingMore": "Carregando…",
-    "retention": "As conversas ficam guardadas por 90 dias e podem ser apagadas nas configurações."
+    "retention": "As conversas ficam guardadas por 90 dias. Exclua uma pelo menu ⋯ dela, ou todas de uma vez nas configurações.",
+    "searchLabel": "Buscar nas conversas",
+    "searchPlaceholder": "Buscar pelo título…",
+    "searchEmpty": "Nenhuma conversa com “{query}” no título.",
+    "groups": {
+      "today": "Hoje",
+      "yesterday": "Ontem",
+      "week": "Últimos 7 dias",
+      "month": "Últimos 30 dias",
+      "older": "Anteriores"
+    },
+    "actions": {
+      "menu": "Ações da conversa “{title}”",
+      "delete": "Excluir conversa"
+    },
+    "delete": {
+      "title": "Excluir esta conversa?",
+      "body": "“{title}” e todas as perguntas, respostas e avaliações dela serão apagadas. Não dá para desfazer.",
+      "cancel": "Cancelar",
+      "confirm": "Excluir conversa",
+      "deleting": "Excluindo…",
+      "busy": "Uma resposta desta conversa ainda está sendo gerada. Espere terminar e tente de novo.",
+      "done": "Conversa excluída."
+    }
   },
   "provision": {
     "title": "Dispositivos",
@@ -555,7 +731,8 @@
     "timeline": {
       "title": "Linha do tempo",
       "label": "Redações do dispositivo",
-      "count": "{count, plural, one {# redação} other {# redações}}"
+      "count": "{count, plural, one {# redação} other {# redações}}",
+      "atReference": "Em {date}"
     },
     "diff": {
       "loading": "Comparando as redações…",
@@ -563,7 +740,7 @@
       "at": "Em {date}",
       "absent": "O dispositivo não existia nesta data.",
       "unchanged": "O texto é o mesmo nas duas datas.",
-      "legend": "Sublinhado em verde, o que entrou; riscado em vermelho, o que saiu.",
+      "legend": "Legenda:",
       "insertedStart": "[incluído:",
       "insertedEnd": "]",
       "deletedStart": "[removido:",
@@ -571,7 +748,9 @@
       "fieldChanges": "Campos alterados",
       "field": "Campo",
       "before": "Antes",
-      "after": "Depois"
+      "after": "Depois",
+      "legendInserted": "incluído",
+      "legendDeleted": "removido"
     },
     "search": {
       "label": "Buscar dispositivo",
@@ -579,8 +758,10 @@
       "hint": "Mostra os dispositivos vigentes em {date}; digite ao menos 2 caracteres.",
       "searching": "Buscando…",
       "empty": "Nenhum dispositivo vigente na data casa com a busca.",
-      "results": "Dispositivos encontrados"
-    }
+      "results": "Dispositivos encontrados",
+      "examples": "Experimente:"
+    },
+    "eyebrow": "Corpus"
   },
   "compare": {
     "title": "Comparar versões",
@@ -593,7 +774,10 @@
     "invalidKey": "Chave inválida. Use o formato go:rcte:art:76:par:6.",
     "invalidRange": "Informe as duas datas, com a inicial antes da final.",
     "result": "Diferença entre as redações",
-    "openProvision": "Abrir o dispositivo"
+    "openProvision": "Abrir o dispositivo",
+    "eyebrow": "Linha do tempo",
+    "emptyTitle": "Duas datas, duas redações",
+    "emptyBody": "Informe a chave de um dispositivo e duas datas: as redações vigentes em cada uma aparecem lado a lado, com o que entrou e o que saiu."
   },
   "chat": {
     "loading": "Carregando a conversa…",
@@ -602,11 +786,11 @@
       "placeholder": "Pergunte sobre a EFD ICMS/IPI, a EFD-Reinf ou a legislação de Goiás…",
       "send": "Enviar",
       "stop": "Parar",
-      "hint": "{shortcut} envia · Esc para",
       "blockedQuota": "O limite diário de perguntas foi atingido. As perguntas voltam {reset}.",
       "blockedPaused": "O serviço está pausado. Tente de novo {reset}.",
       "resetAt": "em {time}",
-      "resetSoon": "mais tarde"
+      "resetSoon": "mais tarde",
+      "counter": "{count, number} / {max, number}"
     },
     "pii": {
       "title": "Sua pergunta parece ter dados pessoais",
@@ -624,7 +808,6 @@
     "reference": {
       "chipPeriodo": "Período de apuração: {value}",
       "chipDate": "Data de referência: {value}",
-      "defaultHint": "padrão: mês anterior",
       "open": "Alterar a data de referência",
       "title": "Data de referência",
       "modePeriodo": "Período",
@@ -639,14 +822,13 @@
       "dateLabel": "Data",
       "apply": "Aplicar",
       "inferred": "Data inferida do texto: {value}",
-      "confirm": "Confirmar"
+      "confirm": "Confirmar",
+      "chipPeriodoLabel": "Período de apuração:",
+      "chipDateLabel": "Data de referência:"
     },
     "coverage": {
-      "label": "Cobertura na data",
-      "grounded": "Fundamentada",
-      "partial": "Cobertura parcial",
       "out": "Fora de cobertura",
-      "bannerPartial": "Nesta data, o Tekó não tem fontes de {families}. A resposta pode ficar incompleta.",
+      "notePartial": "Sem fontes de {families} nesta data; a resposta pode ficar incompleta.",
       "bannerOut": "Nenhuma fonte do Tekó cobre esta data. A pergunta pode ser recusada."
     },
     "thread": {
@@ -660,11 +842,18 @@
       "noAnswer": "Esta pergunta não tem resposta gravada.",
       "blockError": "Não foi possível mostrar este trecho.",
       "retry": "Tentar de novo",
-      "reread": "Recarregar a resposta"
+      "reread": "Recarregar a resposta",
+      "thinking": "Consultando a legislação vigente em {date}…",
+      "restoring": "Abrindo a conversa…",
+      "restoreError": "Não foi possível abrir esta conversa.",
+      "toEnd": "Ir para o fim da conversa",
+      "newConversation": "Nova conversa"
     },
     "answer": {
       "referencePeriodo": "Período de apuração {value}",
       "referenceDate": "Data de referência {value}",
+      "periodoLabel": "Período de apuração",
+      "dateLabel": "Data de referência",
       "source": {
         "explicit": "escolhida por você",
         "periodo_apuracao": "escolhida por você",
@@ -672,14 +861,18 @@
         "default": "padrão: mês anterior",
         "clarified": "esclarecida por você"
       },
-      "validity": "Vigência das redações citadas: {range}",
+      "validity": "Vigência das fontes: {range}",
+      "validityShort": "vigência {range}",
       "boundaryInside": "A redação muda dentro deste período: confira a data exata.",
       "citations": "Fontes",
       "degraded": {
         "lexicalOnly": "Somente busca lexical",
         "fallback": "Modelo de reserva",
         "cached": "Resposta em cache"
-      }
+      },
+      "copy": "Copiar a resposta",
+      "copied": "Resposta copiada.",
+      "sourcesToggle": "{count, plural, one {# fonte} other {# fontes}}"
     },
     "intervals": {
       "range": "{from} a {to}",
@@ -732,21 +925,35 @@
       "invalid": "Esta citação não foi confirmada pelo validador.",
       "status": {
         "current": "Vigente",
-        "superseded": "Superada",
+        "superseded": "Encerrada",
         "future": "Futura"
       },
-      "validity": "Vigência: {range}"
+      "validity": "Vigência: {range}",
+      "sourcePrefix": "Fonte",
+      "previewHint": "Clique para abrir"
     },
     "suggestions": {
-      "title": "Experimente",
-      "body": "A mesma pergunta em duas datas mostra redações diferentes.",
+      "title": "Sugestões de perguntas",
       "questions": {
-        "rcte76": "O que diz o art. 76, § 6º do RCTE?"
+        "rcte76": "O que diz o art. 76, § 6º do RCTE?",
+        "efdC170": "Como se preenche o registro C170 da EFD ICMS/IPI?",
+        "reinfR4020": "O que se informa no evento R-4020 da EFD-Reinf?",
+        "efdGoTable52": "Quais informações da Tabela 5.2 de Goiás vão na EFD todo mês?"
       },
-      "ask": "Perguntar em {period}"
+      "askPrefix": "Perguntar em"
+    },
+    "welcome": {
+      "greeting": {
+        "morning": "Bom dia",
+        "afternoon": "Boa tarde",
+        "evening": "Boa noite"
+      },
+      "greetingNamed": "{greeting}, {name}",
+      "lead": "A legislação fiscal na redação vigente na data que você escolher, sempre com as fontes."
     }
   },
   "coverage": {
+    "eyebrow": "Fontes e períodos",
     "intro": "O Tekó só responde com base nas fontes abaixo, nos períodos em que elas foram coletadas e verificadas. Fora deles, a pergunta é recusada em vez de respondida por palpite.",
     "lastVerified": "Fontes verificadas pela última vez em {date}.",
     "corpusVersion": "Versão do corpus: {version}",

@@ -1,14 +1,20 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   deletePasskey,
+  EmailAuthError,
+  EmailAuthFailure,
+  emailAuthFailureOf,
   listPasskeys,
+  listSignInMethods,
   OAuthProvider,
   PasskeyError,
   PasskeyFailure,
   passkeyFailureOf,
   registerPasskey,
+  signInWithEmail,
   signInWithPasskey,
   signOut,
+  signUpWithEmail,
   startSocialSignIn,
   supportsPasskeys,
 } from './auth.ts'
@@ -107,6 +113,103 @@ describe('startSocialSignIn', () => {
     await expect(
       startSocialSignIn(OAuthProvider.Google, { callbackURL: '/', errorCallbackURL: '/' }),
     ).rejects.toMatchObject({ name: 'ApiError', code: 'not_found', status: 404 })
+  })
+})
+
+describe('entrada e cadastro por e-mail', () => {
+  const ACCOUNT = { name: 'Ana', email: 'ana@example.com', password: 'uma senha longa' }
+  const INVALID = { code: 'INVALID_EMAIL_OR_PASSWORD', message: 'Invalid email or password' }
+
+  async function failureOf(run: Promise<unknown>): Promise<unknown> {
+    const error: unknown = await run.then(
+      () => null,
+      (reason: unknown) => reason,
+    )
+    expect(error).toBeInstanceOf(EmailAuthError)
+    return (error as EmailAuthError).failure
+  }
+
+  it('a entrada manda só e-mail e senha', async () => {
+    respond('/api/auth/sign-in/email', () => json({ token: 't', user: { id: 'u' } }))
+    await signInWithEmail({ email: ACCOUNT.email, password: ACCOUNT.password })
+    expect(calls).toEqual([
+      {
+        method: 'POST',
+        url: '/api/auth/sign-in/email',
+        body: { email: ACCOUNT.email, password: ACCOUNT.password },
+      },
+    ])
+  })
+
+  it('o cadastro cria a conta e entra em seguida', async () => {
+    respond('/api/auth/sign-up/email', () => json({ token: null, user: { id: 'u' } }))
+    respond('/api/auth/sign-in/email', () => json({ token: 't', user: { id: 'u' } }))
+    await signUpWithEmail(ACCOUNT)
+    expect(calls).toEqual([
+      { method: 'POST', url: '/api/auth/sign-up/email', body: ACCOUNT },
+      {
+        method: 'POST',
+        url: '/api/auth/sign-in/email',
+        body: { email: ACCOUNT.email, password: ACCOUNT.password },
+      },
+    ])
+  })
+
+  it('senha errada na entrada vira invalidCredentials', async () => {
+    respond('/api/auth/sign-in/email', () => json(INVALID, 401))
+    expect(await failureOf(signInWithEmail(ACCOUNT))).toBe(EmailAuthFailure.InvalidCredentials)
+  })
+
+  it('cadastro aceito com entrada recusada vira accountUnavailable', async () => {
+    respond('/api/auth/sign-up/email', () => json({ token: null, user: { id: 'u' } }))
+    respond('/api/auth/sign-in/email', () => json(INVALID, 401))
+    expect(await failureOf(signUpWithEmail(ACCOUNT))).toBe(EmailAuthFailure.AccountUnavailable)
+  })
+
+  it('o cadastro recusado não tenta entrar', async () => {
+    respond('/api/auth/sign-up/email', () => json({ code: 'PASSWORD_TOO_SHORT' }, 400))
+    expect(await failureOf(signUpWithEmail(ACCOUNT))).toBe(EmailAuthFailure.PasswordTooShort)
+    expect(calls.map((call) => call.url)).toEqual(['/api/auth/sign-up/email'])
+  })
+
+  it('o 429 da entrada depois do cadastro continua rateLimited', async () => {
+    respond('/api/auth/sign-up/email', () => json({ token: null, user: { id: 'u' } }))
+    respond('/api/auth/sign-in/email', () => json({ message: 'Too many requests' }, 429))
+    expect(await failureOf(signUpWithEmail(ACCOUNT))).toBe(EmailAuthFailure.RateLimited)
+  })
+
+  it('falha de servidor segue como ApiError', async () => {
+    respond('/api/auth/sign-in/email', () => json({ code: 'X' }, 500))
+    await expect(signInWithEmail(ACCOUNT)).rejects.toMatchObject({
+      name: 'ApiError',
+      status: 500,
+    })
+  })
+})
+
+describe('emailAuthFailureOf', () => {
+  const failure = (status: number, cause?: unknown) =>
+    emailAuthFailureOf(new ApiError({ code: 'validation_error', status, cause }))
+
+  it.each([
+    ['PASSWORD_TOO_SHORT', 'passwordTooShort'],
+    ['PASSWORD_TOO_LONG', 'passwordTooLong'],
+    ['INVALID_EMAIL', 'invalidEmail'],
+    ['INVALID_NAME', 'invalidName'],
+    ['VALIDATION_ERROR', 'invalidInput'],
+  ])('400 com %s vira %s', (code, expected) => {
+    expect(failure(400, { code, message: 'x' })).toBe(expected)
+  })
+
+  it('distingue 401, 429, 422 e o resto', () => {
+    expect(failure(401)).toBe('invalidCredentials')
+    expect(failure(429)).toBe('rateLimited')
+    expect(failure(422, 'texto')).toBe('invalidInput')
+    expect(failure(400, { code: 7 })).toBe('invalidInput')
+    expect(failure(400, null)).toBe('invalidInput')
+    expect(failure(403)).toBeNull()
+    expect(failure(503)).toBeNull()
+    expect(emailAuthFailureOf(new Error('rede'))).toBeNull()
   })
 })
 
@@ -249,5 +352,26 @@ describe('listPasskeys e deletePasskey', () => {
     expect(calls).toEqual([
       { method: 'POST', url: '/api/auth/passkey/delete-passkey', body: { id: 'a' } },
     ])
+  })
+})
+
+describe('listSignInMethods', () => {
+  it('traduz as contas ligadas em métodos de entrada, sem repetir e sem os desconhecidos', async () => {
+    respond('/api/auth/list-accounts', () =>
+      json([
+        { id: '1', providerId: 'credential', accountId: 'u', scopes: [] },
+        { id: '2', providerId: 'github', accountId: 'g', scopes: [] },
+        { id: '3', providerId: 'google', accountId: 'o', scopes: [] },
+        { id: '4', providerId: 'github', accountId: 'g2', scopes: [] },
+        { id: '5', providerId: 'outro-provedor', accountId: 'x', scopes: [] },
+      ]),
+    )
+    expect(await listSignInMethods()).toEqual(['email', 'github', 'google'])
+    expect(calls).toEqual([{ method: 'GET', url: '/api/auth/list-accounts', body: undefined }])
+  })
+
+  it('sem sessão, a falha segue como ApiError', async () => {
+    respond('/api/auth/list-accounts', () => json({ code: 'UNAUTHORIZED' }, 401))
+    await expect(listSignInMethods()).rejects.toBeInstanceOf(ApiError)
   })
 })

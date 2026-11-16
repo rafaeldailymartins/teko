@@ -69,6 +69,16 @@ const PAIRS: readonly (readonly [string, string, number])[] = [
   ['ring', 'muted', WCAG_AA.nonText],
   ['ring', 'popover', WCAG_AA.nonText],
   ['border-strong', 'surface', WCAG_AA.nonText],
+  // Marca: texto claro sobre o petróleo da logo (selo, telas da marca), nas duas pontas do
+  // gradiente; a folha é forma (marcadores, fios), então ≥ 3:1 no fundo e no painel.
+  ['brand-foreground', 'brand', WCAG_AA.text],
+  ['brand-foreground', 'brand-deep', WCAG_AA.text],
+  ['leaf', 'background', WCAG_AA.nonText],
+  ['leaf', 'surface', WCAG_AA.nonText],
+  ['leaf', 'popover', WCAG_AA.nonText],
+  // Selo "vigente": texto verde sobre o fundo suave da folha.
+  ['validity-current', 'leaf-soft', WCAG_AA.text],
+  ['primary', 'popover', WCAG_AA.text],
 ]
 
 describe('design tokens (globals.css)', () => {

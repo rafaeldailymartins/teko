@@ -32,10 +32,25 @@ async function openCitation(page: Page, chip: Locator, isMobile: boolean): Promi
   return panel
 }
 
+/**
+ * Chip do § 6º numa resposta pronta: no texto ou na lista de fontes, que fica recolhida numa linha
+ * ("N fontes") até ser aberta.
+ */
+async function sixthParagraphChip(answer: Locator): Promise<Locator> {
+  await expect(answer).toHaveAttribute('aria-busy', 'false')
+  const sources = answer.getByRole('button', { name: /^\d+ fontes?$/ })
+  if ((await sources.getAttribute('aria-expanded')) === 'false') await sources.click()
+  return answer.getByRole('button', { name: SIXTH_PARAGRAPH }).first()
+}
+
+/** Fecha a citação com `Esc` (o foco está no chip ou no painel): o painel ou o Drawer some. */
 async function closeCitation(page: Page, isMobile: boolean): Promise<void> {
-  if (!isMobile) return
   await page.keyboard.press('Escape')
-  await expect(page.getByRole('dialog')).toBeHidden()
+  if (isMobile) {
+    await expect(page.getByRole('dialog')).toBeHidden()
+  } else {
+    await expect(page.locator('[data-citation-panel]')).toHaveCount(0)
+  }
 }
 
 test.use({ locale: 'pt-BR' })
@@ -45,6 +60,33 @@ test.describe('chat', () => {
     // Sessão de teste no navegador; troca direta pelo helper comum de sessão dos e2e quando existir.
     await signInWithTestSession(context, baseURL)
     await recordViolations(page)
+  })
+
+  test('chat vazio: a data só no chip e sugestões sem repetir', async ({ page }) => {
+    await page.goto('/pt-BR/chat/?ref=2008-05')
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText(
+      /^(Bom dia|Boa tarde|Boa noite)/,
+    )
+    // A data de referência aparece uma vez só: no chip do composer, que abre o seletor.
+    const chip = page.locator('[data-reference-chip]')
+    await expect(chip).toContainText('05/2008')
+    await expect(page.locator('[data-chat-welcome]')).not.toContainText('05/2008')
+    const questions = await page.locator('[data-suggestion] [lang="pt-BR"]').allTextContents()
+    expect(questions).toHaveLength(4)
+    expect(new Set(questions).size).toBe(4)
+    await expect(page.getByText('Apoio à consulta; não constitui parecer.')).toBeInViewport()
+
+    await chip.click()
+    await expect(page.locator('[data-slot="popover-content"]')).toBeVisible()
+    await page.keyboard.press('Escape')
+
+    // Uma sugestão de família pergunta no período dela e leva o foco ao composer.
+    await page.getByRole('button', { name: /registro C170/ }).click()
+    await expect(page).toHaveURL(/ref=2025-06/)
+    await expect(page.getByRole('textbox', { name: 'Sua pergunta' })).toBeFocused()
+    await expect(
+      page.locator('article[data-message-role="assistant"] [data-reference-date]'),
+    ).toHaveAttribute('data-reference-date', '2025-06-01')
   })
 
   test('pergunta com stream e chip de citação abrindo o painel', async ({ page, isMobile }) => {
@@ -92,7 +134,7 @@ test.describe('chat', () => {
       '2008-05-01',
     )
     await expect(page.locator('[data-reference-chip]')).toContainText('05/2008')
-    const firstChip = first.getByRole('button', { name: SIXTH_PARAGRAPH }).first()
+    const firstChip = await sixthParagraphChip(first)
     await expect(firstChip).toBeVisible()
     const firstValidity = await first.locator('[data-answer-validity]').textContent()
 
@@ -118,7 +160,7 @@ test.describe('chat', () => {
       'data-reference-date',
       '2010-01-01',
     )
-    const secondChip = second.getByRole('button', { name: SIXTH_PARAGRAPH }).first()
+    const secondChip = await sixthParagraphChip(second)
     await expect(secondChip).toBeVisible()
     expect(await second.locator('[data-answer-validity]').textContent()).not.toBe(firstValidity)
 

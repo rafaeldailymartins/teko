@@ -14,7 +14,13 @@ import { ApiError } from '@/lib/api/errors'
 import { createQueryClient } from '@/lib/api/query-client'
 import { answerParts, partsToChunks } from '@/lib/chat/parts'
 import ptBR from '../../../messages/pt-BR.json'
-import { ANSWER, QUESTION_ID, questionDetail, RESOLVED_2008 } from '../../../test/chat-fixtures.ts'
+import {
+  ANSWER,
+  CONVERSATION_ID,
+  QUESTION_ID,
+  questionDetail,
+  RESOLVED_2008,
+} from '../../../test/chat-fixtures.ts'
 import { ME } from '../../../test/fake-api.ts'
 import { ChatWorkspace } from './chat-workspace.tsx'
 
@@ -124,6 +130,8 @@ const DIFF = {
 
 const fetchCalls: Request[] = []
 let questionResponse: () => Response = () => new Response(null, { status: 404 })
+/** Perguntas de uma conversa (`GET /questions?conversationId=`), ao abrir `?c=`. */
+let historyResponse: () => Response = () => json({ items: [] })
 let timelineResponse: () => Response = () => json(TIMELINE)
 
 function json(body: unknown, status = 200): Response {
@@ -171,8 +179,10 @@ async function render(ui: ReactNode, searchParams = ''): Promise<void> {
     root.render(
       <NextIntlClientProvider locale="pt-BR" messages={ptBR} timeZone="America/Sao_Paulo">
         <QueryClientProvider client={createQueryClient()}>
+          {/* Com memória, como a URL de verdade: a área de trabalho segue o c da URL. */}
           <NuqsTestingAdapter
             searchParams={searchParams}
+            hasMemory
             onUrlUpdate={(event) => urlUpdates.push(event)}
           >
             <TooltipProvider>{ui}</TooltipProvider>
@@ -264,6 +274,7 @@ beforeEach(() => {
   fetchCalls.length = 0
   urlUpdates = []
   questionResponse = () => new Response(null, { status: 404 })
+  historyResponse = () => json({ items: [] })
   timelineResponse = () => json(TIMELINE)
   ;(
     window as unknown as { happyDOM: { setViewport(v: { width: number }): void } }
@@ -291,6 +302,7 @@ beforeEach(() => {
       if (pathname.endsWith('/diff')) return json(DIFF)
       if (pathname.endsWith('/feedback')) return new Response(null, { status: 204 })
       if (pathname.startsWith('/api/v1/questions/')) return questionResponse()
+      if (pathname === '/api/v1/questions') return historyResponse()
       return new Response(null, { status: 404 })
     }),
   )
@@ -519,7 +531,14 @@ describe('chat', () => {
     await waitFor(() => document.querySelector('[data-degraded="cached"]'))
     const labels = [...document.querySelectorAll('[data-degraded]')].map((item) => item.textContent)
     expect(labels).toEqual(['Somente busca lexical', 'Modelo de reserva', 'Resposta em cache'])
-    expect(byText('[data-coverage="partial"]', 'efd-icms-ipi')).toBeDefined()
+    // "Resposta em cache" sai da vista: fica na dica da linha e para leitores de tela.
+    const cached = document.querySelector('[data-degraded="cached"]')
+    expect(cached?.classList.contains('sr-only')).toBe(true)
+    expect(cached?.closest('[title]')?.getAttribute('title')).toBe('Resposta em cache')
+    // A nota de cobertura parcial usa o nome legível da família, não o código.
+    const note = document.querySelector('[data-coverage="partial"]')
+    expect(note?.textContent).toContain('EFD ICMS/IPI')
+    expect(note?.textContent).not.toContain('efd-icms-ipi')
 
     // Data inferida do texto: fica âmbar e pede confirmação no composer.
     expect(
@@ -582,13 +601,14 @@ describe('chat', () => {
     await render(<ChatWorkspace />)
     const textarea = await type('Pergunta longa')
     await press({ key: 'Enter', ctrlKey: true }, textarea)
-    await waitFor(() => byText('button', 'Parar'))
+    // Os botões do composer são só ícone: o nome acessível é o rótulo.
+    await waitFor(() => document.querySelector('button[aria-label="Parar"]'))
     expect(document.querySelector('section[aria-busy="true"]')).not.toBeNull()
     expect(document.querySelector('[data-testid="chat-live"]')?.textContent).toBe(
       'Gerando a resposta.',
     )
     await press({ key: 'Escape' })
-    await waitFor(() => byText('button', 'Enviar'))
+    await waitFor(() => document.querySelector('button[aria-label="Enviar"]'))
     expect(document.querySelector('[data-testid="chat-live"]')?.textContent).toBe(
       'Resposta interrompida.',
     )
@@ -652,6 +672,89 @@ describe('chat', () => {
     await click(document.querySelector('[data-reference-chip]'))
     await click(byText('button', 'Voltar ao padrão'))
     expect(urlUpdates.at(-1)?.queryString).not.toContain('ref=')
+  })
+
+  it('abre a conversa da URL (c) com todas as perguntas dela', async () => {
+    const second = '0193a3b0-7c1e-7b3a-9f00-4c2d1e5f6a7d'
+    historyResponse = () =>
+      json({
+        items: [
+          questionDetail(),
+          questionDetail({ id: second, question: 'E em 01/2010?', referenceDate: '2010-01-01' }),
+        ],
+      })
+    await render(<ChatWorkspace />, `?c=${CONVERSATION_ID}`)
+    await waitFor(() => document.querySelectorAll('[data-message-role="assistant"]').length === 2)
+    const request = fetchCalls.find((call) => new URL(call.url).pathname === '/api/v1/questions')
+    expect(new URL(request?.url ?? '').searchParams.get('conversationId')).toBe(CONVERSATION_ID)
+    expect(
+      [...document.querySelectorAll('[data-message-role="user"]')].map((item) => item.textContent),
+    ).toEqual(['Você: O que diz o art. 76, § 6º do RCTE?', 'Você: E em 01/2010?'])
+    // Sem a abertura: a conversa já está na tela.
+    expect(document.querySelector('[data-chat-welcome]')).toBeNull()
+  })
+
+  it('a abertura do chat vazio: saudação, a data só no chip e quatro sugestões sem repetir', async () => {
+    await render(<ChatWorkspace />, '?ref=2008-05')
+    const heading = await waitFor(() => document.querySelector('h1'))
+    expect(heading.textContent).toMatch(/^(Bom dia|Boa tarde|Boa noite), Ana$/)
+    // A data de referência aparece uma vez só, no chip do composer.
+    expect(document.querySelector('[data-chat-welcome]')?.textContent).not.toContain('05/2008')
+    expect(document.querySelector('[data-reference-chip]')?.textContent).toContain('05/2008')
+    const suggestions = [...document.querySelectorAll('[data-suggestion]')]
+    const questions = suggestions.map(
+      (item) => item.querySelector('[lang="pt-BR"]')?.textContent ?? '',
+    )
+    expect(questions).toHaveLength(4)
+    expect(new Set(questions).size).toBe(4)
+    // O aviso de que não constitui parecer fica logo abaixo do composer.
+    expect(document.querySelector('[data-disclaimer]')?.textContent).toBe(
+      'Apoio à consulta; não constitui parecer.',
+    )
+    // Composer limpo: sem a linha de cobertura nem a dica do atalho; o atalho fica no botão.
+    expect(document.querySelector('form [data-coverage]')).toBeNull()
+    expect(document.querySelector('form kbd')).toBeNull()
+    const send = document.querySelector('button[aria-label="Enviar"]')
+    expect(send?.getAttribute('aria-keyshortcuts')).toBe('Control+Enter Meta+Enter')
+    expect(send?.getAttribute('title')).toBe('Enviar (Ctrl+Enter)')
+  })
+
+  it('as fontes ficam recolhidas numa linha e abrem a citação pela lista', async () => {
+    transport.scenarios.push(answered)
+    await render(<ChatWorkspace />)
+    await click(await waitFor(() => enabledButton('Perguntar em 05/2008')))
+    const toggle = await waitFor(() => byText('button[aria-expanded]', '2 fontes'))
+    const list = document.getElementById(toggle.getAttribute('aria-controls') ?? '')
+    expect(toggle.getAttribute('aria-expanded')).toBe('false')
+    expect(list?.hidden).toBe(true)
+    await click(toggle)
+    expect(toggle.getAttribute('aria-expanded')).toBe('true')
+    expect(list?.hidden).toBe(false)
+    expect(list?.querySelectorAll('li')).toHaveLength(2)
+
+    await click(list?.querySelector('button[data-source-id="S2"]'))
+    await waitFor(() => byText('article', 'Citação 2 de 2'))
+    expect(list?.querySelector('button[data-source-id="S2"]')?.getAttribute('aria-pressed')).toBe(
+      'true',
+    )
+    // Fechar o painel tira a marca da fonte.
+    await click(document.querySelector('button[aria-label="Fechar a citação"]'))
+    expect(byText('article', 'Citação 2 de 2')).toBeUndefined()
+    expect(list?.querySelector('button[data-source-id="S2"]')?.getAttribute('aria-pressed')).toBe(
+      'false',
+    )
+  })
+
+  it('uma sugestão de família pergunta no período dela', async () => {
+    transport.scenarios.push(answered)
+    await render(<ChatWorkspace />)
+    await click(await waitFor(() => enabledButton('Como se preenche o registro C170')))
+    expect(transport.calls[0]).toMatchObject({
+      question: 'Como se preenche o registro C170 da EFD ICMS/IPI?',
+      context: { reference: { periodoApuracao: '2025-06', source: 'periodo_apuracao' } },
+    })
+    // A abertura sai da tela: o foco vai para o composer.
+    expect(document.activeElement?.tagName).toBe('TEXTAREA')
   })
 
   it('relê a pergunta da URL (q) ao abrir', async () => {

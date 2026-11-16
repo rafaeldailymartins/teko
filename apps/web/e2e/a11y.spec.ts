@@ -45,7 +45,9 @@ const ROUTES: readonly Route[] = [
   { name: 'chat vazio', path: 'chat/', session: true },
   { name: 'history', path: 'history/', session: true },
   { name: 'provision', path: `provision/?k=${KEY}&ref=2008-05`, session: true },
+  { name: 'provision (busca)', path: 'provision/?ref=2008-05', session: true },
   { name: 'compare', path: `compare/?k=${KEY}&from=2008-05&to=2010-01`, session: true },
+  { name: 'compare (vazio)', path: 'compare/', session: true },
   { name: 'settings', path: 'settings/', session: true },
   { name: 'privacy', path: 'privacy/' },
   { name: 'terms', path: 'terms/' },
@@ -65,7 +67,10 @@ async function settled(page: Page): Promise<void> {
   await expect(page.locator('h1').first()).toBeAttached()
   await page.evaluate(async () => {
     await document.fonts.ready
-    await Promise.all(document.getAnimations().map((animation) => animation.finished))
+    // Uma transição interrompida (hover, foco que muda) rejeita o `finished`: também terminou.
+    await Promise.all(
+      document.getAnimations().map((animation) => animation.finished.catch(() => undefined)),
+    )
   })
 }
 
@@ -110,6 +115,15 @@ for (const locale of ['en', 'pt-BR'] as const) {
         })
       }
 
+      test('landing com a demonstração no meio da resposta', async ({ page }, testInfo) => {
+        await page.goto(`/${locale}/`)
+        const demo = page.getByTestId('hero-demo')
+        // A demonstração recomeça sozinha; o axe roda com a resposta chegando em stream.
+        await expect(demo).toHaveAttribute('data-phase', 'streaming', { timeout: 15_000 })
+        await settled(page)
+        await expectNoViolations(page, testInfo)
+      })
+
       test('chat com resposta e o painel de citação aberto', async ({
         page,
         context,
@@ -128,14 +142,119 @@ for (const locale of ['en', 'pt-BR'] as const) {
         const chip = answer.locator('[data-answer-body] button[data-citation-id="S1"]')
         await expect(chip).toBeVisible()
         await expect(answer).toHaveAttribute('aria-busy', 'false')
+        // As fontes abertas entram na conta do axe (recolhidas, a lista fica `hidden`). No fim da
+        // conversa nada fica atrás do composer fixo, que senão cobre as últimas linhas da lista.
+        const sources = answer.getByRole('button', { name: /^\d+ (fontes?|sources?)$/ })
+        await sources.click()
+        await expect(answer.locator('[data-source-id]').first()).toBeVisible()
+        await page
+          .locator('[data-workspace-thread]')
+          .evaluate((thread) => thread.scrollTo({ top: thread.scrollHeight }))
         await settled(page)
         await expectNoViolations(page, testInfo)
+        await sources.click()
 
         await chip.click()
         const scope = isMobile ? page.getByRole('dialog') : page.locator('body')
         await expect(scope.getByRole('link', { name: chat.citation.source })).toBeVisible()
         await settled(page)
         await expectNoViolations(page, testInfo)
+
+        // O que mudou, no próprio painel (a primeira fonte pode não ter redação anterior).
+        const toggle = scope.getByRole('button', { name: MESSAGES[locale].provision.showDiff })
+        if (await toggle.isVisible()) {
+          await toggle.click()
+          await expect(scope.locator('ins, del').first()).toBeVisible()
+          await settled(page)
+          await expectNoViolations(page, testInfo)
+        }
+      })
+
+      test('entrada: criar conta com os erros dos campos', async ({ page }, testInfo) => {
+        const email = MESSAGES[locale].auth.email
+        await page.goto(`/${locale}/sign-in/`)
+        await settled(page)
+        await page.getByRole('tab', { name: email.signUp }).click()
+        await page.getByLabel(email.password, { exact: true }).fill('curta')
+        await page.getByRole('button', { name: email.submitSignUp }).click()
+        await expect(page.locator('[aria-invalid="true"]').first()).toBeVisible()
+        await settled(page)
+        await expectNoViolations(page, testInfo)
+      })
+
+      test('onboarding com o seletor de país aberto', async ({
+        page,
+        context,
+        baseURL,
+      }, testInfo) => {
+        const onboarding = MESSAGES[locale].onboarding
+        await signInWithTestSession(context, baseURL)
+        // O usuário de teste já concluiu o onboarding: o `/me` simula a pendência.
+        await page.route('**/api/v1/me', async (route) => {
+          const response = await route.fetch()
+          const me = (await response.json()) as { onboarding: Record<string, unknown> }
+          await route.fulfill({
+            response,
+            json: { ...me, onboarding: { ...me.onboarding, required: true } },
+          })
+        })
+        await page.goto(`/${locale}/settings/`)
+        await settled(page)
+        await page
+          .getByRole('button', { name: MESSAGES[locale].settings.account.completeOnboarding })
+          .click()
+        const dialog = page.getByRole('dialog')
+        await expect(dialog).toBeVisible()
+        await settled(page)
+        await expectNoViolations(page, testInfo)
+        await dialog.getByRole('combobox', { name: onboarding.country }).click()
+        await expect(page.getByPlaceholder(onboarding.countrySearch)).toBeVisible()
+        await settled(page)
+        await expectNoViolations(page, testInfo)
+      })
+
+      test('histórico com o menu da conversa e o diálogo de exclusão abertos', async ({
+        page,
+        context,
+        baseURL,
+      }, testInfo) => {
+        const history = MESSAGES[locale].history
+        const title = 'Qual o prazo de pagamento do ICMS no art. 76 do RCTE?'
+        await signInWithTestSession(context, baseURL)
+        // Uma conversa simulada: o axe não depende do que outras jornadas gravaram.
+        await page.route('**/api/v1/conversations', async (route) => {
+          await route.fulfill({
+            json: {
+              items: [
+                {
+                  conversationId: '0193a3b0-7c1e-7b3a-9f00-4c2d1e5f6a7c',
+                  title,
+                  questionCount: 2,
+                  updatedAt: new Date().toISOString(),
+                  lastReferenceDate: '2008-05-01',
+                },
+              ],
+              nextCursor: null,
+            },
+          })
+        })
+        await page.goto(`/${locale}/history/`)
+        await settled(page)
+        await page
+          .getByRole('button', { name: history.actions.menu.replace('{title}', title) })
+          .click()
+        const item = page.getByRole('menuitem', { name: history.actions.delete })
+        await expect(item).toBeVisible()
+        await settled(page)
+        await expectNoViolations(page, testInfo)
+
+        await item.click()
+        const dialog = page.getByRole('alertdialog', { name: history.delete.title })
+        await expect(dialog).toBeVisible()
+        await settled(page)
+        await expectNoViolations(page, testInfo)
+        await dialog.getByRole('button', { name: history.delete.cancel }).click()
+        await expect(dialog).toBeHidden()
       })
 
       test.describe('primeira visita', () => {

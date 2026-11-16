@@ -63,9 +63,21 @@ const serializeChat = createSerializer(chatSearchParams)
 const serializeProvision = createSerializer(provisionSearchParams)
 const serializeCompare = createSerializer(compareSearchParams)
 
-/** Conversa aberta no chat (`/pt-BR/chat/?c=<id>`). */
-export function chatConversationHref(locale: Locale, conversationId: string): string {
-  return `/${locale}/chat/${serializeChat({ c: conversationId })}`
+/**
+ * Conversa aberta no chat (`/pt-BR/chat/?c=<id>&ref=2008-05`). Com a data da última pergunta, o
+ * composer reabre nela: a pergunta seguinte continua na mesma data, e não no padrão.
+ */
+export function chatConversationHref(
+  locale: Locale,
+  conversationId: string,
+  ref: ReferenceInput | null = null,
+): string {
+  return `/${locale}/chat/${serializeChat({ c: conversationId, ref })}`
+}
+
+/** Conversa nova (o chat vazio), mantendo a data de referência escolhida. */
+export function newConversationHref(locale: Locale, ref: ReferenceInput | null): string {
+  return `/${locale}/chat/${serializeChat({ ref })}`
 }
 
 /** Dispositivo numa data (`ref` ausente = hoje). */

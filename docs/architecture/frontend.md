@@ -26,7 +26,10 @@ o cliente do Better Auth, PostHog depois do consentimento e orçamento total) es
   `generateStaticParams → {rest:['404']}`); `/_next/static/*` com
   `Cache-Control: public, max-age=31536000, immutable`. A mesma semântica vale no Plano B
   (`static-site.ts`) e no Caddy da stack de CI (snippets de `scripts/caddy-static-site.ts`); o
-  `apps/web/e2e/platform.spec.ts` acessa `/en/xyz` e confere headers e CSP.
+  `apps/web/e2e/platform.spec.ts` acessa `/en/xyz` e confere headers e CSP. Em `next dev`, um
+  `redirects()` só de desenvolvimento aplica a mesma regra da raiz (`src/lib/i18n/root-locale.ts`,
+  presa ao `policy.ts` por `scripts/root-locale.test.ts`); a página estática de `/` é uma tela neutra
+  com a logo que vai na hora para o idioma do navegador (`public/root-locale.js`).
 - **Dev local:** `pnpm dev` sobe web (`:3000`) e API (`:4000`); em desenvolvimento, `rewrites()` do
   Next manda `/api/*` para a API, e o navegador vê uma origem só. Não há proxy assinado nem segredo
   de dev para o caminho web → API. O login local usa `pnpm --filter @teko/api seed:dev-session`.
@@ -39,10 +42,11 @@ Sem Feature-Sliced Design (o steiger saiu, ADR 0032):
 apps/web/
   src/app/                     # rotas do App Router (só reexportam) e globals.css
   src/app/[locale]/{layout,page,not-found}.tsx
-  src/app/[locale]/(app)/layout.tsx                  # app shell (cabeçalho, paleta, aviso fixo)
+  src/app/[locale]/(app)/layout.tsx                  # app shell (cabeçalho, paleta, aviso discreto)
   src/app/[locale]/(app)/{chat,provision,compare,history,settings}/page.tsx
   src/app/[locale]/{sign-in,coverage,about,privacy,terms,[...rest]}/page.tsx
-  src/components/              # ui/ (shadcn), app-shell/, pages/, providers.tsx e componentes de tela
+  src/components/              # ui/ (shadcn), brand/ (logo), app-shell/, pages/, providers.tsx e componentes de tela
+  public/                      # ícones e Open Graph gerados da logo, script da entrada `/`
   src/lib/                     # site, i18n/, theme, density, contrast, utils, navigation, hotkeys, api/, auth/; depois validity/, analytics/
   messages/{en,pt-BR}.json
 ```
@@ -65,11 +69,33 @@ contrato de `@teko/shared` e o cliente gerado.
   mortos); o destaque de menus e da paleta usa `--muted`, não o âmbar. Componentes: message-scroller, message, bubble, code-block, command, resizable,
   drawer, calendar, popover, hover-card, sheet, tabs, table, skeleton, sonner, dialog, mais padrões
   de AI Elements (inline-citation, sources, suggestion, prompt-input).
-- Cores em OKLCH: primária petróleo `oklch(0.50 0.09 205)`, acento âmbar para data e vigência,
-  tokens de domínio `--validity-current`, `--validity-superseded`, `--validity-future`,
-  `--coverage-out` e `--degraded`, mais os do shadcn (`--muted`, `--popover`, `--input`,
-  `--secondary`, `--destructive`). Um teste (`src/lib/contrast.ts`, sem dependência) exige contraste
-  ≥ 4,5:1 em texto e ≥ 3:1 em UI e foco, nos dois temas.
+- **Paleta da logo** (`docs/assets/logo.svg`), em OKLCH e com o par claro/escuro em `light-dark()`:
+
+  | Papel                         | Origem na logo                            | Tokens                                                                                                                        |
+  | ----------------------------- | ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+  | Marca e primária              | petróleo `#005766` → `#003540`            | `--primary` (claro `oklch(0.42 0.074 214.6)`, escuro o verde-água `#7fd8c8`), `--brand`, `--brand-deep`, `--brand-foreground` |
+  | Vigente e detalhes vivos      | verde-folha `#38a37a` → `#7fd8c8`         | `--leaf` (forma, ≥ 3:1), `--leaf-soft`, `--validity-current` (texto)                                                          |
+  | Data de referência e vigência | âmbar `#e0a53b`                           | `--accent`, `--accent-foreground`, `--accent-border`, `--date-mark` (ponto decorativo)                                        |
+  | Neutros                       | puxados para o petróleo, nunca cinza puro | `--background`, `--surface`, `--muted`, `--popover`, `--border`, `--border-strong`, `--input`, `--secondary`                  |
+
+  O tema escuro é petróleo muito escuro (`--background` `oklch(0.2 0.032 215)`, perto de `#021c22`);
+  o claro é quase branco com um toque frio. Tokens de domínio: `--validity-current`,
+  `--validity-superseded`, `--validity-future`, `--coverage-out` e `--degraded`. Um teste
+  (`src/lib/contrast.ts`, sem dependência) exige contraste ≥ 4,5:1 em texto e ≥ 3:1 em UI, foco e
+  na folha como forma, nos dois temas.
+- **Forma e profundidade:** `--radius` 0,75 rem; sombras em camadas tingidas de petróleo
+  (`shadow-soft` em campos e cartões, `shadow-raised` em destaques, `shadow-overlay` em popups);
+  gradientes só com CSS (`bg-brand-gradient`, `bg-leaf-gradient`, `bg-surface-gradient`,
+  `bg-brand-glow`) e o fio `timeline-rule`, a linha do tempo da logo, sob os cabeçalhos e sobre o
+  rodapé. O `cn` estende o tailwind-merge com esses tokens.
+- **Marca no código:** `TekoLogo` (`src/components/brand/`, SVG inline com gradientes em `<defs>`,
+  variantes `seal` e `mark`), `TekoWordmark` (ícone + "Tekó" em serif), `BrandScreen` (tela da marca
+  do `SessionGate`) e `GitHubIcon`. Favicon, ícone da Apple e Open Graph em `public/`, gerados da
+  logo por `scripts/brand-assets.ts` e declarados em `SITE_ICONS` (`metadata.icons`; a convenção
+  `src/app/icon.svg` vira route handler, que o guard do estático recusa).
+- **Botões:** `default` (primária), `brand` (gradiente da logo, para "Abrir o Tekó"), `outline`,
+  `secondary`, `ghost`, `destructive` e `link`; foco em anel sólido com recuo. `Card` com os tons
+  `default`, `raised` e `muted`; `Badge` com `accent`, `leaf` e `neutral`.
 - Tema in-house (script inline com hash na CSP, `localStorage['teko-theme']`, `color-scheme`), com
   seletor no cabeçalho (claro, escuro, igual ao sistema), na paleta e nas configurações. O mesmo
   script aplica a densidade compacta (`data-density`, `localStorage['teko-density']`, escolhida nas
@@ -79,8 +105,9 @@ contrato de `@teko/shared` e o cliente gerado.
 - Tipografia self-hosted pelo `next/font/google` (arquivos baixados no build e servidos da própria
   origem; os pacotes npm das fontes são OFL-1.1, fora da allowlist de licenças): Geist Sans (UI),
   Geist Mono (registros e campos, `tabular-nums`), Source Serif 4 (texto legal e headlines). Base 14 px; respostas 15 px/1,6; `data-density`.
-- Motion com `LazyMotion domAnimation strict` e `reducedMotion="user"`, só quando alguma tela animar
-  de fato (o shell usa só as transições CSS dos popups); `<ViewTransition>` nas rotas.
+- Movimento curto (transições de 150–250 ms com `ease-out-soft`) e `prefers-reduced-motion` global
+  em `globals.css`, que zera animações e transições. Motion com `LazyMotion domAnimation strict` e
+  `reducedMotion="user"`, fora do primeiro carregamento, só quando CSS não bastar.
 
 ## Dados e streaming
 
@@ -92,10 +119,12 @@ contrato de `@teko/shared` e o cliente gerado.
   difere do git. Os imports do gerado levam `.ts` (`output.module.extension`): o Turbopack do
   `next build` não resolve o `.js` para o arquivo `.ts`.
 - **Better Auth sem o cliente dele:** as rotas que o web usa (`/api/auth/sign-in/social`,
-  `/sign-out` e as do plugin de passkey) passam pelo mesmo `apiClient` em `src/lib/api/auth.ts`; a
-  cerimônia WebAuthn usa o `@simplewebauthn/browser`, carregado por `import()` no clique. O cliente
-  do Better Auth com o plugin de passkey somaria ~15 KiB gz, e o Biome segue proibindo
-  `better-auth` no web.
+  `/sign-up/email`, `/sign-in/email`, `/sign-out`, `/list-accounts` e as do plugin de passkey)
+  passam pelo mesmo `apiClient` em `src/lib/api/auth.ts`; a cerimônia WebAuthn usa o `@simplewebauthn/browser`,
+  carregado por `import()` no clique. O cliente do Better Auth com o plugin de passkey somaria
+  ~15 KiB gz, e o Biome segue proibindo `better-auth` no web. Os métodos de entrada ativos vêm de
+  `GET /api/v1/auth/providers` (`useAuthProviders`), e as falhas de e-mail e senha que a tela
+  explica chegam como `EmailAuthError` (ADR 0036).
 - Erros: um interceptor do cliente converte Problem Details em `ApiError` (`code: ErrorCode`,
   `retryable`, `traceId`, cota), e a UI mostra `t(error.messageKey)` (`errors.<code>`).
 - TanStack Query (`staleTime: 60_000`, retry só de erro transitório; keys com a data efetiva de
@@ -146,7 +175,7 @@ stream leva o cookie de sessão, e a API confere o `Origin`.
   de novo. O link `cite:<id>` vira `#cite-<id>` antes do parse e depois `CitationChip`.
 - **Carregamento:** a conversa (AI SDK, `useChat`), o painel de citação e o markdown (Streamdown,
   Shiki) são `lazy(() => import(...))` dentro de um `ClientOnly`, fora do primeiro carregamento; o
-  HTML estático do `/chat/` leva o esqueleto da conversa.
+  HTML estático do `/chat/`, como o de toda página do `(app)`, leva só a tela da marca (`SessionGate`).
 
 ## Segurança no navegador
 
@@ -182,31 +211,64 @@ Content-Security-Policy: default-src 'self'; script-src 'self' 'sha256-…'; sty
 
 ## UX
 
-- **App shell** com cabeçalho (navegação, paleta, idioma e tema) e aviso fixo; no chat, três painéis
-  redimensionáveis (histórico, thread, citação), operáveis por teclado; abaixo de 768 px, o histórico
-  vira Sheet e a citação vira Drawer, sem desmontar a conversa.
+- **App shell** com cabeçalho (marca, abas, busca da paleta, menu de idioma, tema e conta, que tem
+  as preferências de cookies); o menu de idioma (também no site e nas configurações) mantém a
+  página, a query e a âncora. O aviso "Apoio à consulta; não constitui parecer" é discreto: no chat,
+  uma linha pequena abaixo do composer; nas outras páginas, no fim do conteúdo.
+- **Área de trabalho do chat** com duas colunas no máximo: o histórico (recolhível por um botão, com
+  a escolha em `localStorage['teko-history-panel']`; recolhido, vira um trilho com "Nova conversa")
+  e a conversa. O painel de citação só existe aberto: entra à direita da conversa, redimensionável
+  por teclado, fecha com o botão ou `Esc`, e o histórico vira o trilho enquanto ele está aberto.
+  Abaixo de 768 px, o histórico vira Sheet e a citação Drawer (aberto pelo chip), sem desmontar a
+  conversa.
 - **Data de referência:** chip fixo no composer ("Período de apuração: 03/2024"), month picker com
   alternância para data exata, presets (mês anterior, mês atual, último período fechado); enquanto o
   usuário não mexe, envia `source:'default'`; inferida do texto fica âmbar ("confirmar");
-  `needs_clarification` mostra botões. Todo cabeçalho de resposta repete a data e a vigência usadas.
-- **Cobertura** no composer e `CoverageBanner` (fundamentada, parcial, fora de cobertura); o envio
-  continua permitido, para a API recusar formalmente.
-- **Rótulos de degradação:** "Somente busca lexical", "Modelo de reserva", "Resposta em cache".
+  `needs_clarification` mostra botões. Todo cabeçalho de resposta repete a data e a vigência usadas,
+  numa linha discreta ("05/2008 · vigência desde 23/09/2005").
+- **Cobertura:** o composer avisa só quando a data está fora de cobertura (o envio continua
+  permitido, para a API recusar formalmente); a cobertura parcial vira uma nota de uma linha na
+  resposta, com os nomes legíveis das famílias (os da página de cobertura).
+- **Rótulos de degradação:** "Somente busca lexical" e "Modelo de reserva" na linha de metadados;
+  "Resposta em cache" só na dica da linha e para leitor de tela.
 - **Cota:** `quota_exceeded` e `service_paused` desabilitam o composer e mostram o reset.
-- **Citações:** chips numerados durante o stream, hover card e painel com documento, versão, badge
-  de intervalo, texto (`lang="pt-BR"`), tabela de campos, link para a fonte, "copiar citação",
-  "reportar", "Abrir o dispositivo", linha do tempo (a redação vigente na data de referência da
-  resposta marcada) e "O que mudou" (essa redação contra a anterior; código e consulta só no clique).
-  Linha do tempo e diff são os componentes de `src/components/provision/` (`ProvisionTimeline`,
-  `ProvisionDiff`), os mesmos da página de dispositivo.
+- **Chat vazio:** a abertura com o selo, a saudação pelo nome e uma linha; a data de referência fica
+  só no chip do composer. O composer fica no meio, com quatro sugestões em linhas finas embaixo; com
+  conversa, ele desce e fica fixo embaixo, sem remontar.
+- **Thread:** resposta em 16 px na medida de leitura (70 caracteres), o protagonista; a linha do selo
+  com os metadados em texto pequeno; "pensando" com a forma da resposta e o ponto âmbar andando no
+  fio; cursor de stream; fontes recolhidas em "N fontes", que abre uma lista de uma coluna (número,
+  dispositivo e vigência); copiar a resposta e 👍/👎 discretos. A rolagem só acompanha o stream com o
+  usuário no fim (`useStickToBottom`); se ele sobe, aparece "Ir para o fim".
+- **Composer:** um bloco só com a área de texto, o chip da data e o botão redondo de enviar ou parar
+  (o atalho no `title` e no `aria-keyshortcuts`); o contador aparece perto do limite; os avisos
+  (cota, data fora de cobertura, data inferida, PII) entram no topo do bloco quando acontecem.
+- **Citações:** chips numerados durante o stream, hover card (família, dispositivo, começo do texto e
+  vigência) e painel com documento, versão, badge de intervalo, texto (`lang="pt-BR"`) num cartão de
+  leitura, link para a fonte, "copiar citação", "reportar", "Abrir o dispositivo", linha do tempo (a
+  redação vigente na data de referência da resposta marcada) e "O que mudou" (essa redação contra a
+  anterior; código e consulta só no clique). Linha do tempo e diff são os componentes de
+  `src/components/provision/` (`ProvisionTimeline`, `ProvisionDiff`), os mesmos da página de
+  dispositivo. A linha do tempo é vertical, no motivo da logo (o ponto âmbar na redação da data de
+  referência, a folha na vigente hoje); o diff marca as inserções em verde-folha e risca as remoções.
 - **Histórico:** `ConversationList` (`GET /v1/conversations`) no painel esquerdo do chat (primeira
   página, conversa aberta marcada, link para o resto; no Sheet, abrir uma conversa o fecha por
-  `useCloseHistoryPanel`) e em `/history/` com "Carregar mais"; abrir uma conversa vai para
-  `/chat/?c=<id>`.
+  `useCloseHistoryPanel`) e em `/history/` com "Carregar mais", agrupado por dia (fuso de São Paulo)
+  e com busca pelo título. Abrir uma conversa vai para `/chat/?c=<id>`, e o chat relê as perguntas
+  dela (`GET /v1/questions?conversationId=`); "Nova conversa" fica no topo do painel. Cada item tem
+  um menu "⋯" (visível no hover e no foco da linha, sempre no toque) com "Excluir conversa", que
+  confirma num `AlertDialog` (`src/components/ui/alert-dialog.tsx`, Base UI) com o título e o aviso
+  de que não dá para desfazer nem devolve a cota. `useDeleteConversation` chama
+  `DELETE /v1/conversations/:id` (404 conta como excluída) e `forgetConversation` tira a conversa da
+  lista em cache na hora, apaga o histórico e as perguntas dela e relê a lista. Cancelar devolve o
+  foco ao "⋯"; excluir o leva à conversa vizinha, e um aviso `aria-live` no topo da lista confirma.
+  Excluir a conversa aberta tira `c` (e `q`) da URL pelo nuqs, com `history: 'replace'`: a URL fica
+  a do `newConversationHref` com a mesma data, e o chat monta a sessão vazia.
 - **Dispositivo e comparação:** `/provision/?k=&ref=` mostra a redação vigente na data (ou a anterior
   mais próxima, com aviso), o badge (vigente, encerrada ou futura, com o último dia incluído), "O que
   mudou" montado só no clique e a linha do tempo, que troca o `ref`; sem `k`, a busca de dispositivos
-  (`useDeferredValue`). `/compare/?k=&from=&to=` compara duas datas, com o exemplo do roteiro. Datas
+  (`useDeferredValue`, com exemplos). `/compare/?k=&from=&to=` compara duas datas, lado a lado no
+  desktop e empilhadas no celular, com o exemplo do roteiro. Datas
   de calendário são formatadas em UTC (`formatIsoDate` de `src/lib/i18n/format.ts`), para o fuso não
   trocar o dia.
 - **Cobertura:** `/coverage/` é pública (fora do grupo `(app)`, sem sessão): título e introdução no
@@ -216,19 +278,40 @@ Content-Security-Policy: default-src 'self'; script-src 'self' 'sha256-…'; sty
 - **Privacidade:** aviso de treino do provedor gratuito, 18+, versão dos Termos e país de residência
   no primeiro uso (diálogo bloqueante, de novo a cada versão dos Termos); detector de PII no composer;
   `region_restricted` vira página de aviso (`/<locale>/sign-in/?error=region_restricted`).
-- **Conta:** entrada com GitHub, Google e passkey, com retorno (`callbackURL`) só para caminhos da
-  própria origem; o cabeçalho e a paleta mostram a sessão (iniciais no lugar da foto, que a CSP
-  barraria); a `SessionGate` do grupo `(app)` manda quem está sem sessão para a entrada (guarda de
-  experiência) e abre o onboarding pendente, e `useSession().composerBlocked` trava o composer.
-  Configurações com conta, cota do dia, passkeys, exportação (JSON), exclusão com confirmação
-  digitada, tema, idioma e densidade.
+- **Conta:** entrada em duas colunas no desktop (painel da marca e formulário), só com os métodos
+  que `GET /api/v1/auth/providers` devolve: GitHub e Google com os símbolos das marcas (só com os
+  OAuth apps; localmente, nunca), passkey e e-mail e senha em abas "Entrar" e "Criar conta", com a
+  validação inline pelos schemas de `@teko/shared/contracts` e o aviso de que não há confirmação de
+  e-mail nem recuperação de senha. O formulário e o diálogo do onboarding são chunks sob demanda.
+  Retorno (`callbackURL`) só para caminhos da própria origem; o cabeçalho e a paleta mostram a sessão (iniciais no lugar da foto, que a CSP
+  barraria); a `SessionGate` envolve o shell do grupo `(app)` (guarda de experiência): até saber a
+  sessão mostra a tela da marca (também no HTML estático), sem sessão vai direto para a entrada, com
+  o `/me` indisponível oferece "Tentar de novo" e abre o onboarding pendente; o app nunca pinta antes
+  de saber a sessão. `useSession().composerBlocked` trava o composer.
+  O onboarding é um diálogo em passos (18+, Termos e país com busca). Configurações em cartões com
+  navegação lateral: conta com o método de entrada (`GET /api/auth/list-accounts`), cota do dia,
+  passkeys, preferências (tema, idioma e densidade), exportação (JSON) e a zona de perigo com a
+  exclusão por confirmação digitada.
 - **Teclado:** `Ctrl/⌘+K` paleta, `/` composer, `Ctrl/⌘+Enter` envia, `Esc` para ou fecha,
   `[`/`]` citações, `Alt+D` data.
-- **Estados:** sugestões sensíveis à data (RCTE art. 76 § 6º em 05/2008 contra 01/2010 e 03/2004
-  contra 05/2006), skeletons, bolha otimista, `ErrorBoundary` por bloco, disclaimer fixo "Apoio à
-  consulta; não constitui parecer".
-- **Landing** estática, sem chamada à API: hero com demo roteirizada, "Como funciona", corpus
-  coberto, garantias, FAQ.
+- **Estados:** sugestões sem repetir (primeiro, o RCTE art. 76 § 6º em 05/2008 contra 01/2010;
+  depois, uma pergunta de cada outra família do corpus, no período certo), skeletons com a forma do
+  conteúdo, bolha otimista, `ErrorBoundary` por bloco.
+- **Landing** estática, sem chamada à API (`src/components/landing/`): hero com a manchete em
+  serif, a linha do tempo do RCTE, art. 76, § 6º atravessando o hero (redações, revogação e o ponto
+  âmbar da data) e a **demonstração animada do chat**; "Como funciona" como linha do tempo de três
+  passos; o corpus numa régua de 1990 a hoje; garantias; FAQ em `<details>` (um aberto por vez); a
+  faixa final no gradiente da marca.
+- **Demonstração** (`src/lib/landing/`): o roteiro é uma lista de quadros pré-calculada
+  (`buildDemoSteps`: digitar, chip da data, pensar, stream palavra a palavra, fontes, nas cenas
+  05/2008 e 01/2010) tocada por um `DemoPlayer` com relógio injetável, que pausa fora da tela
+  (IntersectionObserver), com a aba oculta e no botão de pausa (WCAG 2.2.2). O servidor desenha o
+  quadro final (`demo-view.tsx`, sem `'use client'`), que é o HTML estático e o estado com
+  `prefers-reduced-motion`; sem movimento reduzido, `HeroDemoMount` carrega o animador
+  (`chat-demo.tsx`) num `import()`, fora do primeiro acesso. A janela é `aria-hidden`, sem nada
+  focável, com um resumo `sr-only`; só transições de transform (o texto nunca fica translúcido, o
+  que mantém o axe estável no meio da animação) e nenhuma animação infinita. As datas são as da
+  fixture do corpus, conferidas por teste.
 
 ## i18n e acessibilidade
 
@@ -240,8 +323,10 @@ Content-Security-Policy: default-src 'self'; script-src 'self' 'sha256-…'; sty
   deslocamento de fuso (por extenso ou numérica, a das vigências), limites de vigência com o último
   dia incluído, instante no fuso de exibição e período de apuração `MM/AAAA` (ou por extenso no
   idioma da UI).
-- Páginas legais e "Sobre" (`legal-pages.tsx`): texto em Source Serif, sumário com âncoras, versão
-  dos Termos de `@teko/shared/legal` (a mesma que a API exige). Os namespaces `legal` e `about` são
+- Páginas legais e "Sobre" (`legal-pages.tsx`): tipografia editorial (cabeçalho com sobretítulo,
+  título e texto em Source Serif, marca por seção `§ n` ou `01`), sumário com âncoras fixo ao lado
+  do texto no desktop e antes dele no celular, versão dos Termos de `@teko/shared/legal` (a mesma
+  que a API exige). Os namespaces `legal` e `about` são
   renderizados só no servidor e ficam fora das mensagens do `NextIntlClientProvider`.
 - WCAG 2.2 AA: região `aria-live="polite"` anuncia início e fim da resposta, `aria-busy` no stream,
   foco no composer, skip link, critérios 2.4.11, 2.5.8, 2.5.7 e 3.3.8; trechos legais com
@@ -256,7 +341,8 @@ Content-Security-Policy: default-src 'self'; script-src 'self' 'sha256-…'; sty
 
 - **Consentimento** (F5): banner LGPD com Aceitar, Recusar e Personalizar de mesmo peso,
   preferências por categoria (medição de uso e pesquisas) em `localStorage['teko-consent']` com a
-  versão da política, e "Preferências de cookies" nos rodapés. Nada é gravado antes da escolha.
+  versão da política, e "Preferências de cookies" no rodapé do site e no menu da conta do app. Nada
+  é gravado antes da escolha.
 - **Adapter** `src/lib/analytics/`: o único lugar que pode carregar o SDK (o Biome barra
   `posthog-js` fora dele), por `import()`, só com `analytics: true` e `NEXT_PUBLIC_POSTHOG_KEY` no
   build. Na F5 o cliente é no-op; o SDK entra na F6.

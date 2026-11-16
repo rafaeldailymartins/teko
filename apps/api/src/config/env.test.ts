@@ -135,6 +135,15 @@ describe('parseEnv', () => {
       ).toBe('production')
     })
 
+    it.each(['development', 'ci'])(
+      '%s com banco sobe sem OAuth apps (entrada por passkey e e-mail)',
+      (appEnv) => {
+        const env = parseEnv({ ...DEV_ENV, ...DB, APP_ENV: appEnv, BETTER_AUTH_SECRET: SECRET })
+        expect(env.GITHUB_CLIENT_ID).toBeUndefined()
+        expect(env.GOOGLE_CLIENT_ID).toBeUndefined()
+      },
+    )
+
     it.each(['BETTER_AUTH_TELEMETRY', 'BETTER_AUTH_TELEMETRY_ENDPOINT'])(
       'proíbe %s com qualquer valor',
       (name) => {

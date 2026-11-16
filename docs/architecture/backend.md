@@ -118,7 +118,8 @@ Contrato canônico em `packages/shared/src/contracts` e no OpenAPI. Tudo na mesm
 | Rota                                                                                            | Observação                                                                                                            |
 | ----------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
 | `GET /healthz` e `GET /api/healthz`                                                             | `{status, version, gitSha, env}`; nunca toca o DB. Fora da Vercel, 503 em drenagem                                    |
-| `ALL /api/auth/*`                                                                               | Better Auth                                                                                                           |
+| `ALL /api/auth/*`                                                                               | Better Auth (OAuth, passkey, e-mail e senha; sem confirmação nem recuperação por e-mail, ADR 0036)                    |
+| `GET /api/v1/auth/providers`                                                                    | Público, sem banco: métodos de entrada ativos (`github`, `google`, `passkey`, `email`)                                |
 | `POST /api/v1/me/onboarding`                                                                    | 18+, aceite dos termos (com versão), país de residência                                                               |
 | `GET /api/v1/me`, `GET /api/v1/me/quota`, `GET /api/v1/me/export`, `DELETE /api/v1/me`          | LGPD                                                                                                                  |
 | `GET /api/v1/coverage`                                                                          | Público, cache em memória de até 10 min; é o smoke de DB                                                              |
@@ -126,6 +127,7 @@ Contrato canônico em `packages/shared/src/contracts` e no OpenAPI. Tudo na mesm
 | `POST /api/v1/questions/:id/stream`                                                             | Cookie de sessão + `Origin`; UI Message Stream v1; um stream por pergunta (claim atômico)                             |
 | `GET /api/v1/questions`, `GET /api/v1/questions/:id`                                            | Histórico por `conversationId`                                                                                        |
 | `GET /api/v1/conversations?cursor=`                                                             | Conversas do usuário (título da primeira pergunta, contagem, última data); páginas de 20 por cursor opaco             |
+| `DELETE /api/v1/conversations/:id`                                                              | Exclui a conversa do dono (204); de outro ou inexistente, o mesmo 404; stream ativo, 409 `stream_busy`; cota intacta  |
 | `POST /api/v1/questions/:id/feedback`                                                           | Polegar e motivo, inclusive "citação errada"                                                                          |
 | `GET /api/v1/provisions?q=&family=&at=`, `…/:stableKey/timeline`, `…/:stableKey/diff?from=&to=` | Paleta (chave, rótulo ou texto), linha do tempo e diff por palavra e por campo; rate limit da aplicação               |
 | `POST /api/v1/_eval/answer`, `GET /api/v1/_eval/search`                                         | Só com `APP_ENV=ci`, em plugin separado; com `APP_ENV=staging` dão 404 (teste de integração)                          |
@@ -152,12 +154,21 @@ betterAuth({
   baseURL: env.WEB_ORIGIN, basePath: '/api/auth', trustedOrigins: [env.WEB_ORIGIN],
   database: drizzleAdapter(db, { provider: 'pg', schema: authSchema }), // '/relations-v2'
   socialProviders: { github: {...}, google: {...} },                   // OAuth apps por ambiente
+  emailAndPassword: { enabled: true, requireEmailVerification: false, autoSignIn: false,
+                      minPasswordLength: 12, maxPasswordLength: 128 },  // ADR 0036
+  account: { accountLinking: { enabled: true, trustedProviders: [], allowDifferentEmails: false,
+                               updateUserInfoOnLink: false } },
+  disabledPaths: ['/send-verification-email', '/verify-email', '/change-email',
+                  '/request-password-reset', '/reset-password'],      // sem remetente de e-mail
+  hooks: { before: validateSignUp },                                    // emailSignUpRequestSchema
   plugins: [passkey({ rpID: new URL(env.WEB_ORIGIN).hostname, rpName: 'Tekó', origin: env.WEB_ORIGIN })],
   session: { expiresIn: 604800, updateAge: 86400, cookieCache: { enabled: true, maxAge: 300 } },
   user: { additionalFields: { termsAcceptedAt, termsVersion, isAdult, countryOfResidence } },
   advanced: { useSecureCookies: https, cookiePrefix: env.APP_ENV === 'production' ? 'teko' : 'teko-stg',
               database: { generateId: 'uuid' }, ipAddress: { ipAddressHeaders: ['x-teko-client-ip'] } },
-  rateLimit: { enabled: true, storage: 'database' },                   // várias instâncias Fluid
+  rateLimit: { enabled: true, storage: 'database',                     // várias instâncias Fluid
+               customRules: { '/sign-in/email': { window: 60, max: 5 },
+                              '/sign-up/email': { window: 600, max: 5 } } },
   telemetry: { enabled: false },
 })
 ```
@@ -171,23 +182,46 @@ betterAuth({
 - O `rpID` é o hostname do ambiente (`tekoia.vercel.app`); os domínios antigos
   `teko-api*.vercel.app` respondem 308 para o canônico, porque cookie e passkey dependem de um host
   único.
-- Primeiro login por OAuth; a passkey é registrada depois, com sessão ativa. Callbacks em
-  `https://tekoia.vercel.app/api/auth/callback/{github,google}` e no equivalente de staging. Sem
-  `oAuthProxy` nem previews.
+- Primeiro login por OAuth ou por e-mail e senha; a passkey é registrada depois, com sessão ativa.
+  Callbacks em `https://tekoia.vercel.app/api/auth/callback/{github,google}` e no equivalente de
+  staging. Sem `oAuthProxy` nem previews.
+- **E-mail e senha (ADR 0036)**, sem confirmação de e-mail nem recuperação de senha:
+  - `POST /api/auth/sign-up/email` (nome, e-mail, senha) nunca abre sessão (`autoSignIn: false`) e
+    responde o mesmo 200 para um e-mail que já existe, sem criar nem alterar nada (proteção contra
+    enumeração do Better Auth); o web entra logo depois por `POST /api/auth/sign-in/email`, que
+    responde o mesmo 401 `INVALID_EMAIL_OR_PASSWORD` para e-mail sem conta, conta sem senha e senha
+    errada.
+  - Política em `@teko/shared/contracts` (`emailSignUpRequestSchema`): senha de 12 a 128 (unidades
+    UTF-16, como o Better Auth conta; sem composição; sem aparar), nome aparado de 1 a 80 sem
+    caractere de controle, e-mail de até 254 e nada de foto ou campo extra, conferidos por um gancho
+    `before` (400 com `PASSWORD_TOO_SHORT`, `PASSWORD_TOO_LONG`, `INVALID_EMAIL`, `INVALID_NAME` ou
+    `VALIDATION_ERROR`). Hash scrypt padrão do Better Auth (NFKC antes do hash), e-mail em
+    minúsculas.
+  - **Sem vínculo entre métodos:** a conta de senha nasce com `emailVerified: false`, e o Better Auth
+    só liga implicitamente um OAuth a um usuário com e-mail verificado (`requireLocalEmailVerified`,
+    padrão). GitHub ou Google com o e-mail de uma conta de senha voltam com
+    `?error=account_not_linked`; o cadastro por senha de um e-mail de conta OAuth não cria credencial.
+    Entre GitHub e Google (e-mails confirmados), o vínculo implícito continua.
+  - Rate limit por IP e caminho mais rígido: 5 entradas por minuto e 5 cadastros a cada 10 minutos
+    (429 com `X-Retry-After`).
+- **Métodos de entrada:** `GET /api/v1/auth/providers` devolve os OAuth apps configurados, a passkey
+  e o e-mail, nessa ordem (porta `AuthGateway.methods`); sem o Better Auth, 503 `service_paused`.
 - **IP do cliente:** o handler de `/api/auth/*` grava em `x-teko-client-ip` o IP da porta `ClientIp`
   (o `x-real-ip` na Vercel) e apaga esse header se vier do cliente; o rate limit do Better Auth
   conta nele em todas as plataformas.
 - O schema `auth.*` é escrito à mão em `schema/auth.ts` (o CLI do Better Auth exigiria `npx`), com
   `uuidv7()` como default dos IDs (o rate limit insere sem ID); um teste unitário o confere contra o
   `getAuthTables` do Better Auth, e a integração cobre sessão, `get-session` pelo adapter
-  `relations-v2`, sign-out e o início do OAuth.
+  `relations-v2`, sign-out, o início do OAuth, o cadastro e a entrada por e-mail e a não vinculação
+  (callback do GitHub com o `fetch` simulado).
 - **Onboarding:** `POST /api/v1/me/onboarding` grava 18+, a versão vigente dos Termos
   (`TERMS_VERSION`) e o país; versão diferente da vigente dá `validation_error`, e uma versão nova
   pede novo aceite. Rotas que exigem onboarding respondem 403 `onboarding_required`; com o cookie
   ainda dizendo "pendente" (cache de 5 min), relêem a sessão do banco antes de recusar.
 - **Variáveis:** `BETTER_AUTH_SECRET` (≥ 32), `GITHUB_CLIENT_ID`/`GITHUB_CLIENT_SECRET` e
-  `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET`, obrigatórias em staging e produção com banco;
-  `BETTER_AUTH_TELEMETRY*` derrubam o boot.
+  `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET`, obrigatórias em staging e produção com banco
+  (development e ci sobem sem os OAuth apps, com passkey e e-mail); `BETTER_AUTH_TELEMETRY*`
+  derrubam o boot.
 - **Login local e e2e:** `pnpm --filter @teko/api seed:dev-session` cria usuário com onboarding e
   sessão direto no banco e imprime o cookie assinado (só development e ci).
 
@@ -205,7 +239,11 @@ Drizzle 1.0, schemas `corpus`, `app` e `auth`, IDs `uuidv7()`, casing por tabela
 **Conversas** não têm tabela: `GET /conversations` agrega `app.questions` do usuário por
 `conversation_id` (índice `questions_user_created`), ordenada pela última pergunta, com o cursor no
 instante dela em texto UTC com microssegundos (um `Date` perderia a precisão e a página seguinte
-repetiria ou pularia conversas).
+repetiria ou pularia conversas). `DELETE /conversations/:id` lê a sessão do banco e, numa transação,
+trava as perguntas do usuário na conversa (`FOR UPDATE`) e as apaga; o feedback sai pelo `ON DELETE
+CASCADE`. Uma pergunta em stream há menos de 110 s recusa a exclusão (409 `stream_busy`), e um `claim`
+concorrente espera a trava e depois acha a pergunta apagada (404). `usage_daily` e `answer_cache`
+não mudam: excluir não devolve a cota, e o cache exato não tem dono.
 
 **Roles.** `teko_app` (runtime e manutenção: DML em `app`/`auth`, SELECT em `corpus`,
 `statement_timeout` e `idle_in_transaction_session_timeout` de 5 s no role) e `teko_watch` (só

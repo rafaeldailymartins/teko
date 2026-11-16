@@ -150,6 +150,36 @@ describe('SettingsView', () => {
     expect(passkeys).toContain(ptBR.settings.passkeys.unnamed)
   })
 
+  it('mostra como a conta entra, o que resta da cota e a navegação das seções', async () => {
+    api.on('GET /api/auth/list-accounts', [
+      { id: 'a-1', providerId: 'credential', accountId: 'x' },
+      { id: 'a-2', providerId: 'github', accountId: 'y' },
+      { id: 'a-3', providerId: 'desconhecido', accountId: 'z' },
+    ])
+    await render()
+    const methods = [...(section('account')?.querySelectorAll('li') ?? [])].map(
+      (item) => item.textContent,
+    )
+    expect(methods).toEqual([
+      ptBR.settings.account.methods.email,
+      ptBR.settings.account.methods.github,
+    ])
+    expect(section('quota')?.textContent).toContain('27 perguntas restantes')
+    const links = [...document.querySelectorAll('nav a')].map((link) => link.getAttribute('href'))
+    expect(links).toEqual(['#account', '#quota', '#passkeys', '#preferences', '#data', '#danger'])
+    expect(document.querySelector('nav a[aria-current="location"]')?.getAttribute('href')).toBe(
+      '#account',
+    )
+    // A exclusão fica na zona de perigo, fora da exportação.
+    expect(section('data')?.textContent).not.toContain(ptBR.settings.delete.button)
+    expect(section('danger')?.textContent).toContain(ptBR.settings.delete.button)
+  })
+
+  it('sem a lista de contas, o método de entrada fica como não identificado', async () => {
+    await render()
+    expect(section('account')?.textContent).toContain(ptBR.settings.account.methodUnknown)
+  })
+
   it('sem sessão, só as preferências e o aviso de carregamento', async () => {
     api.on('GET /api/v1/me', () => problem(401, 'unauthenticated'))
     await render()
@@ -283,12 +313,12 @@ describe('SettingsView', () => {
     expect(browser.navigateTo).toHaveBeenCalledWith('/pt-BR/')
   })
 
-  it('as preferências trocam tema e densidade e linkam o outro idioma', async () => {
+  it('as preferências trocam tema e densidade e levam ao outro idioma pelo menu', async () => {
     await render()
     const preferences = section('preferences')
     const radio = (label: string) =>
       [...(preferences?.querySelectorAll('label') ?? [])]
-        .find((element) => element.textContent === label)
+        .find((element) => element.textContent?.startsWith(label))
         ?.querySelector('input')
     await click(radio('Escuro'))
     expect(document.documentElement.getAttribute(THEME_ATTRIBUTE)).toBe('dark')
@@ -298,7 +328,10 @@ describe('SettingsView', () => {
     expect(radio('Compacta')?.checked).toBe(true)
     await click(radio('Confortável'))
     expect(document.documentElement.hasAttribute(DENSITY_ATTRIBUTE)).toBe(false)
-    expect(preferences?.querySelector('a[hreflang="en"]')?.getAttribute('href')).toBe(
+    const languageButton = preferences?.querySelector('button[aria-label="Idioma: Português"]')
+    expect(languageButton?.textContent).toContain('Português')
+    await click(languageButton)
+    expect(document.querySelector('a[role="menuitem"][hreflang="en"]')?.getAttribute('href')).toBe(
       '/en/settings/',
     )
   })

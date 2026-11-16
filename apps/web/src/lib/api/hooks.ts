@@ -8,9 +8,14 @@ import {
   useQuery,
   useQueryClient,
 } from '@tanstack/react-query'
-import type { OnboardingRequest } from '@teko/shared/contracts'
+import type {
+  EmailSignInRequest,
+  EmailSignUpRequest,
+  OnboardingRequest,
+} from '@teko/shared/contracts'
 import type { ReferenceInput } from '@teko/shared/vigencia'
 import type {
+  GetAuthProvidersResponse,
   GetCoverageResponse,
   GetMeResponse,
   GetProvisionDiffResponse,
@@ -22,11 +27,22 @@ import type {
   SearchProvisionsResponse,
 } from './__generated__/types.gen.ts'
 import { deleteAccount, fetchMyDataExport, type MyDataExport, submitOnboarding } from './account.ts'
-import { deletePasskey, type Passkey, registerPasskey, signOut } from './auth.ts'
-import type { ApiError } from './errors.ts'
 import {
+  deletePasskey,
+  type Passkey,
+  registerPasskey,
+  type SignInMethod,
+  signInWithEmail,
+  signOut,
+  signUpWithEmail,
+} from './auth.ts'
+import type { ApiError } from './errors.ts'
+import { removeConversation } from './mutations.ts'
+import {
+  authProvidersQuery,
   conversationsQuery,
   coverageQuery,
+  forgetConversation,
   historyQuery,
   meQuery,
   passkeysQuery,
@@ -35,6 +51,7 @@ import {
   provisionTimelineQuery,
   questionQuery,
   quotaQuery,
+  signInMethodsQuery,
 } from './queries.ts'
 
 /**
@@ -56,6 +73,19 @@ export function useQuota(enabled = true): ApiQuery<GetQuotaResponse> {
 /** Passkeys da conta; `enabled: false` enquanto não há sessão. */
 export function usePasskeys(enabled = true): ApiQuery<Passkey[]> {
   return useQuery(passkeysQuery(enabled))
+}
+
+/** Como a conta da sessão entra (GitHub, Google ou e-mail); `enabled: false` sem sessão. */
+export function useSignInMethods(enabled = true): ApiQuery<SignInMethod[]> {
+  return useQuery(signInMethodsQuery(enabled))
+}
+
+/**
+ * Métodos de entrada ativos no ambiente (`github`, `google`, `passkey`, `email`): a tela de entrada
+ * mostra só esses. Localmente, sem OAuth apps, vêm só `passkey` e `email`.
+ */
+export function useAuthProviders(): ApiQuery<GetAuthProvidersResponse> {
+  return useQuery(authProvidersQuery())
 }
 
 export function useCoverage(): ApiQuery<GetCoverageResponse> {
@@ -101,7 +131,8 @@ export function useProvisionSearch(
 }
 
 /**
- * Mutações da conta. O erro é `ApiError` (ou `PasskeyError`, na cerimônia da passkey). Sair e
+ * Mutações da conta. O erro é `ApiError` (ou `PasskeyError`, na cerimônia da passkey, e
+ * `EmailAuthError`, na entrada por e-mail). Sair e
  * excluir a conta não mexem no cache: quem chama recarrega a página no destino, o que zera tudo.
  */
 type ApiMutation<TData, TVariables = void> = UseMutationResult<TData, Error, TVariables>
@@ -115,6 +146,26 @@ export function useCompleteOnboarding(): ApiMutation<GetMeResponse, OnboardingRe
   })
 }
 
+/**
+ * Entrada e cadastro por e-mail e senha. O erro é `EmailAuthError` (com `failure`) ou `ApiError`.
+ * No sucesso, o `/me` é relido: a guarda e o cabeçalho passam a ver a sessão nova.
+ */
+export function useEmailSignIn(): ApiMutation<void, EmailSignInRequest> {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: signInWithEmail,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: meQuery().queryKey }),
+  })
+}
+
+export function useEmailSignUp(): ApiMutation<void, EmailSignUpRequest> {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: signUpWithEmail,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: meQuery().queryKey }),
+  })
+}
+
 export function useSignOut(): ApiMutation<void> {
   return useMutation({ mutationFn: signOut })
 }
@@ -125,6 +176,19 @@ export function useDeleteAccount(): ApiMutation<void> {
 
 export function useExportMyData(): ApiMutation<MyDataExport> {
   return useMutation({ mutationFn: fetchMyDataExport })
+}
+
+/**
+ * Exclui uma conversa (o id vai como variável). No sucesso, o cache esquece a conversa: some da
+ * lista na hora, e o histórico e as perguntas dela saem do cache (`forgetConversation`). O erro é
+ * `ApiError` (409 `stream_busy` com uma resposta em andamento); 404 conta como excluída.
+ */
+export function useDeleteConversation(): ApiMutation<void, string> {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: removeConversation,
+    onSuccess: (_data, conversationId) => forgetConversation(queryClient, conversationId),
+  })
 }
 
 /** Cadastro e remoção de passkey; os dois relêem a lista. */

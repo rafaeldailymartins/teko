@@ -3,7 +3,7 @@ import type { QuestionDetail } from '@teko/shared/contracts'
 /**
  * Dados pessoais de um usuário no Postgres, para os direitos do titular (LGPD): exportação
  * completa e exclusão. A exclusão apaga `auth.user`, e o `ON DELETE CASCADE` leva sessões, contas
- * OAuth, passkeys, perguntas e feedback; as linhas de uso e de rate limit com a chave do usuário
+ * (OAuth e senha), passkeys, perguntas e feedback; as linhas de uso e de rate limit com a chave do usuário
  * saem na mesma transação.
  */
 export interface AccountExport {
@@ -18,7 +18,7 @@ export interface AccountExport {
     readonly termsAcceptedAt: Date | null
     readonly countryOfResidence: string | null
   }
-  /** Provedores OAuth ligados (só o nome; tokens nunca saem). */
+  /** Contas ligadas: o provedor OAuth ou `email` (senha); tokens e hash da senha nunca saem. */
   readonly linkedAccounts: readonly string[]
   readonly passkeys: number
   readonly questions: readonly QuestionDetail[]

@@ -4,8 +4,8 @@
 import { type DefaultError, type InfiniteData, infiniteQueryOptions, queryOptions, type UseMutationOptions } from '@tanstack/react-query';
 
 import { client } from '../client.gen.ts';
-import { askQuestion, completeOnboarding, deleteMyData, exportMyData, getCoverage, getHealth, getMe, getProvisionDiff, getProvisionTimeline, getQuestion, getQuota, listConversations, listHistory, type Options, recordFeedback, searchProvisions, streamAnswer } from '../sdk.gen.ts';
-import type { AskQuestionData, AskQuestionError, AskQuestionResponse, CompleteOnboardingData, CompleteOnboardingError, CompleteOnboardingResponse, DeleteMyDataData, DeleteMyDataError, DeleteMyDataResponse, ExportMyDataData, ExportMyDataError, ExportMyDataResponse, GetCoverageData, GetCoverageError, GetCoverageResponse, GetHealthData, GetHealthError, GetHealthResponse, GetMeData, GetMeError, GetMeResponse, GetProvisionDiffData, GetProvisionDiffError, GetProvisionDiffResponse, GetProvisionTimelineData, GetProvisionTimelineError, GetProvisionTimelineResponse, GetQuestionData, GetQuestionError, GetQuestionResponse, GetQuotaData, GetQuotaError, GetQuotaResponse, ListConversationsData, ListConversationsError, ListConversationsResponse, ListHistoryData, ListHistoryError, ListHistoryResponse, RecordFeedbackData, RecordFeedbackError, RecordFeedbackResponse, SearchProvisionsData, SearchProvisionsError, SearchProvisionsResponse, StreamAnswerData } from '../types.gen.ts';
+import { askQuestion, completeOnboarding, deleteConversation, deleteMyData, exportMyData, getAuthProviders, getCoverage, getHealth, getMe, getProvisionDiff, getProvisionTimeline, getQuestion, getQuota, listConversations, listHistory, type Options, recordFeedback, searchProvisions, streamAnswer } from '../sdk.gen.ts';
+import type { AskQuestionData, AskQuestionError, AskQuestionResponse, CompleteOnboardingData, CompleteOnboardingError, CompleteOnboardingResponse, DeleteConversationData, DeleteConversationError, DeleteConversationResponse, DeleteMyDataData, DeleteMyDataError, DeleteMyDataResponse, ExportMyDataData, ExportMyDataError, ExportMyDataResponse, GetAuthProvidersData, GetAuthProvidersError, GetAuthProvidersResponse, GetCoverageData, GetCoverageError, GetCoverageResponse, GetHealthData, GetHealthError, GetHealthResponse, GetMeData, GetMeError, GetMeResponse, GetProvisionDiffData, GetProvisionDiffError, GetProvisionDiffResponse, GetProvisionTimelineData, GetProvisionTimelineError, GetProvisionTimelineResponse, GetQuestionData, GetQuestionError, GetQuestionResponse, GetQuotaData, GetQuotaError, GetQuotaResponse, ListConversationsData, ListConversationsError, ListConversationsResponse, ListHistoryData, ListHistoryError, ListHistoryResponse, RecordFeedbackData, RecordFeedbackError, RecordFeedbackResponse, SearchProvisionsData, SearchProvisionsError, SearchProvisionsResponse, StreamAnswerData } from '../types.gen.ts';
 
 export type QueryKey<TOptions extends Options> = [
     Pick<TOptions, 'baseUrl' | 'body' | 'headers' | 'path' | 'query'> & {
@@ -56,6 +56,24 @@ export const getHealthOptions = (options?: Options<GetHealthData>) => queryOptio
         return data;
     },
     queryKey: getHealthQueryKey(options)
+});
+
+export const getAuthProvidersQueryKey = (options?: Options<GetAuthProvidersData>) => createQueryKey('getAuthProviders', options);
+
+/**
+ * Métodos de entrada ativos no ambiente
+ */
+export const getAuthProvidersOptions = (options?: Options<GetAuthProvidersData>) => queryOptions<GetAuthProvidersResponse, GetAuthProvidersError, GetAuthProvidersResponse, ReturnType<typeof getAuthProvidersQueryKey>>({
+    queryFn: async ({ queryKey, signal }) => {
+        const { data } = await getAuthProviders({
+            ...options,
+            ...queryKey[0],
+            signal,
+            throwOnError: true
+        });
+        return data;
+    },
+    queryKey: getAuthProvidersQueryKey(options)
 });
 
 export const listConversationsQueryKey = (options?: Options<ListConversationsData>) => createQueryKey('listConversations', options);
@@ -137,6 +155,25 @@ export const listConversationsInfiniteOptions = (options?: Options<ListConversat
         queryKey: listConversationsInfiniteQueryKey(options)
     });
     return opts as Omit<typeof opts, 'initialData'>;
+};
+
+/**
+ * Exclui uma conversa do usuário, com as perguntas, respostas e feedback dela
+ *
+ * Só o dono exclui: conversa inexistente ou de outro usuário dá o mesmo 404. Com uma resposta da conversa ainda em stream, 409 `stream_busy`. A cota do dia não muda.
+ */
+export const deleteConversationMutation = (options?: Partial<Options<DeleteConversationData>>): UseMutationOptions<DeleteConversationResponse, DeleteConversationError, Options<DeleteConversationData>> => {
+    const mutationOptions: UseMutationOptions<DeleteConversationResponse, DeleteConversationError, Options<DeleteConversationData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await deleteConversation({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
 };
 
 export const getCoverageQueryKey = (options?: Options<GetCoverageData>) => createQueryKey('getCoverage', options);

@@ -7,7 +7,7 @@ export const generateProvisionMetadata = pageMetadata('provision')
 export async function ProvisionPage({ params }: LocalePageProps) {
   await resolvePageLocale(params)
   return (
-    <div className="mx-auto w-full max-w-3xl px-5 py-10 sm:py-14">
+    <div className="mx-auto w-full max-w-5xl px-5 py-8 sm:py-12">
       <ProvisionView />
     </div>
   )

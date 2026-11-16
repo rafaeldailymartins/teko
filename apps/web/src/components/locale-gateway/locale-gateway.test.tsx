@@ -2,7 +2,7 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it, vi } from 'vitest'
 import { THEME_BOOTSTRAP_SCRIPT } from '@/lib/theme'
 import { BareDocument } from './bare-document.tsx'
-import { GatewayPage, gatewayMetadata } from './gateway-page.tsx'
+import { GatewayPage, gatewayMetadata, ROOT_LOCALE_SCRIPT } from './gateway-page.tsx'
 import { generateGlobalNotFoundMetadata } from './global-not-found-page.tsx'
 
 // `next/font` só existe no build do Next (transformação SWC); aqui basta a variável CSS.
@@ -25,10 +25,28 @@ describe('BareDocument', () => {
 })
 
 describe('GatewayPage', () => {
-  it('redireciona para o locale padrão sem JavaScript', async () => {
-    const html = renderToStaticMarkup(await GatewayPage())
-    expect(html).toContain('<meta http-equiv="refresh" content="0; url=/pt-BR/"/>')
-    expect(html).toContain('href="/en/"')
+  const page = async () => renderToStaticMarkup(await GatewayPage())
+
+  it('vai na hora para o idioma do navegador pelo script externo', async () => {
+    expect(await page()).toContain(`<script src="${ROOT_LOCALE_SCRIPT}"></script>`)
+  })
+
+  it('sem JavaScript, redireciona para o locale padrão e oferece os dois idiomas', async () => {
+    const html = await page()
+    expect(html).toContain(
+      '<noscript><meta http-equiv="refresh" content="0; url=/pt-BR/"/></noscript>',
+    )
+    const noscript = html.slice(html.lastIndexOf('<noscript>'))
+    expect(noscript).toContain('href="/en/"')
+    expect(noscript).toContain('href="/pt-BR/"')
+  })
+
+  it('não mostra escolha de idioma com JavaScript: só a logo, fora do <noscript>', async () => {
+    const html = await page()
+    const visible = html.replaceAll(/<noscript>.*?<\/noscript>/gs, '')
+    expect(visible).not.toContain('href=')
+    expect(visible).not.toContain('Escolha o idioma')
+    expect(visible).toContain('<svg')
   })
 
   it('não emite hreflang (página noindex: alternates relativos seriam inválidos)', () => {

@@ -1,6 +1,13 @@
 'use client'
 
-import { DownloadIcon, LoaderCircleIcon, Trash2Icon } from 'lucide-react'
+import {
+  DatabaseIcon,
+  DownloadIcon,
+  FileJsonIcon,
+  LoaderCircleIcon,
+  Trash2Icon,
+  TriangleAlertIcon,
+} from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import { type FormEvent, useId, useState } from 'react'
 import { Button } from '@/components/ui/button'
@@ -12,6 +19,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
+import { EXPORT_FILENAME } from '@/lib/api/account'
 import { ApiError } from '@/lib/api/errors'
 import { useDeleteAccount, useExportMyData } from '@/lib/api/hooks'
 import { navigateTo } from '@/lib/browser'
@@ -109,17 +117,19 @@ function DeleteAccountDialog({
   )
 }
 
-/** Direitos do titular: exportar tudo em JSON (`GET /me/export`) e excluir a conta (`DELETE /me`). */
+/** Direito do titular à portabilidade: exportar tudo em JSON (`GET /me/export`). */
 export function DataSection() {
   const t = useTranslations('settings.data')
-  const tDelete = useTranslations('settings.delete')
   const describe = useErrorMessage()
   const exporting = useExportMyData()
-  const [deleteOpen, setDeleteOpen] = useState(false)
 
   return (
-    <SettingsSection id="data" title={t('title')} description={t('lead')}>
-      <div className="flex flex-col gap-2 sm:flex-row">
+    <SettingsSection id="data" title={t('title')} description={t('lead')} icon={DatabaseIcon}>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <p className="flex items-center gap-2 font-mono text-muted-foreground text-xs">
+          <FileJsonIcon aria-hidden="true" className="size-4 text-validity-current" />
+          {EXPORT_FILENAME}
+        </p>
         <Button
           variant="outline"
           disabled={exporting.isPending}
@@ -136,13 +146,28 @@ export function DataSection() {
           )}
           {exporting.isPending ? t('exporting') : t('export')}
         </Button>
-        <Button variant="destructive" onClick={() => setDeleteOpen(true)}>
+      </div>
+      {exporting.error !== null && <SectionError>{describe(exporting.error)}</SectionError>}
+      {exporting.isSuccess && <SectionStatus>{t('exported')}</SectionStatus>}
+    </SettingsSection>
+  )
+}
+
+/** Direito do titular à eliminação (`DELETE /me`), separada na zona de perigo. */
+export function DangerSection() {
+  const t = useTranslations('settings.danger')
+  const tDelete = useTranslations('settings.delete')
+  const [deleteOpen, setDeleteOpen] = useState(false)
+
+  return (
+    <SettingsSection id="danger" title={t('title')} icon={TriangleAlertIcon} tone="danger">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-pretty text-muted-foreground text-sm">{tDelete('body')}</p>
+        <Button variant="destructive" className="shrink-0" onClick={() => setDeleteOpen(true)}>
           <Trash2Icon aria-hidden="true" />
           {tDelete('button')}
         </Button>
       </div>
-      {exporting.error !== null && <SectionError>{describe(exporting.error)}</SectionError>}
-      {exporting.isSuccess && <SectionStatus>{t('exported')}</SectionStatus>}
       <DeleteAccountDialog open={deleteOpen} onOpenChange={setDeleteOpen} />
     </SettingsSection>
   )
