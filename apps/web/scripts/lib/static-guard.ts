@@ -21,7 +21,7 @@ const ROUTE_HANDLER = /(?:^|\/)route\.[cm]?[jt]sx?$/
 const PLATFORM_ENTRY = /^(?:src\/)?(?:middleware|proxy)\.[cm]?[jt]s$/
 const PAGES_API = /^(?:src\/)?pages\/api\//
 /** Diretiva `'use server'` (de arquivo ou de função) no início de uma instrução. */
-const USE_SERVER = /(?:^|[;{]\s*|\n\s*)(['"])use server\1/
+const USE_SERVER = /(?:^|[;{])[ \t]*(['"])use server\1/m
 const FORCE_DYNAMIC = /\bdynamic\s*=\s*(['"])force-dynamic\1/
 
 /** Extensões que o export estático pode ter (HTML, payload RSC, JS, CSS, fontes e imagens). */

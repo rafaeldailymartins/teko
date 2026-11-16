@@ -26,7 +26,17 @@ export interface FirstLoadMeasure {
 export class BundleBudgetError extends Error {}
 
 /** Só os chunks do próprio build entram: outra origem já seria barrada pela CSP. */
-const NEXT_STATIC_SCRIPT = /^\/_next\/static\/[^?#]+\.js(?:[?#].*)?$/
+/** Caminho sem query string nem fragmento (`/_next/static/x.js?v=1` → `/_next/static/x.js`). */
+function pathOf(src: string): string {
+  const end = src.search(/[?#]/)
+  return end === -1 ? src : src.slice(0, end)
+}
+
+/** Chunk do Next servido pelo próprio export (`/_next/static/` e `.js`). */
+function isNextStaticScript(src: string): boolean {
+  const path = pathOf(src)
+  return path.startsWith('/_next/static/') && path.endsWith('.js')
+}
 
 export function readBudget(file: string): BundleBudget {
   const parsed: unknown = JSON.parse(readFileSync(file, 'utf8'))
@@ -44,8 +54,8 @@ export function measureFirstLoad(
   const files = new Set<string>()
   for (const document of documents.values()) {
     for (const src of document.firstLoadScripts) {
-      if (NEXT_STATIC_SCRIPT.test(src)) {
-        files.add(src.replace(/[?#].*$/, '').slice(1))
+      if (isNextStaticScript(src)) {
+        files.add(pathOf(src).slice(1))
       }
     }
   }

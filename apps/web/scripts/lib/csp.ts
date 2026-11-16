@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto'
-import type { ParsedDocument } from './html.ts'
+import { compareCodeUnits, type ParsedDocument } from './html.ts'
 
 /**
  * CSP por documento do export estático (`docs/architecture/frontend.md`, "Segurança no navegador").
@@ -33,7 +33,7 @@ export function sha256Source(content: string): string {
 }
 
 function hashSources(contents: readonly string[]): string[] {
-  return [...new Set(contents.map(sha256Source))].sort()
+  return [...new Set(contents.map(sha256Source))].sort(compareCodeUnits)
 }
 
 /**
