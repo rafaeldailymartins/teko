@@ -1,6 +1,7 @@
 import {
   type InfiniteData,
   infiniteQueryOptions,
+  type QueryClient,
   type QueryFunction,
   type QueryKey,
   skipToken,
@@ -102,6 +103,18 @@ export function conversationsQuery() {
     initialPageParam: {},
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
   })
+}
+
+/**
+ * Depois de cada pergunta (respondida, recusada, com erro ou parada: a API já a gravou), a lista
+ * de conversas ganha a conversa nova ou sobe a atual, e a cota do dia muda. Sem isso, o painel de
+ * histórico só mostraria a pergunta depois de recarregar a página.
+ */
+export async function refreshAfterQuestion(client: QueryClient): Promise<void> {
+  await Promise.all([
+    client.invalidateQueries({ queryKey: conversationsQuery().queryKey }),
+    client.invalidateQueries({ queryKey: quotaQuery().queryKey }),
+  ])
 }
 
 /** Uma pergunta com a resposta ou a recusa (`GET /v1/questions/:id`); `null` = desligada. */
