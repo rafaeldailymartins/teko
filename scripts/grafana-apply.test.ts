@@ -223,8 +223,9 @@ describe('expansão', () => {
 describe('grafanaBase', () => {
   it('aceita só https://*.grafana.net', () => {
     assert.equal(grafanaBase('https://teko.grafana.net/', 'X'), 'https://teko.grafana.net')
-    assert.throws(() => grafanaBase('http://teko.grafana.net', 'X'), /grafana\.net/u)
-    assert.throws(() => grafanaBase('https://grafana.net.evil.com', 'X'), /grafana\.net/u)
+    const rejected = { name: 'RangeError', message: 'X precisa ser https://<algo>.grafana.net' }
+    assert.throws(() => grafanaBase('http://teko.grafana.net', 'X'), rejected)
+    assert.throws(() => grafanaBase('https://grafana.net.evil.com', 'X'), rejected)
     assert.throws(() => grafanaBase('nope', 'X'), /não é uma URL/u)
   })
 })

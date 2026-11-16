@@ -696,7 +696,11 @@ describe('chat', () => {
 
   it('a abertura do chat vazio: saudação, a data só no chip e quatro sugestões sem repetir', async () => {
     await render(<ChatWorkspace />, '?ref=2008-05')
-    const heading = await waitFor(() => document.querySelector('h1'))
+    // A saudação só ganha o nome quando a sessão chega: espera por ela, não só pelo `h1`.
+    const heading = await waitFor(() => {
+      const h1 = document.querySelector('h1')
+      return h1?.textContent?.endsWith(', Ana') === true ? h1 : null
+    })
     expect(heading.textContent).toMatch(/^(Bom dia|Boa tarde|Boa noite), Ana$/)
     // A data de referência aparece uma vez só, no chip do composer.
     expect(document.querySelector('[data-chat-welcome]')?.textContent).not.toContain('05/2008')
