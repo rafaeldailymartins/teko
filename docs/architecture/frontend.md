@@ -186,7 +186,8 @@ cada documento (falha se uma CSP passar de 6 KB):
 ```text
 Content-Security-Policy: default-src 'self'; script-src 'self' 'sha256-…'; style-src-elem 'self' 'sha256-…';
   style-src-attr 'unsafe-inline'; img-src 'self' data:; font-src 'self'; worker-src 'self';
-  connect-src 'self' https://eu.i.posthog.com; object-src 'none'; base-uri 'self'; form-action 'self';
+  connect-src 'self' https://eu.i.posthog.com https://eu-assets.i.posthog.com; object-src 'none';
+  base-uri 'self'; form-action 'self';
   frame-ancestors 'none'; upgrade-insecure-requests
 ```
 
@@ -201,7 +202,11 @@ Content-Security-Policy: default-src 'self'; script-src 'self' 'sha256-…'; sty
   é concessão consciente (Motion e painéis redimensionáveis).
 - **`report-to` fica de fora até a F6**, que escolhe o destino dos relatórios (abaixo); até lá as
   violações só aparecem no console.
-- PostHog com `disable_external_dependency_loading: true` e surveys no bundle.
+- PostHog com `disable_external_dependency_loading: true` e surveys no bundle. O
+  `eu-assets.i.posthog.com` está no `connect-src` porque o SDK lê dele, por `fetch`, a configuração
+  remota do projeto; nenhum script vem de fora. Os estilos das pesquisas são um `<style>` injetado no
+  shadow DOM, que a CSP barra: decidir o hash ou o `prepare_external_dependency_stylesheet` ao criar
+  a primeira pesquisa.
 - HSTS, `nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy`
   restritiva, COOP/CORP `same-origin`.
 - **Trusted Types** em report-only (`require-trusted-types-for 'script'`); enforce depois da v0.1.0,
@@ -345,10 +350,15 @@ Content-Security-Policy: default-src 'self'; script-src 'self' 'sha256-…'; sty
   é gravado antes da escolha.
 - **Adapter** `src/lib/analytics/`: o único lugar que pode carregar o SDK (o Biome barra
   `posthog-js` fora dele), por `import()`, só com `analytics: true` e `NEXT_PUBLIC_POSTHOG_KEY` no
-  build. Na F5 o cliente é no-op; o SDK entra na F6.
-- **PostHog** (EU, F6), direto: `disable_external_dependency_loading: true`,
-  `cookieless_mode:'on_reject'`, `person_profiles:'identified_only'`, replay desligado, desligado no
-  staging (sem a chave), surveys só com consentimento. Eventos em
+  build. O `client-loader.ts` importa `posthog-client.ts`, num chunk sob demanda (≈166 KiB gz).
+- **PostHog** (EU, F6), direto: `posthog-js/dist/module.no-external` com `dist/surveys` no bundle,
+  `disable_external_dependency_loading: true`, `cookieless_mode:'on_reject'`,
+  `persistence:'localStorage'` (sem cookie), `person_profiles:'identified_only'` sem `identify`,
+  replay, autocapture, pageview e exceções desligados, desligado no staging (sem a chave), surveys
+  só com consentimento. Só o catálogo sai: cada `capture` passa pelo schema estrito, e o
+  `before_send` descarta o resto (exceto os eventos das pesquisas) e tira query e âncora das URLs.
+  Retirar o consentimento faz o opt-out e apaga as chaves do PostHog do navegador. As Web Vitals vêm
+  do `useReportWebVitals`, num chunk carregado só com o cliente ligado. Eventos em
   [observabilidade](observabilidade.md).
 - **Orçamento:** JS gz total do first-load, checado no pós-build: a soma do gzip da união dos chunks
   que os HTML do export carregam (`<script src>` sem `nomodule` e preload de script), cada chunk uma

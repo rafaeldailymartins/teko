@@ -5,6 +5,7 @@ import { FeedbackRating } from '@teko/shared/contracts'
 import { ThumbsDownIcon, ThumbsUpIcon } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
+import { analytics } from '@/lib/analytics'
 import { submitFeedback } from '@/lib/api/mutations'
 import { cn } from '@/lib/utils'
 
@@ -14,7 +15,12 @@ import { cn } from '@/lib/utils'
  */
 export function FeedbackButtons({ questionId }: { readonly questionId: string }) {
   const t = useTranslations('chat.feedback')
-  const feedback = useMutation({ mutationFn: submitFeedback })
+  const feedback = useMutation({
+    mutationFn: submitFeedback,
+    onSuccess: (_data, { rating, reason }) => {
+      analytics.capture('answer_feedback', reason === undefined ? { rating } : { rating, reason })
+    },
+  })
   const chosen = feedback.variables?.rating
 
   if (feedback.isSuccess) {

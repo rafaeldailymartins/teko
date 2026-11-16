@@ -2,7 +2,7 @@ import type { AnalyticsEventName, AnalyticsEventProperties } from '@teko/shared/
 import type { ConsentRecord } from '@/lib/consent/storage'
 
 /**
- * Adapter de analytics: o único caminho do app até o SDK de produto (PostHog, F6). Regras:
+ * Adapter de analytics: o único caminho do app até o SDK de produto (PostHog). Regras:
  *
  * - nada é carregado sem a escolha `analytics: true` gravada **e** sem a chave pública no build
  *   (`NEXT_PUBLIC_POSTHOG_KEY`, presente só na produção);
@@ -12,7 +12,7 @@ import type { ConsentRecord } from '@/lib/consent/storage'
  * - recusar depois de aceitar desliga o cliente, que apaga o próprio storage.
  */
 
-/** Cliente carregado sob demanda (a implementação do PostHog chega na F6). */
+/** Cliente carregado sob demanda (`posthog-client.ts`). */
 export interface AnalyticsClient {
   capture<N extends AnalyticsEventName>(name: N, properties: AnalyticsEventProperties<N>): void
   /** Liga ou desliga as pesquisas in-app (categoria `surveys`). */
@@ -21,7 +21,7 @@ export interface AnalyticsClient {
   disable(): void
 }
 
-interface AnalyticsLoadOptions {
+export interface AnalyticsLoadOptions {
   /** Chave pública do projeto. */
   readonly key: string
   /** Pesquisas permitidas na escolha atual. */

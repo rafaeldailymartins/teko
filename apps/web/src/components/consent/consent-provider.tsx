@@ -1,5 +1,6 @@
 'use client'
 
+import dynamic from 'next/dynamic'
 import { useLocale, useTranslations } from 'next-intl'
 import {
   createContext,
@@ -21,6 +22,7 @@ import {
 } from '@/components/ui/dialog'
 import { Switch } from '@/components/ui/switch'
 import { analytics } from '@/lib/analytics'
+import { AnalyticsState } from '@/lib/analytics/adapter'
 import {
   ACCEPT_ALL,
   CONSENT_CATEGORIES,
@@ -43,6 +45,12 @@ interface ConsentContextValue {
 }
 
 const ConsentContext = createContext<ConsentContextValue | null>(null)
+
+/** As Web Vitals num chunk à parte: só baixado com o cliente de analytics carregado. */
+const LazyWebVitalsReporter = dynamic(
+  () => import('./web-vitals-reporter.tsx').then((module) => module.WebVitalsReporter),
+  { ssr: false },
+)
 
 function browserStorage(): Storage | null {
   try {
@@ -85,10 +93,17 @@ export function ConsentProvider({ children }: ConsentProviderProps) {
   const [preferencesSession, setPreferencesSession] = useState(0)
   const consent = useMemo(() => parseConsentRecord(stored) ?? unsaved, [stored, unsaved])
   const hydrated = stored !== SERVER_SNAPSHOT
+  const [analyticsState, setAnalyticsState] = useState<AnalyticsState>(AnalyticsState.Disabled)
 
   useEffect(() => {
-    if (hydrated) {
-      void analytics.applyConsent(consent)
+    if (!hydrated) return
+    let current = true
+    void analytics.applyConsent(consent).then((state) => {
+      // Só a aplicação mais recente vale (outra escolha pode ter chegado durante o carregamento).
+      if (current) setAnalyticsState(state)
+    })
+    return () => {
+      current = false
     }
   }, [hydrated, consent])
 
@@ -120,6 +135,7 @@ export function ConsentProvider({ children }: ConsentProviderProps) {
         />
       ) : null}
       {children}
+      {analyticsState === AnalyticsState.Loaded ? <LazyWebVitalsReporter /> : null}
       {hydrated ? (
         <ConsentPreferences
           key={preferencesSession}

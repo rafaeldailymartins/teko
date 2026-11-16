@@ -26,6 +26,8 @@ allowBuilds:
   ssh2: false
   protobufjs: false
   esbuild: false
+  # Via posthog-js: o postinstall do core-js só imprime um pedido de doação.
+  core-js: false
 
 # Correções de vulnerabilidades transitivas (versões exatas, maduras). Revisar a cada atualização
 # do pacote que as puxa; remover quando o upstream já trouxer a versão corrigida.
@@ -163,3 +165,6 @@ catalog:
   "@streamdown/code": 2.0.0 # blocos de código do Streamdown (Shiki)
   rehype-harden: 1.1.9 # links só para a própria origem e fontes oficiais; sem imagens nem data:
   "@simplewebauthn/browser": 13.3.0 # cerimônia WebAuthn da passkey no web (a mesma do plugin do Better Auth), carregada sob demanda
+  # Analytics de produto (F6): só por import() depois do consentimento, no adapter de src/lib/analytics.
+  # Apache-2.0 AND MIT, com proveniência SLSA; 1.448+ tinha menos de 7 dias.
+  posthog-js: 1.447.3

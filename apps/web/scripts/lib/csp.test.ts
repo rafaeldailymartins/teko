@@ -38,7 +38,7 @@ describe('contentSecurityPolicy', () => {
         "img-src 'self' data:",
         "font-src 'self'",
         "worker-src 'self'",
-        "connect-src 'self' https://eu.i.posthog.com",
+        "connect-src 'self' https://eu.i.posthog.com https://eu-assets.i.posthog.com",
         "object-src 'none'",
         "base-uri 'self'",
         "form-action 'self'",

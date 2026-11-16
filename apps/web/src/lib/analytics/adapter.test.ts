@@ -12,7 +12,6 @@ import {
   AnalyticsState,
   createAnalytics,
 } from './adapter.ts'
-import { loadAnalyticsClient } from './client-loader.ts'
 
 const KEY = 'phc_chave_publica_de_teste'
 
@@ -142,16 +141,5 @@ describe('createAnalytics: com consentimento', () => {
     calls[1]?.resolve(fakeClient())
     expect(await retry).toBe(AnalyticsState.Loaded)
     expect(load).toHaveBeenCalledTimes(2)
-  })
-})
-
-describe('loadAnalyticsClient (F5)', () => {
-  it('entrega um cliente que não envia nada', async () => {
-    const fetchSpy = vi.spyOn(globalThis, 'fetch')
-    const client = await loadAnalyticsClient({ key: KEY, surveys: true })
-    client.setSurveysEnabled(true)
-    client.capture('diff_opened', {})
-    client.disable()
-    expect(fetchSpy).not.toHaveBeenCalled()
   })
 })
