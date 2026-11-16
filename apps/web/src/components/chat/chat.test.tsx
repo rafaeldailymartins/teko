@@ -531,7 +531,14 @@ describe('chat', () => {
     await waitFor(() => document.querySelector('[data-degraded="cached"]'))
     const labels = [...document.querySelectorAll('[data-degraded]')].map((item) => item.textContent)
     expect(labels).toEqual(['Somente busca lexical', 'Modelo de reserva', 'Resposta em cache'])
-    expect(byText('[data-coverage="partial"]', 'efd-icms-ipi')).toBeDefined()
+    // "Resposta em cache" sai da vista: fica na dica da linha e para leitores de tela.
+    const cached = document.querySelector('[data-degraded="cached"]')
+    expect(cached?.classList.contains('sr-only')).toBe(true)
+    expect(cached?.closest('[title]')?.getAttribute('title')).toBe('Resposta em cache')
+    // A nota de cobertura parcial usa o nome legível da família, não o código.
+    const note = document.querySelector('[data-coverage="partial"]')
+    expect(note?.textContent).toContain('EFD ICMS/IPI')
+    expect(note?.textContent).not.toContain('efd-icms-ipi')
 
     // Data inferida do texto: fica âmbar e pede confirmação no composer.
     expect(
@@ -684,24 +691,58 @@ describe('chat', () => {
       [...document.querySelectorAll('[data-message-role="user"]')].map((item) => item.textContent),
     ).toEqual(['Você: O que diz o art. 76, § 6º do RCTE?', 'Você: E em 01/2010?'])
     // Sem a abertura: a conversa já está na tela.
-    expect(document.querySelector('[data-welcome-date]')).toBeNull()
+    expect(document.querySelector('[data-chat-welcome]')).toBeNull()
   })
 
-  it('a abertura do chat vazio: saudação, data em destaque e sugestões sem repetir', async () => {
+  it('a abertura do chat vazio: saudação, a data só no chip e quatro sugestões sem repetir', async () => {
     await render(<ChatWorkspace />, '?ref=2008-05')
     const heading = await waitFor(() => document.querySelector('h1'))
     expect(heading.textContent).toMatch(/^(Bom dia|Boa tarde|Boa noite), Ana$/)
-    expect(document.querySelector('[data-welcome-date]')?.textContent).toContain('05/2008')
+    // A data de referência aparece uma vez só, no chip do composer.
+    expect(document.querySelector('[data-chat-welcome]')?.textContent).not.toContain('05/2008')
+    expect(document.querySelector('[data-reference-chip]')?.textContent).toContain('05/2008')
     const suggestions = [...document.querySelectorAll('[data-suggestion]')]
     const questions = suggestions.map(
       (item) => item.querySelector('[lang="pt-BR"]')?.textContent ?? '',
     )
-    expect(questions).toHaveLength(5)
-    expect(new Set(questions).size).toBe(5)
+    expect(questions).toHaveLength(4)
+    expect(new Set(questions).size).toBe(4)
+    // O aviso de que não constitui parecer fica logo abaixo do composer.
+    expect(document.querySelector('[data-disclaimer]')?.textContent).toBe(
+      'Apoio à consulta; não constitui parecer.',
+    )
+    // Composer limpo: sem a linha de cobertura nem a dica do atalho; o atalho fica no botão.
+    expect(document.querySelector('form [data-coverage]')).toBeNull()
+    expect(document.querySelector('form kbd')).toBeNull()
+    const send = document.querySelector('button[aria-label="Enviar"]')
+    expect(send?.getAttribute('aria-keyshortcuts')).toBe('Control+Enter Meta+Enter')
+    expect(send?.getAttribute('title')).toBe('Enviar (Ctrl+Enter)')
+  })
 
-    // A data em destaque abre o mesmo seletor do chip do composer.
-    await click(await waitFor(() => document.querySelector('[data-welcome-date]:not(:disabled)')))
-    await waitFor(() => byText('[data-slot="popover-content"]', 'Data de referência'))
+  it('as fontes ficam recolhidas numa linha e abrem a citação pela lista', async () => {
+    transport.scenarios.push(answered)
+    await render(<ChatWorkspace />)
+    await click(await waitFor(() => enabledButton('Perguntar em 05/2008')))
+    const toggle = await waitFor(() => byText('button[aria-expanded]', '2 fontes'))
+    const list = document.getElementById(toggle.getAttribute('aria-controls') ?? '')
+    expect(toggle.getAttribute('aria-expanded')).toBe('false')
+    expect(list?.hidden).toBe(true)
+    await click(toggle)
+    expect(toggle.getAttribute('aria-expanded')).toBe('true')
+    expect(list?.hidden).toBe(false)
+    expect(list?.querySelectorAll('li')).toHaveLength(2)
+
+    await click(list?.querySelector('button[data-source-id="S2"]'))
+    await waitFor(() => byText('article', 'Citação 2 de 2'))
+    expect(list?.querySelector('button[data-source-id="S2"]')?.getAttribute('aria-pressed')).toBe(
+      'true',
+    )
+    // Fechar o painel tira a marca da fonte.
+    await click(document.querySelector('button[aria-label="Fechar a citação"]'))
+    expect(byText('article', 'Citação 2 de 2')).toBeUndefined()
+    expect(list?.querySelector('button[data-source-id="S2"]')?.getAttribute('aria-pressed')).toBe(
+      'false',
+    )
   })
 
   it('uma sugestão de família pergunta no período dela', async () => {

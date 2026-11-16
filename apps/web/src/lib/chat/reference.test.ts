@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
   clarifiedRequest,
-  corpusTimelinePosition,
   defaultPeriodo,
   EFD_DELIVERY_DAY,
   referenceDisplay,
@@ -76,14 +75,5 @@ describe('referenceDisplay', () => {
       date: '2010-01-15',
       isDefault: false,
     })
-  })
-})
-
-describe('corpusTimelinePosition', () => {
-  it('vai de 1998 ao fim do ano de hoje, sem passar das pontas', () => {
-    expect(corpusTimelinePosition('1998-01-01', '2026-11-15')).toBe(0)
-    expect(corpusTimelinePosition('2012-07-01', '2026-11-15')).toBeCloseTo(0.5, 2)
-    expect(corpusTimelinePosition('1990-01-01', '2026-11-15')).toBe(0)
-    expect(corpusTimelinePosition('2030-01-01', '2026-11-15')).toBe(1)
   })
 })

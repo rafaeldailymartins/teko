@@ -37,9 +37,17 @@ test.describe('páginas', () => {
     }
   })
 
-  test('o app shell mostra o aviso fixo e troca o idioma sem perder a página', async ({ page }) => {
-    await page.goto('/pt-BR/settings/')
+  test('o app shell mostra o aviso discreto e troca o idioma sem perder a página', async ({
+    page,
+  }) => {
+    // No chat, o aviso fica logo abaixo do composer, sempre à vista.
+    await page.goto('/pt-BR/chat/')
     await expect(page.getByText('Apoio à consulta; não constitui parecer.')).toBeInViewport()
+    // Nas outras páginas do app, numa linha pequena no fim do conteúdo.
+    await page.goto('/pt-BR/settings/')
+    const disclaimer = page.getByRole('main').getByText('Apoio à consulta; não constitui parecer.')
+    await disclaimer.scrollIntoViewIfNeeded()
+    await expect(disclaimer).toBeInViewport()
     await page.getByRole('banner').getByRole('button', { name: 'Idioma', exact: true }).click()
     await page.getByRole('menuitem', { name: /English/ }).click()
     await expect(page).toHaveURL(/\/en\/settings\/$/)
@@ -81,39 +89,49 @@ test.describe('paleta e tema', () => {
 })
 
 test.describe('área de trabalho do chat', () => {
-  test('desktop: três painéis com separadores operáveis por teclado', async ({
+  test('desktop: duas colunas, sem citação vazia, e o histórico recolhido é lembrado', async ({
     page,
     isMobile,
   }) => {
     test.skip(isMobile, 'layout de desktop')
     await page.goto('/pt-BR/chat/')
     await expect(page.getByRole('region', { name: 'Histórico' })).toBeVisible()
-    await expect(page.getByRole('region', { name: 'Citação' })).toBeVisible()
-    const separator = page.getByRole('separator', { name: 'Redimensionar o histórico' })
-    const before = Number(await separator.getAttribute('aria-valuenow'))
-    await separator.focus()
-    await page.keyboard.press('ArrowRight')
-    await expect
-      .poll(async () => Number(await separator.getAttribute('aria-valuenow')))
-      .toBeGreaterThan(before)
+    // A citação só aparece aberta por um chip ou uma fonte (`chat.spec.ts`).
+    await expect(page.getByRole('region', { name: 'Citação' })).toHaveCount(0)
+    await expect(page.getByRole('separator')).toHaveCount(0)
+
+    await page.getByRole('button', { name: 'Recolher o histórico' }).click()
+    await expect(page.getByRole('region', { name: 'Histórico' })).toHaveCount(0)
+    const expand = page.getByRole('button', { name: 'Mostrar o histórico' })
+    await expect(expand).toBeFocused()
+    // Recolhido, o atalho de nova conversa continua à vista.
+    await expect(page.getByRole('link', { name: 'Nova conversa' })).toBeVisible()
+
+    await page.reload()
+    await expect(expand).toBeVisible()
+    await expect(page.getByRole('region', { name: 'Histórico' })).toHaveCount(0)
+    await expand.click()
+    await expect(page.getByRole('region', { name: 'Histórico' })).toBeVisible()
   })
 
-  test('celular: só a conversa, com histórico e citação em overlays', async ({
-    page,
-    isMobile,
-  }) => {
+  test('celular: só a conversa, com o histórico num Sheet', async ({ page, isMobile }) => {
     test.skip(!isMobile, 'layout de celular')
     await page.goto('/pt-BR/chat/')
     await expect(page.getByRole('region', { name: 'Histórico' })).toBeHidden()
     await expect(page.getByRole('separator')).toHaveCount(0)
-
-    await page.getByRole('button', { name: 'Citação' }).click()
-    const drawer = page.getByRole('dialog', { name: 'Citação' })
-    await expect(drawer).toBeVisible()
-    await page.keyboard.press('Escape')
-    await expect(drawer).toBeHidden()
+    await expect(page.getByRole('button', { name: 'Citação' })).toHaveCount(0)
 
     await page.getByRole('button', { name: 'Histórico' }).click()
     await expect(page.getByRole('dialog', { name: 'Histórico' })).toBeVisible()
+  })
+
+  test('as preferências de cookies ficam no menu da conta', async ({ page }) => {
+    await page.goto('/pt-BR/chat/')
+    await page
+      .getByRole('banner')
+      .getByRole('button', { name: /^.. Conta de / })
+      .click()
+    await page.getByRole('menuitem', { name: 'Preferências de cookies' }).click()
+    await expect(page.getByRole('dialog', { name: 'Preferências de cookies' })).toBeVisible()
   })
 })

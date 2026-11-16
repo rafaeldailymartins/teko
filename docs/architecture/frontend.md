@@ -42,7 +42,7 @@ Sem Feature-Sliced Design (o steiger saiu, ADR 0032):
 apps/web/
   src/app/                     # rotas do App Router (só reexportam) e globals.css
   src/app/[locale]/{layout,page,not-found}.tsx
-  src/app/[locale]/(app)/layout.tsx                  # app shell (cabeçalho, paleta, aviso fixo)
+  src/app/[locale]/(app)/layout.tsx                  # app shell (cabeçalho, paleta, aviso discreto)
   src/app/[locale]/(app)/{chat,provision,compare,history,settings}/page.tsx
   src/app/[locale]/{sign-in,coverage,about,privacy,terms,[...rest]}/page.tsx
   src/components/              # ui/ (shadcn), brand/ (logo), app-shell/, pages/, providers.tsx e componentes de tela
@@ -211,28 +211,38 @@ Content-Security-Policy: default-src 'self'; script-src 'self' 'sha256-…'; sty
 
 ## UX
 
-- **App shell** com cabeçalho (marca, abas, busca da paleta, menu de idioma, tema e conta) e aviso
-  fixo; o menu de idioma (também no site e nas configurações) mantém a página, a query e a âncora.
-  No chat, três painéis redimensionáveis (histórico, thread, citação), operáveis por teclado; abaixo de 768 px, o histórico
-  vira Sheet e a citação vira Drawer, sem desmontar a conversa.
+- **App shell** com cabeçalho (marca, abas, busca da paleta, menu de idioma, tema e conta, que tem
+  as preferências de cookies); o menu de idioma (também no site e nas configurações) mantém a
+  página, a query e a âncora. O aviso "Apoio à consulta; não constitui parecer" é discreto: no chat,
+  uma linha pequena abaixo do composer; nas outras páginas, no fim do conteúdo.
+- **Área de trabalho do chat** com duas colunas no máximo: o histórico (recolhível por um botão, com
+  a escolha em `localStorage['teko-history-panel']`; recolhido, vira um trilho com "Nova conversa")
+  e a conversa. O painel de citação só existe aberto: entra à direita da conversa, redimensionável
+  por teclado, fecha com o botão ou `Esc`, e o histórico vira o trilho enquanto ele está aberto.
+  Abaixo de 768 px, o histórico vira Sheet e a citação Drawer (aberto pelo chip), sem desmontar a
+  conversa.
 - **Data de referência:** chip fixo no composer ("Período de apuração: 03/2024"), month picker com
   alternância para data exata, presets (mês anterior, mês atual, último período fechado); enquanto o
   usuário não mexe, envia `source:'default'`; inferida do texto fica âmbar ("confirmar");
-  `needs_clarification` mostra botões. Todo cabeçalho de resposta repete a data e a vigência usadas.
-- **Cobertura** no composer e `CoverageBanner` (fundamentada, parcial, fora de cobertura); o envio
-  continua permitido, para a API recusar formalmente.
-- **Rótulos de degradação:** "Somente busca lexical", "Modelo de reserva", "Resposta em cache".
+  `needs_clarification` mostra botões. Todo cabeçalho de resposta repete a data e a vigência usadas,
+  numa linha discreta ("05/2008 · vigência desde 23/09/2005").
+- **Cobertura:** o composer avisa só quando a data está fora de cobertura (o envio continua
+  permitido, para a API recusar formalmente); a cobertura parcial vira uma nota de uma linha na
+  resposta, com os nomes legíveis das famílias (os da página de cobertura).
+- **Rótulos de degradação:** "Somente busca lexical" e "Modelo de reserva" na linha de metadados;
+  "Resposta em cache" só na dica da linha e para leitor de tela.
 - **Cota:** `quota_exceeded` e `service_paused` desabilitam o composer e mostram o reset.
-- **Chat vazio:** a abertura com o selo, a saudação pelo nome, a data de referência em destaque como
-  o ponto âmbar sobre o fio da linha do tempo do corpus (1998 a hoje; abre o mesmo seletor do chip) e
-  o composer no meio; com conversa, o composer desce e fica fixo embaixo, sem remontar.
-- **Thread:** resposta em 16 px na medida de leitura (70 caracteres); cabeçalho com o selo, a data e
-  a vigência em `Badge`; "pensando" com a forma da resposta e o ponto âmbar andando no fio; cursor de
-  stream; fontes em cartões (quatro à vista); copiar a resposta e 👍/👎 discretos. A rolagem só
-  acompanha o stream com o usuário no fim (`useStickToBottom`); se ele sobe, aparece "Ir para o fim".
-- **Composer:** um bloco só com a área de texto, o chip da data, a cobertura, o contador, o atalho em
-  `Kbd` e o botão redondo de enviar ou parar; os avisos (cota, cobertura, data inferida, PII) entram
-  no topo do bloco.
+- **Chat vazio:** a abertura com o selo, a saudação pelo nome e uma linha; a data de referência fica
+  só no chip do composer. O composer fica no meio, com quatro sugestões em linhas finas embaixo; com
+  conversa, ele desce e fica fixo embaixo, sem remontar.
+- **Thread:** resposta em 16 px na medida de leitura (70 caracteres), o protagonista; a linha do selo
+  com os metadados em texto pequeno; "pensando" com a forma da resposta e o ponto âmbar andando no
+  fio; cursor de stream; fontes recolhidas em "N fontes", que abre uma lista de uma coluna (número,
+  dispositivo e vigência); copiar a resposta e 👍/👎 discretos. A rolagem só acompanha o stream com o
+  usuário no fim (`useStickToBottom`); se ele sobe, aparece "Ir para o fim".
+- **Composer:** um bloco só com a área de texto, o chip da data e o botão redondo de enviar ou parar
+  (o atalho no `title` e no `aria-keyshortcuts`); o contador aparece perto do limite; os avisos
+  (cota, data fora de cobertura, data inferida, PII) entram no topo do bloco quando acontecem.
 - **Citações:** chips numerados durante o stream, hover card (família, dispositivo, começo do texto e
   vigência) e painel com documento, versão, badge de intervalo, texto (`lang="pt-BR"`) num cartão de
   leitura, link para a fonte, "copiar citação", "reportar", "Abrir o dispositivo", linha do tempo (a
@@ -284,10 +294,9 @@ Content-Security-Policy: default-src 'self'; script-src 'self' 'sha256-…'; sty
   exclusão por confirmação digitada.
 - **Teclado:** `Ctrl/⌘+K` paleta, `/` composer, `Ctrl/⌘+Enter` envia, `Esc` para ou fecha,
   `[`/`]` citações, `Alt+D` data.
-- **Estados:** sugestões sem repetir (em destaque, o RCTE art. 76 § 6º em 05/2008 contra 01/2010;
-  abaixo, uma pergunta por família do corpus, no período certo), skeletons com a forma do conteúdo,
-  bolha otimista, `ErrorBoundary` por bloco, disclaimer fixo "Apoio à
-  consulta; não constitui parecer".
+- **Estados:** sugestões sem repetir (primeiro, o RCTE art. 76 § 6º em 05/2008 contra 01/2010;
+  depois, uma pergunta de cada outra família do corpus, no período certo), skeletons com a forma do
+  conteúdo, bolha otimista, `ErrorBoundary` por bloco.
 - **Landing** estática, sem chamada à API (`src/components/landing/`): hero com a manchete em
   serif, a linha do tempo do RCTE, art. 76, § 6º atravessando o hero (redações, revogação e o ponto
   âmbar da data) e a **demonstração animada do chat**; "Como funciona" como linha do tempo de três
@@ -332,7 +341,8 @@ Content-Security-Policy: default-src 'self'; script-src 'self' 'sha256-…'; sty
 
 - **Consentimento** (F5): banner LGPD com Aceitar, Recusar e Personalizar de mesmo peso,
   preferências por categoria (medição de uso e pesquisas) em `localStorage['teko-consent']` com a
-  versão da política, e "Preferências de cookies" nos rodapés. Nada é gravado antes da escolha.
+  versão da política, e "Preferências de cookies" no rodapé do site e no menu da conta do app. Nada
+  é gravado antes da escolha.
 - **Adapter** `src/lib/analytics/`: o único lugar que pode carregar o SDK (o Biome barra
   `posthog-js` fora dele), por `import()`, só com `analytics: true` e `NEXT_PUBLIC_POSTHOG_KEY` no
   build. Na F5 o cliente é no-op; o SDK entra na F6.

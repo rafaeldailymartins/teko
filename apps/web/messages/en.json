@@ -53,10 +53,11 @@
     "panels": {
       "history": "History",
       "citation": "Citation",
-      "resizeHistory": "Resize history",
+      "collapseHistory": "Collapse history",
       "resizeCitation": "Resize citation",
       "historyEmpty": "Your conversations show up here, each with the reference date it used.",
-      "citationEmpty": "Pick a citation in the answer to see the provision, its version and its validity interval."
+      "closeCitation": "Close citation",
+      "expandHistory": "Show history"
     },
     "gate": {
       "loading": "Loading Tekó…",
@@ -788,13 +789,10 @@
       "placeholder": "Ask about EFD ICMS/IPI, EFD-Reinf or Goiás tax law…",
       "send": "Send",
       "stop": "Stop",
-      "hint": "{shortcut} sends · Esc stops",
       "blockedQuota": "The daily question limit was reached. Questions are back {reset}.",
       "blockedPaused": "The service is paused. Try again {reset}.",
       "resetAt": "at {time}",
       "resetSoon": "later",
-      "hintSend": "to send",
-      "hintStop": "to stop",
       "counter": "{count, number} / {max, number}"
     },
     "pii": {
@@ -833,11 +831,8 @@
       "chipDateLabel": "Reference date:"
     },
     "coverage": {
-      "label": "Coverage on this date",
-      "grounded": "Grounded",
-      "partial": "Partial coverage",
       "out": "Out of coverage",
-      "bannerPartial": "On this date, Tekó has no sources for {families}. The answer may be incomplete.",
+      "notePartial": "No sources for {families} on this date; the answer may be incomplete.",
       "bannerOut": "No Tekó source covers this date. The question may be refused."
     },
     "thread": {
@@ -861,6 +856,8 @@
     "answer": {
       "referencePeriodo": "Tax period {value}",
       "referenceDate": "Reference date {value}",
+      "periodoLabel": "Tax period",
+      "dateLabel": "Reference date",
       "source": {
         "explicit": "chosen by you",
         "periodo_apuracao": "chosen by you",
@@ -869,18 +866,17 @@
         "clarified": "clarified by you"
       },
       "validity": "Sources in force: {range}",
+      "validityShort": "in force {range}",
       "boundaryInside": "The wording changes within this period: check the exact date.",
       "citations": "Sources",
       "degraded": {
         "lexicalOnly": "Lexical search only",
         "fallback": "Fallback model",
-        "cached": "Cached answer",
-        "label": "How the answer was produced"
+        "cached": "Cached answer"
       },
       "copy": "Copy the answer",
       "copied": "Answer copied.",
-      "sourcesMore": "Show {count, plural, one {# more source} other {# more sources}}",
-      "sourcesLess": "Show fewer sources"
+      "sourcesToggle": "{count, plural, one {# source} other {# sources}}"
     },
     "intervals": {
       "range": "{from} to {to}",
@@ -941,25 +937,14 @@
       "previewHint": "Click to open"
     },
     "suggestions": {
-      "title": "Start here",
-      "body": "Questions about the corpus, each already set to the right tax period.",
+      "title": "Suggested questions",
       "questions": {
         "rcte76": "What does art. 76, § 6 of the RCTE say?",
         "efdC170": "How is record C170 of the EFD ICMS/IPI filled in?",
         "reinfR4020": "What does event R-4020 of the EFD-Reinf report?",
-        "rcteCompensation": "How does ICMS non-cumulativity work in the RCTE?",
         "efdGoTable52": "Which Goiás Table 5.2 items go into the EFD every month?"
       },
-      "ask": "Ask for {period}",
-      "compareTitle": "Same question, two dates",
-      "compareBody": "§ 6 was repealed on 11/23/2009. Ask before and after and watch the answer change.",
-      "families": {
-        "rcte": "RCTE · Goiás",
-        "efd-icms-ipi": "EFD ICMS/IPI",
-        "efd-reinf": "EFD-Reinf",
-        "efd-go": "EFD · Goiás"
-      },
-      "period": "Period <date>{period}</date>"
+      "askPrefix": "Ask for"
     },
     "welcome": {
       "greeting": {
@@ -968,8 +953,7 @@
         "evening": "Good evening"
       },
       "greetingNamed": "{greeting}, {name}",
-      "lead": "Ask about the EFD ICMS/IPI, the EFD-Reinf or the Goiás ICMS legislation. Every answer comes with the wording in force on the reference date, its sources and their validity.",
-      "dateLead": "Answers with the law in force on"
+      "lead": "Tax law as worded on the date you choose, always with its sources."
     }
   },
   "coverage": {

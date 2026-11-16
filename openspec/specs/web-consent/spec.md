@@ -30,8 +30,8 @@ PostHog. A própria escolha SHALL ser gravada só depois da decisão.
 O banner MUST oferecer Aceitar, Recusar e Personalizar com a mesma variante e o mesmo tamanho. As
 preferências SHALL listar os necessários como sempre ativos e as categorias opcionais (medição de
 uso e pesquisas) desligadas por padrão, com Recusar tudo, Salvar escolhas e Aceitar tudo de mesmo
-peso. Um link "Preferências de cookies" no rodapé do site e no do app shell MUST reabrir as
-preferências.
+peso. Um link "Preferências de cookies" no rodapé do site e um item "Preferências de cookies" no
+menu da conta do app shell MUST reabrir as preferências.
 
 #### Scenario: Mesmo peso
 
@@ -43,6 +43,11 @@ preferências.
 - **WHEN** a pessoa que aceitou só a medição de uso clica em "Preferências de cookies" no rodapé
 - **THEN** as preferências abrem com a medição ligada e as pesquisas desligadas, e "Recusar tudo"
   grava a recusa
+
+#### Scenario: Reabrir pelo menu da conta
+
+- **WHEN** a pessoa, no chat, abre o menu da conta e escolhe "Preferências de cookies"
+- **THEN** as preferências de cookies abrem
 
 ### Requirement: Escolha versionada
 
