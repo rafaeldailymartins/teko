@@ -358,9 +358,12 @@ describe('trace answer-question das perguntas encerradas no POST', () => {
       coverage: { ...COVERED, status: 'out_of_coverage', coveredFamilies: [] },
     })
     await ask()
+    expect(port.queries[0]?.start.cached).toBe(false)
     expect(port.queries[0]?.end).toMatchObject({
       outcome: 'refused',
       refusalReason: 'out_of_coverage',
+      answer: null,
+      citations: [],
     })
   })
 
