@@ -323,10 +323,11 @@ mantenedor em 2026-11-17, sem mudanças.
 
 ## Antes da F7: o que o mantenedor faz
 
-Lista única das ações fora do repositório que o deploy da F7 exige. O agente que começa a F7
-apresenta esta lista ao mantenedor, confere o que já foi feito (nomes de segredos com
-`gh secret list --env <env>`; env vars da Vercel com `vercel env ls`, sem ler valores) e marca cada
-item aqui. Segredos nunca passam pelo chat: o mantenedor grava cada um.
+Lista única das ações fora do repositório que o deploy da F7 exige. Concluída em 2026-11-17, menos
+a passkey do system test, que passou para dentro da F7 (abaixo e no
+[roteiro](roadmap.md#f7-deploy-de-staging-e-produção)). O agente que começa a F7 só reconfere os
+nomes (segredos com `gh secret list --env <env>`; env vars da Vercel com `vercel env ls` ou a API,
+sem ler valores) e segue. Segredos nunca passam pelo chat: o mantenedor grava cada um.
 
 - [x] **OAuth apps** do GitHub e do Google (feito em 2026-11-17): uma de staging e uma de produção
   de cada, com callback em `<WEB_ORIGIN>/api/auth/callback/{github,google}`, sem Device Flow nem
@@ -349,11 +350,13 @@ item aqui. Segredos nunca passam pelo chat: o mantenedor grava cada um.
   nota `teko-smoke (F7)`; o valor foi direto ao GitHub), `NEON_PROD_MIGRATE_URL` (URL direta do
   `neondb_owner` do `teko-prod`), as vars `VERCEL_ORG_ID` e `VERCEL_PROJECT_ID` do `tekoia` e os do
   PostHog (tabela de environments em [`ci-cd-e-ambientes.md`](architecture/ci-cd-e-ambientes.md)).
-- [ ] **Passkey do system test** no environment `staging` (mesma tabela).
+- [ ] **Passkey do system test** no environment `staging`: passou para a F7 (decisão do mantenedor
+  em 2026-11-17). O usuário de teste só pode ser criado no staging depois do primeiro deploy da F7,
+  quando a API e o web novos chegam lá; o passo a passo está no
+  [roteiro da F7](roadmap.md#f7-deploy-de-staging-e-produção). O agente da F7 marca este item.
 - [x] **Checklist dos projetos e do time da Vercel** (conferido em 2026-11-17, pela API e no
-  dashboard) em
-  [`infra/vercel/README.md`](../infra/vercel/README.md) (Build and Deployment, Deployment
-  Protection, Firewall e "Time e conta"): conferir no dashboard e marcar lá.
+  dashboard) em [`infra/vercel/README.md`](../infra/vercel/README.md) (Build and Deployment,
+  Deployment Protection, Firewall e "Time e conta").
 - [x] **Grafana Cloud Free** (feito em 2026-11-17): stack `tenderferret1492` em `prod-eu-west-2`
   (UE) e o environment `ops` com os segredos `GRAFANA_SA_TOKEN` (service account Editor),
   `GRAFANA_SM_TOKEN`, `GRAFANA_OTLP_TOKEN` (só `metrics:write`), `GRAFANA_ALERT_EMAILS`,
