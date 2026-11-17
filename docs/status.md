@@ -334,7 +334,11 @@ item aqui. Segredos nunca passam pelo chat: o mantenedor grava cada um.
   As chaves do Gemini do staging e da produção vêm de projetos diferentes do Google Cloud, porque a
   cota é por projeto (ADR 0007, adendo de 2026-11-15); o ZDR fica ligado no console do Groq. O
   environment `staging` do GitHub já tem as duas chaves (usadas pelo `corpus-eval`).
-- [ ] **Environment `production` do GitHub**, hoje sem segredo nem variável: `VERCEL_TOKEN` próprio,
+- [ ] **Banco e Workers AI** (Sensitive) nos dois projetos da Vercel: `DATABASE_URL` (URL `-pooler`
+  do role `teko_app` do projeto Neon do ambiente), `CF_ACCOUNT_ID` e `CF_AI_TOKEN` (token só de
+  inferência). Os manifestos `infra/vercel/env.*.json` exigem os três desde a F2; em 2026-11-17,
+  os dois projetos só tinham a `POSTHOG_PROJECT_KEY` entre as Sensitive.
+- [ ] **Environment `production` do GitHub**, hoje só com os do PostHog: `VERCEL_TOKEN` próprio,
   `VERCEL_AUTOMATION_BYPASS_SECRET` do `tekoia`, as vars `VERCEL_ORG_ID` e `VERCEL_PROJECT_ID` e
   `NEON_PROD_MIGRATE_URL` (tabela de environments em
   [`ci-cd-e-ambientes.md`](architecture/ci-cd-e-ambientes.md)).
@@ -355,16 +359,23 @@ item aqui. Segredos nunca passam pelo chat: o mantenedor grava cada um.
   as chaves do projeto correspondente, e as de produção no Render; no environment `ops`, os segredos
   `LANGFUSE_PROD_PUBLIC_KEY`, `LANGFUSE_PROD_SECRET_KEY`, `LANGFUSE_STAGING_PUBLIC_KEY` e
   `LANGFUSE_STAGING_SECRET_KEY` e, opcional, a variável `LANGFUSE_BASE_URL`.
-- [ ] **PostHog EU**, um projeto só: ligar o modo cookieless, o "Discard client IP data" e o Error
-  Tracking. A chave do projeto vai em `POSTHOG_PROJECT_KEY` (Sensitive) nos dois projetos da Vercel
-  e no Render, em `NEXT_PUBLIC_POSTHOG_ERRORS_KEY` no build de staging e produção, em
-  `NEXT_PUBLIC_POSTHOG_KEY` só no build de produção e na variável `POSTHOG_PROJECT_KEY` do
-  environment `staging` (evento do `source-watch`). Uma chave pessoal do PostHog vai em
-  `POSTHOG_PERSONAL_API_KEY` (Sensitive) nos dois projetos da Vercel, para o apagamento com a conta
-  (`DeleteMyData`). Para o upload dos source maps, nos environments
-  de deploy: o segredo `POSTHOG_CLI_API_KEY` (chave pessoal `phx_` com `error tracking write` e
-  `organization read`) e a variável `POSTHOG_CLI_PROJECT_ID`. O pipeline da F7 define
-  `NEXT_PUBLIC_TEKO_RELEASE`.
+- [x] **PostHog EU** (feito em 2026-11-17), um projeto só, o 355097 "Tekó":
+  - **Projeto:** cookieless, "Discard client IP data" e Error Tracking ligados; replay, autocapture,
+    heatmaps, dead clicks, console log e performance desligados. Há um dashboard, "Tekó: uso e
+    qualidade", com seis insights sobre o catálogo de eventos.
+  - **Chave do projeto (`phc_`, pública):** `POSTHOG_PROJECT_KEY` (Sensitive) nos dois projetos da
+    Vercel; variável `POSTHOG_PROJECT_KEY` do environment `staging` (evento do `source-watch`).
+  - **Build do web:** variáveis `NEXT_PUBLIC_POSTHOG_ERRORS_KEY` (environments `staging` e
+    `production`) e `NEXT_PUBLIC_POSTHOG_KEY` (só `production`). Precisam estar no GitHub, e não na
+    Vercel: o build roda no Actions, sem `vercel pull` (ADR 0017). O pipeline da F7 as passa ao passo
+    de build e define `NEXT_PUBLIC_TEKO_RELEASE`.
+  - **Source maps:** segredo `POSTHOG_CLI_API_KEY` (chave pessoal `phx_` com `error tracking write`
+    e `organization read`) e variável `POSTHOG_CLI_PROJECT_ID` nos environments `staging` e
+    `production`.
+  - **Plano B (decisão do mantenedor em 2026-11-17):** sem `POSTHOG_PROJECT_KEY` no Render; os erros
+    da API do Plano B ficam só no log e nos traces.
+  - Não há chave pessoal no runtime: o analytics não se liga à conta, então não há o que apagar no
+    PostHog com a exclusão dela.
 
 ## Revisão antes da F4 (2026-11-12)
 
