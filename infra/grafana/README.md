@@ -56,17 +56,25 @@ apagado à mão.
 
 ## Synthetic Monitoring e a cota
 
-| Check                     | Alvo                                        | Frequência | Sondas     | Execuções/mês |
-| ------------------------- | ------------------------------------------- | ---------- | ---------- | ------------- |
-| `teko-healthz-production` | `https://tekoia.vercel.app/healthz`         | 5 min      | `SaoPaulo` | 8.640         |
-| `teko-healthz-staging`    | `https://tekoia-staging.vercel.app/healthz` | 5 min      | `SaoPaulo` | 8.640         |
-| `teko-landing-production` | `https://tekoia.vercel.app/pt-BR/`          | 15 min     | `SaoPaulo` | 2.880         |
-| **total**                 |                                             |            |            | **20.160**    |
+| Check                     | Alvo                                        | Frequência | Sondas     | Ligado        | Execuções/mês       |
+| ------------------------- | ------------------------------------------- | ---------- | ---------- | ------------- | ------------------- |
+| `teko-healthz-production` | `https://tekoia.vercel.app/healthz`         | 5 min      | `SaoPaulo` | sim           | 8.640               |
+| `teko-healthz-staging`    | `https://tekoia-staging.vercel.app/healthz` | 5 min      | `SaoPaulo` | sim           | 8.640               |
+| `teko-landing-production` | `https://tekoia.vercel.app/pt-BR/`          | 15 min     | `SaoPaulo` | não, até a F7 | 0 (2.880 ligado)    |
+| **total**                 |                                             |            |            |               | **17.280** (20.160) |
 
 Conta do Grafana (`sondas × checks × duração em minutos × 43.200 / frequência`): cada check HTTP
-dura menos de 1 min, então `1 × 43.200 / 5 = 8.640` e `43.200 / 15 = 2.880`. O Free inclui 100 mil
-execuções de API test por mês; a validação reprova acima de 50 mil, para sobrar espaço. Os checks
-usam `basicMetricsOnly` (menos séries ativas dos 10 mil do Free).
+dura menos de 1 min, então `1 × 43.200 / 5 = 8.640` e `43.200 / 15 = 2.880`. O Synthetic
+Monitoring cobra cada execução feita; check com `enabled: false` não roda e conta 0, na validação e
+no resumo do apply. O Free inclui 100 mil execuções de API test por mês; a validação reprova acima
+de 50 mil, para sobrar espaço. Os checks usam `basicMetricsOnly` (menos séries ativas dos 10 mil do
+Free), que mantém `probe_success`, `probe_http_status_code` e `probe_duration_seconds`.
+
+**`teko-landing-production` desligado:** o web de produção só existe depois do primeiro deploy da
+F7, e até lá `https://tekoia.vercel.app/pt-BR/` responde 404 (medido em 2026-11-17); o check só
+falharia, dispararia o `teko-synthetic-failed` e gastaria execuções. Ele fica no arquivo com
+`enabled: false`, e o apply o cria desligado; o deploy do web de produção da F7 troca para `true`
+(pendência no `docs/status.md`).
 
 - **`/healthz` não toca o banco** (`apps/api/src/application/use-cases/get-health.ts` e
   `routes/health.ts`: só o estado do processo, sem rate limit, que usa o Postgres). O teste de
@@ -79,6 +87,9 @@ usam `basicMetricsOnly` (menos séries ativas dos 10 mil do Free).
   precisam do bypass de automação, que continua só no smoke contra a URL única.
 - **503 no `/healthz`** = `DEPLOYMENT_PAUSED` (a drenagem por SIGTERM só existe fora da Vercel):
   alerta `teko-deployment-paused`.
+- **Qualquer outra falha** (timeout, erro de rede, TLS, 500, corpo sem o texto esperado) em todas
+  as execuções de 20 min de um check: alerta `teko-synthetic-failed`, sobre `probe_success`. Os
+  dois disparam juntos num 503 que dura mais de 20 min.
 
 ## Alertas
 
@@ -96,6 +107,7 @@ runbook apontam para `main` no GitHub.
 | `teko-rag-refusal-anomaly` | recusa em 1 h > 2× a de 7 dias, > 25% e ≥ 20 respostas               | API                              | `ops-alerts.md#recusa-...`                |
 | `teko-rag-lexical-only`    | `lexical_only` > 10% em 30 min, ≥ 5 respostas                        | API                              | `provider-outage.md#embeddings`           |
 | `teko-deployment-paused`   | `/healthz` respondeu 503 ao Synthetic Monitoring                     | Synthetic Monitoring             | `vercel-paused.md` (F7)                   |
+| `teko-synthetic-failed`    | check `teko-*` sem nenhum sucesso em 20 min (`probe_success` < 1)    | Synthetic Monitoring             | `ops-alerts.md#check-sintetico-...`       |
 | `teko-neon-cu-hours`       | `teko_neon_cu_hours_ratio` > 0,7                                     | `ops.yml` (`quotas`)             | `neon-suspended.md#cu-h-...`              |
 | `teko-langfuse-units`      | `teko_langfuse_units_projected` > 35.000                             | `ops.yml` (Langfuse)             | `quota-exhausted.md#langfuse`             |
 | `teko-vercel-usage-50`     | `teko_vercel_usage_ratio` > 0,5                                      | `ops.yml` (`vercel-usage`, F7)   | `budget-kill-switch.md` (F7)              |
@@ -138,8 +150,13 @@ Nada disso passa pelo chat nem pelo repositório: `gh secret set NOME --env ops`
 7. **Variável `GRAFANA_URL`** com a URL da stack. Opcional: `GRAFANA_PROM_DATASOURCE_UID`, se o
    datasource Prometheus da stack não for `grafanacloud-prom` (Connections → Data sources).
 8. **Neon:** variáveis `NEON_PROD_PROJECT_ID` e `NEON_STAGING_PROJECT_ID` e segredos
-   `NEON_API_KEY_PROD` e `NEON_API_KEY_STAGING` (API keys **project-scoped**, só leitura de uso;
-   podem ser as mesmas dos environments `release-rehearsal` e `staging` ou novas).
+   `NEON_API_KEY_PROD` e `NEON_API_KEY_STAGING` (API keys **project-scoped**). O Neon não tem chave
+   só de leitura: a project-scoped tem papel **Editor** no projeto, lê e altera os recursos dele,
+   mas não apaga o projeto nem gerencia quem tem acesso
+   ([doc do Neon](https://neon.com/docs/manage/api-keys)). O risco fica contido por três motivos: a
+   chave vale para um projeto só, mora apenas no environment `ops` (só `main`), e o job `quotas` só
+   faz `GET /projects/{id}`. Prefira chaves próprias do `ops`: reaproveitar as dos environments
+   `release-rehearsal` e `staging` funciona, mas a mesma chave passa a morar em dois lugares.
 9. **Tokens com validade:** variável `TOKEN_EXPIRY_DATES` em JSON, nome → data de expiração
    (`{"VERCEL_TOKEN (staging)": "2027-02-14", "VERCEL_TOKEN (production)": "2027-02-14",
    "VERCEL_USAGE_TOKEN": "2027-02-14", "GRAFANA_SA_TOKEN": "2027-11-16"}`). Atualize a cada

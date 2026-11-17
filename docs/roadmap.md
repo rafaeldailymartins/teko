@@ -147,6 +147,8 @@ seguimento que troca `develop` por `main` no código.
   - cold start p95 + resume do Neon abaixo de 10 s;
   - purge semanal comprovado contra o staging;
   - ensaio do Plano B: smoke verde contra o host do Render e volta ao estado parado;
+  - check `teko-landing-production` do Synthetic Monitoring ligado (`enabled: true`) no primeiro
+    deploy do web de produção, com execuções verdes;
   - itens da F6 que pedem tráfego real conferidos no staging, com o roteiro do
     [registro da F6](evals/dod-f6-2026-11-17.md#o-que-a-f7-confere-no-staging).
 

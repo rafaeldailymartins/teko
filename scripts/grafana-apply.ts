@@ -270,7 +270,9 @@ async function applyChecks(context: ApplyContext, sm: Client): Promise<void> {
       kind: 'check',
       id: check.job,
       action: current === undefined ? 'create' : 'update',
-      note: `${String(monthlyExecutions(check))} execuções/mês`,
+      note: check.enabled
+        ? `${String(monthlyExecutions(check))} execuções/mês`
+        : 'desligado, 0 execuções/mês',
     })
     if (context.mode !== 'apply') continue
     await (current === undefined
@@ -343,7 +345,7 @@ function optional(name: string): string | undefined {
 function summarize(code: GrafanaAsCode): string[] {
   const executions = code.checks.checks.map(
     (check) =>
-      `| ${check.job} | ${check.target} | ${String(check.frequency / 60_000)} min | ${String(check.probes.length)} | ${String(monthlyExecutions(check))} |`,
+      `| ${check.job} | ${check.target} | ${String(check.frequency / 60_000)} min | ${String(check.probes.length)} | ${String(monthlyExecutions(check))}${check.enabled ? '' : ' (desligado)'} |`,
   )
   const total = code.checks.checks.reduce((sum, check) => sum + monthlyExecutions(check), 0)
   return [

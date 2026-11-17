@@ -314,7 +314,9 @@ Pendências, todas da F7 (conferência no staging, roteiro em
 - `/healthz` sem aumento de CU-h em 24 h;
 - projeção do Langfuse abaixo de 35k units;
 - stack de um erro de teste resolvida pelos source maps do upload do deploy;
-- `grafana-apply` sem `--dry-run` na stack real.
+- `grafana-apply` sem `--dry-run` na stack real;
+- `teko-landing-production` ligado (`enabled: true` em `infra/grafana/synthetic-monitoring.json`)
+  no primeiro deploy do web de produção.
 
 A política de privacidade da versão 2026-11-17 (#116, lista de parágrafos no PR) foi revisada pelo
 mantenedor em 2026-11-17, sem mudanças.
