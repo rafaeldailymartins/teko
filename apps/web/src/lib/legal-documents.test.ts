@@ -80,6 +80,19 @@ describe('conteúdo legal obrigatório', () => {
     },
   )
 
+  it.each([
+    ['pt-BR', ptBR, 'raciocínio do modelo'],
+    ['en', en, 'model’s reasoning'],
+  ])(
+    '%s: a política diz que o Langfuse recebe o raciocínio do modelo',
+    (_locale, messages, reasoning) => {
+      const { data, providers } = messages.legal.privacy.sections
+      const langfuseItem = providers.body.split('<li>').find((item) => item.includes('Langfuse'))
+      expect(langfuseItem).toContain(reasoning)
+      expect(data.body).toContain(reasoning)
+    },
+  )
+
   it('os termos têm o aviso de que o Tekó não constitui parecer, igual ao do rodapé', () => {
     expect(JSON.stringify(ptBR.legal.terms)).toContain('Apoio à consulta; não constitui parecer')
   })

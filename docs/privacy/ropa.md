@@ -31,7 +31,7 @@ Observabilidade e produto (F6), sem o texto cru da pergunta em nenhum deles:
 | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------- | -------------------------- | --------------------------- | ---------------------------------------------------------------------------------- |
 | Eventos do catálogo (`packages/shared/src/analytics/events.ts`, sem texto livre), identificador aleatório do navegador e dados técnicos do evento (URL sem query, navegador, tela); respostas às pesquisas | medição de uso e pesquisas in-app | consentimento, I           | PostHog (UE)                | 1 ano (plano gratuito)                                                             |
 | Erros do navegador e da API (mensagem, pilha, página sem query, versão, `trace_id`), depois do scrubber de PII                                                                                             | encontrar e corrigir falhas       | legítimo interesse, IX     | PostHog Error Tracking (UE) | 1 ano (plano gratuito)                                                             |
-| Traces de LLM numa amostra: pergunta redigida (`PiiRedactor`), resposta, trechos, modelo, tokens e tempos; usuário só por hash                                                                             | qualidade e custo das respostas   | legítimo interesse, IX     | Langfuse Cloud Hobby (UE)   | acesso aos últimos 30 dias, sem apagamento automático; sai com a exclusão da conta |
+| Traces de LLM numa amostra: pergunta redigida (`PiiRedactor`), resposta, raciocínio do modelo, trechos, modelo, tokens e tempos; usuário só por hash                                                       | qualidade e custo das respostas   | legítimo interesse, IX     | Langfuse Cloud Hobby (UE)   | acesso aos últimos 30 dias, sem apagamento automático; sai com a exclusão da conta |
 | Traces, logs e métricas da API (rota, status, duração, `trace_id`), sem conteúdo de pergunta                                                                                                               | disponibilidade e desempenho      | legítimo interesse, IX     | Grafana Cloud Free (UE)     | 14 dias                                                                            |
 
 A medição do navegador não se liga à conta: não há `identify`, e o `person_profiles:
@@ -53,17 +53,17 @@ logs de runtime não a registram.
 
 ## Operadores e transferências
 
-| Operador                | Função                                  | Local                       | Dado que recebe                                                 |
-| ----------------------- | --------------------------------------- | --------------------------- | --------------------------------------------------------------- |
-| Vercel                  | hospedagem do site e da API             | `gru1` (São Paulo)          | requisições; logs de runtime por 1 h, sem a pergunta crua       |
-| Neon                    | banco de dados                          | AWS `sa-east-1` (São Paulo) | todos os dados acima                                            |
-| Cloudflare (Workers AI) | embeddings e reranker                   | rede global                 | pergunta redigida                                               |
-| Google (Gemini, free)   | geração da resposta                     | EUA                         | pergunta redigida e trechos da legislação                       |
-| Groq                    | geração da resposta, com retenção zero  | EUA                         | pergunta redigida e trechos da legislação                       |
-| GitHub e Google (OAuth) | login                                   | EUA                         | só o fluxo de login, iniciado pelo usuário                      |
-| PostHog                 | analytics de produto, pesquisas e erros | UE (`eu.i.posthog.com`)     | eventos do catálogo e erros, sem a pergunta                     |
-| Langfuse                | traces de LLM                           | UE (Langfuse Cloud EU)      | amostra: pergunta redigida, resposta, trechos; usuário por hash |
-| Grafana Labs            | traces, logs e métricas da API          | UE (região da stack)        | telemetria técnica, sem a pergunta                              |
+| Operador                | Função                                  | Local                       | Dado que recebe                                                             |
+| ----------------------- | --------------------------------------- | --------------------------- | --------------------------------------------------------------------------- |
+| Vercel                  | hospedagem do site e da API             | `gru1` (São Paulo)          | requisições; logs de runtime por 1 h, sem a pergunta crua                   |
+| Neon                    | banco de dados                          | AWS `sa-east-1` (São Paulo) | todos os dados acima                                                        |
+| Cloudflare (Workers AI) | embeddings e reranker                   | rede global                 | pergunta redigida                                                           |
+| Google (Gemini, free)   | geração da resposta                     | EUA                         | pergunta redigida e trechos da legislação                                   |
+| Groq                    | geração da resposta, com retenção zero  | EUA                         | pergunta redigida e trechos da legislação                                   |
+| GitHub e Google (OAuth) | login                                   | EUA                         | só o fluxo de login, iniciado pelo usuário                                  |
+| PostHog                 | analytics de produto, pesquisas e erros | UE (`eu.i.posthog.com`)     | eventos do catálogo e erros, sem a pergunta                                 |
+| Langfuse                | traces de LLM                           | UE (Langfuse Cloud EU)      | amostra: pergunta redigida, resposta, raciocínio, trechos; usuário por hash |
+| Grafana Labs            | traces, logs e métricas da API          | UE (região da stack)        | telemetria técnica, sem a pergunta                                          |
 
 - O Gemini gratuito pode usar os prompts para treino: a UI avisa, só texto redigido sai, e quem
   declara residência ou acessa do Espaço Econômico Europeu, do Reino Unido ou da Suíça é atendido só
