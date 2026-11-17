@@ -64,3 +64,38 @@ mês (traces, observations e scores) na organização, e a API da Vercel Hobby c
 - **Self-hosted em produção:** exigiria Postgres, ClickHouse, Redis e S3 sempre ligados; fora do
   custo zero.
 - **`@langfuse/client` para scores e apagamento:** recusado pela proveniência do `mustache`.
+
+## Adendo (2026-11-17): traces pelas boas práticas do Langfuse
+
+Mudança OpenSpec `refine-llm-tracing-best-practices`. Uma auditoria dos traces contra a página "What
+does a good trace look like?" (`langfuse.com/docs/observability/best-practices`) e a de tipos de
+observation, com a prova no Langfuse local, mudou o formato do trace, não a decisão:
+
+- **Nomes com verbo no início e estáveis:** `rag-query`, `retrieval`, `answer` e `rewrite` viraram
+  `answer-question` (trace e raiz), `retrieve-context`, `generate-answer` e `rewrite-query`, num lugar
+  só (`langfuse-names.ts`). Evaluators, dashboards e filtros salvos referenciam os nomes; a troca
+  saiu antes de existir algum, quando era barata. Daqui em diante, trocar um nome exige refazer o que
+  o referencia.
+- **Raiz com a pergunta e a resposta:** a entrada e a saída do trace vêm da raiz e são o que a
+  tabela, os evaluators e os experimentos leem; os objetos (data, famílias, desfecho, citações)
+  foram para a metadata. As citações usadas vão com o trecho, para um evaluator de fidelidade.
+- **Retriever com entrada e saída:** a consulta (e a reescrita), a data e as famílias na entrada; os
+  dispositivos recuperados com RRF e posições na saída, sem o texto, que já está no prompt da
+  generation (repeti-lo dobraria o tamanho do trace sem informação nova).
+- **Generations como conversa:** mensagens `system` e `user` no formato da OpenAI (o system prompt,
+  antes fora, entra para o trace ser fiel ao que o modelo viu; o texto é público, no repositório) e
+  o raciocínio do modelo como item `reasoning` da saída, que a interface mostra como bloco
+  "Thinking". O raciocínio vem no `finish` do adapter, não como evento, para o fallback do router
+  continuar decidido pelo primeiro texto. O Gemini passou a pedir o resumo dos pensamentos
+  (`includeThoughts`; os tokens de raciocínio já eram gastos e contados), e o `gpt-oss` do Groq já o
+  devolvia.
+- **Sessão = conversa:** a página recomenda sessão para chatbot. O histórico não entra no prompt
+  (cada pergunta é independente), então as generations não repetem os turnos anteriores; mesmo
+  assim a sessão vale: não gasta unit (é atributo), e a triagem de um 👎 vê as perguntas anteriores
+  da conversa, que é onde aparece uma pergunta de continuação que falhou por falta de histórico. O id
+  é o UUID interno da conversa, sem PII.
+- **Atributos de correlação em toda observation** (usuário em hash, sessão, tags e metadata curta do
+  trace), como o modelo de observations do Langfuse v4 pede; a versão do prompt fica no `version` de
+  cada observation (a da reescrita é outra).
+- Falha sai com o código do erro na mensagem de status, desconexão com `WARNING`.
+- Nada disso cria observation: as units por pergunta não mudam.

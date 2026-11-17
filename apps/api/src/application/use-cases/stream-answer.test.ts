@@ -387,7 +387,7 @@ function traced(sampled = true) {
   return { port, tracer }
 }
 
-describe('trace rag-query e custo-sombra em todos os desfechos', () => {
+describe('trace answer-question e custo-sombra em todos os desfechos', () => {
   it('resposta: trace com retrieval e answer (4 units), trace_id e units gravados', async () => {
     const { port, tracer } = traced()
     const { stream, finished } = setup({ tracer })
@@ -396,13 +396,18 @@ describe('trace rag-query e custo-sombra em todos os desfechos', () => {
     expect(query?.start).toMatchObject({
       questionId: 'q1',
       userId: 'u1',
+      conversationId: 'c1',
       question: 'Qual o prazo?',
       cached: false,
       corpusVersion: 14,
     })
     expect(query?.retrievals).toHaveLength(1)
     expect(query?.generations).toHaveLength(1)
-    expect(query?.end).toMatchObject({ outcome: 'answered', citations: 1, refusalReason: null })
+    expect(query?.end).toMatchObject({
+      outcome: 'answered',
+      citations: [expect.objectContaining({ id: 'S1', valid: true })],
+      refusalReason: null,
+    })
     expect(finished[0]?.result).toMatchObject({
       status: 'answered',
       langfuseTraceId: 'trace-1',
@@ -436,7 +441,7 @@ describe('trace rag-query e custo-sombra em todos os desfechos', () => {
       outcome: 'refused',
       refusalReason: 'no_evidence',
       answer: null,
-      citations: 0,
+      citations: [],
       corpusVersion: 14,
     })
     expect(finished[0]?.result).toMatchObject({
@@ -458,7 +463,11 @@ describe('trace rag-query e custo-sombra em todos os desfechos', () => {
     const { port, tracer } = traced()
     const { stream, finished } = setup({ tracer, script: 'boom' })
     await collect(await stream(command()))
-    expect(port.queries[0]?.end).toMatchObject({ outcome: 'failed', answer: null })
+    expect(port.queries[0]?.end).toMatchObject({
+      outcome: 'failed',
+      failure: 'internal',
+      answer: null,
+    })
     expect(finished[0]?.result).toMatchObject({
       status: 'failed',
       shadowCostUsd: 0,
@@ -479,6 +488,7 @@ describe('trace rag-query e custo-sombra em todos os desfechos', () => {
     await background[0]?.task
     const [query] = port.queries
     expect(query?.end).toMatchObject({ outcome: 'aborted' })
+    expect(query?.end).not.toHaveProperty('failure')
     expect(query?.generations[0]?.end).toMatchObject({ error: 'aborted' })
     expect(finished[0]?.result).toMatchObject({
       status: 'aborted',

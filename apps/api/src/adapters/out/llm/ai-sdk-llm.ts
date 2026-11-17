@@ -1,4 +1,4 @@
-import { createGoogle } from '@ai-sdk/google'
+import { createGoogle, type GoogleLanguageModelOptions } from '@ai-sdk/google'
 import { createGroq } from '@ai-sdk/groq'
 import type { Span } from '@opentelemetry/api'
 import { APICallError, type LanguageModel, streamText } from 'ai'
@@ -138,6 +138,17 @@ interface ModelIdentity {
 /** Valores de `gen_ai.provider.name` da semconv de GenAI. */
 const GEN_AI_PROVIDER = { gemini: 'gcp.gemini', groq: 'groq' } as const
 
+type ProviderOptions = Parameters<typeof streamText>[0]['providerOptions']
+
+/**
+ * O Gemini só devolve o raciocínio (o resumo dos pensamentos) com `includeThoughts`; os tokens de
+ * raciocínio já são gastos e contados de qualquer forma. O nível continua vindo do `reasoning`
+ * portátil (o SDK junta os dois). O `gpt-oss` do Groq devolve o raciocínio sem pedir.
+ */
+const GEMINI_OPTIONS = {
+  google: { thinkingConfig: { includeThoughts: true } } satisfies GoogleLanguageModelOptions,
+}
+
 /**
  * Um modelo da cadeia. Cada chamada abre um span `chat <modelo>` (atributos `gen_ai.*`, com o uso
  * de tokens no fim), filho do span ativo da requisição.
@@ -145,6 +156,7 @@ const GEN_AI_PROVIDER = { gemini: 'gcp.gemini', groq: 'groq' } as const
 function createAiSdkLlm(
   languageModel: LanguageModel,
   identity: ModelIdentity,
+  providerOptions?: ProviderOptions,
   now: () => number = Date.now,
 ): LlmModel {
   return {
@@ -159,7 +171,7 @@ function createAiSdkLlm(
           'gen_ai.request.temperature': request.temperature,
           'gen_ai.request.max_tokens': request.maxOutputTokens,
         },
-        (span) => streamEvents(languageModel, request, now, span),
+        (span) => streamEvents(languageModel, request, providerOptions, now, span),
       ),
   }
 }
@@ -167,11 +179,13 @@ function createAiSdkLlm(
 async function* streamEvents(
   languageModel: LanguageModel,
   request: LlmRequest,
+  providerOptions: ProviderOptions,
   now: () => number,
   span: Span,
 ): AsyncIterable<LlmEvent> {
   const result = streamText({
     model: languageModel,
+    ...(providerOptions === undefined ? {} : { providerOptions }),
     system: request.system,
     prompt: request.prompt,
     temperature: request.temperature,
@@ -183,9 +197,14 @@ async function* streamEvents(
     // O erro chega pelo `fullStream` e vira `LlmError`; o padrão do SDK o imprimiria no console.
     onError: () => {},
   })
+  // O raciocínio vem antes do texto e só sai no `finish` (ver `LlmEvent`): o primeiro evento
+  // continua sendo o primeiro texto, e o fallback do router não muda.
+  let reasoning = ''
   for await (const part of result.fullStream) {
     if (part.type === 'text-delta') {
       yield { type: 'text', text: part.text }
+    } else if (part.type === 'reasoning-delta') {
+      reasoning += part.text
     } else if (part.type === 'error') {
       throw toLlmError(part.error, request.signal, now())
     } else if (part.type === 'abort') {
@@ -199,7 +218,7 @@ async function* streamEvents(
         'gen_ai.usage.input_tokens': usage.inputTokens,
         'gen_ai.usage.output_tokens': usage.outputTokens,
       })
-      yield { type: 'finish', usage }
+      yield { type: 'finish', usage, ...(reasoning === '' ? {} : { reasoning }) }
     }
   }
 }
@@ -226,7 +245,11 @@ export function createLlmChain(config: LlmChainConfig): LlmModel[] {
   })
   return [
     ...config.geminiModels.map((model) =>
-      createAiSdkLlm(google(model), { provider: 'gemini', model, zeroDataRetention: false }),
+      createAiSdkLlm(
+        google(model),
+        { provider: 'gemini', model, zeroDataRetention: false },
+        GEMINI_OPTIONS,
+      ),
     ),
     createAiSdkLlm(groq(config.groqModel), {
       provider: 'groq',

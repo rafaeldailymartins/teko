@@ -1,32 +1,37 @@
 import type {
+  Citation,
   FeedbackRating,
   FeedbackReason,
   LlmProvider,
   RetrievalMode,
 } from '@teko/shared/contracts'
 import type { Locale } from '@teko/shared/i18n'
-import type { IsoDate, ReferenceSource } from '@teko/shared/vigencia'
+import type { IsoDate, ReferenceSource, ValidityInterval } from '@teko/shared/vigencia'
 import type { LlmUsage } from './llm-port.ts'
 
 /**
  * Traces de LLM (Langfuse, `docs/architecture/observabilidade.md`, "Langfuse Cloud Hobby (EU)").
  * A aplicação decide **se** uma pergunta é rastreada (`TraceSampler`, `services/trace-sampler.ts`)
- * e conta as units; o adapter só cria as observations do trace `rag-query`:
+ * e conta as units; o adapter dá os nomes (verbo no início, estáveis) e cria as observations:
  *
- * - `rag-query` (raiz): usuário com hash, pergunta redigida, data e origem, versões, cache e
- *   cobertura;
- * - `retrieval`: candidatos por canal, top-k, RRF, reranker e modo da busca;
- * - `answer`: uma generation por provedor tentado, com uso, custo a preço de tabela e TTFT.
+ * - raiz (`answer-question`): a pergunta redigida na entrada e a resposta na saída; usuário com
+ *   hash, conversa como sessão, data e origem, versões, cache, desfecho e citações na metadata;
+ * - busca (`retrieve-context`, retriever): a consulta, a reescrita, a data e as famílias na
+ *   entrada, e os dispositivos recuperados (sem o texto) na saída;
+ * - chamadas de LLM (`generate-answer` e `rewrite-query`): uma generation por provedor tentado,
+ *   com as mensagens no formato OpenAI, o raciocínio do modelo, uso, custo a preço de tabela e TTFT.
  *
  * O trace leva o mesmo `trace_id` do OTel (é filho do span da requisição). Nada aqui lança nem
  * faz E/S síncrona: a exportação é do span processor, no flush por requisição.
  */
 
-/** O que o trace `rag-query` sabe da pergunta desde o início. */
+/** O que o trace sabe da pergunta desde o início. */
 export interface QueryTraceStart {
   readonly questionId: string
   /** Id da conta; o adapter só o exporta como hash. */
   readonly userId: string
+  /** Id da conversa (UUID interno, sem PII): agrupa os turnos numa sessão. */
+  readonly conversationId: string
   /** Pergunta já redigida (`PiiRedactor`). */
   readonly question: string
   readonly locale: Locale
@@ -40,37 +45,58 @@ export interface QueryTraceStart {
   readonly startedAtMs: number
 }
 
-/** Resumo da busca híbrida no span `retrieval`. */
+/** Um dispositivo entregue pela busca, na ordem final (sem o texto, que vai no prompt). */
+export interface RetrievedItem {
+  readonly chunkId: string
+  readonly stableKey: string
+  readonly label: string
+  /** Caminho de títulos do dispositivo ("RCTE > … > Art. 20 > inciso I"). */
+  readonly headingPath: string
+  readonly family: string
+  /** Versão de documento citada (rótulo, como "Guia Prático 3.1.9"). */
+  readonly documentVersion: string
+  readonly validity: ValidityInterval
+  /** RRF (4 casas) e posição em cada braço da busca (`null` = ausente do braço). */
+  readonly rrf: number
+  readonly lexicalRank: number | null
+  readonly semanticRank: number | null
+  readonly referenceRank: number | null
+}
+
+/** A busca híbrida como o retriever a mostra. */
 export interface RetrievalSummary {
+  /** Pergunta redigida que entrou na busca. */
+  readonly query: string
+  /** Consulta reescrita pelo LLM que a busca usou (ADR 0034); `null` sem reescrita. */
+  readonly rewrittenQuery: string | null
+  /** Data de referência resolvida; `null` quando a busca não chegou a resolvê-la. */
+  readonly referenceDate: IsoDate | null
+  /** Famílias pedidas (vazio = todas). */
+  readonly families: readonly string[]
   /** `null` quando a busca nem rodou (data fora da cobertura). */
   readonly mode: RetrievalMode | null
-  /** Evidências entregues ao prompt (top-k). */
-  readonly topK: number
-  /** Evidências do top-k presentes em cada braço da busca. */
-  readonly candidatesByChannel: {
-    readonly lexical: number
-    readonly semantic: number
-    readonly reference: number
-  }
-  /** RRF de cada evidência do top-k, na ordem final (4 casas). */
-  readonly rrf: readonly number[]
+  /** Evidências entregues ao prompt (top-k), na ordem final. */
+  readonly items: readonly RetrievedItem[]
   /** A ordem final veio do reranker. */
   readonly reranked: boolean
-  /** A busca usou a consulta reescrita pelo LLM (ADR 0034). */
-  readonly rewritten: boolean
   /** Famílias pedidas sem cobertura na data. */
   readonly uncoveredFamilies: readonly string[]
   /** Recusa decidida na busca (`out_of_coverage`, `no_evidence`), ou `null`. */
   readonly refusalReason: string | null
 }
 
+/** Para que serve a chamada de LLM: a resposta ou a reescrita da pergunta (ADR 0034). */
+type GenerationPurpose = 'answer' | 'rewrite'
+
 export interface GenerationStart {
-  /** `answer` (a resposta) ou `rewrite` (a reescrita da pergunta, ADR 0034). */
-  readonly name: 'answer' | 'rewrite'
+  readonly purpose: GenerationPurpose
   readonly provider: LlmProvider
   readonly model: string
-  /** Prompt do usuário (pergunta redigida e, na resposta, os trechos); o system prompt fica de fora. */
-  readonly input: string
+  /** Versão do prompt da chamada (`answer@…` ou `rewrite@…`). */
+  readonly promptVersion: string
+  /** System prompt e prompt do usuário, como o modelo os recebeu. */
+  readonly system: string
+  readonly prompt: string
   readonly temperature: number
   readonly maxOutputTokens: number
   readonly startedAtMs: number
@@ -85,6 +111,8 @@ export interface GenerationEnd {
   readonly firstTokenAtMs: number | null
   /** Texto gerado (já sem o canary), só na chamada que respondeu. */
   readonly output: string | null
+  /** Raciocínio que o modelo devolveu (Gemini: o resumo; `gpt-oss`: o texto), ou `null`. */
+  readonly reasoning: string | null
   readonly endedAtMs: number
 }
 
@@ -92,9 +120,12 @@ export interface QueryTraceEnd {
   /** `answered`, `refused`, `failed` ou `aborted` (o mesmo `outcome` das métricas). */
   readonly outcome: string
   readonly refusalReason: string | null
+  /** Código do erro da falha (`upstream_unavailable`, `internal`...), só no desfecho `failed`. */
+  readonly failure?: string
   /** Resposta final em Markdown, quando houve. */
   readonly answer: string | null
-  readonly citations: number
+  /** Citações da resposta (válidas e inválidas, com o trecho), para avaliar a fidelidade. */
+  readonly citations: readonly Citation[]
   readonly corpusVersion: number | null
   readonly endedAtMs: number
 }
@@ -117,7 +148,7 @@ export interface QueryObservations {
 }
 
 export interface LlmTracingPort {
-  /** Abre o trace `rag-query` de uma pergunta já amostrada. */
+  /** Abre o trace de uma pergunta já amostrada. */
   startQuery(start: QueryTraceStart): QueryObservations
 }
 

@@ -3,6 +3,7 @@ import { LlmError, LlmErrorKind, type LlmModel, type LlmRequest } from '../ports
 import { recordingLlmTracing } from '../ports/testing/recording-llm-tracing.ts'
 import {
   REWRITE_MAX_OUTPUT_TOKENS,
+  REWRITE_PROMPT_VERSION,
   REWRITE_REASONING,
   REWRITE_TEMPERATURE,
 } from '../prompts/rewrite.ts'
@@ -47,7 +48,7 @@ function model(
           yield { type: 'text', text: word }
         }
       }
-      yield { type: 'finish', usage: { inputTokens: 10, outputTokens: 5 } }
+      yield { type: 'finish', usage: { inputTokens: 10, outputTokens: 5 }, reasoning: 'pensei' }
     },
   }
 }
@@ -117,6 +118,7 @@ describe('generations da reescrita no trace (Langfuse)', () => {
     }).start({
       questionId: 'q1',
       userId: 'u1',
+      conversationId: 'c1',
       question: 'x',
       locale: 'pt-BR',
       families: [],
@@ -144,18 +146,24 @@ describe('generations da reescrita no trace (Langfuse)', () => {
       'prazo do ICMS',
     )
     const generations = port.queries[0]?.generations ?? []
-    expect(generations.map((item) => [item.start.name, item.start.model, item.end?.error])).toEqual(
-      [
-        ['rewrite', 'gemini-a', 'unavailable'],
-        ['rewrite', 'gemini-b', null],
-      ],
-    )
+    expect(
+      generations.map((item) => [item.start.purpose, item.start.model, item.end?.error]),
+    ).toEqual([
+      ['rewrite', 'gemini-a', 'unavailable'],
+      ['rewrite', 'gemini-b', null],
+    ])
     expect(generations[1]?.end).toMatchObject({
       usage: { inputTokens: 10, outputTokens: 5 },
       output: 'prazo do ICMS',
+      reasoning: 'pensei',
       firstTokenAtMs: 42,
       endedAtMs: 42,
     })
+    expect(generations[1]?.start).toMatchObject({
+      promptVersion: REWRITE_PROMPT_VERSION,
+      prompt: '<pergunta>qual o prazo?</pergunta>',
+    })
+    expect(generations[1]?.start.system).toContain('consultas de busca')
     expect(trace.units()).toBe(4)
   })
 

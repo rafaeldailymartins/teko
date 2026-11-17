@@ -33,7 +33,7 @@ interface RetrieveEvidenceCommand extends ResolveReferenceDateCommand {
   /** Usuário do EEE, Reino Unido ou Suíça: a reescrita da pergunta só usa modelos com ZDR. */
   readonly zeroDataRetentionOnly?: boolean
   readonly signal?: AbortSignal
-  /** Trace `rag-query` (Langfuse): a reescrita da pergunta vira uma generation nele. */
+  /** Trace `answer-question` (Langfuse): a reescrita da pergunta vira uma generation nele. */
   readonly trace?: QueryTrace
 }
 

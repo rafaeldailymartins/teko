@@ -20,7 +20,8 @@ import {
  * - `[[fault:xss]]`: devolve HTML cru e imagem, que a saída precisa remover;
  * - `[[fault:insufficient]]`: devolve a sentinela `INSUFICIENTE`.
  *
- * A reescrita da pergunta (`<pergunta>…</pergunta>`, ADR 0034) devolve a própria pergunta.
+ * A reescrita da pergunta (`<pergunta>…</pergunta>`, ADR 0034) devolve a própria pergunta. O
+ * `finish` traz um raciocínio curto e fixo, como o dos modelos que pensam.
  */
 export const FAKE_LLM_MODEL = 'fake-llm-1'
 
@@ -52,6 +53,14 @@ function answerFor(prompt: string): string {
   }
   const cited = ids.slice(0, 2).map((id) => `[${id}]`)
   return `Conforme as fontes ${cited.join(' e ')}, a regra vigente na data é a citada.`
+}
+
+/** Raciocínio fixo, devolvido no `finish` como os modelos que pensam (para o trace do Langfuse). */
+function reasoningFor(prompt: string): string {
+  if (REWRITE_REQUEST.test(prompt)) {
+    return 'Reescrita fake: a pergunta segue como está.'
+  }
+  return `Resposta fake: ${String(sourceIds(prompt).length)} fonte(s) no prompt.`
 }
 
 function abortable(signal: AbortSignal): Promise<never> {
@@ -111,6 +120,7 @@ export function createFakeLlmAdapter(
           inputTokens: Math.ceil((request.system.length + prompt.length) / 4),
           outputTokens: words.length,
         },
+        reasoning: reasoningFor(prompt),
       }
     },
   }

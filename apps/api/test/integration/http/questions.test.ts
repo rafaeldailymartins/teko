@@ -583,7 +583,7 @@ describe('traces de LLM (Langfuse) e custo-sombra', () => {
     expect(rows.rows.map((row) => row.langfuse_trace_id)).toEqual(['trace-1', 'trace-2', 'trace-3'])
     // O fake não tem preço: custo 0, mas sempre gravado.
     expect(rows.rows.map((row) => Number(row.shadow_cost_usd))).toEqual([0, 0, 0])
-    // 4 (rag-query + retrieval + answer) + 2 (cache) + 2 (recusa).
+    // 4 (answer-question + retrieve-context + generate-answer) + 2 (cache) + 2 (recusa).
     expect((await langfuseUnits()) - before).toBe(8)
 
     const feedback = await app.inject({

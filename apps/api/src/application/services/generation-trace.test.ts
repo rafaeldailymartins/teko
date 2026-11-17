@@ -23,6 +23,7 @@ describe('trackGeneration', () => {
     }).start({
       questionId: 'q',
       userId: 'u',
+      conversationId: 'c',
       question: 'x',
       locale: 'pt-BR',
       families: [],
@@ -33,7 +34,14 @@ describe('trackGeneration', () => {
       cached: false,
       startedAtMs: 0,
     })
-    const request = { name: 'answer', input: 'p', temperature: 0, maxOutputTokens: 10 } as const
+    const request = {
+      purpose: 'answer',
+      promptVersion: 'answer@1',
+      system: 's',
+      prompt: 'p',
+      temperature: 0,
+      maxOutputTokens: 10,
+    } as const
     const tracker = trackGeneration(trace, request, () => 9)
     tracker.end({ inputTokens: 0, outputTokens: 0 }, null, 'aborted')
     expect(port.queries[0]?.generations).toEqual([])
@@ -44,6 +52,7 @@ describe('trackGeneration', () => {
       fallbackFrom: null,
       attemptStartedAtMs: 1,
     })
+    tracker.reasoning('  ')
     tracker.end({ inputTokens: 1000, outputTokens: 0 }, null, null)
     tracker.end({ inputTokens: 5, outputTokens: 5 }, 3, null)
     expect(port.queries[0]?.generations).toHaveLength(1)
@@ -53,6 +62,7 @@ describe('trackGeneration', () => {
       cost: { input: 0.00015, output: 0, total: 0.00015 },
       firstTokenAtMs: null,
       output: null,
+      reasoning: null,
       endedAtMs: 9,
     })
   })

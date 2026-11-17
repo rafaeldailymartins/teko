@@ -5,7 +5,7 @@ import { LlmError, type LlmEvent, type LlmModel, type LlmRequest } from '../port
 import type { Telemetry } from '../ports/telemetry.ts'
 import { recordingLlmTracing } from '../ports/testing/recording-llm-tracing.ts'
 import { recordingTelemetry } from '../ports/testing/recording-telemetry.ts'
-import { PROMPT_CANARY } from '../prompts/answer.ts'
+import { PROMPT_CANARY, PROMPT_VERSION } from '../prompts/answer.ts'
 import { createProviderRouter } from '../services/provider-router.ts'
 import { createQueryTracer, type QueryTrace } from '../services/trace-sampler.ts'
 import {
@@ -77,7 +77,11 @@ function scriptedModel(text: string): LlmModel & { requests: LlmRequest[] } {
       for (const piece of text.match(/.{1,7}/gs) ?? []) {
         yield { type: 'text', text: piece }
       }
-      yield { type: 'finish', usage: { inputTokens: 100, outputTokens: 20 } }
+      yield {
+        type: 'finish',
+        usage: { inputTokens: 100, outputTokens: 20 },
+        reasoning: 'A fonte S1 responde.',
+      }
     },
   }
 }
@@ -249,6 +253,7 @@ async function tracedRun(
   const trace = await tracer.start({
     questionId: 'q1',
     userId: 'u1',
+    conversationId: 'c1',
     question: 'Qual o prazo?',
     locale: 'pt-BR',
     families: [],
@@ -275,17 +280,33 @@ function failingModel(model: string): LlmModel {
   }
 }
 
-describe('trace rag-query (Langfuse)', () => {
+describe('trace answer-question (Langfuse)', () => {
   it('span retrieval com o resumo da busca e uma generation com uso, custo e TTFT', async () => {
     const query = await tracedRun(FOUND, 'Vale a regra [S1].')
     expect(query.retrievals).toHaveLength(1)
     expect(query.retrievals[0]?.summary).toEqual({
+      query: 'Qual o prazo?',
+      rewrittenQuery: null,
+      referenceDate: '2006-05-01',
+      families: ['rcte', 'cte'],
       mode: 'hybrid',
-      topK: 2,
-      candidatesByChannel: { lexical: 2, semantic: 2, reference: 0 },
-      rrf: [0.03, 0.03],
+      items: [
+        {
+          chunkId: 'go:rcte:art:76',
+          stableKey: 'go:rcte:art:76',
+          label: 'RCTE, go:rcte:art:76',
+          headingPath: 'RCTE > Art. 76',
+          family: 'rcte',
+          documentVersion: 'consolidado',
+          validity: { from: '2005-01-01', to: null },
+          rrf: 0.03,
+          lexicalRank: 1,
+          semanticRank: 1,
+          referenceRank: null,
+        },
+        expect.objectContaining({ stableKey: 'go:rcte:art:77' }),
+      ],
       reranked: true,
-      rewritten: false,
       uncoveredFamilies: ['cte'],
       refusalReason: null,
     })
@@ -296,13 +317,16 @@ describe('trace rag-query (Langfuse)', () => {
       model: 'gemini-test',
       temperature: 0.1,
     })
-    expect(generation?.start.input).toContain('<source id="S1"')
+    expect(generation?.start).toMatchObject({ purpose: 'answer', promptVersion: PROMPT_VERSION })
+    expect(generation?.start.prompt).toContain('<source id="S1"')
+    expect(generation?.start.system).toContain(PROMPT_CANARY)
     expect(generation?.end).toMatchObject({
       error: null,
       usage: { inputTokens: 100, outputTokens: 20 },
       cost: { input: 0, output: 0, total: 0 },
       // O texto que o usuário viu (já saneado), não o bruto do modelo.
       output: 'Vale a regra [S1](cite:S1).',
+      reasoning: 'A fonte S1 responde.',
     })
     expect(generation?.end?.firstTokenAtMs).toBeGreaterThan(0)
   })
@@ -336,8 +360,9 @@ describe('trace rag-query (Langfuse)', () => {
       '',
     )
     expect(query.retrievals[0]?.summary).toMatchObject({
+      referenceDate: '2006-05-01',
       mode: 'lexical_only',
-      topK: 0,
+      items: [],
       refusalReason: 'no_evidence',
     })
     expect(query.generations).toEqual([])
@@ -351,6 +376,7 @@ describe('trace rag-query (Langfuse)', () => {
     }).start({
       questionId: 'q1',
       userId: 'u1',
+      conversationId: 'c1',
       question: 'x',
       locale: 'pt-BR',
       families: [],
@@ -363,17 +389,44 @@ describe('trace rag-query (Langfuse)', () => {
     })
     const failing: RetrieveEvidence = () => Promise.reject(new Error('banco fora'))
     await expect(run(failing, '', undefined, { trace })).rejects.toThrow('banco fora')
-    expect(port.queries[0]?.retrievals[0]?.summary).toMatchObject({ mode: null, topK: 0 })
+    expect(port.queries[0]?.retrievals[0]?.summary).toMatchObject({
+      query: 'Qual o prazo?',
+      referenceDate: null,
+      mode: null,
+      items: [],
+    })
+  })
+
+  it('busca com a pergunta reescrita: o retriever leva as duas consultas', async () => {
+    const query = await tracedRun(
+      retrieveWith({
+        outcome: 'evidence',
+        reference: REFERENCE,
+        mode: 'lexical_only',
+        evidence: EVIDENCE,
+        uncoveredFamilies: [],
+        stableKeys: [],
+        rewrittenQuery: 'prazo de recolhimento do ICMS',
+        reranked: false,
+      }),
+      'Vale [S1].',
+    )
+    expect(query.retrievals[0]?.summary).toMatchObject({
+      query: 'Qual o prazo?',
+      rewrittenQuery: 'prazo de recolhimento do ICMS',
+      mode: 'lexical_only',
+      reranked: false,
+      uncoveredFamilies: [],
+    })
   })
 
   it('resumo de um pedido de esclarecimento: recusa no_evidence sem modo', () => {
     expect(
-      retrievalSummary({
-        outcome: 'needs_clarification',
-        reason: 'ambiguous_text',
-        candidates: [],
-      }),
-    ).toMatchObject({ mode: null, refusalReason: 'no_evidence' })
+      retrievalSummary(
+        { outcome: 'needs_clarification', reason: 'ambiguous_text', candidates: [] },
+        { query: 'q', families: [] },
+      ),
+    ).toMatchObject({ referenceDate: null, mode: null, refusalReason: 'no_evidence' })
   })
 })
 

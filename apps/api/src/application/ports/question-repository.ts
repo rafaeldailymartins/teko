@@ -110,7 +110,7 @@ export interface StreamResult {
   readonly streamSeconds: number
   /** Resposta a guardar no cache exato (só respostas com citação válida). */
   readonly cache: { readonly key: string; readonly answer: Answer; readonly expiresAt: Date } | null
-  /** `trace_id` do trace `rag-query` no Langfuse; `null` quando a pergunta não foi amostrada. */
+  /** `trace_id` do trace `answer-question` no Langfuse; `null` sem amostragem. */
   readonly langfuseTraceId: string | null
   /** Units do Langfuse do trace (somadas em `usage_daily.langfuse_units`, linha `global`). */
   readonly langfuseUnits: number

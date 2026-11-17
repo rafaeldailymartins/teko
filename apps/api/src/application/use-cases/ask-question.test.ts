@@ -305,7 +305,7 @@ describe('cota no Grafana', () => {
   })
 })
 
-describe('trace rag-query das perguntas encerradas no POST', () => {
+describe('trace answer-question das perguntas encerradas no POST', () => {
   function tracedSetup(options: Options, sampled = true) {
     const port = recordingLlmTracing()
     const runs: { name: string; task: Promise<unknown> }[] = []
@@ -335,6 +335,7 @@ describe('trace rag-query das perguntas encerradas no POST', () => {
     expect(query?.start).toMatchObject({
       questionId: 'q-finished',
       userId: USER.id,
+      conversationId: '0195f3c4-0000-7000-8000-0000000000aa',
       cached: true,
       corpusVersion: 14,
       referenceSource: 'periodo_apuracao',
@@ -345,7 +346,7 @@ describe('trace rag-query das perguntas encerradas no POST', () => {
     expect(query?.end).toMatchObject({
       outcome: 'answered',
       answer: CACHED.markdown,
-      citations: 1,
+      citations: cached.citations,
     })
     expect(runs.map((run) => run.name)).toEqual(['langfuse-trace'])
     await runs[0]?.task

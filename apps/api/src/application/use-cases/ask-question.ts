@@ -82,8 +82,8 @@ export interface AskQuestionDeps {
 const TRACE_RECORD_TIMEOUT_MS = 2000
 
 /**
- * Trace só com a raiz (`rag-query`) de uma pergunta encerrada no `POST`: acerto do cache ou recusa
- * por cobertura, sem LLM. O `trace_id` e as units vão ao banco depois da resposta.
+ * Trace só com a raiz (`answer-question`) de uma pergunta encerrada no `POST`: acerto do cache ou
+ * recusa por cobertura, sem LLM. O `trace_id` e as units vão ao banco depois da resposta.
  */
 async function traceFinished(
   deps: AskQuestionDeps,
@@ -165,6 +165,7 @@ export function createAskQuestion(deps: AskQuestionDeps): AskQuestion {
     const traceStart = (questionId: string, cached: boolean): QueryTraceStart => ({
       questionId,
       userId: user.id,
+      conversationId: request.conversationId,
       question,
       locale: request.locale,
       families,
@@ -188,7 +189,7 @@ export function createAskQuestion(deps: AskQuestionDeps): AskQuestion {
         outcome: AnswerOutcomeKind.Refused,
         refusalReason: RefusalReason.OutOfCoverage,
         answer: null,
-        citations: 0,
+        citations: [],
         corpusVersion,
       })
       telemetry.answer({
@@ -226,7 +227,7 @@ export function createAskQuestion(deps: AskQuestionDeps): AskQuestion {
         outcome: AnswerOutcomeKind.Answered,
         refusalReason: null,
         answer: answer.markdown,
-        citations: answer.citations.filter((citation) => citation.valid).length,
+        citations: answer.citations,
         corpusVersion,
       })
       telemetry.answer({
