@@ -64,8 +64,10 @@ A configuração do projeto que vive no repositório fica em `apps/api/vercel.js
 Aplicar nos dois projetos, no dashboard (Project Settings), e conferir todo mês.
 
 Conferido pela API da Vercel em 2026-11-17, nos dois projetos (`GET /v9/projects`, firewall ativo e
-integrações do time): os itens marcados batem. Os de "Time e conta" não aparecem na API e se
-conferem no dashboard; integrações do marketplace: nenhuma, e nenhum cron definido.
+integrações do time): os itens marcados batem; integrações do marketplace: nenhuma, e nenhum cron
+definido. Os de "Time e conta" não aparecem na API e foram conferidos no dashboard no mesmo dia:
+2FA por app autenticador, "Improve models with my data" desligado em Data Preferences, AI Gateway
+sem nenhuma API key e nenhum cartão em Billing Information.
 
 **Build and Deployment**
 
@@ -127,12 +129,12 @@ conferem no dashboard; integrações do marketplace: nenhuma, e nenhum cron defi
 
 **Time e conta**
 
-- [ ] 2FA na conta.
-- [ ] Opt-out de **Model Training** nas configurações do time (por padrão, os Termos permitem treino
+- [x] 2FA na conta.
+- [x] Opt-out de **Model Training** nas configurações do time (por padrão, os Termos permitem treino
   com o conteúdo de contas Hobby).
-- [ ] AI Gateway, integrações do marketplace e Vercel Cron desligados (todo agendamento fica no
+- [x] AI Gateway, integrações do marketplace e Vercel Cron desligados (todo agendamento fica no
   Actions).
-- [ ] Nenhum cartão cadastrado. Estourar uma cota do Hobby bloqueia o recurso por cerca de 30 dias
+- [x] Nenhum cartão cadastrado. Estourar uma cota do Hobby bloqueia o recurso por cerca de 30 dias
   (503 `DEPLOYMENT_PAUSED`); o Plano B é o Render (`infra/planb-render`).
 
 ## Variáveis de ambiente
