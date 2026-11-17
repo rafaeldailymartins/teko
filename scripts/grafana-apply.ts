@@ -133,9 +133,19 @@ interface ApplyContext {
 const warn = (context: ApplyContext, message: string) =>
   context.log(`::warning title=grafana-apply::${message}`)
 
+/**
+ * A pasta é procurada na listagem, e não por `GET /api/folders/:uid`: no Grafana Cloud, um token de
+ * service account com papel Editor recebe 403 (`folders:read`) para um uid que não existe, porque a
+ * permissão de leitura é por pasta. A listagem traz as pastas que o token lê, e a criada por ele
+ * entra nela.
+ */
 async function applyFolder(context: ApplyContext, grafana: Client): Promise<void> {
   const { uid, title } = context.code.stack.folder
-  const current = (await grafana.find(`/api/folders/${uid}`)) as { title?: string } | null
+  const folders = (await grafana.get('/api/folders?limit=1000')) as readonly {
+    uid?: string
+    title?: string
+  }[]
+  const current = folders.find((folder) => folder.uid === uid) ?? null
   const action = current === null ? 'create' : current.title === title ? 'keep' : 'update'
   context.plan.push({ kind: 'folder', id: uid, action })
   if (context.mode !== 'apply' || action === 'keep') return
