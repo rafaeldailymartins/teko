@@ -64,6 +64,23 @@ export const RerankerProvider = {
 } as const
 export type RerankerProvider = (typeof RerankerProvider)[keyof typeof RerankerProvider]
 
+/** Backend dos traces de LLM. */
+export const LlmTracingBackend = {
+  Langfuse: 'langfuse',
+  Off: 'off',
+} as const
+
+/** Langfuse Cloud, região EU (a do projeto). */
+const LANGFUSE_CLOUD_EU = 'https://cloud.langfuse.com'
+
+/** Taxa do `TraceSampler` até o corte, quando `LANGFUSE_SAMPLE_RATE` não vem. */
+const DEFAULT_TRACE_SAMPLE_RATE: Readonly<Record<AppEnv, number>> = {
+  [AppEnv.Production]: 1,
+  [AppEnv.Staging]: 0.1,
+  [AppEnv.Development]: 1,
+  [AppEnv.Ci]: 0,
+}
+
 /** Postgres: `postgresql://` ou `postgres://` (Neon `-pooler` com `teko_app` no runtime). */
 const postgresUrlSchema = z
   .string()
@@ -324,6 +341,40 @@ const envSchema = z
       .trim()
       .regex(/^phc_[A-Za-z0-9]{20,64}$/, { error: 'deve ser a chave do projeto (phc_…)' })
       .optional(),
+    /**
+     * Traces de LLM (`docs/architecture/observabilidade.md`, "Langfuse"): `langfuse` liga quando as
+     * duas chaves existem; `off` desliga mesmo com elas (último recurso do runbook de cotas).
+     */
+    LLM_TRACING_BACKEND: z.enum(LlmTracingBackend).default(LlmTracingBackend.Langfuse),
+    /** Chaves de runtime do projeto Langfuse do ambiente (a secreta é Sensitive na Vercel). */
+    LANGFUSE_PUBLIC_KEY: z
+      .string()
+      .trim()
+      .regex(/^pk-lf-[\w-]+$/, { error: 'deve começar com pk-lf-' })
+      .optional(),
+    LANGFUSE_SECRET_KEY: z
+      .string()
+      .trim()
+      .regex(/^sk-lf-[\w-]+$/, { error: 'deve começar com sk-lf-' })
+      .optional(),
+    /** Origem do Langfuse: o Cloud EU em staging e produção, o profile `langfuse` em dev. */
+    LANGFUSE_BASE_URL: exactOriginSchema.default(LANGFUSE_CLOUD_EU),
+    /** `langfuse.environment` de cada span (padrão: o `APP_ENV`). */
+    LANGFUSE_TRACING_ENVIRONMENT: z
+      .string()
+      .regex(/^(?!langfuse)[a-z0-9_-]{1,40}$/, {
+        error: 'minúsculas, dígitos, _ e -, até 40, sem começar com langfuse',
+      })
+      .optional(),
+    /** `langfuse.release` (padrão: o `GIT_SHA`). */
+    LANGFUSE_RELEASE: z.string().trim().min(1).max(200).optional(),
+    /**
+     * Taxa do `TraceSampler` até o corte (padrão por ambiente: produção e dev 1, staging 0,1, CI
+     * 0), a taxa depois do corte e o corte, em units projetadas no mês.
+     */
+    LANGFUSE_SAMPLE_RATE: z.coerce.number().min(0).max(1).optional(),
+    LANGFUSE_SAMPLE_RATE_OVER_BUDGET: z.coerce.number().min(0).max(1).default(0.2),
+    LANGFUSE_MONTHLY_UNITS_CUTOFF: z.coerce.number().int().min(0).default(35_000),
     // --- Ingestão (CLI `ingest`, `snapshot`, `eval-fixture`; só no Actions e localmente) -------
     /**
      * Onde ficam os artefatos da ingestão (ADR 0030). Com `github-releases` (o que os workflows
@@ -433,6 +484,12 @@ const envSchema = z
     ) {
       issue('OTEL_EXPORTER_OTLP_ENDPOINT', 'obrigatória com OTEL_EXPORTER_OTLP_HEADERS')
     }
+    if ((env.LANGFUSE_PUBLIC_KEY === undefined) !== (env.LANGFUSE_SECRET_KEY === undefined)) {
+      issue(
+        env.LANGFUSE_PUBLIC_KEY === undefined ? 'LANGFUSE_PUBLIC_KEY' : 'LANGFUSE_SECRET_KEY',
+        'LANGFUSE_PUBLIC_KEY e LANGFUSE_SECRET_KEY vêm juntas',
+      )
+    }
     if (env.BLOB_STORE === BlobStoreBackend.GithubReleases && env.GITHUB_TOKEN === undefined) {
       issue('GITHUB_TOKEN', 'obrigatória com BLOB_STORE=github-releases')
     }
@@ -495,6 +552,10 @@ const envSchema = z
       // Os headers levam a credencial do Grafana Cloud: nunca em texto claro.
       issue('OTEL_EXPORTER_OTLP_ENDPOINT', `APP_ENV=${env.APP_ENV} exige https`)
     }
+    if (!env.LANGFUSE_BASE_URL.startsWith('https://')) {
+      // A exportação leva as chaves do projeto em Basic auth.
+      issue('LANGFUSE_BASE_URL', `APP_ENV=${env.APP_ENV} exige https`)
+    }
     if (env.LLM_PROVIDER === LlmProvider.Fake) {
       issue('LLM_PROVIDER', `fake é proibido com APP_ENV=${env.APP_ENV}`)
     }
@@ -526,6 +587,42 @@ const envSchema = z
   }))
 
 export type Env = z.output<typeof envSchema>
+
+/** Configuração efetiva do Langfuse, ou `null` com o backend desligado ou sem chaves. */
+export interface LangfuseSettings {
+  readonly publicKey: string
+  readonly secretKey: string
+  readonly baseUrl: string
+  readonly environment: string
+  readonly release: string
+  readonly sampling: {
+    readonly rate: number
+    readonly overBudgetRate: number
+    readonly monthlyUnitsCutoff: number
+  }
+}
+
+export function langfuseSettings(env: Env): LangfuseSettings | null {
+  if (
+    env.LLM_TRACING_BACKEND === LlmTracingBackend.Off ||
+    env.LANGFUSE_PUBLIC_KEY === undefined ||
+    env.LANGFUSE_SECRET_KEY === undefined
+  ) {
+    return null
+  }
+  return {
+    publicKey: env.LANGFUSE_PUBLIC_KEY,
+    secretKey: env.LANGFUSE_SECRET_KEY,
+    baseUrl: env.LANGFUSE_BASE_URL,
+    environment: env.LANGFUSE_TRACING_ENVIRONMENT ?? env.APP_ENV,
+    release: env.LANGFUSE_RELEASE ?? env.GIT_SHA,
+    sampling: {
+      rate: env.LANGFUSE_SAMPLE_RATE ?? DEFAULT_TRACE_SAMPLE_RATE[env.APP_ENV],
+      overBudgetRate: env.LANGFUSE_SAMPLE_RATE_OVER_BUDGET,
+      monthlyUnitsCutoff: env.LANGFUSE_MONTHLY_UNITS_CUTOFF,
+    },
+  }
+}
 
 export class EnvValidationError extends Error {
   readonly problems: readonly string[]

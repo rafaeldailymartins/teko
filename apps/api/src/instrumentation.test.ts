@@ -36,7 +36,19 @@ describe('startInstrumentation', () => {
     expect(runtime.logSink).not.toBeNull()
   })
 
-  it('nenhum span processor extra por enquanto (o do Langfuse entra no add-llm-tracing-langfuse)', () => {
+  it('sem as chaves do Langfuse (CI, testes), nenhum span processor extra', () => {
     expect(additionalSpanProcessors(parseEnv(DEV))).toEqual([])
+  })
+
+  it('com as chaves, o LangfuseSpanProcessor; LLM_TRACING_BACKEND=off desliga', async () => {
+    const keys = { LANGFUSE_PUBLIC_KEY: 'pk-lf-a', LANGFUSE_SECRET_KEY: 'sk-lf-b' }
+    const processors = additionalSpanProcessors(parseEnv({ ...DEV, ...keys }))
+    expect(processors.map((processor) => processor.constructor.name)).toEqual([
+      'LangfuseSpanProcessor',
+    ])
+    await Promise.all(processors.map((processor) => processor.shutdown()))
+    expect(
+      additionalSpanProcessors(parseEnv({ ...DEV, ...keys, LLM_TRACING_BACKEND: 'off' })),
+    ).toEqual([])
   })
 })

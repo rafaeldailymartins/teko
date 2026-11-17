@@ -8,9 +8,11 @@ import type {
   QuestionRepository,
   UsageSnapshot,
 } from '../ports/question-repository.ts'
+import { recordingLlmTracing } from '../ports/testing/recording-llm-tracing.ts'
 import { recordingTelemetry } from '../ports/testing/recording-telemetry.ts'
 import type { ProviderRouter } from '../services/provider-router.ts'
-import { createAskQuestion, quotaDay, quotaExceeded } from './ask-question.ts'
+import { createQueryTracer } from '../services/trace-sampler.ts'
+import { type AskQuestionDeps, createAskQuestion, quotaDay, quotaExceeded } from './ask-question.ts'
 
 const NOW = new Date('2026-11-10T15:00:00Z')
 const USER: SessionUser = {
@@ -79,11 +81,12 @@ interface Options {
   readonly user?: SessionUser
 }
 
-function setup(options: Options = {}) {
+function setup(options: Options = {}, tracing?: AskQuestionDeps['tracing']) {
   const decisions: AcceptDecision[] = []
   const telemetry = recordingTelemetry()
   const questions = {
     insertFinished: vi.fn(async () => 'q-finished'),
+    recordTrace: vi.fn(async () => {}),
     accept: vi.fn<QuestionRepository['accept']>(async (_question, _day, _reservation, decide) => {
       const decision = decide(options.usage ?? IDLE)
       decisions.push(decision)
@@ -116,6 +119,7 @@ function setup(options: Options = {}) {
     reservation: { streamSeconds: 100, neurons: 5 },
     killSwitch: options.killSwitch ?? false,
     telemetry,
+    ...(tracing === undefined ? {} : { tracing }),
   })
   const command = {
     user: options.user ?? USER,
@@ -298,6 +302,75 @@ describe('cota no Grafana', () => {
         ],
       ],
     ])
+  })
+})
+
+describe('trace rag-query das perguntas encerradas no POST', () => {
+  function tracedSetup(options: Options, sampled = true) {
+    const port = recordingLlmTracing()
+    const runs: { name: string; task: Promise<unknown> }[] = []
+    const base = setup(options, {
+      tracer: createQueryTracer({ port, sampler: { shouldSample: async () => sampled } }),
+      tasks: {
+        run: (name, task) => {
+          runs.push({ name, task })
+        },
+        pending: () => 0,
+        drain: async () => 0,
+      },
+    })
+    return { ...base, port, runs }
+  }
+
+  it('cache hit: só a raiz (2 units), com a pergunta redigida, e o trace_id gravado depois', async () => {
+    const citation = { id: 'S1', valid: true } as Answer['citations'][number]
+    const cached = {
+      ...CACHED,
+      citations: [citation, { ...citation, id: 'S2', valid: false }],
+    }
+    const { ask, port, runs, questions } = tracedSetup({ cached })
+    await ask()
+    expect(port.queries).toHaveLength(1)
+    const [query] = port.queries
+    expect(query?.start).toMatchObject({
+      questionId: 'q-finished',
+      userId: USER.id,
+      cached: true,
+      corpusVersion: 14,
+      referenceSource: 'periodo_apuracao',
+    })
+    expect(query?.start.question).not.toContain('529.982.247-25')
+    expect(query?.retrievals).toEqual([])
+    expect(query?.generations).toEqual([])
+    expect(query?.end).toMatchObject({
+      outcome: 'answered',
+      answer: CACHED.markdown,
+      citations: 1,
+    })
+    expect(runs.map((run) => run.name)).toEqual(['langfuse-trace'])
+    await runs[0]?.task
+    expect(questions.recordTrace).toHaveBeenCalledWith('q-finished', 'trace-1', 2)
+  })
+
+  it('fora da cobertura: trace refused sem LLM', async () => {
+    const { ask, port } = tracedSetup({
+      coverage: { ...COVERED, status: 'out_of_coverage', coveredFamilies: [] },
+    })
+    await ask()
+    expect(port.queries[0]?.end).toMatchObject({
+      outcome: 'refused',
+      refusalReason: 'out_of_coverage',
+    })
+  })
+
+  it('não amostrada ou aceita para o stream: nada no POST', async () => {
+    const skipped = tracedSetup({ cached: CACHED }, false)
+    await skipped.ask()
+    expect(skipped.port.queries).toEqual([])
+    expect(skipped.runs).toEqual([])
+    const accepted = tracedSetup({})
+    await accepted.ask()
+    expect(accepted.port.queries).toEqual([])
   })
 })
 

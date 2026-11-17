@@ -72,6 +72,14 @@ services:
         value: "6000"
       - key: LANGFUSE_BASE_URL
         value: https://cloud.langfuse.com
+      - key: LLM_TRACING_BACKEND
+        value: langfuse
+      - key: LANGFUSE_SAMPLE_RATE
+        value: "1"
+      - key: LANGFUSE_SAMPLE_RATE_OVER_BUDGET
+        value: "0.2"
+      - key: LANGFUSE_MONTHLY_UNITS_CUTOFF
+        value: "35000"
       # Medido no ensaio do Plano B (número de saltos ou IPs/CIDRs); a API não sobe sem ele.
       - key: TRUST_PROXY
         sync: false

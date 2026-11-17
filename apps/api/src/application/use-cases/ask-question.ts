@@ -15,8 +15,10 @@ import { CoverageStatus } from '#domain/vigencia/coverage-decision.ts'
 import { ResolutionKind } from '#domain/vigencia/reference-resolution.ts'
 import { ApplicationError } from '../errors.ts'
 import type { SessionUser } from '../ports/auth-gateway.ts'
+import type { BackgroundTasks } from '../ports/background-tasks.ts'
 import type { Clock } from '../ports/clock.ts'
 import type { ContentHasher } from '../ports/content-hasher.ts'
+import type { QueryTraceEnd, QueryTraceStart } from '../ports/llm-tracing.ts'
 import type {
   NewQuestion,
   QuestionRepository,
@@ -29,6 +31,7 @@ import { PROMPT_VERSION } from '../prompts/answer.ts'
 import type { Lifecycle } from '../services/lifecycle.ts'
 import type { ProviderRouter } from '../services/provider-router.ts'
 import { decideQuota, quotaUsage } from '../services/quota-guard.ts'
+import type { QueryTracer } from '../services/trace-sampler.ts'
 import { toResolved } from './answer-pipeline.ts'
 import type { CheckCoverage, CoverageSource } from './check-coverage.ts'
 import type { ResolveReferenceDate } from './resolve-reference-date.ts'
@@ -68,6 +71,38 @@ export interface AskQuestionDeps {
   readonly killSwitch: boolean
   /** Métricas de operação (padrão: nenhuma). */
   readonly telemetry?: Telemetry
+  /** Traces de LLM das perguntas encerradas no `POST` (cache e fora da cobertura); padrão: nenhum. */
+  readonly tracing?: {
+    readonly tracer: QueryTracer
+    readonly tasks: BackgroundTasks
+  }
+}
+
+/** Teto para gravar o `trace_id` e as units de um trace do `POST` (tarefa pós-resposta). */
+const TRACE_RECORD_TIMEOUT_MS = 2000
+
+/**
+ * Trace só com a raiz (`rag-query`) de uma pergunta encerrada no `POST`: acerto do cache ou recusa
+ * por cobertura, sem LLM. O `trace_id` e as units vão ao banco depois da resposta.
+ */
+async function traceFinished(
+  deps: AskQuestionDeps,
+  start: QueryTraceStart,
+  end: Omit<QueryTraceEnd, 'endedAtMs'>,
+): Promise<void> {
+  if (deps.tracing === undefined) {
+    return
+  }
+  const trace = await deps.tracing.tracer.start(start)
+  if (trace.traceId === null) {
+    return
+  }
+  trace.end({ ...end, endedAtMs: deps.clock.now().getTime() })
+  deps.tracing.tasks.run(
+    'langfuse-trace',
+    deps.questions.recordTrace(start.questionId, trace.traceId, trace.units()),
+    { timeoutMs: TRACE_RECORD_TIMEOUT_MS },
+  )
 }
 
 /** Dia das cotas (São Paulo) e o instante em que elas voltam. */
@@ -126,6 +161,20 @@ export function createAskQuestion(deps: AskQuestionDeps): AskQuestion {
       corpusVersion,
     }
     const resolved = toResolved(reference)
+    const startedAtMs = deps.clock.now().getTime()
+    const traceStart = (questionId: string, cached: boolean): QueryTraceStart => ({
+      questionId,
+      userId: user.id,
+      question,
+      locale: request.locale,
+      families,
+      referenceDate: reference.value,
+      referenceSource: reference.source,
+      corpusVersion,
+      promptVersion: PROMPT_VERSION,
+      cached,
+      startedAtMs,
+    })
 
     if (decision.status === CoverageStatus.OutOfCoverage) {
       const refusal = { reason: RefusalReason.OutOfCoverage, coverage: [...decision.coverage] }
@@ -134,6 +183,13 @@ export function createAskQuestion(deps: AskQuestionDeps): AskQuestion {
         status: 'refused',
         answer: null,
         refusal,
+      })
+      await traceFinished(deps, traceStart(questionId, false), {
+        outcome: AnswerOutcomeKind.Refused,
+        refusalReason: RefusalReason.OutOfCoverage,
+        answer: null,
+        citations: 0,
+        corpusVersion,
       })
       telemetry.answer({
         outcome: AnswerOutcomeKind.Refused,
@@ -165,6 +221,13 @@ export function createAskQuestion(deps: AskQuestionDeps): AskQuestion {
         status: 'answered',
         answer,
         refusal: null,
+      })
+      await traceFinished(deps, traceStart(questionId, true), {
+        outcome: AnswerOutcomeKind.Answered,
+        refusalReason: null,
+        answer: answer.markdown,
+        citations: answer.citations.filter((citation) => citation.valid).length,
+        corpusVersion,
       })
       telemetry.answer({
         outcome: AnswerOutcomeKind.Answered,

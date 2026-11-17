@@ -1,6 +1,7 @@
 import type { SpanProcessor } from '@opentelemetry/sdk-trace-node'
+import { createLangfuseSpanProcessor } from '#adapters/out/telemetry/langfuse.ts'
 import { startTelemetry, type TelemetryRuntime } from '#adapters/out/telemetry/sdk.ts'
-import type { Env } from './config/env.ts'
+import { type Env, langfuseSettings } from './config/env.ts'
 
 /**
  * Sobe o SDK do OpenTelemetry a partir do env já validado. Chamado por `server.ts` antes do
@@ -8,16 +9,18 @@ import type { Env } from './config/env.ts'
  * (`AsyncLocalStorage`) e o propagador W3C ficam prontos antes de qualquer módulo da aplicação
  * criar spans ou loggers. Sem `node --import` (a Vercel não oferece), este é o ponto mais cedo.
  *
- * Sem `OTEL_EXPORTER_OTLP_ENDPOINT`, nada é exportado (ver `adapters/out/telemetry/sdk.ts`).
+ * Sem `OTEL_EXPORTER_OTLP_ENDPOINT`, nada é exportado ao Grafana (ver
+ * `adapters/out/telemetry/sdk.ts`).
  */
 
 /**
- * Ponto de extensão dos span processors que entram no mesmo provider, além do de exportação ao
- * Grafana: o `add-llm-tracing-langfuse` devolve aqui o `LangfuseSpanProcessor` (com o mesmo
- * `trace_id`). Hoje, nenhum.
+ * Span processors que entram no mesmo provider, além do de exportação ao Grafana: o
+ * `LangfuseSpanProcessor`, com o mesmo `trace_id`, quando o backend de traces de LLM está ligado e
+ * as chaves existem (sem elas, como no CI e nos testes, nenhum).
  */
-export function additionalSpanProcessors(_env: Env): SpanProcessor[] {
-  return []
+export function additionalSpanProcessors(env: Env): SpanProcessor[] {
+  const langfuse = langfuseSettings(env)
+  return langfuse === null ? [] : [createLangfuseSpanProcessor(langfuse)]
 }
 
 export function startInstrumentation(env: Env): TelemetryRuntime {

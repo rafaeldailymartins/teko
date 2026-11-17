@@ -140,6 +140,13 @@ catalog:
   # SLSA; 5.68+ tinha menos de 7 dias.
   posthog-node: 5.67.0
 
+  # Langfuse (F6, add-llm-tracing-langfuse): o processor entra no mesmo provider do OTel 2.x (peers
+  # @opentelemetry/core e sdk-trace-base ^2, exporter OTLP < 0.300) e cria as observations do
+  # trace rag-query. MIT, com proveniência. O @langfuse/client fica de fora: depende do mustache
+  # 4.2.0, sem proveniência; score, annotation queue e apagamento vão pela API pública (fetch).
+  "@langfuse/otel": 6.1.1
+  "@langfuse/tracing": 6.1.1
+
   # Banco (F2). Nenhum driver Postgres do npm é publicado com proveniência: pg e Testcontainers são
   # exceções da regra de proveniência do repositório, documentadas no ADR 0002 (o trustPolicy
   # no-downgrade só recusa a perda de proveniência, não a ausência).

@@ -51,6 +51,8 @@
     "@fastify/static": "catalog:",
     "@fastify/swagger": "catalog:",
     "@fastify/under-pressure": "catalog:",
+    "@langfuse/otel": "catalog:",
+    "@langfuse/tracing": "catalog:",
     "@opentelemetry/api": "catalog:",
     "@opentelemetry/api-logs": "catalog:",
     "@opentelemetry/exporter-logs-otlp-http": "catalog:",

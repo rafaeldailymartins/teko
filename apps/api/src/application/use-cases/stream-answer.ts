@@ -25,6 +25,12 @@ import type { Lifecycle } from '../services/lifecycle.ts'
 import { shadowCostUsd } from '../services/pricing.ts'
 import type { StreamBudget } from '../services/stream-budget.ts'
 import {
+  disabledQueryTracer,
+  type QueryTrace,
+  type QueryTracer,
+  untracedQuery,
+} from '../services/trace-sampler.ts'
+import {
   type AnswerOutcome,
   type AnswerPipelineDeps,
   runAnswerPipeline,
@@ -40,6 +46,10 @@ import {
  * - cadeia de LLM fora do ar → `error` com o código dela, pergunta `failed`;
  * - desconexão → o LLM é abortado pelo sinal e `aborted` é gravado em `BackgroundTasks`; a cota
  *   consumida não volta.
+ *
+ * O trace `rag-query` (Langfuse) começa logo depois do claim, ainda no contexto da requisição (o
+ * mesmo `trace_id` do OTel), se o `TraceSampler` amostrar a pergunta; o `trace_id` e as units vão
+ * na mesma transação da resposta, em todos os desfechos.
  */
 interface StreamAnswerCommand {
   readonly user: SessionUser
@@ -64,6 +74,8 @@ export interface StreamAnswerDeps {
   readonly cacheTtlMs: number
   /** Métricas do desfecho e da chamada de LLM (padrão: nenhuma). */
   readonly telemetry?: Telemetry
+  /** Traces de LLM (padrão: nenhum). */
+  readonly tracer?: QueryTracer
 }
 
 /** Teto do stream estourado (o sinal do timer aborta com isto). */
@@ -83,7 +95,11 @@ interface Timing {
   readonly endedMs: number
 }
 
-function baseResult(timing: Timing): Omit<StreamResult, 'status'> {
+/**
+ * Resultado sem resposta (falha, desconexão): sem LLM que tenha respondido, o custo-sombra é 0. A
+ * coluna `shadow_cost_usd` é sempre gravada, em todos os desfechos.
+ */
+function baseResult(timing: Timing, trace: QueryTrace): Omit<StreamResult, 'status'> {
   return {
     answerMarkdown: null,
     citations: [],
@@ -101,6 +117,8 @@ function baseResult(timing: Timing): Omit<StreamResult, 'status'> {
     latencyMs: timing.endedMs - timing.startedMs,
     streamSeconds: Math.max(1, Math.ceil((timing.endedMs - timing.startedMs) / 1000)),
     cache: null,
+    langfuseTraceId: trace.traceId,
+    langfuseUnits: trace.units(),
   }
 }
 
@@ -109,10 +127,11 @@ export function resultOf(
   outcome: AnswerOutcome,
   timing: Timing,
   cacheTtlMs: number,
+  trace: QueryTrace = untracedQuery,
 ): StreamResult {
   const answered = outcome.answer !== null
   return {
-    ...baseResult(timing),
+    ...baseResult(timing, trace),
     status: answered ? StoredQuestionStatus.Answered : StoredQuestionStatus.Refused,
     answerMarkdown: outcome.answer?.markdown ?? null,
     citations: outcome.answer?.citations ?? [],
@@ -185,13 +204,32 @@ export function recordOutcome(
   }
 }
 
+/** Fecha o trace sem resposta (falha ou desconexão). */
+function endUnanswered(
+  trace: QueryTrace,
+  outcome: typeof AnswerOutcomeKind.Failed | typeof AnswerOutcomeKind.Aborted,
+  question: ClaimedQuestion,
+  endedAtMs: number,
+): void {
+  trace.end({
+    outcome,
+    refusalReason: null,
+    answer: null,
+    citations: 0,
+    corpusVersion: question.corpusVersion,
+    endedAtMs,
+  })
+}
+
 export function createStreamAnswer(deps: StreamAnswerDeps): StreamAnswer {
   const nowMs = (): number => deps.clock.now().getTime()
   const telemetry = deps.telemetry ?? noopTelemetry
+  const tracer = deps.tracer ?? disabledQueryTracer
 
   async function* run(
     command: StreamAnswerCommand,
     question: ClaimedQuestion,
+    trace: QueryTrace,
   ): AsyncGenerator<TekoStreamChunk> {
     const startedMs = nowMs()
     const timer = new AbortController()
@@ -214,6 +252,7 @@ export function createStreamAnswer(deps: StreamAnswerDeps): StreamAnswer {
           locale: question.locale,
           zeroDataRetention: question.zeroDataRetention,
           signal,
+          trace,
         },
         (value) => {
           outcome = value
@@ -221,7 +260,16 @@ export function createStreamAnswer(deps: StreamAnswerDeps): StreamAnswer {
       )
       // O pipeline sempre entrega o resultado antes de terminar sem exceção.
       const done = outcome as unknown as AnswerOutcome
-      const result = resultOf(question, done, { startedMs, endedMs: nowMs() }, deps.cacheTtlMs)
+      const endedMs = nowMs()
+      trace.end({
+        outcome: done.answer === null ? AnswerOutcomeKind.Refused : AnswerOutcomeKind.Answered,
+        refusalReason: done.refusal?.reason ?? null,
+        answer: done.answer?.markdown ?? null,
+        citations: done.answer?.citations.filter((citation) => citation.valid).length ?? 0,
+        corpusVersion: done.answer?.meta.corpusVersion ?? question.corpusVersion,
+        endedAtMs: endedMs,
+      })
+      const result = resultOf(question, done, { startedMs, endedMs }, deps.cacheTtlMs, trace)
       await deps.questions.finish(question.id, deps.reservation, result)
       recorded = true
       recordOutcome(telemetry, done, result)
@@ -238,8 +286,10 @@ export function createStreamAnswer(deps: StreamAnswerDeps): StreamAnswer {
         // O cliente saiu: ninguém lê o `error`; o `finally` grava `aborted`.
         return
       }
+      const endedMs = nowMs()
+      endUnanswered(trace, AnswerOutcomeKind.Failed, question, endedMs)
       await deps.questions.finish(question.id, deps.reservation, {
-        ...baseResult({ startedMs, endedMs: nowMs() }),
+        ...baseResult({ startedMs, endedMs }, trace),
         status: StoredQuestionStatus.Failed,
       })
       recorded = true
@@ -248,11 +298,13 @@ export function createStreamAnswer(deps: StreamAnswerDeps): StreamAnswer {
     } finally {
       clearTimeout(handle)
       if (!recorded) {
+        const endedMs = nowMs()
+        endUnanswered(trace, AnswerOutcomeKind.Aborted, question, endedMs)
         telemetry.answer(unansweredSignal(AnswerOutcomeKind.Aborted, question))
         deps.backgroundTasks.run(
           'question-aborted',
           deps.questions.finish(question.id, deps.reservation, {
-            ...baseResult({ startedMs, endedMs: nowMs() }),
+            ...baseResult({ startedMs, endedMs }, trace),
             status: StoredQuestionStatus.Aborted,
           }),
           { timeoutMs: ABORT_RECORD_TIMEOUT_MS },
@@ -272,6 +324,20 @@ export function createStreamAnswer(deps: StreamAnswerDeps): StreamAnswer {
     if (claim.kind === 'busy') {
       throw new ApplicationError({ code: ErrorCode.StreamBusy })
     }
-    return run(command, claim.question)
+    const { question } = claim
+    const trace = await tracer.start({
+      questionId: question.id,
+      userId: command.user.id,
+      question: question.questionRedacted,
+      locale: question.locale,
+      families: question.families,
+      referenceDate: question.referenceDate,
+      referenceSource: question.referenceSource,
+      corpusVersion: question.corpusVersion,
+      promptVersion: PROMPT_VERSION,
+      cached: false,
+      startedAtMs: nowMs(),
+    })
+    return run(command, question, trace)
   }
 }

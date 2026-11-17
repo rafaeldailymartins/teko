@@ -10,13 +10,18 @@
 #   - quotas (environment ops): scripts/ops-metrics.ts empurra por OTLP ao Grafana Cloud o CU-h do
 #     Neon (API do Neon, sem acordar o compute), a idade da cobertura, a expiração dos tokens
 #     (variável TOKEN_EXPIRY_DATES) e o sucesso do próprio job.
+#   - langfuse (environment ops, mudança add-llm-tracing-langfuse): scripts/langfuse-ops.ts aplica
+#     nos projetos teko-prod e teko-staging do Langfuse os modelos e preços de
+#     apps/api/src/application/services/pricing.ts, a score config user_feedback e a annotation
+#     queue do 👎, e empurra teko_langfuse_units_projected (Metrics API dos dois projetos) e o
+#     sucesso do job. Dispatch com dry_run só lê.
 #
 # O environment ops pode estar vazio: cada job confere os segredos e, sem eles, avisa no resumo e
 # termina verde (o grafana ainda valida os arquivos). Quem cadastra é o mantenedor
 # (infra/grafana/README.md).
 #
-# Para acrescentar um job (o langfuse-models da mudança add-llm-tracing-langfuse; vercel-usage,
-# weekly-maintenance e prod-vuln-scan da F7), copie o `quotas`: environment ops, harden-runner em
+# Para acrescentar um job (vercel-usage, weekly-maintenance e prod-vuln-scan da F7), copie o
+# `quotas`: environment ops, harden-runner em
 # block com os hosts exatos do serviço, checkout sem credenciais, setup-node, um script em scripts/
 # com teste no test:scripts, segredos só no `env` do passo que os usa e falta de segredo como
 # ::warning com saída 0. Métrica nova vai por scripts/lib/otlp-metrics.ts, com o nome em
@@ -253,4 +258,59 @@ jobs:
             node scripts/ops-metrics.ts --dry-run --job quotas
           else
             node scripts/ops-metrics.ts --job quotas
+          fi
+
+  langfuse:
+    name: langfuse
+    if: github.event_name != 'push'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment: ops
+    permissions:
+      contents: read
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          # GitHub (checkout e setup-node), nodejs.org, a API pública do Langfuse Cloud (EU) e o
+          # gateway OTLP do Grafana Cloud.
+          egress-policy: block
+          allowed-endpoints: >
+            github.com:443
+            api.github.com:443
+            codeload.github.com:443
+            objects.githubusercontent.com:443
+            raw.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+            results-receiver.actions.githubusercontent.com:443
+            *.actions.githubusercontent.com:443
+            nodejs.org:443
+            cloud.langfuse.com:443
+            *.grafana.net:443
+
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Node (.nvmrc)
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+
+      - name: Modelos, feedback e units do Langfuse (OTLP ao Grafana Cloud)
+        env:
+          LANGFUSE_BASE_URL: ${{ vars.LANGFUSE_BASE_URL }}
+          LANGFUSE_PROD_PUBLIC_KEY: ${{ secrets.LANGFUSE_PROD_PUBLIC_KEY }}
+          LANGFUSE_PROD_SECRET_KEY: ${{ secrets.LANGFUSE_PROD_SECRET_KEY }}
+          LANGFUSE_STAGING_PUBLIC_KEY: ${{ secrets.LANGFUSE_STAGING_PUBLIC_KEY }}
+          LANGFUSE_STAGING_SECRET_KEY: ${{ secrets.LANGFUSE_STAGING_SECRET_KEY }}
+          GRAFANA_OTLP_ENDPOINT: ${{ vars.GRAFANA_OTLP_ENDPOINT }}
+          GRAFANA_OTLP_INSTANCE_ID: ${{ vars.GRAFANA_OTLP_INSTANCE_ID }}
+          GRAFANA_OTLP_TOKEN: ${{ secrets.GRAFANA_OTLP_TOKEN }}
+        run: |
+          if [[ "$DRY_RUN" == true ]]; then
+            node scripts/langfuse-ops.ts --dry-run
+          else
+            node scripts/langfuse-ops.ts
           fi

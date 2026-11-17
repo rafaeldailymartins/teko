@@ -6,6 +6,7 @@ import {
   DEFAULT_TRUST_PROXY,
   EnvValidationError,
   HOBBY_MAX_DURATION_S,
+  langfuseSettings,
   loadCliEnv,
   loadWatchEnv,
   parseEnv,
@@ -170,9 +171,87 @@ describe('parseEnv', () => {
   })
 
   it('ignora variáveis que a API não usa', () => {
-    const env = parseEnv({ ...DEV_ENV, LANGFUSE_SECRET_KEY: 's' })
-    expect(env).not.toHaveProperty('LANGFUSE_SECRET_KEY')
+    const env = parseEnv({ ...DEV_ENV, LANGFUSE_INIT_USER_PASSWORD: 's' })
+    expect(env).not.toHaveProperty('LANGFUSE_INIT_USER_PASSWORD')
     expect(env.DATABASE_URL).toBeUndefined()
+  })
+
+  describe('Langfuse', () => {
+    const KEYS = { LANGFUSE_PUBLIC_KEY: 'pk-lf-abc', LANGFUSE_SECRET_KEY: 'sk-lf-def' }
+    const PROD = {
+      APP_ENV: 'production',
+      NODE_ENV: 'production',
+      RUNTIME_TARGET: 'render',
+      TRUST_PROXY: '1',
+      WEB_ORIGIN: 'https://tekoia.vercel.app',
+    }
+
+    it('sem chaves, desligado; com chaves, o Cloud EU com o ambiente e o commit', () => {
+      expect(langfuseSettings(parseEnv(DEV_ENV))).toBeNull()
+      expect(langfuseSettings(parseEnv({ ...DEV_ENV, ...KEYS, GIT_SHA: 'a'.repeat(40) }))).toEqual({
+        publicKey: 'pk-lf-abc',
+        secretKey: 'sk-lf-def',
+        baseUrl: 'https://cloud.langfuse.com',
+        environment: 'development',
+        release: 'a'.repeat(40),
+        sampling: { rate: 1, overBudgetRate: 0.2, monthlyUnitsCutoff: 35_000 },
+      })
+    })
+
+    it('LLM_TRACING_BACKEND=off desliga mesmo com as chaves', () => {
+      expect(langfuseSettings(parseEnv({ ...DEV_ENV, ...KEYS, LLM_TRACING_BACKEND: 'off' }))).toBe(
+        null,
+      )
+    })
+
+    it.each([
+      ['production', 1],
+      ['staging', 0.1],
+      ['ci', 0],
+    ])('taxa padrão de %s: %s', (appEnv, rate) => {
+      const base =
+        appEnv === 'ci' ? { ...DEV_ENV, APP_ENV: 'ci' } : { ...PROD, APP_ENV: appEnv, ...KEYS }
+      expect(langfuseSettings(parseEnv({ ...base, ...KEYS }))?.sampling.rate).toBe(rate)
+    })
+
+    it('taxas, corte, ambiente e release por env', () => {
+      const settings = langfuseSettings(
+        parseEnv({
+          ...DEV_ENV,
+          ...KEYS,
+          LANGFUSE_SAMPLE_RATE: '0.5',
+          LANGFUSE_SAMPLE_RATE_OVER_BUDGET: '0.05',
+          LANGFUSE_MONTHLY_UNITS_CUTOFF: '1000',
+          LANGFUSE_TRACING_ENVIRONMENT: 'dev-local',
+          LANGFUSE_RELEASE: 'v1',
+          LANGFUSE_BASE_URL: 'http://localhost:3100',
+        }),
+      )
+      expect(settings).toMatchObject({
+        baseUrl: 'http://localhost:3100',
+        environment: 'dev-local',
+        release: 'v1',
+        sampling: { rate: 0.5, overBudgetRate: 0.05, monthlyUnitsCutoff: 1000 },
+      })
+    })
+
+    it('chaves aos pares, com os prefixos do Langfuse, e https em produção', () => {
+      expect(problemsOf({ ...DEV_ENV, LANGFUSE_PUBLIC_KEY: 'pk-lf-abc' })).toEqual([
+        'LANGFUSE_SECRET_KEY: LANGFUSE_PUBLIC_KEY e LANGFUSE_SECRET_KEY vêm juntas',
+      ])
+      expect(problemsOf({ ...DEV_ENV, ...KEYS, LANGFUSE_SECRET_KEY: 'segredo' })).toContain(
+        'LANGFUSE_SECRET_KEY: deve começar com sk-lf-',
+      )
+      expect(
+        problemsOf({ ...PROD, ...KEYS, LANGFUSE_BASE_URL: 'http://langfuse.example' }),
+      ).toEqual(['LANGFUSE_BASE_URL: APP_ENV=production exige https'])
+      expect(problemsOf({ ...DEV_ENV, LANGFUSE_TRACING_ENVIRONMENT: 'langfuse-x' })[0]).toMatch(
+        /^LANGFUSE_TRACING_ENVIRONMENT:/,
+      )
+      expect(problemsOf({ ...DEV_ENV, LANGFUSE_SAMPLE_RATE: '1.5' })[0]).toMatch(
+        /^LANGFUSE_SAMPLE_RATE:/,
+      )
+    })
   })
 
   describe('Better Auth', () => {

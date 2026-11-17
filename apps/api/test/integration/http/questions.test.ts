@@ -20,6 +20,10 @@ import { createFakeLlmAdapter } from '#adapters/out/fakes/fake-llm-adapter.ts'
 import type { Container } from '#app/container.ts'
 import { type EmbeddingPort, EmbeddingUnavailableError } from '#app/ports/embedding-port.ts'
 import type { LlmEvent, LlmModel, LlmRequest } from '#app/ports/llm-port.ts'
+import {
+  recordingLlmTracing,
+  recordingTraceFeedback,
+} from '#app/ports/testing/recording-llm-tracing.ts'
 import { buildApp } from '../../../src/build-app.ts'
 import {
   createContainer,
@@ -511,6 +515,122 @@ describe('histórico, feedback e cota', () => {
       (await app.inject({ url: '/api/v1/me/quota', headers: { cookie: alice.cookie } })).json(),
     )
     expect(quota.user).toEqual({ used: 1, limit: 30 })
+  })
+})
+
+describe('traces de LLM (Langfuse) e custo-sombra', () => {
+  /** Units do Langfuse somadas na linha `global` (todos os dias). */
+  async function langfuseUnits(): Promise<number> {
+    const { rows } = await owner.query<{ units: number }>(
+      `SELECT coalesce(sum(langfuse_units), 0)::int AS units FROM app.usage_daily
+       WHERE scope = 'global'`,
+    )
+    return rows[0]?.units ?? 0
+  }
+
+  it('grava trace_id, units e shadow_cost_usd em resposta, cache e recusa; feedback vira score', async () => {
+    const port = recordingLlmTracing()
+    const feedbackPort = recordingTraceFeedback()
+    const spy = spyModel()
+    const env = envFor({})
+    const container = createContainer(env, {
+      applicationName: 'teko-test',
+      clock: { now: () => new Date() },
+      llmModels: [spy],
+      llmTracing: { port, feedback: feedbackPort },
+    })
+    containers.push(container)
+    const app = await buildApp({
+      container,
+      http: createHttpOptions(env, container.rateLimitStore),
+    })
+    apps.push(app)
+    const { cookie, userId } = await newUser()
+    const before = await langfuseUnits()
+
+    // Resposta pelo stream: trace com retrieval e answer.
+    const question = `${GOYAZES} (langfuse)`
+    const answeredId = await acceptedId(app, cookie, question)
+    const chunks = parseSse((await streamOf(app, cookie, answeredId)).body)
+    expect(chunks.at(-1)?.type).toBe('finish')
+    // Acerto do cache e recusa por cobertura: só a raiz, gravada em tarefa pós-resposta.
+    const cached = askQuestionResponseSchema.parse(
+      (await ask(app, cookie, askBody(question))).json(),
+    )
+    expect(cached).toMatchObject({ status: 'answered', answer: { meta: { cached: true } } })
+    const refused = askQuestionResponseSchema.parse(
+      (await ask(app, cookie, askBody(question, { periodoApuracao: '2027-01' }))).json(),
+    )
+    expect(refused.status).toBe('refused')
+    await container.backgroundTasks.drain(5000)
+
+    expect(port.queries.map((query) => [query.start.cached, query.end?.outcome])).toEqual([
+      [false, 'answered'],
+      [true, 'answered'],
+      [false, 'refused'],
+    ])
+    expect(port.queries[0]?.generations).toHaveLength(1)
+    const rows = await owner.query<{
+      status: string
+      shadow_cost_usd: string | null
+      langfuse_trace_id: string | null
+    }>(
+      `SELECT status, shadow_cost_usd, langfuse_trace_id FROM app.questions
+       WHERE user_id = $1 ORDER BY created_at, id`,
+      [userId],
+    )
+    expect(rows.rows.map((row) => row.status)).toEqual(['answered', 'answered', 'refused'])
+    expect(rows.rows.map((row) => row.langfuse_trace_id)).toEqual(['trace-1', 'trace-2', 'trace-3'])
+    // O fake não tem preço: custo 0, mas sempre gravado.
+    expect(rows.rows.map((row) => Number(row.shadow_cost_usd))).toEqual([0, 0, 0])
+    // 4 (rag-query + retrieval + answer) + 2 (cache) + 2 (recusa).
+    expect((await langfuseUnits()) - before).toBe(8)
+
+    const feedback = await app.inject({
+      method: 'POST',
+      url: `/api/v1/questions/${answeredId}/feedback`,
+      headers: { ...JSON_HEADERS, cookie },
+      payload: { rating: 'down', reason: 'incomplete' },
+    })
+    expect(feedback.statusCode).toBe(204)
+    await container.backgroundTasks.drain(5000)
+    expect(feedbackPort.calls).toEqual([
+      { traceId: 'trace-1', questionId: answeredId, rating: 'down', reason: 'incomplete' },
+    ])
+    expect((await langfuseUnits()) - before).toBe(9)
+  })
+
+  it('falha do Langfuse no feedback não muda a resposta', async () => {
+    const feedbackPort = recordingTraceFeedback()
+    feedbackPort.fail = true
+    const env = envFor({})
+    const container = createContainer(env, {
+      applicationName: 'teko-test',
+      clock: { now: () => new Date() },
+      llmModels: [spyModel()],
+      llmTracing: { port: recordingLlmTracing(), feedback: feedbackPort },
+    })
+    containers.push(container)
+    const app = await buildApp({
+      container,
+      http: createHttpOptions(env, container.rateLimitStore),
+    })
+    apps.push(app)
+    const { cookie } = await newUser()
+    const refused = askQuestionResponseSchema.parse(
+      (await ask(app, cookie, askBody(GOYAZES, { periodoApuracao: '2027-01' }))).json(),
+    )
+    await container.backgroundTasks.drain(5000)
+    const id = refused.status === 'refused' ? refused.questionId : ''
+    const res = await app.inject({
+      method: 'POST',
+      url: `/api/v1/questions/${id}/feedback`,
+      headers: { ...JSON_HEADERS, cookie },
+      payload: { rating: 'up' },
+    })
+    expect(res.statusCode).toBe(204)
+    await container.backgroundTasks.drain(5000)
+    expect(feedbackPort.calls).toHaveLength(1)
   })
 })
 

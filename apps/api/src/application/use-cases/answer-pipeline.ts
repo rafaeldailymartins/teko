@@ -17,6 +17,7 @@ import type { Evidence } from '#domain/qa/evidence.ts'
 import { createStreamSanitizer } from '#domain/qa/stream-sanitizer.ts'
 import type { ResolvedReference } from '#domain/vigencia/reference-resolution.ts'
 import type { LlmUsage } from '../ports/llm-port.ts'
+import type { RetrievalSummary } from '../ports/llm-tracing.ts'
 import type { StoredReferenceInput } from '../ports/question-repository.ts'
 import { noopTelemetry, type Telemetry } from '../ports/telemetry.ts'
 import {
@@ -25,7 +26,13 @@ import {
   buildAnswerPrompt,
   PROMPT_CANARY,
 } from '../prompts/answer.ts'
+import {
+  interruptionOf,
+  recordFailedGeneration,
+  trackGeneration,
+} from '../services/generation-trace.ts'
 import type { ProviderRouter } from '../services/provider-router.ts'
+import { type QueryTrace, untracedQuery } from '../services/trace-sampler.ts'
 import { RetrievalOutcome, type RetrieveEvidence } from './retrieve-evidence.ts'
 
 /**
@@ -47,6 +54,8 @@ export interface AnswerPipelineInput {
   readonly locale: Locale
   readonly zeroDataRetention: boolean
   readonly signal: AbortSignal
+  /** Trace `rag-query` da pergunta (Langfuse); padrão: nenhum. */
+  readonly trace?: QueryTrace
 }
 
 export interface AnswerOutcome {
@@ -106,6 +115,52 @@ function refusalChunk(refusal: Refusal): TekoStreamChunk {
   return { type: DataPartType.Refusal, data: refusal }
 }
 
+type Retrieval = Awaited<ReturnType<RetrieveEvidence>>
+
+const round4 = (value: number): number => Math.round(value * 10_000) / 10_000
+
+const INTERRUPTED_RETRIEVAL: RetrievalSummary = {
+  mode: null,
+  topK: 0,
+  candidatesByChannel: { lexical: 0, semantic: 0, reference: 0 },
+  rrf: [],
+  reranked: false,
+  rewritten: false,
+  uncoveredFamilies: [],
+  refusalReason: null,
+}
+
+/** O que o span `retrieval` do Langfuse mostra da busca (sem o texto das evidências). */
+export function retrievalSummary(retrieval: Retrieval): RetrievalSummary {
+  if (retrieval.outcome !== RetrievalOutcome.Evidence) {
+    return {
+      ...INTERRUPTED_RETRIEVAL,
+      mode: retrieval.outcome === RetrievalOutcome.Refused ? retrieval.mode : null,
+      refusalReason:
+        retrieval.outcome === RetrievalOutcome.Refused
+          ? retrieval.reason
+          : RefusalReason.NoEvidence,
+    }
+  }
+  const { evidence } = retrieval
+  const count = (rank: (item: Evidence) => number | null): number =>
+    evidence.filter((item) => rank(item) !== null).length
+  return {
+    mode: retrieval.mode,
+    topK: evidence.length,
+    candidatesByChannel: {
+      lexical: count((item) => item.lexicalRank),
+      semantic: count((item) => item.semanticRank),
+      reference: count((item) => item.referenceRank),
+    },
+    rrf: evidence.map((item) => round4(item.rrf)),
+    reranked: retrieval.reranked,
+    rewritten: retrieval.rewrittenQuery !== null,
+    uncoveredFamilies: [...retrieval.uncoveredFamilies],
+    refusalReason: null,
+  }
+}
+
 /**
  * Gera os chunks e devolve o resultado pelo `onOutcome` antes do último chunk. Falhas (cadeia de
  * LLM fora do ar, cancelamento) saem como exceção, para quem grava decidir o status e o `error`.
@@ -116,14 +171,25 @@ export async function* runAnswerPipeline(
   onOutcome: (outcome: AnswerOutcome) => void,
 ): AsyncGenerator<TekoStreamChunk> {
   yield { type: 'start', messageId: input.messageId }
-  const retrieval = await deps.retrieveEvidence({
-    input: input.referenceInput,
-    source: input.referenceSource,
-    questionText: input.question,
-    families: input.families,
-    zeroDataRetentionOnly: input.zeroDataRetention,
-    signal: input.signal,
-  })
+  const trace = input.trace ?? untracedQuery
+  const retrievalSpan = trace.retrieval(deps.nowMs())
+  let retrieval: Retrieval
+  try {
+    retrieval = await deps.retrieveEvidence({
+      input: input.referenceInput,
+      source: input.referenceSource,
+      questionText: input.question,
+      families: input.families,
+      zeroDataRetentionOnly: input.zeroDataRetention,
+      signal: input.signal,
+      trace,
+    })
+  } catch (error) {
+    // Cancelamento ou falha da busca: o span fecha vazio e o `rag-query` leva o desfecho.
+    retrievalSpan.end(INTERRUPTED_RETRIEVAL, deps.nowMs())
+    throw error
+  }
+  retrievalSpan.end(retrievalSummary(retrieval), deps.nowMs())
   if (retrieval.outcome === RetrievalOutcome.NeedsClarification) {
     // A data já foi resolvida no POST; com a mesma entrada, não muda. Por garantia, recusa.
     const refusal: Refusal = { reason: RefusalReason.NoEvidence }
@@ -170,44 +236,69 @@ export async function* runAnswerPipeline(
   let meta: AnswerMeta | null = null
   let model: string | null = null
   let firstTokenAtMs: number | null = null
+  const generationRequest = {
+    name: 'answer',
+    input: prompt.prompt,
+    temperature: ANSWER_TEMPERATURE,
+    maxOutputTokens: ANSWER_MAX_OUTPUT_TOKENS,
+  } as const
+  // O texto juntado é o já saneado: o que o usuário viu.
+  const generation = trackGeneration(trace, generationRequest, deps.nowMs)
+  // Sem `catch` não basta: o `return()` do consumidor (desconexão) só passa pelo `finally`.
+  let interruption: string | null = 'aborted'
+  let tail = ''
 
-  for await (const event of deps.router.stream(
-    {
-      system: prompt.system,
-      prompt: prompt.prompt,
-      temperature: ANSWER_TEMPERATURE,
-      maxOutputTokens: ANSWER_MAX_OUTPUT_TOKENS,
-      signal: input.signal,
-    },
-    { zeroDataRetentionOnly: input.zeroDataRetention },
-  )) {
-    if (event.type === 'start') {
-      model = event.model
-      meta = {
-        corpusVersion: await deps.corpusVersion(),
-        retrievalMode: retrieval.mode,
-        uncoveredFamilies: [...retrieval.uncoveredFamilies],
-        provider: event.provider,
-        fallbackFrom: event.fallbackFrom,
-        cached: false,
+  try {
+    for await (const event of deps.router.stream(
+      {
+        system: prompt.system,
+        prompt: prompt.prompt,
+        temperature: ANSWER_TEMPERATURE,
+        maxOutputTokens: ANSWER_MAX_OUTPUT_TOKENS,
+        signal: input.signal,
+      },
+      {
+        zeroDataRetentionOnly: input.zeroDataRetention,
+        onFailedAttempt: (attempt) => {
+          recordFailedGeneration(trace, generationRequest, attempt)
+        },
+      },
+    )) {
+      if (event.type === 'start') {
+        model = event.model
+        generation.start(event)
+        meta = {
+          corpusVersion: await deps.corpusVersion(),
+          retrievalMode: retrieval.mode,
+          uncoveredFamilies: [...retrieval.uncoveredFamilies],
+          provider: event.provider,
+          fallbackFrom: event.fallbackFrom,
+          cached: false,
+        }
+        yield { type: DataPartType.Meta, data: meta }
+        for (const citation of citations) {
+          yield { type: DataPartType.Citation, id: citation.id, data: citation }
+        }
+        yield { type: 'text-start', id: TEXT_PART_ID }
+      } else if (event.type === 'text') {
+        firstTokenAtMs ??= deps.nowMs()
+        raw += event.text
+        const safe = generation.text(sanitizer.push(event.text))
+        if (safe !== '') {
+          yield { type: 'text-delta', id: TEXT_PART_ID, delta: safe }
+        }
+      } else {
+        usage = event.usage
       }
-      yield { type: DataPartType.Meta, data: meta }
-      for (const citation of citations) {
-        yield { type: DataPartType.Citation, id: citation.id, data: citation }
-      }
-      yield { type: 'text-start', id: TEXT_PART_ID }
-    } else if (event.type === 'text') {
-      firstTokenAtMs ??= deps.nowMs()
-      raw += event.text
-      const safe = sanitizer.push(event.text)
-      if (safe !== '') {
-        yield { type: 'text-delta', id: TEXT_PART_ID, delta: safe }
-      }
-    } else {
-      usage = event.usage
     }
+    tail = generation.text(sanitizer.flush())
+    interruption = null
+  } catch (error) {
+    interruption = interruptionOf(error, input.signal)
+    throw error
+  } finally {
+    generation.end(usage, firstTokenAtMs, interruption)
   }
-  const tail = sanitizer.flush()
   if (tail !== '') {
     yield { type: 'text-delta', id: TEXT_PART_ID, delta: tail }
   }

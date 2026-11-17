@@ -50,7 +50,8 @@ telefone BR, chave NF-e; regex de `@teko/shared/pii`), `CitationValidator`, `Pro
 **Portas:** `LLMPort.stream(prompt, {signal})`, `EmbeddingPort`, `RerankerPort`, repositórios
 (`SearchRepository`, `CorpusRepository`, `CoverageRepository`, `QuestionRepository`),
 `QuotaStore`, `RateLimitStore`, `AnswerCache`, `Clock`, `GeoResolver` (sobre `geolocation()` na
-Vercel), `ClientIp` (sobre `x-real-ip` na Vercel), `Telemetry`, `UnitOfWork`, `ErrorReporterPort`,
+Vercel), `ClientIp` (sobre `x-real-ip` na Vercel), `Telemetry`, `LlmTracingPort` e
+`TraceFeedbackPort` (Langfuse, [observabilidade](observabilidade.md)), `UnitOfWork`, `ErrorReporterPort`,
 `BackgroundTasks` (`waitUntil` na Vercel; nas outras plataformas só acompanha a promise),
 `AnalyticsErasurePort` e `TraceErasurePort` (usadas por `DeleteMyData`), `BlobStore` (só CLI).
 

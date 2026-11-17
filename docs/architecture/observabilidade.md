@@ -22,7 +22,8 @@ de timer de exportação: a instância da Vercel pausa entre requisições.
   processo, que separa as séries de instâncias simultâneas).
 - **Processors:** `BatchSpanProcessor` com exporter OTLP/HTTP direto ao endpoint da stack Grafana
   Cloud e, no mesmo provider, os de `additionalSpanProcessors` (`src/instrumentation.ts`): o
-  `LangfuseSpanProcessor` (abaixo) entra ali. Os spans de LLM chegam aos dois com o mesmo `trace_id`.
+  `LangfuseSpanProcessor` (abaixo) entra ali. As observations do Langfuse chegam aos dois com o mesmo
+  `trace_id`; os spans `chat <modelo>` vão só ao Grafana.
 - **Flush:** ao fim de cada request de `/api` (menos `/api/healthz`), o hook `onResponse`
   (`adapters/in/http/plugins/telemetry.ts`) põe o flush em `BackgroundTasks` (`waitUntil`) com teto
   de 500 ms: `forceFlush` de traces e logs e, no máximo uma vez por minuto por instância, das
@@ -88,25 +89,66 @@ Definidas só em `adapters/out/telemetry/metrics.ts`, atrás da porta `Telemetry
 
 ## Langfuse Cloud Hobby (EU)
 
-- Projetos `teko-prod` e `teko-staging`; `LANGFUSE_BASE_URL`, `LANGFUSE_TRACING_ENVIRONMENT`,
-  `LANGFUSE_RELEASE=<gitSha>`, `LLM_TRACING_BACKEND=langfuse|off`.
-- Observations criadas com `@langfuse/tracing`. O processor exporta só spans do SDK e `gen_ai` dos
-  traces amostrados; o `mask` aplica o `PiiRedactor`. O `TraceSampler` decide no início do
-  `rag-query` (hash do `questionId`), independente da flag do navegador.
-- **Trace (3 a 5 units):** `rag-query` (usuário com hash, pergunta redigida, data e
-  `ReferenceSource`, `corpus_version`, `prompt_version`, cache, cobertura); span `retrieval`
-  (candidatos por canal, top-k, RRF, reranker, `retrievalMode`); uma generation `answer` por
-  provedor tentado, com `usageDetails`, `costDetails` a preço de tabela (`services/pricing.ts`),
-  `metadata.billed_usd=0` e TTFT; cache hit gera só o trace.
-- Modelos cadastrados em Settings → Models com os preços de `services/pricing.ts`, pelo `ops.yml`. O
-  dashboard de custo do Langfuse é a visão oficial de custo por consulta; as não amostradas têm o
-  custo em `app.questions.shadow_cost_usd`.
+Decisão na [ADR 0012](../adr/0012-langfuse-cloud.md). `@langfuse/otel` e `@langfuse/tracing` 6.1.1
+sobre o mesmo `NodeTracerProvider` do OTel 2.x; o Langfuse Cloud roda a v4 (modelo de eventos).
+
+- Projetos `teko-prod` e `teko-staging`. Env: `LANGFUSE_PUBLIC_KEY` e `LANGFUSE_SECRET_KEY`
+  (Sensitive), `LANGFUSE_BASE_URL` (https em staging e produção), `LANGFUSE_TRACING_ENVIRONMENT`
+  (padrão: o `APP_ENV`), `LANGFUSE_RELEASE` (padrão: o `GIT_SHA`) e `LLM_TRACING_BACKEND=langfuse|off`.
+  Sem as duas chaves (CI, testes), nada é criado nem exportado; staging e produção sem chave avisam no
+  boot. Configuração lida em `config/env.ts` (`langfuseSettings`).
+- **Processor** (`adapters/out/telemetry/langfuse.ts`, devolvido por `additionalSpanProcessors`):
+  exporta **só** os spans do SDK do Langfuse (escopo `langfuse-sdk`), que só existem nos traces
+  amostrados. O `mask` passa o `redact` do `PiiRedactor` (`@teko/shared/pii`) em entrada, saída e
+  metadata, como segunda barreira (a pergunta já chega redigida). Lote alcançado pelo flush por
+  requisição (teto de 1 s por exportação), sem upload de mídia. **Desvio:** os spans `chat <modelo>`
+  (`gen_ai.*`) do adapter de LLM ficam só no Grafana: a generation `answer` já leva modelo, uso, custo
+  e TTFT, e exportar os dois duplicaria tokens e custo no Langfuse e gastaria 1 ou 2 units a mais por
+  pergunta.
+- **`TraceSampler`** (`application/services/trace-sampler.ts`): decide no início do `rag-query` pelo
+  FNV-1a do `questionId` (determinístico, independente da flag do navegador). A taxa do ambiente vale
+  até a projeção linear do mês (`usage_daily.langfuse_units`, linha `global`, mês de São Paulo)
+  chegar a `LANGFUSE_MONTHLY_UNITS_CUTOFF`; dali em diante, `LANGFUSE_SAMPLE_RATE_OVER_BUDGET` (nunca
+  acima da taxa do ambiente). A projeção fica 10 min em memória por instância; falha na leitura vale
+  como corte atingido. O `QueryTracer` conta as units de cada trace e engole falhas do adapter.
+- **Trace `rag-query`** (o mesmo `trace_id` do OTel: a raiz é filha do span `request` e o Langfuse a
+  marca como raiz da aplicação): usuário só por hash (`langfuseUserId`, sha256 truncado), pergunta
+  redigida, data e `ReferenceSource`, `corpus_version`, `prompt_version`, cache e famílias; saída com
+  o desfecho, o motivo da recusa, a resposta e as citações válidas. Span `retrieval` (retriever):
+  candidatos do top-k por canal, top-k, RRF, reranker, reescrita, `retrievalMode` e famílias sem
+  cobertura. Uma generation `answer` por provedor tentado (a que falhou antes do primeiro token vem
+  com `level=ERROR` e o tipo da falha), com o prompt do usuário (sem o system prompt), `usageDetails`,
+  `costDetails` a preço de tabela (`services/pricing.ts`), `metadata.billed_usd=0`, `ttft_ms` e
+  `completionStartTime`. Acerto do cache e recusa por cobertura (no `POST`) geram só a raiz.
+- **Units** (traces + observations + scores): resposta 4, com um fallback 5, recusa na busca 3,
+  cache ou fora da cobertura 2, cada score 1. O stream grava o `langfuse_trace_id` e soma as units
+  em `usage_daily` na mesma transação da resposta; o `POST` (cache e cobertura) e o feedback, em
+  tarefa pós-resposta ou na mesma instrução do feedback.
+- **Custo:** `app.questions.shadow_cost_usd` é gravado em 100% das linhas (0 sem LLM: recusas,
+  cache, falhas e desconexões). Os modelos e preços de `services/pricing.ts` ficam em Settings →
+  Models (tier padrão por token), aplicados pelo job `langfuse` do `ops.yml`. O dashboard de custo
+  do Langfuse é a visão oficial de custo por consulta; as não amostradas têm o custo no Postgres.
 - **Amostragem:** prod 1,0 até a projeção mensal chegar a 35k units, depois 0,2; staging 0,1; CI
-  off. A soma dos dois projetos fica abaixo de 45k.
-- **Feedback:** `POST /questions/:id/feedback` grava no Postgres e, se o trace foi amostrado, cria
-  o score `user_feedback`. 👎 entra na annotation queue (veja "Sinais de RAG").
+  off (`infra/vercel/env.*.json`). A soma dos dois projetos fica abaixo de 45k.
+- **Feedback:** `POST /questions/:id/feedback` grava no Postgres e, se a pergunta tem trace, cria
+  em `BackgroundTasks` (teto de 2 s) o score `user_feedback` (BOOLEAN, id estável por pergunta, motivo
+  no comentário). 👎 entra na annotation queue `teko-feedback-negativo` (veja "Sinais de RAG"). Falha
+  do Langfuse nunca chega à resposta. Score, queue e apagamento usam a API pública por `fetch`
+  (`adapters/out/telemetry/langfuse-api.ts`): o `@langfuse/client` depende do `mustache`, sem
+  proveniência.
+- **Apagamento:** `DeleteMyData` acha os traces do usuário pelo hash na API v2 de observations e os
+  apaga em lotes (`DELETE /api/public/traces`, assíncrono no Langfuse; observations e scores saem
+  junto).
+- **Job `langfuse` do `ops.yml`** (`scripts/langfuse-ops.ts`, environment `ops`): modelos e preços,
+  a score config `user_feedback` e a annotation queue nos dois projetos, e
+  `teko_langfuse_units_projected` lido da Metrics API v2 (observations, raízes e scores do mês UTC
+  dos dois projetos, projetado linearmente). A métrica vem do Langfuse, e não do `usage_daily`,
+  porque a cota é da organização, conta o que a API não conta e a leitura não acorda o Neon.
 - **Prompts:** a fonte de verdade é o repositório; a Prompt Management do Langfuse não é usada.
-- **Dev local:** profile `langfuse` em `infra/local/compose.yaml`, portas só em `127.0.0.1`.
+- **Dev local:** profile `langfuse` em `infra/local/compose.yaml` (imagens por digest, portas só em
+  `127.0.0.1`); o `pnpm dev:secrets` grava a URL e as chaves do projeto `teko-dev` no
+  `apps/api/.env`. O Langfuse v4 só lê pela API v2 de observations e pela v3 de scores (`GET
+  /api/public/traces` responde 404 no modo de eventos).
 
 ## Erros
 
@@ -208,8 +250,9 @@ Grafana e do Synthetic Monitoring por `scripts/grafana-apply.ts`, no job `grafan
 - **Métricas do `ops.yml`** (job `quotas`, uma vez por dia, OTLP/HTTP com `service.name=teko-ops`):
   `teko_neon_compute_hours` e `teko_neon_cu_hours_ratio` por `project`,
   `teko_coverage_verified_age_days` por `family`, `teko_token_expiry_days` por `token` e
-  `teko_ops_job_last_success_timestamp_seconds` por `ops_job`. Contrato das fontes que chegam
-  depois: `teko_langfuse_units_projected` (Langfuse), `teko_vercel_usage_ratio{resource}`,
+  `teko_ops_job_last_success_timestamp_seconds` por `ops_job`. O job `langfuse` (uma vez por dia)
+  emite `teko_langfuse_units_projected` e o próprio sucesso. Contrato das fontes que chegam
+  depois: `teko_vercel_usage_ratio{resource}`,
   `teko_prod_vuln_findings{severity}` e o `teko_ops_job_last_success_timestamp_seconds` do
   `vercel-usage` e do `weekly-maintenance` (F7).
 - **Alertas por e-mail:** 5xx > 2% em 10 min; p95 de `POST /api/v1/questions` ou TTFT p95 > 3 s;
