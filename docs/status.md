@@ -344,10 +344,11 @@ item aqui. Segredos nunca passam pelo chat: o mantenedor grava cada um.
   `DATABASE_URL` (URL `-pooler` do role `teko_app` do projeto Neon do ambiente, lida pela API do
   Neon e gravada sem passar pela saída), `CF_ACCOUNT_ID` e `CF_AI_TOKEN` (o mesmo token só de
   inferência do environment `staging`).
-- [ ] **Environment `production` do GitHub**: já tem `NEON_PROD_MIGRATE_URL` (URL direta do
+- [x] **Environment `production` do GitHub** (feito em 2026-11-17): `VERCEL_TOKEN` próprio (sem
+  expiração, escopo no time), `VERCEL_AUTOMATION_BYPASS_SECRET` do `tekoia` (criado pela API com a
+  nota `teko-smoke (F7)`; o valor foi direto ao GitHub), `NEON_PROD_MIGRATE_URL` (URL direta do
   `neondb_owner` do `teko-prod`), as vars `VERCEL_ORG_ID` e `VERCEL_PROJECT_ID` do `tekoia` e os do
-  PostHog. Faltam o `VERCEL_TOKEN` próprio e o `VERCEL_AUTOMATION_BYPASS_SECRET` do `tekoia`
-  (tabela de environments em [`ci-cd-e-ambientes.md`](architecture/ci-cd-e-ambientes.md)).
+  PostHog (tabela de environments em [`ci-cd-e-ambientes.md`](architecture/ci-cd-e-ambientes.md)).
 - [ ] **Passkey do system test** no environment `staging` (mesma tabela).
 - [ ] **Checklist dos projetos e do time da Vercel** em
   [`infra/vercel/README.md`](../infra/vercel/README.md) (Build and Deployment, Deployment
