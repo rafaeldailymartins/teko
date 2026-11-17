@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # Sobe a stack descartável de CI (infra/ci/compose.yaml) com a fixture única e uma sessão de teste:
 #
-#   1. imagem candidata da API (apps/api/Dockerfile), export estático do web e os snippets do Caddy
-#      (scripts/caddy-static-site.ts, em infra/ci/.static-site.caddy);
+#   1. imagem candidata da API (apps/api/Dockerfile), export estático do web (com os chunk ids do
+#      PostHog, scripts/sourcemaps.ts) e os snippets do Caddy (scripts/caddy-static-site.ts, em
+#      infra/ci/.static-site.caddy);
 #   2. Postgres, com os roles do Neon;
 #   3. migrações e fixture pelo mesmo caminho da ingestão (cli seed-fixtures, owner);
 #   4. API (APP_ENV=ci, LLM e embeddings fake) e Caddy em http://localhost:8080;
@@ -26,8 +27,19 @@ docker build -f apps/api/Dockerfile \
   -t teko-api:ci .
 # Chave pública fictícia (não é segredo nem projeto real): com ela, aceitar a medição carrega o
 # posthog-js como na produção, e o e2e de consentimento intercepta os hosts da UE (nada sai para a
-# rede). As outras jornadas começam com a medição recusada e não carregam o SDK.
-NEXT_PUBLIC_POSTHOG_KEY=phc_teko_ci_e2e_ficticia pnpm --filter @teko/web build
+# rede). As outras jornadas começam com a medição recusada e não carregam o SDK. A mesma chave liga
+# a captura de erros do navegador e o report-to da CSP (ADR 0037), e o release segue o do staging.
+export NEXT_PUBLIC_POSTHOG_KEY=phc_teko_ci_e2e_ficticia
+export NEXT_PUBLIC_POSTHOG_ERRORS_KEY=phc_teko_ci_e2e_ficticia
+NEXT_PUBLIC_TEKO_RELEASE="teko@$(git rev-parse --short=7 HEAD)"
+export NEXT_PUBLIC_TEKO_RELEASE
+pnpm --filter @teko/web build
+# Chunk ids do PostHog nos chunks do export, offline (scripts/sourcemaps.ts): o e2e roda sobre o
+# bundle injetado, como o do deploy. Precisa do posthog-cli em tools/posthog-cli/bin
+# (`pnpm --dir tools/posthog-cli install --frozen-lockfile && node tools/posthog-cli/install-binary.mjs`).
+node scripts/sourcemaps.ts inject --only web
+# O pós-build de novo, com o mesmo env: o orçamento de bundle passa a medir os chunks injetados.
+(cd apps/web && node scripts/postbuild.ts)
 # Snippets do Caddy (headers, CSP por documento, 404 por locale) a partir do export recém-gerado.
 node scripts/caddy-static-site.ts
 echo "::endgroup::"

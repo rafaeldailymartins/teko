@@ -53,6 +53,11 @@ jobs:
         working-directory: tools/vercel-cli
         run: pnpm audit --audit-level low
 
+      # O posthog-cli roda no build da stack de CI (inject) e no deploy (upload, com a chave pessoal).
+      - name: Vulnerabilidades no posthog-cli isolado (tools/posthog-cli)
+        working-directory: tools/posthog-cli
+        run: pnpm audit --audit-level low
+
   # osv-scanner sobre o pnpm-lock.yaml e o uv.lock (é a única auditoria do Python: o pip-audit
   # saiu). Saiu do security.yml para fora do PR pelo mesmo motivo do `pnpm audit` (ADR 0032).
   osv-scanner:

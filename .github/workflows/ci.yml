@@ -106,9 +106,9 @@ jobs:
       - name: Biome
         run: pnpm lint
 
-      - name: Lockfiles em documento único (raiz e tools/vercel-cli)
-        # O script verifica uma lista fixa: o lockfile da raiz e o do projeto isolado do CLI de
-        # deploy (lido pelo Dependabot e pelos jobs de deploy), sem argumentos.
+      - name: Lockfiles em documento único (raiz, tools/vercel-cli e tools/posthog-cli)
+        # O script verifica uma lista fixa: o lockfile da raiz e os dos projetos isolados dos CLIs de
+        # deploy e de source maps (lidos pelo Dependabot e pelos jobs que os usam), sem argumentos.
         run: pnpm check-lockfile
 
       - name: OpenSpec

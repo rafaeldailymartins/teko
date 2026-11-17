@@ -21,6 +21,7 @@ import {
 } from '#adapters/in/http/plugins/security-headers.ts'
 import { registerTelemetry } from '#adapters/in/http/plugins/telemetry.ts'
 import { registerProblemHandlers } from '#adapters/in/http/problem/error-handler.ts'
+import { reportUnexpectedErrors } from '#adapters/in/http/problem/report-error.ts'
 import { authProviderRoutes } from '#adapters/in/http/routes/auth-providers.ts'
 import { coverageRoutes } from '#adapters/in/http/routes/coverage.ts'
 import { evalRoutes } from '#adapters/in/http/routes/eval.ts'
@@ -71,7 +72,8 @@ export function fastifyTrustProxy(trustProxy: HttpOptions['trustProxy']): Fastif
  *  8. Better Auth (F4);
  *  9. Swagger + Scalar em `/api/docs` (fora de produção);
  * 10. rotas (as de eval só com `APP_ENV=ci`; e, só no Plano B, o export estático do web);
- * 11. error handler RFC 9457 (registrado antes de tudo para valer em todos os escopos).
+ * 11. error handler RFC 9457 (registrado antes de tudo para valer em todos os escopos), que manda
+ *     os erros inesperados ao `ErrorReporterPort` (PostHog Error Tracking, ADR 0037).
  */
 export async function buildApp(deps: BuildAppDeps): Promise<FastifyInstance> {
   if (deps.http.evalRoutes && deps.container.appEnv !== AppEnv.Ci) {
@@ -89,7 +91,11 @@ export async function buildApp(deps: BuildAppDeps): Promise<FastifyInstance> {
 
   app.setValidatorCompiler(validatorCompiler)
   app.setSerializerCompiler(serializerCompiler)
-  registerProblemHandlers(app, deps.http.staticSite === undefined ? undefined : staticNotFound)
+  registerProblemHandlers(
+    app,
+    deps.http.staticSite === undefined ? undefined : staticNotFound,
+    reportUnexpectedErrors(deps.container),
+  )
   decorateContainer(app, deps.container)
   registerRequestIdHeader(app)
   await registerTelemetry(app, deps.http.telemetry)

@@ -1,6 +1,7 @@
 'use client'
 
 import { Component, type ErrorInfo, type ReactNode } from 'react'
+import { errorCapture } from '@/lib/analytics/errors'
 
 interface BlockErrorBoundaryProps {
   /** Mensagem no lugar do bloco que falhou (texto já traduzido). */
@@ -28,6 +29,7 @@ export class BlockErrorBoundary extends Component<
 
   override componentDidCatch(error: Error, info: ErrorInfo): void {
     console.error('Falha ao renderizar um bloco do chat', error, info.componentStack)
+    errorCapture.report(error)
   }
 
   override render(): ReactNode {

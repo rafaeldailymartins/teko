@@ -1,4 +1,5 @@
 import { isAnalyticsEventName } from '@teko/shared/analytics'
+import { redact } from '@teko/shared/pii'
 import type {
   BeforeSendFn,
   CaptureResult,
@@ -90,8 +91,9 @@ export interface PosthogConfigOptions {
  * - `person_profiles: 'identified_only'` e nenhum `identify`: os eventos não se ligam à conta;
  * - só o catálogo tipado sai: sem autocapture (o texto de um botão ou de um item do histórico pode
  *   ser a pergunta), sem pageview, pageleave, heatmap, dead click e web vitals do SDK (o
- *   `web_vital` do catálogo vem do `useReportWebVitals`), sem replay, sem exceções (a
- *   `add-error-tracking` liga) e sem experimentos, tours e chat.
+ *   `web_vital` do catálogo vem do `useReportWebVitals`), sem replay, sem exceções (os erros saem
+ *   pela instância própria de `errorClientConfig`, sem depender do consentimento) e sem
+ *   experimentos, tours e chat.
  */
 export function posthogConfig({
   surveys,
@@ -122,6 +124,85 @@ export function posthogConfig({
     save_campaign_params: false,
     mask_personal_data_properties: true,
     before_send: beforeSend,
+  }
+}
+
+/** Nome da instância do `posthog-js` que só leva erros (separada da de analytics). */
+export const ERRORS_INSTANCE_NAME = 'teko_errors'
+
+function scrubExceptionList(list: readonly unknown[]): unknown[] {
+  return list.map((entry: unknown) => {
+    if (typeof entry !== 'object' || entry === null || !('value' in entry)) {
+      return entry
+    }
+    return typeof entry.value === 'string' ? { ...entry, value: redact(entry.value).text } : entry
+  })
+}
+
+/**
+ * Filtro final da instância de erros: só `$exception` sai; a mensagem de cada exceção passa pelo
+ * `PiiRedactor` (`@teko/shared/pii`), toda URL perde query e âncora e nada de perfil de pessoa
+ * (`$set`, `$set_once`) vai junto.
+ */
+export function createErrorBeforeSend(): BeforeSendFn {
+  return (event: CaptureResult | null) => {
+    if (event === null || event.event !== '$exception') {
+      return null
+    }
+    const properties = sanitizeProperties(event.properties)
+    const list: unknown = properties['$exception_list']
+    if (Array.isArray(list)) {
+      properties['$exception_list'] = scrubExceptionList(list)
+    }
+    const message: unknown = properties['$exception_message']
+    if (typeof message === 'string') {
+      properties['$exception_message'] = redact(message).text
+    }
+    const { $set: _set, $set_once: _setOnce, ...rest } = event
+    return { ...rest, properties }
+  }
+}
+
+/**
+ * Configuração da instância de erros (`error-client.ts`, ADR 0037): erros são legítimo interesse e,
+ * pela política publicada, não gravam nada no navegador. Por isso, independente do consentimento:
+ *
+ * - `persistence: 'memory'` e `disable_persistence`: identificador e sessão só na memória da página
+ *   (sem cookie, `localStorage` nem `sessionStorage`); `person_profiles: 'never'`, sem `identify`;
+ * - nada além da exceção pedida: sem autocapture, pageview, pageleave, heatmap, dead click, web
+ *   vitals, replay, pesquisas, flags, experimentos, tours, chat nem captura automática de exceções
+ *   (o handler é o de `error-capture.ts`);
+ * - sem compressão (o evento é pequeno, e o e2e confere o corpo).
+ */
+export function errorClientConfig(): Partial<PostHogConfig> {
+  return {
+    api_host: POSTHOG_API_HOST,
+    defaults: '2026-08-30',
+    disable_external_dependency_loading: true,
+    persistence: 'memory',
+    disable_persistence: true,
+    person_profiles: 'never',
+    cross_subdomain_cookie: false,
+    internal_or_test_user_hostname: null,
+    autocapture: false,
+    rageclick: false,
+    capture_pageview: false,
+    capture_pageleave: false,
+    capture_heatmaps: false,
+    capture_dead_clicks: false,
+    capture_performance: false,
+    capture_exceptions: false,
+    disable_session_recording: true,
+    disable_surveys: true,
+    disable_web_experiments: true,
+    disable_product_tours: true,
+    disable_conversations: true,
+    advanced_disable_flags: true,
+    save_campaign_params: false,
+    save_referrer: false,
+    mask_personal_data_properties: true,
+    disable_compression: true,
+    before_send: createErrorBeforeSend(),
   }
 }
 

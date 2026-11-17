@@ -53,6 +53,11 @@ jobs:
       - name: Setup
         uses: ./.github/actions/setup
 
+      - name: posthog-cli (o up.sh injeta os chunk ids no export, offline)
+        uses: ./.github/actions/posthog-sourcemaps
+        with:
+          mode: install
+
       - name: Subir a stack de CI (imagem da API, export do web, fixture e sessão de teste)
         run: bash infra/ci/up.sh
 

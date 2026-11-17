@@ -5,6 +5,7 @@ import {
   createBlobStore,
   createContainer,
   createEmbeddings,
+  createErrorReporter,
   createFixtureSeeder,
   createHttpOptions,
   createReranker,
@@ -75,6 +76,24 @@ describe('createContainer', () => {
     const container = createContainer(parseEnv(BASE))
     container.backgroundTasks.run('flush', Promise.reject(new Error('x')), { timeoutMs: 100 })
     await expect(container.backgroundTasks.drain(1_000)).resolves.toBe(0)
+  })
+})
+
+describe('createErrorReporter (ADR 0037)', () => {
+  const build = { version: '0.0.0-abc1234', gitSha: 'abc1234' }
+
+  it('sem POSTHOG_PROJECT_KEY, os erros só vão para o log', () => {
+    expect(createErrorReporter(parseEnv(BASE), build).enabled).toBe(false)
+    expect(createContainer(parseEnv(BASE)).errorReporter.enabled).toBe(false)
+  })
+
+  it('com a chave do projeto, o PostHog da UE', async () => {
+    const reporter = createErrorReporter(
+      parseEnv({ ...BASE, POSTHOG_PROJECT_KEY: `phc_${'a'.repeat(43)}` }),
+      build,
+    )
+    expect(reporter.enabled).toBe(true)
+    await expect(reporter.shutdown(10)).resolves.toBeUndefined()
   })
 })
 

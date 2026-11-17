@@ -63,6 +63,38 @@ describe('caddySnippets', () => {
     assert.ok(snippets.includes('hide .teko-headers.json'))
   })
 
+  it('os source maps respondem 404 antes do file_server (ADR 0037)', () => {
+    const route = snippets.slice(
+      snippets.indexOf('(teko_static)'),
+      snippets.indexOf('(teko_not_found)'),
+    )
+    const matcher = route.indexOf('@source_map path_regexp source_map `(?i)\\.map$`')
+    const error = route.indexOf('error @source_map 404')
+    assert.ok(matcher > 0 && error > matcher, 'matcher e error no route')
+    assert.ok(error < route.indexOf('file_server {'), 'antes do file_server')
+  })
+
+  it('o Reporting-Endpoints (valor com aspas) vai entre crases', () => {
+    const value = 'posthog="https://eu.i.posthog.com/report/?token=phc_abc"'
+    const withReporting = caddySnippets(
+      Object.fromEntries(
+        Object.entries(documents).map(([file, headers]) => [
+          file,
+          { ...headers, 'Reporting-Endpoints': value },
+        ]),
+      ),
+    )
+    assert.ok(withReporting.includes(`Reporting-Endpoints \`${value}\``))
+    assert.throws(
+      () =>
+        caddySnippets({
+          ...documents,
+          'en/index.html': { 'Content-Security-Policy': 'a\nb' },
+        }),
+      /quebra de linha/,
+    )
+  })
+
   it('404 do locale com a CSP da página dele, e o 404.html para o resto', () => {
     const notFound = snippets.slice(snippets.indexOf('(teko_not_found)'))
     assert.ok(notFound.includes('rewrite * /en/404/index.html'))

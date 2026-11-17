@@ -1,8 +1,8 @@
 # Observabilidade
 
 Chega na F6. Três destinos: Grafana Cloud (traces, logs, métricas e alertas), Langfuse Cloud
-(traces de LLM e custo por consulta) e PostHog (produto e, se atender, erros). Nada depende de
-timer de exportação: a instância da Vercel pausa entre requisições.
+(traces de LLM e custo por consulta) e PostHog (produto e Error Tracking, ADR 0037). Nada depende
+de timer de exportação: a instância da Vercel pausa entre requisições.
 
 ## OTel (linha 2.x)
 
@@ -152,17 +152,40 @@ sobre o mesmo `NodeTracerProvider` do OTel 2.x; o Langfuse Cloud roda a v4 (mode
 
 ## Erros
 
-- **PostHog Error Tracking** na F6, se cobrir o que o Sentry cobriria: source maps enviados no CI,
-  agrupamento por release (`teko@X.Y.Z`; staging `teko@<sha7>`) e destino para os relatórios de
-  CSP e Trusted Types. Se não atender, o Sentry fica (organização EU, só erros, projeto separado
-  para CSP), decisão registrada na ADR da F6.
-- Na API, os erros vão pela `ErrorReporterPort` no `setErrorHandler`, com scrubber de PII e flush
-  em `BackgroundTasks` só quando houve erro.
+**PostHog Error Tracking** (UE; [ADR 0037](../adr/0037-erros-no-posthog-error-tracking.md)), no mesmo
+projeto do analytics (o plano Free tem um só): staging e produção se separam pelo release
+(`teko@<sha7>` e `teko@X.Y.Z`) e pelo `app_env`. Erros são legítimo interesse: não dependem do
+consentimento e não gravam nada no navegador.
+
+- **API:** a `ErrorReporterPort` (adapter do `posthog-node` em `adapters/out/error-reporting`) recebe
+  do `setErrorHandler` só os erros inesperados (`internal`, 500); os 4xx e os 503 deliberados ficam
+  de fora. Scrubber (`scrub.ts`): PII pelo `PiiRedactor`, credenciais de URL, mensagem cortada em 500
+  caracteres, sem `cause`; o `before_send` tira as linhas de código-fonte dos frames. Propriedades:
+  `trace_id`, `http_method`, `http_route` (a rota declarada), `http_status_code`, `error_code`
+  (técnico), `release`, `app_env` e `service`; o `distinct_id` é o `trace_id` (técnico e aleatório),
+  sem perfil de pessoa nem GeoIP. Envio imediato e flush em `BackgroundTasks` (500 ms) só quando
+  houve erro. `POSTHOG_PROJECT_KEY` (Sensitive) liga; o host da UE é fixo no código.
+- **Navegador:** handler de `error` e `unhandledrejection` no `instrumentation-client.ts`, os
+  `ErrorBoundary` e as consultas e mutações que falham com 500 `internal` (com o `trace_id` do
+  `ApiError`); o `posthog-js` entra por `import()` só no primeiro erro, numa instância própria
+  (`teko_errors`) com `persistence: 'memory'`, sem perfil, só `$exception` e sem PII nem query nas
+  URLs (`errorClientConfig` em `posthog-config.ts`). No máximo 10 erros por página.
+  `NEXT_PUBLIC_POSTHOG_ERRORS_KEY` e `NEXT_PUBLIC_TEKO_RELEASE` no build.
+- **Source maps:** `.map` do web (`productionBrowserSourceMaps`) e da API (tsdown), chunk ids
+  injetados offline por `scripts/sourcemaps.ts inject` (stack de CI e deploy) e enviados por
+  `scripts/sourcemaps.ts upload` no deploy da F7 (composite `.github/actions/posthog-sourcemaps`,
+  com `POSTHOG_CLI_API_KEY` e `POSTHOG_CLI_PROJECT_ID`). O `posthog-cli` fica em
+  `tools/posthog-cli`, com o binário conferido por sha256. Nenhum host serve os `.map`.
+- **CSP e Trusted Types:** `report-uri` e `report-to posthog` ao endpoint `/report/?token=<chave>`
+  da UE, com o header `Reporting-Endpoints` ([frontend](frontend.md#segurança-no-navegador)).
+- **`source-watch`:** com mudança nas fontes, o evento `source_watch_changed` (famílias, tipos e o
+  link do run), pela API de captura, com a chave do projeto do environment `staging`.
 
 ## PostHog (produto)
 
 Catálogo tipado em `packages/shared/src/analytics/events.ts`; o texto da pergunta **nunca** é
-enviado. Só com consentimento (`analytics: true`) e a chave pública no build; cliente em
+enviado. Só com consentimento (`analytics: true`) e a chave pública no build (os erros têm instância
+própria, acima); cliente em
 `apps/web/src/lib/analytics/posthog-client.ts` (configuração e filtros em `posthog-config.ts`, hosts
 em `posthog-hosts.ts`), sem `identify`, sem autocapture nem pageview. Cada evento passa pelo schema
 estrito antes do `capture`. Retenção do PostHog Free: 1 ano.
@@ -180,19 +203,22 @@ estrito antes do `capture`. Retenção do PostHog Free: 1 ano.
 | `locale_changed`                                                                 | clique no menu de idioma                                                |
 | `web_vital`                                                                      | `useReportWebVitals`, carregado só com o cliente ligado                 |
 
-| Evento                                           | Propriedades                                                 |
-| ------------------------------------------------ | ------------------------------------------------------------ |
-| `question_asked`                                 | `locale`, `reference_source`                                 |
-| `reference_date_set`                             | `source`                                                     |
-| `clarification_shown`                            |                                                              |
-| `answer_completed`                               | `model_family`, `cached`, `retrieval_mode`, `latency_bucket` |
-| `answer_refused`                                 | `reason`                                                     |
-| `citation_opened`                                | `doc_type`, `version_is_current`                             |
-| `diff_opened`                                    |                                                              |
-| `answer_feedback`                                | `rating`, `reason`                                           |
-| `quota_reached`                                  | `scope`                                                      |
-| `provider_fallback`                              | `from`, `to`                                                 |
-| `consent_updated`, `locale_changed`, `web_vital` |                                                              |
+| Evento                                           | Propriedades                                                             |
+| ------------------------------------------------ | ------------------------------------------------------------------------ |
+| `question_asked`                                 | `locale`, `reference_source`                                             |
+| `reference_date_set`                             | `source`                                                                 |
+| `clarification_shown`                            | `trace_id`                                                               |
+| `answer_completed`                               | `model_family`, `cached`, `retrieval_mode`, `latency_bucket`, `trace_id` |
+| `answer_refused`                                 | `reason`, `trace_id`                                                     |
+| `citation_opened`                                | `doc_type`, `version_is_current`                                         |
+| `diff_opened`                                    |                                                                          |
+| `answer_feedback`                                | `rating`, `reason`                                                       |
+| `quota_reached`                                  | `scope`, `trace_id`                                                      |
+| `provider_fallback`                              | `from`, `to`, `trace_id`                                                 |
+| `consent_updated`, `locale_changed`, `web_vital` |                                                                          |
+
+O `trace_id` (opcional, 32 hex) é o da resposta da API que gerou o evento: a mesma correlação do
+Grafana, do Langfuse e do Error Tracking.
 
 ## Sinais de RAG em produção (ADR 0031)
 

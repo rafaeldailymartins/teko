@@ -38,6 +38,22 @@ function problemsOf(source: Record<string, string | undefined>): readonly string
   throw new Error('parseEnv deveria ter falhado')
 }
 
+describe('erros no PostHog (F6, ADR 0037)', () => {
+  it('sem a chave, os erros não saem', () => {
+    expect(parseEnv(DEV_ENV).POSTHOG_PROJECT_KEY).toBeUndefined()
+  })
+
+  it('aceita a chave do projeto e recusa outra coisa sem repetir o valor', () => {
+    const key = `phc_${'A1b2'.repeat(10)}`
+    expect(parseEnv({ ...PROD_ENV, POSTHOG_PROJECT_KEY: ` ${key} ` }).POSTHOG_PROJECT_KEY).toBe(key)
+    for (const value of ['phx_pessoal0123456789abcdef', 'phc_curta', `phc_${'a'.repeat(65)}`]) {
+      expect(problemsOf({ ...DEV_ENV, POSTHOG_PROJECT_KEY: value })).toEqual([
+        'POSTHOG_PROJECT_KEY: deve ser a chave do projeto (phc_…)',
+      ])
+    }
+  })
+})
+
 describe('telemetria OTLP (F6)', () => {
   it('sem endpoint, sem exportação; métricas em cumulativo por padrão', () => {
     const env = parseEnv(DEV_ENV)

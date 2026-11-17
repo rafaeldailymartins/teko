@@ -52,7 +52,8 @@ beforeAll(async () => {
     write(`${locale}/index.html`, `<p>home ${locale}</p>`)
     write(`${locale}/404/index.html`, `<p>404 ${locale}</p>`)
   }
-  write('_next/static/chunks/app.js', 'console.log(1)')
+  write('_next/static/chunks/app.js', 'console.log(1)\n//# sourceMappingURL=app.js.map')
+  write('_next/static/chunks/app.js.map', '{"version":3,"sources":["app.ts"]}')
   const documents = DOCUMENTS.map((file) => [
     file,
     {
@@ -132,7 +133,18 @@ describe('política do site estático', () => {
     expect(parseHeadersManifest({ version: 1, documents: { 'en/index.html': csp } })).toEqual({
       'en/index.html': csp,
     })
+    const reporting = {
+      ...csp,
+      'Reporting-Endpoints': 'posthog="https://eu.i.posthog.com/report/?token=phc_abc"',
+    }
+    expect(parseHeadersManifest({ version: 1, documents: { 'en/index.html': reporting } })).toEqual(
+      { 'en/index.html': reporting },
+    )
     for (const documents of [
+      { 'en/index.html': { ...csp, 'Reporting-Endpoints': 'posthog="http://x/"' } },
+      { 'en/index.html': { ...csp, 'Reporting-Endpoints': 'posthog="https://x/"a"' } },
+      { 'en/index.html': { ...csp, 'Reporting-Endpoints': 'posthog="https://x/`"' } },
+      { 'en/index.html': { ...csp, 'Reporting-Endpoints': 'a="https://x/", b="https://y/"' } },
       { 'en/index.html': { ...csp, 'Set-Cookie': 'a=b' } },
       { 'en/index.html': { 'Content-Security-Policy': 'a\r\nX-Injected: 1' } },
       { 'en/index.html': { 'Content-Security-Policy': 'say "hi"' } },
@@ -178,6 +190,16 @@ describe('registerStaticSite (WEB_STATIC_DIR)', () => {
     expect(res.headers['cache-control']).toBe(IMMUTABLE_CACHE_CONTROL)
     expect(res.headers['content-security-policy']).toBeUndefined()
     expect(res.headers['x-content-type-options']).toBe('nosniff')
+  })
+
+  it('os source maps nunca são servidos (ADR 0037)', async () => {
+    const res = await app.inject({ url: '/_next/static/chunks/app.js.map' })
+    expect(res.statusCode).toBe(404)
+    expect(res.body).toBe('<p>404 raiz</p>')
+    // Em disco sem distinção de caixa (Windows, macOS), a outra grafia também não sai.
+    const upper = await app.inject({ url: '/_next/static/chunks/APP.JS.MAP' })
+    expect(upper.statusCode).toBeGreaterThanOrEqual(400)
+    expect(upper.body).not.toContain('"sources"')
   })
 
   it('o manifesto nunca é servido', async () => {

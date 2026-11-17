@@ -62,6 +62,7 @@ import {
   documentPathPattern,
   HEADERS_MANIFEST_FILE,
   IMMUTABLE_CACHE_CONTROL,
+  isSourceMapPath,
   parseHeadersManifest,
   ROOT_REDIRECT_HEADERS,
   STATIC_HEADERS,
@@ -280,7 +281,8 @@ function copyDependencies(from: string, to: string, topLevel = true, relative = 
 
 /**
  * Copia o export estático, recusando links simbólicos e arquivos de configuração de outro host. O
- * manifesto de headers da raiz fica de fora (ele vira rotas), e os HTML copiados vão para
+ * manifesto de headers da raiz fica de fora (ele vira rotas), assim como os source maps (`*.map`,
+ * enviados ao PostHog pelo deploy e nunca servidos; ADR 0037), e os HTML copiados vão para
  * `documents`.
  */
 function copyStatic(from: string, to: string, documents: string[], relative = ''): number {
@@ -297,7 +299,7 @@ function copyStatic(from: string, to: string, documents: string[], relative = ''
     if (FORBIDDEN_STATIC_NAME.test(name)) {
       throw new BuildOutputError(`arquivo proibido no export estático: ${path}`)
     }
-    if (path === HEADERS_MANIFEST_FILE) {
+    if (path === HEADERS_MANIFEST_FILE || isSourceMapPath(name)) {
       continue
     }
     if (stat.isDirectory()) {

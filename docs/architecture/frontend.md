@@ -188,7 +188,7 @@ Content-Security-Policy: default-src 'self'; script-src 'self' 'sha256-…'; sty
   style-src-attr 'unsafe-inline'; img-src 'self' data:; font-src 'self'; worker-src 'self';
   connect-src 'self' https://eu.i.posthog.com https://eu-assets.i.posthog.com; object-src 'none';
   base-uri 'self'; form-action 'self';
-  frame-ancestors 'none'; upgrade-insecure-requests
+  frame-ancestors 'none'; upgrade-insecure-requests[; report-uri …/report/?token=<chave>; report-to posthog]
 ```
 
 - Os três lugares que servem o export consomem o mesmo manifesto, validado por
@@ -200,8 +200,16 @@ Content-Security-Policy: default-src 'self'; script-src 'self' 'sha256-…'; sty
 - Só os documentos têm CSP; JS, CSS, fontes e payloads RSC recebem os demais headers.
 - Sem `'strict-dynamic'` (anularia o `'self'` dos scripts do Next); `style-src-attr 'unsafe-inline'`
   é concessão consciente (Motion e painéis redimensionáveis).
-- **`report-to` fica de fora até a F6**, que escolhe o destino dos relatórios (abaixo); até lá as
-  violações só aparecem no console.
+- **Relatórios ao PostHog Error Tracking** (ADR 0037): com `NEXT_PUBLIC_POSTHOG_ERRORS_KEY` no build,
+  a CSP e o Trusted Types report-only de cada documento terminam em
+  `report-uri https://eu.i.posthog.com/report/?token=<chave>; report-to posthog`, e o documento ganha
+  `Reporting-Endpoints: posthog="<o mesmo endpoint>"` (o terceiro header que o manifesto aceita). Uma
+  violação de `require-trusted-types-for` é um relatório de CSP como outro e vai ao mesmo endpoint.
+  Sem a chave (dev, Plano B sem ela), a CSP fica igual e as violações só aparecem no console.
+- **Source maps** (`productionBrowserSourceMaps`): ficam no `out/` para o deploy enviá-los ao PostHog
+  (`scripts/sourcemaps.ts`) e nunca são servidos: o `build-vercel-output` não os copia para o
+  `static/`, o Plano B responde 404 e o Caddy da stack de CI também. Os chunks levam o snippet do chunk
+  id do PostHog (`_posthogChunkIds`), injetado offline.
 - PostHog com `disable_external_dependency_loading: true` e surveys no bundle. O
   `eu-assets.i.posthog.com` está no `connect-src` porque o SDK lê dele, por `fetch`, a configuração
   remota do projeto; nenhum script vem de fora. Os estilos das pesquisas são um `<style>` injetado no
@@ -211,8 +219,8 @@ Content-Security-Policy: default-src 'self'; script-src 'self' 'sha256-…'; sty
   restritiva, COOP/CORP `same-origin`.
 - **Trusted Types** em report-only (`require-trusted-types-for 'script'`); enforce depois da v0.1.0,
   após 14 dias sem violação no staging.
-- O destino dos relatórios de CSP e de erro é o PostHog Error Tracking, se a F6 confirmar que ele
-  cobre source maps e relatório de CSP; senão, Sentry (projeto separado para CSP).
+- O destino dos relatórios de CSP e dos erros do navegador é o PostHog Error Tracking (ADR 0037;
+  detalhes em [observabilidade](observabilidade.md#erros)).
 
 ## UX
 
@@ -354,7 +362,9 @@ Content-Security-Policy: default-src 'self'; script-src 'self' 'sha256-…'; sty
 - **PostHog** (EU, F6), direto: `posthog-js/dist/module.no-external` com `dist/surveys` no bundle,
   `disable_external_dependency_loading: true`, `cookieless_mode:'on_reject'`,
   `persistence:'localStorage'` (sem cookie), `person_profiles:'identified_only'` sem `identify`,
-  replay, autocapture, pageview e exceções desligados, desligado no staging (sem a chave), surveys
+  replay, autocapture, pageview e exceções desligados (os erros têm instância própria, sem
+  consentimento e só em memória: [observabilidade](observabilidade.md#erros)), desligado no staging
+  (sem a chave), surveys
   só com consentimento. Só o catálogo sai: cada `capture` passa pelo schema estrito, e o
   `before_send` descarta o resto (exceto os eventos das pesquisas) e tira query e âncora das URLs.
   Retirar o consentimento faz o opt-out e apaga as chaves do PostHog do navegador. As Web Vitals vêm

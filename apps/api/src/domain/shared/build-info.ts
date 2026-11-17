@@ -38,6 +38,24 @@ export interface BuildInfoInput {
   readonly gitSha?: string | undefined
 }
 
+/** Nome do release no PostHog Error Tracking (o mesmo do web e dos source maps, ADR 0037). */
+const RELEASE_NAME = 'teko'
+
+/** Tamanho do SHA curto no release do staging (`teko@abc1234`). */
+const SHORT_SHA_LENGTH = 7
+
+/**
+ * Release que agrupa os erros: `teko@X.Y.Z` na produção (a tag `v*` publicada) e `teko@<sha7>` nos
+ * demais ambientes, que recebem um deploy por commit do tronco. Sem SHA (dev, testes), a versão.
+ */
+export function errorTrackingRelease(build: BuildInfo, production: boolean): string {
+  const tag =
+    production || build.gitSha === UNKNOWN_GIT_SHA
+      ? build.version
+      : build.gitSha.slice(0, SHORT_SHA_LENGTH)
+  return `${RELEASE_NAME}@${tag}`
+}
+
 /**
  * Valida e normaliza a identidade do build. Lança `ZodError` para versão fora do SemVer ou SHA
  * malformado: um valor errado aqui quebraria silenciosamente a verificação do deploy.

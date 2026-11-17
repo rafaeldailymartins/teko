@@ -332,6 +332,16 @@ const envSchema = z
       .enum(['delta', 'cumulative'])
       .default('cumulative'),
     /**
+     * Chave do projeto PostHog (UE) que recebe os erros inesperados da API (Error Tracking, ADR
+     * 0037); Sensitive na Vercel. O host é fixo no código (`eu.i.posthog.com`). Sem ela, os erros
+     * só vão para o log (CI, testes, dev).
+     */
+    POSTHOG_PROJECT_KEY: z
+      .string()
+      .trim()
+      .regex(/^phc_[A-Za-z0-9]{20,64}$/, { error: 'deve ser a chave do projeto (phc_…)' })
+      .optional(),
+    /**
      * Traces de LLM (`docs/architecture/observabilidade.md`, "Langfuse"): `langfuse` liga quando as
      * duas chaves existem; `off` desliga mesmo com elas (último recurso do runbook de cotas).
      */

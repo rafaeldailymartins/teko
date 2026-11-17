@@ -42,7 +42,7 @@
                   },
                   {
                     "group": ["posthog-js", "posthog-js/**", "@posthog/**"],
-                    "message": "O SDK de analytics só entra pelo adapter em src/lib/analytics (import() depois do consentimento LGPD)."
+                    "message": "O SDK do PostHog só entra por src/lib/analytics: o analytics por import() depois do consentimento LGPD, e o cliente de erros por import() no primeiro erro."
                   }
                 ]
               }

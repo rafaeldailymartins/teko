@@ -45,6 +45,7 @@ global_pathspecs=(
   ':(glob).semgrep/**'
   ':(glob)sonar-project.properties'
   ':(glob)tools/vercel-cli/**'
+  ':(glob)tools/posthog-cli/**'
 )
 path_groups=(ingest rag llm docs)
 keys=(web api shared ingest rag llm docs code)

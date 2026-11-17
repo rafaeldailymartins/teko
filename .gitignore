@@ -44,6 +44,9 @@ htmlcov/
 # Vercel (vercel pull/build)
 .vercel/
 
+# Binário do posthog-cli (tools/posthog-cli/install-binary.mjs, sha256 conferido)
+/tools/posthog-cli/bin/
+
 # Editores e SO
 .DS_Store
 Thumbs.db

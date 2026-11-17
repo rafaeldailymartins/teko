@@ -133,6 +133,14 @@ module.exports = {
       to: { path: VERCEL_PACKAGES },
     },
     {
+      name: 'posthog-only-in-error-reporting-adapter',
+      comment:
+        'O posthog-node (erros no PostHog Error Tracking, ADR 0037) fica só em src/adapters/out/error-reporting; o resto conhece a ErrorReporterPort.',
+      severity: 'error',
+      from: { pathNot: '^src/adapters/out/error-reporting/' },
+      to: { path: npm('posthog-node') },
+    },
+    {
       name: 'no-circular',
       severity: 'error',
       from: {},

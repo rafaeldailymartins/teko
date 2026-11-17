@@ -12,6 +12,14 @@ declare global {
        * carrega nem com consentimento (staging, CI e desenvolvimento ficam sem PostHog).
        */
       readonly NEXT_PUBLIC_POSTHOG_KEY?: string
+      /**
+       * Chave pública do projeto PostHog que recebe os erros do navegador e os relatórios de CSP
+       * (Error Tracking, ADR 0037). Vai no build do staging e da produção (o plano Free tem um
+       * projeto só); sem ela, nem o handler de erros nem o `report-to` entram.
+       */
+      readonly NEXT_PUBLIC_POSTHOG_ERRORS_KEY?: string
+      /** Release do build (`teko@X.Y.Z` na produção, `teko@<sha7>` no staging), o mesmo da API. */
+      readonly NEXT_PUBLIC_TEKO_RELEASE?: string
     }
   }
 }
@@ -25,4 +33,6 @@ function nonEmpty(value: string | undefined): string | undefined {
 /** Configuração pública lida no build. */
 export const publicEnv = {
   posthogKey: nonEmpty(process.env.NEXT_PUBLIC_POSTHOG_KEY),
+  errorsKey: nonEmpty(process.env.NEXT_PUBLIC_POSTHOG_ERRORS_KEY),
+  release: nonEmpty(process.env.NEXT_PUBLIC_TEKO_RELEASE),
 } as const

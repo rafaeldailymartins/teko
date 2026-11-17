@@ -308,6 +308,21 @@ O primeiro run real do PR #1 mostrou duas coisas que a análise local não pegav
   pelo `no-downgrade`. Nenhum hook de módulo é ligado: o `@fastify/otel` entra como plugin
   explícito (`init()` vazio).
 
+## Adendo (2026-11-17): PostHog Error Tracking (`add-error-tracking`, F6, [ADR 0037](0037-erros-no-posthog-error-tracking.md))
+
+- **Entra no catálogo** o `posthog-node` **5.67.0** (MIT, com proveniência SLSA; 5.68+ tinha menos de
+  7 dias), só na API e só em `src/adapters/out/error-reporting` (regra no dependency-cruiser). Na
+  árvore, o `@posthog/core` 1.67.0 e o `@posthog/types` 1.423.0, os dois MIT e com proveniência.
+  Nenhuma exceção de política.
+- **`tools/posthog-cli`**, projeto pnpm isolado como o `tools/vercel-cli` (lockfile, auditoria e
+  Dependabot próprios; `check-lockfile` e `verify:audit` cobrem os dois), com o `@posthog/cli`
+  **0.19.0** (MIT, com proveniência; 0.19.1+ tinha menos de 7 dias). O pacote do npm é um
+  instalador do cargo-dist: o `postinstall` baixaria o binário de `releases.posthog.com` sem conferir
+  checksum. Ele fica desligado (`allowBuilds: false`), e o `tools/posthog-cli/install-binary.mjs`
+  baixa o mesmo artefato do GitHub Releases do PostHog e só o extrai se o sha256 bater com o
+  fixado (o `digest` que o GitHub publica para o asset; Linux x64 e Windows x64). Subir a versão
+  exige atualizar os hashes no mesmo PR; o script falha com a versão errada.
+
 ## Adendo (2026-11-17): Langfuse da API (`add-llm-tracing-langfuse`, F6, [ADR 0012](0012-langfuse-cloud.md))
 
 - **Entram no catálogo** `@langfuse/otel` e `@langfuse/tracing` **6.1.1** (2026-11-03), MIT, com

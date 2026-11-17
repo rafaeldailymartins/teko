@@ -136,6 +136,10 @@ catalog:
   "@opentelemetry/exporter-metrics-otlp-http": 0.223.1
   "@opentelemetry/exporter-logs-otlp-http": 0.223.1
   "@fastify/otel": 0.21.4
+  # Erros da API no PostHog Error Tracking (F6, add-error-tracking, ADR 0037): MIT, com proveniência
+  # SLSA; 5.68+ tinha menos de 7 dias.
+  posthog-node: 5.67.0
+
   # Langfuse (F6, add-llm-tracing-langfuse): o processor entra no mesmo provider do OTel 2.x (peers
   # @opentelemetry/core e sdk-trace-base ^2, exporter OTLP < 0.300) e cria as observations do
   # trace rag-query. MIT, com proveniência. O @langfuse/client fica de fora: depende do mustache

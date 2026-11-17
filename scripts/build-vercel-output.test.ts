@@ -95,7 +95,10 @@ function writeStaticExport(dir: string): void {
     write(join(dir, file), `<!doctype html><title>${file}</title>`)
   }
   write(join(dir, 'pt-BR', 'index.txt'), 'rsc')
-  write(join(dir, '_next', 'static', 'chunks', 'app.js'), 'js')
+  write(join(dir, '_next', 'static', 'chunks', 'app.js'), 'js\n//# sourceMappingURL=app.js.map')
+  // Source maps do `productionBrowserSourceMaps` (ADR 0037): ficam no export, nunca no static/.
+  write(join(dir, '_next', 'static', 'chunks', 'app.js.map'), '{"version":3}')
+  write(join(dir, '_next', 'static', 'css', 'app.CSS.MAP'), '{"version":3}')
   writeManifest(dir, REQUIRED_STATIC_FILES)
 }
 
@@ -348,6 +351,7 @@ describe('buildVercelOutput', () => {
       'static/_next/static',
       'static/_next/static/chunks',
       'static/_next/static/chunks/app.js',
+      'static/_next/static/css',
       'static/en',
       'static/en/404',
       'static/en/404/index.html',
@@ -360,6 +364,23 @@ describe('buildVercelOutput', () => {
       'static/pt-BR/index.txt',
     ])
     assert.equal(result.staticFiles, 8)
+  })
+
+  it('os source maps do export não vão para o static/ (nunca são servidos)', () => {
+    buildVercelOutput(paths)
+    const served = tree(join(paths.outputDir, 'static'))
+    assert.deepEqual(
+      served.filter((file) => /\.map$/i.test(file)),
+      [],
+    )
+    assert.ok(existsSync(join(paths.staticDir, '_next', 'static', 'chunks', 'app.js.map')))
+    const outcome = route(join(paths.outputDir, 'static'), {
+      path: '/_next/static/chunks/app.js.map',
+    })
+    assert.deepEqual(outcome.kind === 'static' ? [outcome.status, outcome.file] : outcome.kind, [
+      404,
+      '404.html',
+    ])
   })
 
   it('recria o output do zero, sem sobras de um build anterior', () => {

@@ -96,8 +96,8 @@ seguimento que troca `develop` por `main` no código.
 - **Mudanças previstas:** `add-otel-telemetry`, `add-llm-tracing-langfuse`, `add-error-tracking`,
   `add-product-analytics`, `add-uptime-monitoring`.
 - **Entregas:** OTel 2.x com OTLP direto ao Grafana Cloud e flush por `BackgroundTasks`; Langfuse
-  com `TraceSampler`, `pricing.json` e `costDetails`; PostHog (produto e Error Tracking, se cobrir
-  source maps e relatório de CSP; senão Sentry); Grafana as code e Synthetic Monitoring; `ops.yml`;
+  com `TraceSampler`, `pricing.json` e `costDetails`; PostHog (produto e Error Tracking, com source
+  maps e relatório de CSP: ADR 0037); Grafana as code e Synthetic Monitoring; `ops.yml`;
   sinais de RAG em produção e annotation queue do 👎 (ADR 0031); runbooks de operação.
 - **Herdado das fases anteriores** (entra nas mudanças acima; cada item diz onde mexer):
   - **SDK do PostHog** (F5, ADR 0035): `apps/web/src/lib/analytics/client-loader.ts` troca o

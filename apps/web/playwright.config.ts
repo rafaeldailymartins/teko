@@ -43,6 +43,11 @@ export default defineConfig({
     baseURL,
     storageState: consentDecided,
     trace: 'retain-on-failure',
+    // A stack builda com chaves fictícias do PostHog (`infra/ci/up.sh`): o DNS dos hosts dele não
+    // resolve no navegador do teste, então nada sai para a rede real (nem o relatório de CSP, que o
+    // navegador manda por conta própria). As jornadas que olham o PostHog interceptam os pedidos
+    // com `page.route`, que responde antes da resolução.
+    launchOptions: { args: ['--host-resolver-rules=MAP *.posthog.com ~NOTFOUND'] },
   },
   projects: [
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },

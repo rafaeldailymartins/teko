@@ -22,7 +22,8 @@
     ".github/affected-paths.yml",
     ".semgrep/**",
     "sonar-project.properties",
-    "tools/vercel-cli/**"
+    "tools/vercel-cli/**",
+    "tools/posthog-cli/**"
   ],
   "tasks": {
     "transit": {

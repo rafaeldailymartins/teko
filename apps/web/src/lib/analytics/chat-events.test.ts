@@ -106,7 +106,7 @@ describe('answerEvents', () => {
     expect(events.map((event) => event.name)).toEqual(['answer_completed', 'provider_fallback'])
     expect(events[1]).toEqual({
       name: 'provider_fallback',
-      properties: { from: 'gemini-3.6-flash', to: 'openai/gpt-oss-120b' },
+      properties: { from: 'gemini-3.6-flash', to: 'openai/gpt-oss-120b', trace_id: TRACE },
     })
     expectValid(events)
   })
@@ -123,17 +123,19 @@ describe('answerEvents', () => {
     expectValid(events)
   })
 
-  it('pedido de esclarecimento: clarification_shown', () => {
-    const events = answerEvents(
-      assistant([
-        {
-          type: 'data-clarification',
-          data: { reason: 'ambiguous_text', candidates: ['2024-01-01', '2025-01-01'] },
-        },
-      ]),
-      100,
-    )
-    expect(events).toEqual([{ name: 'clarification_shown', properties: {} }])
+  it('pedido de esclarecimento: clarification_shown, com o trace_id quando houver', () => {
+    const parts: TekoMessagePart[] = [
+      {
+        type: 'data-clarification',
+        data: { reason: 'ambiguous_text', candidates: ['2024-01-01', '2025-01-01'] },
+      },
+    ]
+    expect(answerEvents(assistant(parts), 100)).toEqual([
+      { name: 'clarification_shown', properties: {} },
+    ])
+    const traced = answerEvents(assistant(parts, finish('x')), 100)
+    expect(traced).toEqual([{ name: 'clarification_shown', properties: { trace_id: TRACE } }])
+    expectValid(traced)
   })
 
   it('mensagem sem desfecho não gera evento', () => {
@@ -156,8 +158,31 @@ describe('quotaReachedEvent', () => {
       },
     })
     const event = quotaReachedEvent(error)
-    expect(event).toEqual({ name: 'quota_reached', properties: { scope: 'user_daily' } })
+    expect(event).toEqual({
+      name: 'quota_reached',
+      properties: { scope: 'user_daily', trace_id: TRACE },
+    })
     expectValid(event === null ? [] : [event])
+  })
+
+  it('sem trace_id W3C na resposta, quota_reached sai sem ele', () => {
+    const error = new ApiError({
+      code: ErrorCode.QuotaExceeded,
+      status: 429,
+      traceId: 'req-1',
+      problem: {
+        type: 'about:blank',
+        title: 'Cota',
+        status: 429,
+        code: ErrorCode.QuotaExceeded,
+        traceId: 'req-1',
+        meta: { scope: 'global_daily', resetAt: '2026-11-18T03:00:00.000Z' },
+      },
+    })
+    expect(quotaReachedEvent(error)).toEqual({
+      name: 'quota_reached',
+      properties: { scope: 'global_daily' },
+    })
   })
 
   it.each([

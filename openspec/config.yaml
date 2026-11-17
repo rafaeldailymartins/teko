@@ -31,10 +31,10 @@ context: |
     evals) no GitHub Releases (ADR 0030).
   - Supply chain: o catálogo do pnpm-workspace.yaml é a fonte da verdade das versões
     (minimumReleaseAge de 7 dias, trustPolicy no-downgrade). @vercel/functions fixado em 3.7.6;
-    o Vercel CLI vive isolado em tools/vercel-cli (ADR 0002).
+    o Vercel CLI vive isolado em tools/vercel-cli e o posthog-cli em tools/posthog-cli (ADR 0002).
   - Dados: Neon PostgreSQL 18 + pgvector (halfvec), busca híbrida RRF, Drizzle.
   - IA: embeddings BGE-M3 (Workers AI); LLM Gemini free -> Groq (ZDR); PII redigida antes de
-    qualquer provedor. Observabilidade: OTel/Grafana, Langfuse Cloud, Sentry, PostHog.
+    qualquer provedor. Observabilidade: OTel/Grafana, Langfuse Cloud, PostHog (produto e Error Tracking, ADR 0037).
 
   Convenções
   - TypeScript estrito (nodenext, noUncheckedIndexedAccess, exactOptionalPropertyTypes,

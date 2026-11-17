@@ -2,11 +2,15 @@ import { createHash } from 'node:crypto'
 import { describe, expect, it } from 'vitest'
 import {
   buildHeadersManifest,
+  CspConfigError,
   CspTooLargeError,
   contentSecurityPolicy,
   MAX_CSP_BYTES,
+  REPORT_GROUP,
+  reportingEndpoint,
   sha256Source,
   TRUSTED_TYPES_REPORT_ONLY,
+  trustedTypesReportOnly,
 } from './csp.ts'
 import type { ParsedDocument } from './html.ts'
 
@@ -80,5 +84,45 @@ describe('buildHeadersManifest', () => {
       CspTooLargeError,
     )
     expect(() => buildHeadersManifest(new Map([['ok.html', doc(many.slice(0, 80))]]))).not.toThrow()
+  })
+})
+
+describe('relatórios ao PostHog (ADR 0037)', () => {
+  const KEY = 'phc_teko_ci_e2e_ficticia'
+  const ENDPOINT = `https://eu.i.posthog.com/report/?token=${KEY}`
+
+  it('sem a chave, a CSP e os headers ficam como estavam', () => {
+    const manifest = buildHeadersManifest(new Map([['en/index.html', doc(['en()'])]]), {
+      reportKey: undefined,
+    })
+    expect(manifest.documents['en/index.html']).toEqual({
+      'Content-Security-Policy': contentSecurityPolicy(doc(['en()'])),
+      'Content-Security-Policy-Report-Only': TRUSTED_TYPES_REPORT_ONLY,
+    })
+    expect(contentSecurityPolicy(doc())).not.toMatch(/report-/)
+  })
+
+  it('com a chave: report-uri e report-to nas duas políticas e o Reporting-Endpoints', () => {
+    expect(reportingEndpoint(KEY)).toBe(ENDPOINT)
+    const options = { reportKey: KEY }
+    const csp = contentSecurityPolicy(doc(['x()']), options)
+    expect(
+      csp.endsWith(`upgrade-insecure-requests; report-uri ${ENDPOINT}; report-to posthog`),
+    ).toBe(true)
+    const manifest = buildHeadersManifest(new Map([['en/index.html', doc(['x()'])]]), options)
+    expect(manifest.documents['en/index.html']).toEqual({
+      'Content-Security-Policy': csp,
+      'Content-Security-Policy-Report-Only': `${TRUSTED_TYPES_REPORT_ONLY}; report-uri ${ENDPOINT}; report-to ${REPORT_GROUP}`,
+      'Reporting-Endpoints': `posthog="${ENDPOINT}"`,
+    })
+    expect(trustedTypesReportOnly()).toBe(TRUSTED_TYPES_REPORT_ONLY)
+  })
+
+  it('uma chave fora do formato derruba o build (nada de injetar diretiva)', () => {
+    for (const key of ['phx_pessoal', "phc_x; script-src 'unsafe-inline'", 'phc_"x"', '']) {
+      expect(() => buildHeadersManifest(new Map([['a.html', doc()]]), { reportKey: key })).toThrow(
+        CspConfigError,
+      )
+    }
   })
 })

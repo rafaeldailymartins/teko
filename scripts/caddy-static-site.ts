@@ -47,17 +47,20 @@ function literal(value: string): string {
   return `\`${value}\``
 }
 
-/** Bloco `header { ... }` (com matcher opcional), valores entre aspas. */
+/**
+ * Bloco `header { ... }` (com matcher opcional), valores entre aspas; o `Reporting-Endpoints`, cujo
+ * valor tem aspas (`posthog="https://…"`), vai entre crases (texto literal no Caddyfile).
+ */
 function headerBlock(
   indent: string,
   headers: Readonly<Record<string, string>>,
   matcher = '',
 ): string[] {
   const lines = Object.entries(headers).map(([name, value]) => {
-    if (/["\r\n]/.test(value)) {
-      throw new Error(`valor de ${name} com aspas ou quebra de linha`)
+    if (/[\r\n]/.test(value)) {
+      throw new Error(`valor de ${name} com quebra de linha`)
     }
-    return `${indent}\t${name} "${value}"`
+    return `${indent}\t${name} ${value.includes('"') ? literal(value) : `"${value}"`}`
   })
   return [`${indent}header ${matcher}${matcher === '' ? '' : ' '}{`, ...lines, `${indent}}`]
 }
@@ -100,6 +103,9 @@ export function caddySnippets(documents: DocumentHeaders): string {
     '\t\tredir @lowercase_pt_br /pt-BR{re.lowercase.1} 308',
     `\t\t@no_slash path_regexp no_slash ${literal('^/((?:[^/]+/)*[^/.]+)$')}`,
     '\t\tredir @no_slash /{re.no_slash.1}/ 308',
+    // Os source maps ficam no export para o deploy e nunca são servidos (ADR 0037).
+    '\t\t@source_map path_regexp source_map `(?i)\\.map$`',
+    '\t\terror @source_map 404',
     '\t\tfile_server {',
     `\t\t\thide ${HEADERS_MANIFEST_FILE}`,
     '\t\t}',
