@@ -65,6 +65,17 @@ overrides:
   promptfoo>@aws/bedrock-token-generator: "-"
   promptfoo>@modelcontextprotocol/server-filesystem: "-"
 
+# Advisories sem versão corrigida, conferidos como não exploráveis aqui. Cada um tem prazo de revisão
+# no osv-scanner.toml da raiz e motivo no adendo de 2026-11-17 da ADR 0002; saem quando o upstream
+# publicar a correção.
+audit:
+  ignore:
+    # GHSA-fc5q-39xc-vjpf (high): ReDoS no picomatch <=4.0.7 com extglob repetido de um ramo só, sem
+    # versão corrigida. Aqui o padrão é sempre do próprio código: next-intl > @parcel/watcher (vigia
+    # de arquivos do extrator, só no build; o web é export estático), knip > tinyglobby e outros
+    # globbers de desenvolvimento.
+    - GHSA-fc5q-39xc-vjpf
+
 catalog:
   # Ferramentas da raiz
   "@biomejs/biome": 2.6.4

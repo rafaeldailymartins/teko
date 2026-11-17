@@ -334,3 +334,23 @@ O primeiro run real do PR #1 mostrou duas coisas que a análise local não pegav
   proveniência. Score, annotation queue e apagamento usam a API pública do Langfuse por `fetch`.
 - A linha 3 do OTel continua bloqueada no Dependabot até o Langfuse suportá-la; o grupo `langfuse`
   do Dependabot já existia.
+
+## Adendo (2026-11-17): exceção do `picomatch` (GHSA-fc5q-39xc-vjpf)
+
+- **O advisory:** o GHSA-fc5q-39xc-vjpf (high) é um ReDoS no `picomatch` <=4.0.7: um glob com
+  extglob repetido de um ramo só, como `+(*)`, trava o event loop. Ele entrou no banco do GitHub e
+  passou a reprovar o `audit.yml` na `main` a partir de 2026-11-17. Não há versão corrigida, então
+  override não resolve.
+- **Por que não é explorável aqui:** o ataque exige que o atacante escolha o padrão do glob, e nos
+  três caminhos do Tekó o padrão vem sempre do próprio código:
+  - `next-intl > @parcel/watcher`: o vigia de arquivos do extrator de mensagens, que só roda no build
+    (o web é export estático);
+  - `knip > tinyglobby > fdir` e outros globbers de desenvolvimento;
+  - no `tools/vercel-cli`, `@vercel/static-build > ts-morph > fast-glob > micromatch`, que o deploy
+    `--prebuilt` nem usa.
+- **A exceção:** o id fica em `audit.ignore` no `pnpm-workspace.yaml` da raiz e no do
+  `tools/vercel-cli`, com o motivo em comentário. No `osv-scanner.toml` da raiz, fica com
+  `ignoreUntil = 2026-12-17`, para o osv-scanner voltar a reprovar sozinho e a exceção ser revista.
+  O precedente é o do `deepmerge` (GHSA-gcqx-w48m-w2h4).
+- **Saída:** quando o `picomatch` publicar a correção, a versão nova entra pelo lockfile (ou por
+  override) e o id sai dos três arquivos.
