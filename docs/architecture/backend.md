@@ -430,7 +430,7 @@ Sensitive + redeploy.
 4. Retry único em erro de conexão transitório, fora de transação.
 5. Cobertura e `corpus_version` em memória por instância, relidas no máximo a cada 10 min.
 6. Autoscaling 0,25 CU (ou 0,25–0,5), scale-to-zero em 5 min.
-7. Consumo medido pelo `ops.yml`; Neon suspenso → runbook `neon-suspended.md` (a escrever na F6).
+7. Consumo medido pelo `ops.yml`; Neon suspenso → [runbook](../runbooks/neon-suspended.md).
 
 ## Plano B (Render Free)
 

@@ -121,7 +121,9 @@ seguimento que troca `develop` por `main` no código.
   - erro de teste sem PII, com stack resolvida pelos source maps;
   - 100 perguntas de teste no staging geram 100 traces completos;
   - `/healthz` monitorado não incrementa CU-h em 24 h;
-  - painel de sinais de RAG com recusa por motivo, `lexical_only` e citações invalidadas.
+  - painel de sinais de RAG com recusa por motivo, `lexical_only` e citações invalidadas. Provado
+    item por item no [registro](evals/dod-f6-2026-11-17.md); a conferência dos itens que pedem
+    tráfego real fica para o staging da F7.
 
 ## F7: Deploy de staging e produção
 
@@ -144,7 +146,9 @@ seguimento que troca `develop` por `main` no código.
   - kill switch exercitado no staging (85% liga `LLM_KILL_SWITCH`; 95% troca a regra 1 do WAF);
   - cold start p95 + resume do Neon abaixo de 10 s;
   - purge semanal comprovado contra o staging;
-  - ensaio do Plano B: smoke verde contra o host do Render e volta ao estado parado.
+  - ensaio do Plano B: smoke verde contra o host do Render e volta ao estado parado;
+  - itens da F6 que pedem tráfego real conferidos no staging, com o roteiro do
+    [registro da F6](evals/dod-f6-2026-11-17.md#o-que-a-f7-confere-no-staging).
 
 ## F8: Evals de geração, red team, desempenho e segurança
 
