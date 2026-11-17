@@ -488,13 +488,18 @@ export async function run(
   return { code: sent && failures.length === 0 ? 0 : 1, summary }
 }
 
+/** Uma linha por chamada: quebra de linha vinda de erro ou resposta não forja comando do Actions. */
+function logLine(line: string): void {
+  console.log(line.replaceAll(/[\r\n]/gu, ' '))
+}
+
 async function main(): Promise<number> {
   const { values } = parseArgs({
     options: { 'dry-run': { type: 'boolean', default: false } },
     strict: true,
   })
   const { code, summary } = await run(
-    { env: process.env, now: new Date(), fetch, log: (line) => console.log(line) },
+    { env: process.env, now: new Date(), fetch, log: logLine },
     { dryRun: values['dry-run'] },
   )
   const summaryFile = process.env['GITHUB_STEP_SUMMARY']
