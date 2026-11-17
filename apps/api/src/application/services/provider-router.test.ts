@@ -8,7 +8,12 @@ import {
   type LlmRequest,
 } from '../ports/llm-port.ts'
 import { recordingTelemetry } from '../ports/testing/recording-telemetry.ts'
-import { BREAKER_OPEN_MS, createProviderRouter, type RoutedEvent } from './provider-router.ts'
+import {
+  BREAKER_OPEN_MS,
+  createProviderRouter,
+  type FailedAttempt,
+  type RoutedEvent,
+} from './provider-router.ts'
 
 type Behavior =
   | 'ok'
@@ -101,7 +106,13 @@ describe('createProviderRouter', () => {
     })
     const events = await collect(router.stream(REQUEST, ANY))
     expect(events).toEqual([
-      { type: 'start', provider: 'gemini', model: 'gemini-a', fallbackFrom: null },
+      {
+        type: 'start',
+        provider: 'gemini',
+        model: 'gemini-a',
+        fallbackFrom: null,
+        attemptStartedAtMs: Date.parse('2026-11-10T15:00:00Z'),
+      },
       { type: 'text', text: 'gemini-a:a ' },
       { type: 'text', text: 'b' },
       { type: 'finish', usage: { inputTokens: 10, outputTokens: 2 } },
@@ -109,17 +120,38 @@ describe('createProviderRouter', () => {
   })
 
   it('cai para o próximo antes do primeiro token e informa de onde caiu', async () => {
+    const at = Date.parse('2026-11-10T15:00:00Z')
     const router = createProviderRouter({
       models: [model('gemini-a', ['5xx']), model('gemini-b', ['429']), model('groq-c', ['ok'])],
       clock: clockAt('2026-11-10T15:00:00Z').clock,
     })
-    const [start] = await collect(router.stream(REQUEST, ANY))
+    const failed: FailedAttempt[] = []
+    const [start] = await collect(
+      router.stream(REQUEST, { ...ANY, onFailedAttempt: (attempt) => failed.push(attempt) }),
+    )
     expect(start).toEqual({
       type: 'start',
       provider: 'groq',
       model: 'groq-c',
       fallbackFrom: 'gemini-a',
+      attemptStartedAtMs: at,
     })
+    expect(failed).toEqual([
+      {
+        provider: 'gemini',
+        model: 'gemini-a',
+        error: 'unavailable',
+        startedAtMs: at,
+        endedAtMs: at,
+      },
+      {
+        provider: 'gemini',
+        model: 'gemini-b',
+        error: 'rate_limited',
+        startedAtMs: at,
+        endedAtMs: at,
+      },
+    ])
   })
 
   it('429 abre o breaker até o retry-after', async () => {

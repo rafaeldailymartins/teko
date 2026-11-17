@@ -63,6 +63,11 @@ import {
   BGE_RERANKER_MODEL,
   createWorkersAiRerankerAdapter,
 } from '#adapters/out/reranker/workers-ai/workers-ai-reranker-adapter.ts'
+import { createLangfuseTracing } from '#adapters/out/telemetry/langfuse.ts'
+import {
+  createLangfuseErasure,
+  createLangfuseFeedback,
+} from '#adapters/out/telemetry/langfuse-api.ts'
 import { createLogger } from '#adapters/out/telemetry/logger.ts'
 import type { TelemetryRuntime } from '#adapters/out/telemetry/sdk.ts'
 import type {
@@ -78,6 +83,7 @@ import type { Clock } from '#app/ports/clock.ts'
 import type { ContentHasher } from '#app/ports/content-hasher.ts'
 import type { EmbeddingPort } from '#app/ports/embedding-port.ts'
 import type { LlmModel } from '#app/ports/llm-port.ts'
+import type { LlmTracingPort, TraceFeedbackPort } from '#app/ports/llm-tracing.ts'
 import type { RateLimitStore } from '#app/ports/rate-limit-store.ts'
 import type { RerankerPort } from '#app/ports/reranker-port.ts'
 import type { SafeFetcher } from '#app/ports/safe-fetcher.ts'
@@ -96,6 +102,12 @@ import { createProviderRouter, type ProviderRouter } from '#app/services/provide
 import { createQueryRewriter } from '#app/services/query-rewriter.ts'
 import type { StreamBudget } from '#app/services/stream-budget.ts'
 import { createStreamBudget } from '#app/services/stream-budget.ts'
+import {
+  createQueryTracer,
+  createTraceSampler,
+  disabledQueryTracer,
+  type QueryTracer,
+} from '#app/services/trace-sampler.ts'
 import { createAskQuestion } from '#app/use-cases/ask-question.ts'
 import {
   createCheckCoverage,
@@ -140,7 +152,15 @@ import { createUserUseCases, type UserUseCases } from '#app/use-cases/users.ts'
 import { PUBLISHABLE_REVIEW_STATUSES, ReviewStatus } from '#domain/corpus/family.ts'
 import { type BuildInfo, createBuildInfo } from '#domain/shared/build-info.ts'
 import { buildApp } from './build-app.ts'
-import { EmbeddingsProvider, type Env, parseEnv, RerankerProvider } from './config/env.ts'
+import {
+  EmbeddingsProvider,
+  type Env,
+  type LangfuseSettings,
+  LlmTracingBackend,
+  langfuseSettings,
+  parseEnv,
+  RerankerProvider,
+} from './config/env.ts'
 import {
   createPlatformAdapters,
   platformNetwork,
@@ -413,7 +433,11 @@ function createRetrieval(
     rerankTimeoutMs: RERANK_TIMEOUT_MS,
     rewriter:
       env.QUERY_REWRITE_ENABLED && router !== null
-        ? createQueryRewriter({ router, timeoutMs: REWRITE_TIMEOUT_MS })
+        ? createQueryRewriter({
+            router,
+            timeoutMs: REWRITE_TIMEOUT_MS,
+            nowMs: () => clock.now().getTime(),
+          })
         : null,
     telemetry,
   })
@@ -611,6 +635,14 @@ export interface ContainerOverrides {
   readonly applicationName?: string
   /** Métricas de operação (padrão: nenhuma; o `server.ts` passa as do SDK do OTel). */
   readonly telemetry?: Telemetry
+  /**
+   * Traces de LLM no lugar dos do env (testes): a porta das observations e a do feedback. Com
+   * eles, a amostragem segue o `langfuseSettings(env)` ou, sem chaves, a taxa 1.
+   */
+  readonly llmTracing?: {
+    readonly port: LlmTracingPort
+    readonly feedback: TraceFeedbackPort
+  }
 }
 
 /** Neurons estimados por pergunta (embedding da pergunta e reranker de 40 candidatos). */
@@ -645,14 +677,50 @@ interface QuestionWiring {
   readonly backgroundTasks: BackgroundTasks
   readonly streamBudget: StreamBudget
   readonly telemetry: Telemetry
+  /** Langfuse: as observations e o feedback, ou `null` com o backend desligado. */
+  readonly llmTracing: {
+    readonly port: LlmTracingPort
+    readonly feedback: TraceFeedbackPort
+    readonly sampling: LangfuseSettings['sampling']
+  } | null
+}
+
+/** Langfuse do env (ou o dos testes); `null` sem chaves ou com `LLM_TRACING_BACKEND=off`. */
+function llmTracingOf(env: Env, overrides: ContainerOverrides): QuestionWiring['llmTracing'] {
+  const settings = langfuseSettings(env)
+  if (overrides.llmTracing !== undefined) {
+    return {
+      ...overrides.llmTracing,
+      sampling: settings?.sampling ?? { rate: 1, overBudgetRate: 1, monthlyUnitsCutoff: 0 },
+    }
+  }
+  if (settings === null) {
+    return null
+  }
+  return {
+    port: createLangfuseTracing(),
+    feedback: createLangfuseFeedback(settings),
+    sampling: settings.sampling,
+  }
 }
 
 function createQuestions(env: Env, wiring: QuestionWiring): QuestionUseCases | null {
-  const { clock, retrieval, router, telemetry } = wiring
+  const { clock, retrieval, router, telemetry, llmTracing } = wiring
   if (router === null) {
     return null
   }
   const questions = createPgQuestionRepository(wiring.database.pool)
+  const tracer: QueryTracer =
+    llmTracing === null
+      ? disabledQueryTracer
+      : createQueryTracer({
+          port: llmTracing.port,
+          sampler: createTraceSampler({
+            policy: llmTracing.sampling,
+            unitsSince: (day) => questions.langfuseUnitsSince(day),
+            clock,
+          }),
+        })
   const caps = {
     questionsGlobal: env.QUOTA_QUESTIONS_GLOBAL_DAILY,
     questionsPerUser: env.QUOTA_QUESTIONS_PER_USER_DAILY,
@@ -681,6 +749,7 @@ function createQuestions(env: Env, wiring: QuestionWiring): QuestionUseCases | n
       reservation,
       killSwitch: env.LLM_KILL_SWITCH,
       telemetry,
+      tracing: { tracer, tasks: wiring.backgroundTasks },
     }),
     stream: createStreamAnswer({
       questions,
@@ -692,8 +761,16 @@ function createQuestions(env: Env, wiring: QuestionWiring): QuestionUseCases | n
       reservation,
       cacheTtlMs: env.ANSWER_CACHE_TTL_DAYS * DAY_MS,
       telemetry,
+      tracer,
     }),
-    history: createQuestionHistory({ questions, clock, caps }),
+    history: createQuestionHistory({
+      questions,
+      clock,
+      caps,
+      ...(llmTracing === null
+        ? {}
+        : { traceFeedback: { port: llmTracing.feedback, tasks: wiring.backgroundTasks } }),
+    }),
     evalAnswer: createEvalAnswer({ ...pipeline, timeoutMs: env.STREAM_MAX_SECONDS * 1000 }),
   }
 }
@@ -767,10 +844,12 @@ export function createContainer(env: Env, overrides: ContainerOverrides = {}): C
       termsVersion: env.TERMS_VERSION,
     })
     auth = createAuth(env, database)
-    // Apagamento nos terceiros (PostHog e Langfuse) entra com eles, na F6.
+    // Apagamento nos terceiros: os traces do Langfuse (pelo `userId` em hash) com as chaves de
+    // runtime; o PostHog entra com o add-error-tracking.
+    const langfuse = langfuseSettings(env)
     privacy = createPrivacyUseCases({
       accounts: createPgAccountRepository(database.pool),
-      erasure: [],
+      erasure: langfuse === null ? [] : [createLangfuseErasure(langfuse)],
       backgroundTasks: platform.backgroundTasks,
       clock,
     })
@@ -784,6 +863,7 @@ export function createContainer(env: Env, overrides: ContainerOverrides = {}): C
       backgroundTasks: platform.backgroundTasks,
       streamBudget,
       telemetry,
+      llmTracing: llmTracingOf(env, overrides),
     })
   }
 
@@ -889,6 +969,13 @@ export async function createRuntime(env: Env, telemetry: TelemetryRuntime): Prom
   })
   if (!telemetry.exporting && PRODUCTION_LIKE_ENVS.has(env.APP_ENV)) {
     logger.warn('OTEL_EXPORTER_OTLP_ENDPOINT ausente: traces, métricas e logs não são exportados')
+  }
+  if (
+    env.LLM_TRACING_BACKEND === LlmTracingBackend.Langfuse &&
+    langfuseSettings(env) === null &&
+    PRODUCTION_LIKE_ENVS.has(env.APP_ENV)
+  ) {
+    logger.warn('LANGFUSE_PUBLIC_KEY/LANGFUSE_SECRET_KEY ausentes: traces de LLM desligados')
   }
   const container = createContainer(env, {
     onBackgroundFailure: logBackgroundFailure(logger),

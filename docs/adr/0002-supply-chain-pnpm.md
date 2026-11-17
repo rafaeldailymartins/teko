@@ -307,3 +307,15 @@ O primeiro run real do PR #1 mostrou duas coisas que a análise local não pegav
   proveniência que nunca a tiveram (`module-details-from-path` 1.0.4 e `cjs-module-lexer`), aceitos
   pelo `no-downgrade`. Nenhum hook de módulo é ligado: o `@fastify/otel` entra como plugin
   explícito (`init()` vazio).
+
+## Adendo (2026-11-17): Langfuse da API (`add-llm-tracing-langfuse`, F6, [ADR 0012](0012-langfuse-cloud.md))
+
+- **Entram no catálogo** `@langfuse/otel` e `@langfuse/tracing` **6.1.1** (2026-11-03), MIT, com
+  proveniência SLSA; na árvore, o `@langfuse/core` 6.1.1 (MIT, com proveniência). Nenhuma exceção de
+  política. Os peers (`@opentelemetry/api` ^1.9, `@opentelemetry/core` e `sdk-trace-base` ^2.0.1,
+  `otlp-exporter-base` e `exporter-trace-otlp-http` < 0.300) resolvem nas mesmas 2.12.1 e 0.223.1 do
+  catálogo, sem segunda cópia do OTel.
+- **Fica de fora o `@langfuse/client`:** ele depende do `mustache` 4.2.0, publicado sem
+  proveniência. Score, annotation queue e apagamento usam a API pública do Langfuse por `fetch`.
+- A linha 3 do OTel continua bloqueada no Dependabot até o Langfuse suportá-la; o grupo `langfuse`
+  do Dependabot já existia.

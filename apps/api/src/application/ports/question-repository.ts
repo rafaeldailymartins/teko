@@ -110,6 +110,15 @@ export interface StreamResult {
   readonly streamSeconds: number
   /** Resposta a guardar no cache exato (só respostas com citação válida). */
   readonly cache: { readonly key: string; readonly answer: Answer; readonly expiresAt: Date } | null
+  /** `trace_id` do trace `rag-query` no Langfuse; `null` quando a pergunta não foi amostrada. */
+  readonly langfuseTraceId: string | null
+  /** Units do Langfuse do trace (somadas em `usage_daily.langfuse_units`, linha `global`). */
+  readonly langfuseUnits: number
+}
+
+/** O feedback gravado e o trace do Langfuse da pergunta, se ela foi amostrada. */
+export interface SavedFeedback {
+  readonly langfuseTraceId: string | null
 }
 
 export interface QuestionRecord extends NewQuestion {
@@ -184,13 +193,23 @@ export interface QuestionRepository {
     after: ConversationCursor | null,
     limit: number,
   ): Promise<ConversationRecord[]>
-  /** `false` quando a pergunta não existe para o usuário. */
+  /**
+   * `null` quando a pergunta não existe para o usuário. Se a pergunta tem trace no Langfuse, a
+   * mesma instrução soma 1 unit (o score `user_feedback`) em `usage_daily.langfuse_units`.
+   */
   recordFeedback(
     questionId: string,
     userId: string,
     rating: FeedbackRating,
     reason: FeedbackReason | null,
-  ): Promise<boolean>
+  ): Promise<SavedFeedback | null>
+  /**
+   * Grava o `trace_id` do Langfuse de uma pergunta encerrada no `POST` (cache ou fora da
+   * cobertura) e soma as units do trace no dia dela (linha `global` de `usage_daily`).
+   */
+  recordTrace(questionId: string, traceId: string, units: number): Promise<void>
+  /** Units do Langfuse gravadas desde o dia dado (linha `global` de `usage_daily`). */
+  langfuseUnitsSince(day: IsoDate): Promise<number>
   /**
    * Numa transação, trava as perguntas do usuário na conversa (`FOR UPDATE`) e, se nenhuma estiver
    * em stream ativo, apaga todas; o feedback sai pelo `ON DELETE CASCADE`. O uso do dia

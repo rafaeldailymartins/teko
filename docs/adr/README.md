@@ -17,6 +17,7 @@ o roteiro, em [`docs/roadmap.md`](../roadmap.md).
 | [0009](0009-vigencia-bitemporal.md)                  | Vigência bitemporal e cobertura limitada pelo `verified_at`                          | accepted |
 | [0010](0010-busca-hibrida-rrf.md)                    | Busca híbrida numa instrução SQL, RRF k = 60, filtrada por vigência                  | accepted |
 | [0011](0011-docling-e-parser-rcte.md)                | Docling (TableFormer V1 ACCURATE) para PDF e máquina de estados HTML para RCTE/CTE   | accepted |
+| [0012](0012-langfuse-cloud.md)                       | Langfuse Cloud para traces e custo de LLM                                            | accepted |
 | [0017](0017-vercel-build-output-tsdown.md)           | Deploy `--prebuilt` de um `.vercel/output` montado do bundle do tsdown               | accepted |
 | [0019](0019-oauth-e-passkey.md)                      | Login por OAuth (GitHub e Google) e passkey, com o Better Auth                       | accepted |
 | [0024](0024-environments-em-pull-request.md)         | Regra de branch dos environments em eventos `pull_request`                           | accepted |
@@ -74,7 +75,7 @@ então valem estas regras:
 | 0009        | Vigência bitemporal                              | [escrita](0009-vigencia-bitemporal.md)                                                                                                     |
 | 0010        | Híbrido RRF                                      | [escrita](0010-busca-hibrida-rrf.md)                                                                                                       |
 | 0011        | Docling + parser RCTE                            | [escrita](0011-docling-e-parser-rcte.md)                                                                                                   |
-| 0012        | Langfuse Cloud                                   | a escrever na F6                                                                                                                           |
+| 0012        | Langfuse Cloud                                   | [escrita](0012-langfuse-cloud.md)                                                                                                          |
 | 0013        | OTel 2.x                                         | a escrever na F6                                                                                                                           |
 | 0014        | Git Flow + git-cliff                             | **coberto pela [0033](0033-trunk-based.md)** (trunk-based + git-cliff)                                                                     |
 | 0015        | Custo zero e cotas                               | a escrever na F7 (o estado atual está em [contas e cotas](../architecture/contas-e-cotas.md))                                              |

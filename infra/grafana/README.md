@@ -146,5 +146,10 @@ Nada disso passa pelo chat nem pelo repositório: `gh secret set NOME --env ops`
    rotação.
 10. O job `coverage-age` usa o environment `corpus-watch` que já existe (`NEON_PROD_WATCH_URL` e
     `NEON_STAGING_WATCH_URL`); nada a criar.
+11. **Langfuse (job `langfuse`):** em cada projeto do Langfuse Cloud EU (`teko-prod` e
+    `teko-staging`), Settings → API Keys → um par **separado** do de runtime da Vercel: segredos
+    `LANGFUSE_PROD_PUBLIC_KEY`, `LANGFUSE_PROD_SECRET_KEY`, `LANGFUSE_STAGING_PUBLIC_KEY` e
+    `LANGFUSE_STAGING_SECRET_KEY`. Opcional: variável `LANGFUSE_BASE_URL` (padrão
+    `https://cloud.langfuse.com`). O job usa o mesmo `GRAFANA_OTLP_*` do item 5.
 
 Depois, rode o `ops.yml` com `dry_run` e confira o plano; em seguida sem `dry_run`.

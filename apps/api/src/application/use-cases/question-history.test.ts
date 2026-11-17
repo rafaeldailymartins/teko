@@ -1,11 +1,15 @@
 import { CONVERSATIONS_PAGE_SIZE } from '@teko/shared/contracts'
 import { describe, expect, it, vi } from 'vitest'
+import type { BackgroundTasks } from '../ports/background-tasks.ts'
+import type { TraceFeedbackPort } from '../ports/llm-tracing.ts'
 import type {
   ConversationRecord,
   DeleteConversationOutcome,
   QuestionRecord,
   QuestionRepository,
+  SavedFeedback,
 } from '../ports/question-repository.ts'
+import { recordingTraceFeedback } from '../ports/testing/recording-llm-tracing.ts'
 import {
   conversationTitle,
   createQuestionHistory,
@@ -48,8 +52,9 @@ const RECORD: QuestionRecord = {
 
 function setup(
   record: QuestionRecord | null = RECORD,
-  feedbackSaved = true,
+  feedbackSaved: SavedFeedback | null = { langfuseTraceId: null },
   conversations: ConversationRecord[] = [],
+  traceFeedback?: { port: TraceFeedbackPort; tasks: BackgroundTasks },
 ) {
   const questions = {
     get: vi.fn(async () => record),
@@ -73,9 +78,55 @@ function setup(
       streamSecondsGlobal: 6000,
       neuronsGlobal: 800,
     },
+    ...(traceFeedback === undefined ? {} : { traceFeedback }),
   })
   return { history, questions }
 }
+
+function recordingTasks() {
+  const runs: { name: string; task: Promise<unknown>; timeoutMs: number }[] = []
+  const tasks: BackgroundTasks = {
+    run: (name, task, options) => {
+      runs.push({ name, task, timeoutMs: options.timeoutMs })
+    },
+    pending: () => 0,
+    drain: async () => 0,
+  }
+  return { tasks, runs }
+}
+
+describe('feedback no Langfuse', () => {
+  it('pergunta amostrada: score e annotation queue em tarefa pós-resposta com teto', async () => {
+    const port = recordingTraceFeedback()
+    const { tasks, runs } = recordingTasks()
+    const { history } = setup(RECORD, { langfuseTraceId: 'abc' }, [], { port, tasks })
+    await history.recordFeedback('u1', 'q1', { rating: 'down', reason: 'wrong_citation' })
+    expect(runs.map(({ name, timeoutMs }) => [name, timeoutMs])).toEqual([
+      ['langfuse-feedback', 2000],
+    ])
+    expect(port.calls).toEqual([
+      { traceId: 'abc', questionId: 'q1', rating: 'down', reason: 'wrong_citation' },
+    ])
+  })
+
+  it('pergunta sem trace: nada vai ao Langfuse', async () => {
+    const port = recordingTraceFeedback()
+    const { tasks, runs } = recordingTasks()
+    const { history } = setup(RECORD, { langfuseTraceId: null }, [], { port, tasks })
+    await history.recordFeedback('u1', 'q1', { rating: 'up' })
+    expect(runs).toEqual([])
+    expect(port.calls).toEqual([])
+  })
+
+  it('falha do Langfuse não chega à requisição: fica na tarefa', async () => {
+    const port = recordingTraceFeedback()
+    port.fail = true
+    const { tasks, runs } = recordingTasks()
+    const { history } = setup(RECORD, { langfuseTraceId: 'abc' }, [], { port, tasks })
+    await expect(history.recordFeedback('u1', 'q1', { rating: 'up' })).resolves.toBeUndefined()
+    await expect(runs[0]?.task).rejects.toThrow('langfuse fora')
+  })
+})
 
 describe('createQuestionHistory', () => {
   it('detalhe e lista no formato do contrato', async () => {
@@ -90,7 +141,7 @@ describe('createQuestionHistory', () => {
   })
 
   it('pergunta inexistente (ou de outro usuário) → not_found', async () => {
-    const { history } = setup(null, false)
+    const { history } = setup(null, null)
     await expect(history.get('u1', 'q9')).rejects.toMatchObject({ problem: { code: 'not_found' } })
     await expect(history.recordFeedback('u1', 'q9', { rating: 'up' })).rejects.toMatchObject({
       problem: { code: 'not_found' },
@@ -116,7 +167,7 @@ describe('createQuestionHistory', () => {
 
 describe('lista de conversas', () => {
   it('última página: sem cursor seguinte, título e instante no formato do contrato', async () => {
-    const { history, questions } = setup(RECORD, true, [conversation(1)])
+    const { history, questions } = setup(RECORD, undefined, [conversation(1)])
     await expect(history.conversations('u1')).resolves.toEqual({
       items: [
         {
@@ -140,7 +191,7 @@ describe('lista de conversas', () => {
     const rows = Array.from({ length: CONVERSATIONS_PAGE_SIZE + 1 }, (_, index) =>
       conversation(index),
     )
-    const { history, questions } = setup(RECORD, true, rows)
+    const { history, questions } = setup(RECORD, undefined, rows)
     const page = await history.conversations('u1')
     expect(page.items).toHaveLength(CONVERSATIONS_PAGE_SIZE)
     const last = rows[CONVERSATIONS_PAGE_SIZE - 1] as ConversationRecord
