@@ -389,11 +389,16 @@ describe('trace answer-question (Langfuse)', () => {
     })
     const failing: RetrieveEvidence = () => Promise.reject(new Error('banco fora'))
     await expect(run(failing, '', undefined, { trace })).rejects.toThrow('banco fora')
-    expect(port.queries[0]?.retrievals[0]?.summary).toMatchObject({
+    expect(port.queries[0]?.retrievals[0]?.summary).toEqual({
       query: 'Qual o prazo?',
+      rewrittenQuery: null,
       referenceDate: null,
+      families: ['rcte', 'cte'],
       mode: null,
       items: [],
+      reranked: false,
+      uncoveredFamilies: [],
+      refusalReason: null,
     })
   })
 
