@@ -350,7 +350,8 @@ item aqui. Segredos nunca passam pelo chat: o mantenedor grava cada um.
   `neondb_owner` do `teko-prod`), as vars `VERCEL_ORG_ID` e `VERCEL_PROJECT_ID` do `tekoia` e os do
   PostHog (tabela de environments em [`ci-cd-e-ambientes.md`](architecture/ci-cd-e-ambientes.md)).
 - [ ] **Passkey do system test** no environment `staging` (mesma tabela).
-- [ ] **Checklist dos projetos e do time da Vercel** em
+- [x] **Checklist dos projetos e do time da Vercel** (conferido em 2026-11-17, pela API e no
+  dashboard) em
   [`infra/vercel/README.md`](../infra/vercel/README.md) (Build and Deployment, Deployment
   Protection, Firewall e "Time e conta"): conferir no dashboard e marcar lá.
 - [x] **Grafana Cloud Free** (feito em 2026-11-17): stack `tenderferret1492` em `prod-eu-west-2`
