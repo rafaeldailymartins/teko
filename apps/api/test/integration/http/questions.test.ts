@@ -31,7 +31,7 @@ import {
   createHttpOptions,
 } from '../../../src/composition-root.ts'
 import { type Env, parseEnv } from '../../../src/config/env.ts'
-import { FIXED_NOW, FIXTURE_EMBEDDINGS, seedFixtureCorpus } from '../../setup/corpus.ts'
+import { FIXTURE_EMBEDDINGS, seedFixtureCorpus } from '../../setup/corpus.ts'
 import { createTestDatabase, type TestDatabase } from '../../setup/database.ts'
 
 /**
@@ -114,7 +114,8 @@ async function startApp(
 }
 
 async function newUser(): Promise<{ cookie: string; userId: string }> {
-  const seeder = createDevSessionSeeder(envFor({}), { now: () => new Date(FIXED_NOW) })
+  // Relógio real: a sessão vale 7 dias a partir de agora (com um instante fixo, vencia sozinha).
+  const seeder = createDevSessionSeeder(envFor({}), { now: () => new Date() })
   try {
     const session = await seeder.seed({
       email: `${randomUUID()}@teko.localhost`,

@@ -10,7 +10,7 @@ import {
   createHttpOptions,
 } from '../../../src/composition-root.ts'
 import { DEFAULT_TERMS_VERSION, type Env, parseEnv } from '../../../src/config/env.ts'
-import { FIXED_NOW, FIXTURE_EMBEDDINGS } from '../../setup/corpus.ts'
+import { FIXTURE_EMBEDDINGS } from '../../setup/corpus.ts'
 import { createTestDatabase, type TestDatabase } from '../../setup/database.ts'
 
 /**
@@ -29,7 +29,8 @@ let app: FastifyInstance
 let owner: pg.Client
 
 async function seedSession(email: string): Promise<{ userId: string; cookie: string }> {
-  const seeder = createDevSessionSeeder(env, { now: () => new Date(FIXED_NOW) })
+  // Relógio real: a sessão vale 7 dias a partir de agora (com um instante fixo, vencia sozinha).
+  const seeder = createDevSessionSeeder(env, { now: () => new Date() })
   try {
     const session = await seeder.seed({ email, name: 'Teste', country: 'BR' })
     return { userId: session.userId, cookie: `${session.cookieName}=${session.cookieValue}` }
