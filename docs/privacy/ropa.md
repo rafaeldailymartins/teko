@@ -44,7 +44,9 @@ versão da política e o momento, gravada só depois da decisão). Medição de 
 dessa escolha: sem `analytics: true` o `posthog-js` nem é baixado; com ela, o SDK grava no
 `localStorage` o identificador e o estado da sessão (`ph_<chave>_posthog`, `__ph_opt_in_out_<chave>`)
 e, com as pesquisas, `seenSurvey_*` e afins, sem cookie. Retirar o consentimento faz o opt-out e
-apaga essas chaves. O registro de erros e a telemetria técnica não gravam nada no navegador.
+apaga essas chaves. O registro de erros e a telemetria técnica não gravam nada no navegador: o
+cliente de erros (ADR 0037) só baixa o `posthog-js` quando um erro acontece, numa instância própria
+com `persistence: 'memory'`, sem perfil e sem depender do consentimento de medição.
 
 A pergunta crua nunca é gravada nem enviada: a redação de PII roda antes de qualquer uso, e os
 logs de runtime não a registram.

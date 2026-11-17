@@ -100,7 +100,13 @@ services:
         sync: false
       - key: LANGFUSE_SECRET_KEY
         sync: false
-      - key: SENTRY_DSN
+      # Chave do projeto PostHog: erros inesperados da API no Error Tracking (ADR 0037).
+      - key: POSTHOG_PROJECT_KEY
+        sync: false
+      # A mesma chave (pública) no build do web: erros do navegador e relatórios de CSP. Sem ela, o
+      # export sai sem os dois. O Render não roda o `sourcemaps inject` (sem o posthog-cli), então a
+      # pilha dos erros do Plano B não se resolve pelos source maps.
+      - key: NEXT_PUBLIC_POSTHOG_ERRORS_KEY
         sync: false
       - key: OTEL_EXPORTER_OTLP_ENDPOINT
         sync: false

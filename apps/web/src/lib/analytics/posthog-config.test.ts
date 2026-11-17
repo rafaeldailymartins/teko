@@ -5,6 +5,9 @@ import {
   type BrowserStorageTarget,
   clearPosthogStorage,
   createBeforeSend,
+  createErrorBeforeSend,
+  ERRORS_INSTANCE_NAME,
+  errorClientConfig,
   isAllowedEvent,
   posthogConfig,
   SDK_EVENTS,
@@ -114,6 +117,76 @@ describe('createBeforeSend', () => {
     expect(result).not.toBeNull()
     expect(result).not.toHaveProperty('$set')
     expect(result).not.toHaveProperty('$set_once')
+  })
+})
+
+describe('createErrorBeforeSend (ADR 0037)', () => {
+  const hook = createErrorBeforeSend()
+
+  it('só $exception sai; o catálogo e o resto do SDK ficam com a instância de analytics', () => {
+    expect(hook(captured('answer_completed'))).toBeNull()
+    expect(hook(captured('$pageview'))).toBeNull()
+    expect(hook(null as unknown as CaptureResult)).toBeNull()
+    expect(isAllowedEvent('$exception')).toBe(false)
+  })
+
+  it('tira a PII das mensagens, a query das URLs e o perfil de pessoa', () => {
+    const result = hook(
+      captured('$exception', {
+        properties: {
+          $current_url: 'https://tekoia.vercel.app/pt-BR/chat/?c=abc&q=def',
+          $exception_message: 'falhou para maria@example.com',
+          $exception_list: [
+            { type: 'Error', value: 'CPF 529.982.247-25 inválido', stacktrace: { frames: [] } },
+            { type: 'Error' },
+            'texto',
+          ],
+          trace_id: '0af7651916cd43dd8448eb211c80319c',
+        },
+        $set: { email: 'maria@example.com' },
+        $set_once: { x: 1 },
+      }),
+    )
+    expect(result).not.toHaveProperty('$set')
+    expect(result).not.toHaveProperty('$set_once')
+    expect(result?.properties).toEqual({
+      $current_url: 'https://tekoia.vercel.app/pt-BR/chat/',
+      $exception_message: 'falhou para [EMAIL]',
+      $exception_list: [
+        { type: 'Error', value: 'CPF [CPF] inválido', stacktrace: { frames: [] } },
+        { type: 'Error' },
+        'texto',
+      ],
+      trace_id: '0af7651916cd43dd8448eb211c80319c',
+    })
+  })
+
+  it('evento sem lista de exceções continua válido', () => {
+    expect(hook(captured('$exception'))?.properties).toEqual({})
+  })
+})
+
+describe('errorClientConfig', () => {
+  it('UE, só memória, sem perfil e nada além da exceção pedida', () => {
+    const config = errorClientConfig()
+    expect(config).toMatchObject({
+      api_host: POSTHOG_API_HOST,
+      disable_external_dependency_loading: true,
+      persistence: 'memory',
+      disable_persistence: true,
+      person_profiles: 'never',
+      autocapture: false,
+      capture_pageview: false,
+      capture_pageleave: false,
+      capture_exceptions: false,
+      disable_session_recording: true,
+      disable_surveys: true,
+      advanced_disable_flags: true,
+      save_referrer: false,
+    })
+    expect(config).not.toHaveProperty('cookieless_mode')
+    expect(typeof config.before_send).toBe('function')
+    expect(ERRORS_INSTANCE_NAME).toBe('teko_errors')
   })
 })
 

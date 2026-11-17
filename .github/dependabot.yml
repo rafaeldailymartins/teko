@@ -31,9 +31,10 @@ updates:
         patterns:
           - "@opentelemetry/*"
           - "@fastify/otel"
-      sentry:
+      posthog:
         patterns:
-          - "@sentry/*"
+          - "posthog-js"
+          - "posthog-node"
       langfuse:
         patterns:
           - "@langfuse/*"
@@ -98,6 +99,31 @@ updates:
       include: scope
     groups:
       vercel-cli:
+        patterns:
+          - "*"
+
+  # posthog-cli (source maps do Error Tracking) no mesmo modelo: projeto pnpm isolado, sem
+  # postinstall; o binário vem do GitHub Releases com o sha256 fixado em
+  # tools/posthog-cli/install-binary.mjs, que precisa subir junto com a versão (ADR 0037).
+  - package-ecosystem: npm
+    directory: /tools/posthog-cli
+    target-branch: main
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: America/Sao_Paulo
+    cooldown:
+      default-days: 7
+      semver-patch-days: 7
+      semver-minor-days: 7
+      semver-major-days: 14
+    commit-message:
+      prefix: chore
+      prefix-development: chore
+      include: scope
+    groups:
+      posthog-cli:
         patterns:
           - "*"
 

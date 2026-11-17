@@ -47,7 +47,13 @@ const nextConfig: NextConfig = {
         // `next dev` mostraria a página de entrada estática de `/`.
         redirects: async () => devRootRedirects(),
       }
-    : { output: 'export' }),
+    : {
+        output: 'export',
+        // `.map` dos chunks para o PostHog Error Tracking resolver a pilha (ADR 0037): o
+        // `scripts/sourcemaps.ts` injeta o chunk id e o deploy os envia; nenhum host os serve (a
+        // Vercel, o Plano B e o Caddy da stack de CI deixam `*.map` de fora).
+        productionBrowserSourceMaps: true,
+      }),
   trailingSlash: true,
   images: { unoptimized: true },
   // React Compiler 1.0 (babel-plugin-react-compiler): memoização automática em todo componente e

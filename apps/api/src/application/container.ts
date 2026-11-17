@@ -3,6 +3,7 @@ import type { BuildInfo } from '#domain/shared/build-info.ts'
 import type { AuthGateway } from './ports/auth-gateway.ts'
 import type { BackgroundTasks } from './ports/background-tasks.ts'
 import type { ClientIp } from './ports/client-ip.ts'
+import type { ErrorReporterPort } from './ports/error-reporter.ts'
 import type { GeoResolver } from './ports/geo-resolver.ts'
 import type { RateLimitStore } from './ports/rate-limit-store.ts'
 import type { Telemetry } from './ports/telemetry.ts'
@@ -123,6 +124,8 @@ export interface Container {
   readonly streamBudget: StreamBudget
   /** Métricas de operação (`noopTelemetry` sem telemetria configurada). */
   readonly telemetry: Telemetry
+  /** Destino dos erros inesperados (`noopErrorReporter` sem `POSTHOG_PROJECT_KEY`). */
+  readonly errorReporter: ErrorReporterPort
   /** Libera recursos (pool do Postgres, exporters...) depois que o servidor HTTP fechou. */
   close(): Promise<void>
 }

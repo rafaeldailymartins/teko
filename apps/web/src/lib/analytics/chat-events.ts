@@ -38,7 +38,7 @@ function traceProperty(message: TekoUIMessage): { trace_id?: string } {
 export function answerEvents(message: TekoUIMessage, elapsedMs: number): AnalyticsEvent[] {
   const view = answerView(message)
   if (view.clarification !== null) {
-    return [{ name: 'clarification_shown', properties: {} }]
+    return [{ name: 'clarification_shown', properties: traceProperty(message) }]
   }
   if (view.refusal !== null) {
     return [
@@ -67,17 +67,32 @@ export function answerEvents(message: TekoUIMessage, elapsedMs: number): Analyti
   if (view.meta.fallbackFrom !== null && model !== undefined) {
     events.push({
       name: 'provider_fallback',
-      properties: { from: view.meta.fallbackFrom.toLowerCase(), to: model.toLowerCase() },
+      properties: {
+        from: view.meta.fallbackFrom.toLowerCase(),
+        to: model.toLowerCase(),
+        ...traceProperty(message),
+      },
     })
   }
   return events
 }
 
-/** `quota_reached` quando a API recusou a pergunta por cota (o escopo vem no problem+json). */
+/**
+ * `quota_reached` quando a API recusou a pergunta por cota (o escopo vem no problem+json), com o
+ * `trace_id` da resposta.
+ */
 export function quotaReachedEvent(error: Error | undefined): AnalyticsEvent | null {
-  return error instanceof ApiError && error.quota !== null
-    ? { name: 'quota_reached', properties: { scope: error.quota.scope } }
-    : null
+  if (!(error instanceof ApiError) || error.quota === null) {
+    return null
+  }
+  const { traceId } = error
+  return {
+    name: 'quota_reached',
+    properties: {
+      scope: error.quota.scope,
+      ...(traceId !== null && TRACE_ID.test(traceId) ? { trace_id: traceId } : {}),
+    },
+  }
 }
 
 /** Repassa os eventos ao adapter (que descarta tudo sem consentimento). */

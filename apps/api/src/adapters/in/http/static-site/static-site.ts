@@ -7,6 +7,7 @@ import {
   documentFileFor,
   HEADERS_MANIFEST_FILE,
   IMMUTABLE_CACHE_CONTROL,
+  isSourceMapPath,
   notFoundPageFor,
   parseHeadersManifest,
   ROOT_REDIRECT_HEADERS,
@@ -28,7 +29,8 @@ import {
  *   export (`.teko-headers.json`); sem manifesto, o servidor não sobe. Resposta estática que não é
  *   documento fica sem CSP, como na Vercel;
  * - caminho inexistente fora de `/api/*` e `/healthz`: a página de 404 do locale, com status 404
- *   (`staticNotFound`, chamado pelo not-found handler do problem+json).
+ *   (`staticNotFound`, chamado pelo not-found handler do problem+json);
+ * - source maps (`*.map`) respondem como inexistentes, como na Vercel e no Caddy (ADR 0037).
  */
 
 export interface StaticSiteOptions {
@@ -131,6 +133,8 @@ export async function registerStaticSite(
     index: ['index.html'],
     redirect: true,
     dotfiles: 'ignore',
+    // Os source maps ficam no export para o deploy enviá-los ao PostHog e nunca são servidos.
+    allowedPath: (pathName) => !isSourceMapPath(pathName),
     // O `index` acima já serve o diretório; sem listagem.
     list: false,
     schemaHide: true,

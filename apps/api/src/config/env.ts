@@ -314,6 +314,16 @@ const envSchema = z
     OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE: z
       .enum(['delta', 'cumulative'])
       .default('cumulative'),
+    /**
+     * Chave do projeto PostHog (UE) que recebe os erros inesperados da API (Error Tracking, ADR
+     * 0037); Sensitive na Vercel. O host é fixo no código (`eu.i.posthog.com`). Sem ela, os erros
+     * só vão para o log (CI, testes, dev).
+     */
+    POSTHOG_PROJECT_KEY: z
+      .string()
+      .trim()
+      .regex(/^phc_[A-Za-z0-9]{20,64}$/, { error: 'deve ser a chave do projeto (phc_…)' })
+      .optional(),
     // --- Ingestão (CLI `ingest`, `snapshot`, `eval-fixture`; só no Actions e localmente) -------
     /**
      * Onde ficam os artefatos da ingestão (ADR 0030). Com `github-releases` (o que os workflows

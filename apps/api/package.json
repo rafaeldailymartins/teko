@@ -73,6 +73,7 @@
     "htmlparser2": "catalog:",
     "pg": "catalog:",
     "pino": "catalog:",
+    "posthog-node": "catalog:",
     "yaml": "catalog:",
     "zod": "catalog:"
   },

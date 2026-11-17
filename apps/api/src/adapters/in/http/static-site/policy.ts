@@ -42,11 +42,32 @@ export const STATIC_HEADERS = {
  */
 export const HEADERS_MANIFEST_FILE = '.teko-headers.json'
 
-/** Os únicos headers que o manifesto pode definir (ele não injeta header arbitrário). */
+/**
+ * Os únicos headers que o manifesto pode definir (ele não injeta header arbitrário). O
+ * `Reporting-Endpoints` só existe quando o build tem a chave do PostHog: é o destino do
+ * `report-to` das duas políticas (ADR 0037).
+ */
 const DOCUMENT_HEADER_NAMES = [
   'Content-Security-Policy',
   'Content-Security-Policy-Report-Only',
+  'Reporting-Endpoints',
 ] as const
+
+/**
+ * Um endpoint do Reporting API (`nome="https://…"`): o único valor com aspas, que o formato de
+ * dicionário exige. A URL não tem aspas, crase, barra invertida nem espaço.
+ */
+const REPORTING_ENDPOINTS_VALUE =
+  /^[a-z][a-z0-9_-]*="https:\/\/[\x21\x23-\x5b\x5d-\x5f\x61-\x7e]+"$/
+
+function isSafeHeaderValue(name: string, value: unknown): value is string {
+  if (typeof value !== 'string') {
+    return false
+  }
+  return name === 'Reporting-Endpoints'
+    ? REPORTING_ENDPOINTS_VALUE.test(value)
+    : HEADER_VALUE.test(value)
+}
 
 /** Headers de cada HTML do export, pelo caminho relativo do arquivo (`en/index.html`, `404.html`). */
 export type DocumentHeaders = Readonly<Record<string, Readonly<Record<string, string>>>>
@@ -78,7 +99,7 @@ export function parseHeadersManifest(value: unknown): DocumentHeaders {
       if (!(DOCUMENT_HEADER_NAMES as readonly string[]).includes(name)) {
         throw new Error(`${HEADERS_MANIFEST_FILE}: header não permitido em ${file}: ${name}`)
       }
-      if (typeof headerValue !== 'string' || !HEADER_VALUE.test(headerValue)) {
+      if (!isSafeHeaderValue(name, headerValue)) {
         throw new Error(`${HEADERS_MANIFEST_FILE}: valor inválido de ${name} em ${file}`)
       }
       entry[name] = headerValue
@@ -114,6 +135,15 @@ export function documentPathPattern(file: string): string {
     return `^/${escaped.slice(0, -'index\\.html'.length)}(?:index\\.html)?$`
   }
   return `^/${escaped}$`
+}
+
+/**
+ * Source map do export (`*.js.map`): fica no `out/` para o deploy enviá-lo ao PostHog Error
+ * Tracking e nunca é servido (ADR 0037). A Vercel não o copia para o `static/`, o Plano B responde
+ * 404 e o Caddy o esconde.
+ */
+export function isSourceMapPath(path: string): boolean {
+  return path.toLowerCase().endsWith('.map')
 }
 
 /** `/_next/static/*` tem hash no nome: cache de um ano. */

@@ -6,8 +6,9 @@
  * 2. a CSP de algum documento passar de 6 KB (`lib/csp.ts`);
  * 3. o JS do primeiro acesso passar do orçamento de `bundle-budget.json` (`lib/bundle-budget.ts`).
  *
- * Grava `out/.teko-headers.json`, o manifesto com a CSP (hashes dos `<script>` e `<style>` inline) e
- * o Trusted Types report-only de cada HTML, que a Vercel, o Plano B e o Caddy da stack de CI
+ * Grava `out/.teko-headers.json`, o manifesto com a CSP (hashes dos `<script>` e `<style>` inline), o
+ * Trusted Types report-only e, com `NEXT_PUBLIC_POSTHOG_ERRORS_KEY`, o `report-to` e o
+ * `Reporting-Endpoints` do PostHog de cada HTML, que a Vercel, o Plano B e o Caddy da stack de CI
  * aplicam por caminho. Sem argumentos; idempotente (o CI roda de novo depois de um cache hit do
  * turbo). Uso: `node scripts/postbuild.ts`, em `apps/web`.
  */
@@ -28,7 +29,10 @@ function main(): void {
   }
   const outDir = join(WEB_DIR, 'out')
   const documents = readDocuments(outDir)
-  const manifest = buildHeadersManifest(documents)
+  // A mesma chave pública que o build inlina para o cliente de erros (ADR 0037): com ela, a CSP e
+  // o Trusted Types mandam as violações ao PostHog; sem ela, a CSP fica como estava.
+  const reportKey = process.env['NEXT_PUBLIC_POSTHOG_ERRORS_KEY']?.trim() || undefined
+  const manifest = buildHeadersManifest(documents, { reportKey })
   writeFileSync(join(outDir, HEADERS_MANIFEST_FILE), `${JSON.stringify(manifest, null, 2)}\n`)
   const measure = measureFirstLoad(outDir, documents)
   const budget = readBudget(join(WEB_DIR, 'bundle-budget.json'))

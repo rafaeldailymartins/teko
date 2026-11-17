@@ -70,7 +70,7 @@ In scope:
 Out of scope:
 
 - vulnerabilities in third-party services themselves (Vercel, Render, Neon, Google, Groq,
-  Cloudflare, Langfuse, Sentry, PostHog, GitHub). Report those to the vendor. Misconfiguration of
+  Cloudflare, Langfuse, PostHog, GitHub). Report those to the vendor. Misconfiguration of
   those services by this project (for example a Vercel firewall rule or Deployment Protection
   setting that can be bypassed) is in scope;
 - the local development stack (`infra/local/`), which uses throwaway secrets and binds to

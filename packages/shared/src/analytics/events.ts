@@ -41,7 +41,10 @@ const technicalId = z
   .string()
   .regex(/^[a-z0-9][a-z0-9._/-]*$/)
   .max(64)
-/** `trace_id` W3C (32 hex), a mesma correlação usada no Sentry e no Langfuse. */
+/**
+ * `trace_id` W3C (32 hex) da resposta da API que gerou o evento: a mesma correlação do Grafana, do
+ * Langfuse e do PostHog Error Tracking (o "ID de suporte" da UI).
+ */
 const traceId = z.string().regex(/^[0-9a-f]{32}$/)
 
 export const ANALYTICS_EVENTS = {
@@ -50,7 +53,7 @@ export const ANALYTICS_EVENTS = {
     reference_source: z.enum(ReferenceSource),
   }),
   reference_date_set: z.strictObject({ source: z.enum(ReferenceSource) }),
-  clarification_shown: z.strictObject({}),
+  clarification_shown: z.strictObject({ trace_id: traceId.optional() }),
   answer_completed: z.strictObject({
     model_family: technicalId,
     cached: z.boolean(),
@@ -71,8 +74,12 @@ export const ANALYTICS_EVENTS = {
     rating: z.enum(FeedbackRating),
     reason: z.enum(FeedbackReason).optional(),
   }),
-  quota_reached: z.strictObject({ scope: z.enum(QuotaScope) }),
-  provider_fallback: z.strictObject({ from: technicalId, to: technicalId }),
+  quota_reached: z.strictObject({ scope: z.enum(QuotaScope), trace_id: traceId.optional() }),
+  provider_fallback: z.strictObject({
+    from: technicalId,
+    to: technicalId,
+    trace_id: traceId.optional(),
+  }),
   consent_updated: z.strictObject({ analytics: z.boolean() }),
   locale_changed: z.strictObject({ from: localeSchema, to: localeSchema }),
   web_vital: z.strictObject({

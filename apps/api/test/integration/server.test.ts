@@ -86,7 +86,7 @@ describe('server.ts no runtime da Vercel', () => {
     expect(missing.headers.get('content-type')).toContain('application/problem+json')
   })
 
-  it('carrega a app por import dinâmico, depois do env (OTel e Sentry entram antes dele na F6)', () => {
+  it('carrega a app por import dinâmico, depois do env (o OTel entra antes dele)', () => {
     const source = readFileSync(new URL('../../src/server.ts', import.meta.url), 'utf8')
     const staticImports = source.match(/^import .+$/gm) ?? []
     expect(staticImports.filter((line) => line.includes('composition-root'))).toEqual([

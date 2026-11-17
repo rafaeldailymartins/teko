@@ -1,0 +1,79 @@
+name: PostHog source maps
+description: >-
+  Source maps do PostHog Error Tracking (ADR 0037) com o posthog-cli isolado em tools/posthog-cli:
+  instala o binário (sha256 conferido) e, conforme o modo, injeta os chunk ids (offline) ou envia os
+  .map ao PostHog da UE com o release teko@<versão>. Exige o pnpm do setup. Ordem no deploy (F7):
+  build do web e da API → inject → pós-build do web de novo, com o mesmo env (o orçamento mede os
+  chunks injetados) → scripts/build-vercel-output.ts → upload → deploy. Os .map nunca são servidos
+  (a Vercel, o Plano B e o Caddy os deixam de fora).
+
+inputs:
+  mode:
+    description: "`install` (só o binário), `inject` (offline) ou `upload` (rede e chave pessoal)."
+    required: true
+  only:
+    description: "`web`, `api` ou vazio (os dois)."
+    required: false
+    default: ""
+  release-version:
+    description: "Só no upload: X.Y.Z na produção (tag v*), o SHA curto no staging."
+    required: false
+    default: ""
+  api-key:
+    description: >-
+      Só no upload: chave pessoal do PostHog (phx_…) com os escopos `error tracking write` e
+      `organization read` (segredo POSTHOG_CLI_API_KEY do environment do deploy).
+    required: false
+    default: ""
+  project-id:
+    description: Só no upload, número do projeto PostHog (variável POSTHOG_CLI_PROJECT_ID).
+    required: false
+    default: ""
+
+runs:
+  using: composite
+  steps:
+    - name: Conferir o modo
+      shell: bash
+      env:
+        MODE: ${{ inputs.mode }}
+        ONLY: ${{ inputs.only }}
+      run: |
+        case "$MODE" in install | inject | upload) ;; *)
+          echo "::error title=posthog-sourcemaps::modo '${MODE}' desconhecido (install, inject ou upload)."
+          exit 1 ;;
+        esac
+        case "$ONLY" in "" | web | api) ;; *)
+          echo "::error title=posthog-sourcemaps::only '${ONLY}' desconhecido (web, api ou vazio)."
+          exit 1 ;;
+        esac
+
+    - name: Instalar o posthog-cli (lockfile congelado, sem postinstall)
+      shell: bash
+      run: pnpm --dir tools/posthog-cli install --frozen-lockfile
+
+    - name: Baixar o binário do GitHub Releases e conferir o sha256
+      shell: bash
+      run: node tools/posthog-cli/install-binary.mjs
+
+    - name: Injetar os chunk ids (offline)
+      if: inputs.mode == 'inject'
+      shell: bash
+      env:
+        ONLY: ${{ inputs.only }}
+      run: node scripts/sourcemaps.ts inject ${ONLY:+--only "$ONLY"}
+
+    - name: Enviar os source maps ao PostHog (UE)
+      if: inputs.mode == 'upload'
+      shell: bash
+      env:
+        ONLY: ${{ inputs.only }}
+        RELEASE_VERSION: ${{ inputs.release-version }}
+        POSTHOG_CLI_API_KEY: ${{ inputs.api-key }}
+        POSTHOG_CLI_PROJECT_ID: ${{ inputs.project-id }}
+      run: |
+        if [[ -z "$POSTHOG_CLI_API_KEY" || -z "$POSTHOG_CLI_PROJECT_ID" ]]; then
+          echo "::error title=posthog-sourcemaps::upload sem POSTHOG_CLI_API_KEY ou POSTHOG_CLI_PROJECT_ID."
+          exit 1
+        fi
+        node scripts/sourcemaps.ts upload --release-version "$RELEASE_VERSION" ${ONLY:+--only "$ONLY"}

@@ -58,7 +58,8 @@ jobs:
         with:
           # Hosts observados em audit (run 43462349735) mais os que o ingest.yml libera para os
           # mesmos passos: GitHub (checkout e releases; uploads.github.com porque grava), Actions,
-          # npm e as páginas do corpus/watch.yaml (www.goias.gov.br pelo redirecionamento).
+          # npm e as páginas do corpus/watch.yaml (www.goias.gov.br pelo redirecionamento); e a
+          # ingestão do PostHog na UE, só para o evento de mudança (ADR 0037).
           egress-policy: block
           allowed-endpoints: >
             github.com:443
@@ -78,6 +79,7 @@ jobs:
             goias.gov.br:443
             www.goias.gov.br:443
             appasp.economia.go.gov.br:443
+            eu.i.posthog.com:443
 
       - name: Conferir o backend dos artefatos (BLOB_STORE)
         run: |
@@ -132,7 +134,50 @@ jobs:
             echo
             jq -r 'if (.errors | length) > 0 then "Erros (famílias sem avanço do verified_at): " + ([.errors[] | "\(.pageId): \(.message)"] | join("; ")) else "Sem erros de verificação." end' "$DISCOVERED"
           } >>"$GITHUB_STEP_SUMMARY"
-          # TODO(F6): evento ao Sentry quando has_changes=true (ainda não há DSN para o Actions).
+
+      - name: Evento ao PostHog (mudança nas fontes)
+        # O destino de erros (ADR 0037) recebe um evento simples por run com mudança, para alerta e
+        # histórico ao lado dos erros: só famílias, tipos e o link do run (nada do conteúdo). A chave
+        # do projeto (pública, phc_…) fica no environment `staging`; sem ela, aviso e segue.
+        if: steps.scope.outputs.has_changes == 'true'
+        env:
+          POSTHOG_PROJECT_KEY: ${{ vars.POSTHOG_PROJECT_KEY }}
+          DISCOVERED: ${{ runner.temp }}/watch/discovered.json
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          if [[ -z "$POSTHOG_PROJECT_KEY" ]]; then
+            echo "::warning title=source-watch::POSTHOG_PROJECT_KEY ausente no environment 'staging': o evento de mudança não foi ao PostHog."
+            exit 0
+          fi
+          payload="$(jq -c \
+            --arg key "$POSTHOG_PROJECT_KEY" \
+            --arg run_url "$RUN_URL" \
+            --arg distinct_id "teko-source-watch-${RUN_ID}" \
+            '{
+              api_key: $key,
+              event: "source_watch_changed",
+              distinct_id: $distinct_id,
+              properties: {
+                "$process_person_profile": false,
+                changes: (.changes | length),
+                live_changes: ([.changes[] | select(.mode == "live" and .status == "new")] | length),
+                families: ([.changes[].family] | unique),
+                kinds: ([.changes[].kind] | unique),
+                has_errors: ((.errors | length) > 0),
+                run_date: .runDate,
+                run_url: $run_url
+              }
+            }' "$DISCOVERED")"
+          # O monitoramento não depende do PostHog: falha no envio vira aviso.
+          if curl -fsS --retry 3 --max-time 20 \
+            -H 'Content-Type: application/json' \
+            --data "$payload" \
+            https://eu.i.posthog.com/i/v0/e/ >/dev/null; then
+            echo "Evento source_watch_changed enviado ao PostHog (UE)."
+          else
+            echo "::warning title=source-watch::o PostHog não aceitou o evento de mudança."
+          fi
 
       - name: Guardar o discovered.json
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

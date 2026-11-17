@@ -43,6 +43,7 @@ describe('catálogo de eventos', () => {
       { name: 'question_asked', properties: { locale: 'pt-BR', reference_source: 'default' } },
       { name: 'reference_date_set', properties: { source: 'periodo_apuracao' } },
       { name: 'clarification_shown', properties: {} },
+      { name: 'clarification_shown', properties: { trace_id: '4bf92f3577b34da6a3ce929d0e0e4736' } },
       {
         name: 'answer_completed',
         properties: {
@@ -62,8 +63,20 @@ describe('catálogo de eventos', () => {
       { name: 'answer_feedback', properties: { rating: 'down', reason: 'wrong_citation' } },
       { name: 'quota_reached', properties: { scope: 'global_daily' } },
       {
+        name: 'quota_reached',
+        properties: { scope: 'user_daily', trace_id: '4bf92f3577b34da6a3ce929d0e0e4736' },
+      },
+      {
         name: 'provider_fallback',
         properties: { from: 'gemini-3.6-flash', to: 'openai/gpt-oss-120b' },
+      },
+      {
+        name: 'provider_fallback',
+        properties: {
+          from: 'gemini-3.6-flash',
+          to: 'openai/gpt-oss-120b',
+          trace_id: '4bf92f3577b34da6a3ce929d0e0e4736',
+        },
       },
       { name: 'consent_updated', properties: { analytics: false } },
       { name: 'locale_changed', properties: { from: 'pt-BR', to: 'en' } },
@@ -89,9 +102,14 @@ describe('catálogo de eventos', () => {
         version_is_current: true,
       }),
     ).toThrow()
-    expect(() =>
-      parseAnalyticsProperties('answer_refused', { reason: 'out_of_coverage', trace_id: 'x' }),
-    ).toThrow()
+    for (const [name, properties] of [
+      ['answer_refused', { reason: 'out_of_coverage', trace_id: 'x' }],
+      ['clarification_shown', { trace_id: 'req-1' }],
+      ['quota_reached', { scope: 'user_daily', trace_id: '4BF92F3577B34DA6A3CE929D0E0E4736' }],
+      ['provider_fallback', { from: 'a', to: 'b', trace_id: '' }],
+    ] as const) {
+      expect(() => parseAnalyticsProperties(name, properties)).toThrow()
+    }
   })
 
   it('todos os schemas são objetos estritos', () => {

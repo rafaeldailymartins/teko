@@ -1,0 +1,20 @@
+# Projeto pnpm ISOLADO para o posthog-cli, com lockfile próprio (ADR 0002 e ADR 0037).
+#
+# Por quê: o `@posthog/cli` é um instalador do cargo-dist. O pacote npm tem proveniência SLSA, mas o
+# `postinstall` baixa o binário Rust de `releases.posthog.com` sem conferir checksum. Aqui ele não
+# roda (`allowBuilds: false`): o pacote só fixa a versão, passa pela política do pnpm e recebe o
+# Dependabot, e o `install-binary.mjs` baixa o mesmo artefato do GitHub Releases e confere o sha256
+# fixado antes de extrair. A ferramenta roda só no build (inject) e no deploy (upload), nunca no
+# runtime da aplicação.
+packages: []
+
+minimumReleaseAge: 10080
+trustPolicy: no-downgrade
+blockExoticSubdeps: true
+strictDepBuilds: true
+engineStrict: true
+pmOnFail: ignore
+
+allowBuilds:
+  # O postinstall baixaria o binário sem checksum; quem instala é o `install-binary.mjs`.
+  "@posthog/cli": false

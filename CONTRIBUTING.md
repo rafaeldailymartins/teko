@@ -190,6 +190,24 @@ phase F7; until then nothing runs the CLI (the F1 spike workflows were removed, 
 scheduled `audit.yml` audits its tree. Never add `vercel` or `@vercel/*` exceptions to the root
 `pnpm-workspace.yaml`.
 
+### Source maps CLI (`tools/posthog-cli`)
+
+The `posthog-cli` (PostHog Error Tracking source maps, ADR 0037) lives in `tools/posthog-cli`, also a
+separate pnpm project with its own lockfile. The npm package is a cargo-dist installer whose
+`postinstall` would download the binary without a checksum, so it is disabled (`allowBuilds:
+false`); `install-binary.mjs` downloads the same artifact from PostHog's GitHub Releases and checks
+the pinned sha256 (Linux x64 and Windows x64):
+
+```bash
+corepack pnpm --dir tools/posthog-cli install --frozen-lockfile
+node tools/posthog-cli/install-binary.mjs
+```
+
+You need it locally only to bring up the CI stack (`bash infra/ci/up.sh` runs
+`node scripts/sourcemaps.ts inject --only web`, which is offline). The upload needs a personal
+PostHog key and runs only in the deploy pipeline (`.github/actions/posthog-sourcemaps`). Bumping
+`@posthog/cli` requires updating the pinned hashes in `install-binary.mjs` in the same PR.
+
 ### Python (`tools/ingest`)
 
 The Python side follows the same 7-day rule: `tools/ingest/pyproject.toml` sets
@@ -225,8 +243,8 @@ Two root scripts run the gates locally (they call `pnpm` again, so `pnpm` must b
 | `pnpm lint:monorepo`    | workspace consistency (sherif)                                                    |
 | `pnpm lint:deps`        | architecture boundaries (dependency-cruiser)                                      |
 | `pnpm spec:validate`    | OpenSpec strict validation                                                        |
-| `pnpm check-lockfile`   | single-document lockfiles (root and `tools/vercel-cli`)                           |
-| `pnpm verify:audit`     | known vulnerabilities in the root (production) and in the deploy CLI              |
+| `pnpm check-lockfile`   | single-document lockfiles (root, `tools/vercel-cli` and `tools/posthog-cli`)      |
+| `pnpm verify:audit`     | known vulnerabilities in the root (production) and in the two isolated CLIs       |
 | `pnpm verify:python`    | `tools/ingest`: ruff (lint and format), pyright and pytest with `uv --frozen`     |
 | `pnpm verify:ci`        | the three CI shell suites below (need `bash`, `jq` and `yq`)                      |
 | `pnpm test:mutation`    | Stryker in `apps/api` and `packages/shared`, break at 70 (nightly in CI, not PRs) |

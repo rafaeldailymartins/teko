@@ -3,10 +3,27 @@ import fc from 'fast-check'
 import { describe, expect, it } from 'vitest'
 import {
   createBuildInfo,
+  errorTrackingRelease,
   gitShaSchema,
   releaseVersionSchema,
   UNKNOWN_GIT_SHA,
 } from './build-info.ts'
+
+describe('errorTrackingRelease', () => {
+  const build = createBuildInfo({ version: '0.1.0', gitSha: `abc1234${'0'.repeat(33)}` })
+
+  it('produção usa a versão do release', () => {
+    expect(errorTrackingRelease(build, true)).toBe('teko@0.1.0')
+  })
+
+  it('staging e os demais ambientes usam o SHA curto', () => {
+    expect(errorTrackingRelease(build, false)).toBe('teko@abc1234')
+  })
+
+  it('sem SHA, cai na versão', () => {
+    expect(errorTrackingRelease(createBuildInfo({ version: '0.0.0' }), false)).toBe('teko@0.0.0')
+  })
+})
 
 describe('createBuildInfo', () => {
   it('aceita versão SemVer e SHA completo', () => {

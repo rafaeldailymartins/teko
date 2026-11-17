@@ -65,7 +65,7 @@ Versão única do produto, SemVer `vX.Y.Z`, sincronizada nos `package.json` e no
 - `target-branch` = branch padrão, semanal (segunda, 06:00 America/Sao_Paulo), `cooldown` de 7 dias
   (14 em major); grupos por família (prod e dev minor-patch, OTel, Langfuse, TanStack, testing);
   `ignore` de major em `@opentelemetry/*` e `@fastify/otel` até o Langfuse suportar OTel 3.
-- Ecossistemas: npm (`/`, `tools/vercel-cli`), `github-actions` (`/` e `.github/actions/*`), `uv`
+- Ecossistemas: npm (`/`, `tools/vercel-cli`, `tools/posthog-cli`), `github-actions` (`/` e `.github/actions/*`), `uv`
   (`tools/ingest`), `docker` e `docker-compose`.
 - `commit-message` com prefixo `chore` e escopo (`chore(deps): …`, `chore(deps-dev): …`).
 
@@ -126,9 +126,13 @@ Os workflows `spike-*.yml` da F1 saem (ADR 0032).
 Um deploy publica, de uma vez, o estático e a Function do mesmo commit (ADR 0029):
 
 1. `pnpm install --frozen-lockfile`, `pnpm audit --prod` e osv-scanner no commit exato;
-2. build da API (tsdown) e do web (export), `pnpm deploy --prod` da API e
-   `scripts/build-vercel-output.ts` (sem `vercel pull` nem `vercel build`, ADR 0017); nenhum segredo
-   entra no build;
+2. build da API (tsdown) e do web (export, com `NEXT_PUBLIC_POSTHOG_ERRORS_KEY` e
+   `NEXT_PUBLIC_TEKO_RELEASE`), chunk ids do PostHog injetados offline e o pós-build do web de novo
+   (composite `posthog-sourcemaps`, modo `inject`; ADR 0037), `pnpm deploy --prod` da API e
+   `scripts/build-vercel-output.ts` (sem `vercel pull` nem `vercel build`, ADR 0017; os `.map` do web
+   ficam fora do `static/`); nenhum segredo entra no build. Depois do build, o modo `upload` da mesma
+   composite envia os source maps ao PostHog com `teko@<versão>` (chave pessoal
+   `POSTHOG_CLI_API_KEY` do environment);
 3. `scripts/pack-vercel-output.ts`: tarball determinístico, sem `.vercel/.env*` nem
    `project.json`, gitleaks nele e sha256;
 4. SBOM (syft) e Grype; `actions/attest` (provenance e SBOM); o tarball sobe como artifact

@@ -32,6 +32,7 @@ o roteiro, em [`docs/roadmap.md`](../roadmap.md).
 | [0034](0034-reescrita-da-pergunta.md)                | Reescrita da pergunta pelo LLM antes da busca                                        | accepted |
 | [0035](0035-front-da-f5.md)                          | Front da F5: componentes copiados, CSP por documento e orçamento total               | accepted |
 | [0036](0036-login-por-email-e-senha.md)              | Login por e-mail e senha, sem confirmação de e-mail nem recuperação de senha         | accepted |
+| [0037](0037-erros-no-posthog-error-tracking.md)      | Erros no PostHog Error Tracking, com source maps e relatório de CSP                  | accepted |
 
 As ADRs 0029 a 0032 chegam pelos PRs da revisão de 2026-11-12 ([status](../status.md)), um por
 pacote; o link entra quando o arquivo estiver em `main`.

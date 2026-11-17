@@ -23,6 +23,7 @@ import { createGithubReleasesBlobStore } from '#adapters/out/blobs/github-releas
 import { systemClock } from '#adapters/out/clock/system-clock.ts'
 import { sha256ContentHasher } from '#adapters/out/crypto/sha256-content-hasher.ts'
 import { createWorkersAiEmbeddingAdapter } from '#adapters/out/embeddings/workers-ai/workers-ai-embedding-adapter.ts'
+import { createPosthogErrorReporter } from '#adapters/out/error-reporting/posthog-error-reporter.ts'
 import {
   createFakeEmbeddingAdapter,
   readEmbeddingFixture,
@@ -77,6 +78,7 @@ import type { BlobStore } from '#app/ports/blob-store.ts'
 import type { Clock } from '#app/ports/clock.ts'
 import type { ContentHasher } from '#app/ports/content-hasher.ts'
 import type { EmbeddingPort } from '#app/ports/embedding-port.ts'
+import { type ErrorReporterPort, noopErrorReporter } from '#app/ports/error-reporter.ts'
 import type { LlmModel } from '#app/ports/llm-port.ts'
 import type { RateLimitStore } from '#app/ports/rate-limit-store.ts'
 import type { RerankerPort } from '#app/ports/reranker-port.ts'
@@ -138,7 +140,7 @@ import {
 import { createStreamAnswer } from '#app/use-cases/stream-answer.ts'
 import { createUserUseCases, type UserUseCases } from '#app/use-cases/users.ts'
 import { PUBLISHABLE_REVIEW_STATUSES, ReviewStatus } from '#domain/corpus/family.ts'
-import { type BuildInfo, createBuildInfo } from '#domain/shared/build-info.ts'
+import { type BuildInfo, createBuildInfo, errorTrackingRelease } from '#domain/shared/build-info.ts'
 import { buildApp } from './build-app.ts'
 import { EmbeddingsProvider, type Env, parseEnv, RerankerProvider } from './config/env.ts'
 import {
@@ -611,6 +613,26 @@ export interface ContainerOverrides {
   readonly applicationName?: string
   /** Métricas de operação (padrão: nenhuma; o `server.ts` passa as do SDK do OTel). */
   readonly telemetry?: Telemetry
+  /** Destino de erros no lugar do do env (testes com espião). */
+  readonly errorReporter?: ErrorReporterPort
+}
+
+/** Teto do envio dos erros pendentes no encerramento do container. */
+const ERROR_REPORTER_SHUTDOWN_MS = 500
+
+/**
+ * Destino dos erros inesperados: o PostHog Error Tracking (UE) com a chave do projeto, ou no-op sem
+ * ela (CI, testes, dev). O release segue o ambiente (`errorTrackingRelease`).
+ */
+export function createErrorReporter(env: Env, buildInfo: BuildInfo): ErrorReporterPort {
+  if (env.POSTHOG_PROJECT_KEY === undefined) {
+    return noopErrorReporter
+  }
+  return createPosthogErrorReporter({
+    projectKey: env.POSTHOG_PROJECT_KEY,
+    release: errorTrackingRelease(buildInfo, env.APP_ENV === AppEnv.Production),
+    appEnv: env.APP_ENV,
+  })
 }
 
 /** Neurons estimados por pergunta (embedding da pergunta e reranker de 40 candidatos). */
@@ -727,6 +749,7 @@ export function createContainer(env: Env, overrides: ContainerOverrides = {}): C
   const clock = overrides.clock ?? systemClock
   const telemetry = overrides.telemetry ?? noopTelemetry
   const buildInfo = buildInfoOf(env)
+  const errorReporter = overrides.errorReporter ?? createErrorReporter(env, buildInfo)
   const lifecycle = createLifecycle(clock)
   const platform = createPlatformAdapters(env, {
     onBackgroundFailure: overrides.onBackgroundFailure ?? (() => {}),
@@ -798,6 +821,7 @@ export function createContainer(env: Env, overrides: ContainerOverrides = {}): C
     geo: platform.geo,
     streamBudget,
     telemetry,
+    errorReporter,
     useCases: {
       getHealth: createGetHealth({ buildInfo, appEnv: env.APP_ENV, lifecycle }),
       resolveReferenceDate,
@@ -807,6 +831,7 @@ export function createContainer(env: Env, overrides: ContainerOverrides = {}): C
       privacy,
     },
     close: async () => {
+      await errorReporter.shutdown(ERROR_REPORTER_SHUTDOWN_MS)
       await database?.close()
     },
   }
@@ -889,6 +914,9 @@ export async function createRuntime(env: Env, telemetry: TelemetryRuntime): Prom
   })
   if (!telemetry.exporting && PRODUCTION_LIKE_ENVS.has(env.APP_ENV)) {
     logger.warn('OTEL_EXPORTER_OTLP_ENDPOINT ausente: traces, métricas e logs não são exportados')
+  }
+  if (env.POSTHOG_PROJECT_KEY === undefined && PRODUCTION_LIKE_ENVS.has(env.APP_ENV)) {
+    logger.warn('POSTHOG_PROJECT_KEY ausente: os erros inesperados não vão ao PostHog')
   }
   const container = createContainer(env, {
     onBackgroundFailure: logBackgroundFailure(logger),

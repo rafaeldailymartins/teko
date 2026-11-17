@@ -2,6 +2,9 @@ import { expect, test } from '@playwright/test'
 import en from '../messages/en.json' with { type: 'json' }
 import { enforcedViolations, recordViolations } from './support/csp.ts'
 
+/** Endpoint de relatórios com a chave fictícia dos erros do `infra/ci/up.sh`. */
+const REPORT_ENDPOINT = 'https://eu.i.posthog.com/report/?token=phc_teko_ci_e2e_ficticia'
+
 /**
  * Rotas de plataforma e segurança do estático na stack de CI (Caddy com os snippets de
  * `scripts/caddy-static-site.ts`, a mesma semântica das rotas da Vercel e do Plano B): 404 por
@@ -62,9 +65,14 @@ test.describe('segurança no navegador', () => {
     expect(csp).not.toContain('strict-dynamic')
     expect(csp).not.toMatch(/script-src[^;]*'unsafe-inline'/)
     expect(Buffer.byteLength(csp)).toBeLessThanOrEqual(6 * 1024)
+    // A stack builda com a chave fictícia dos erros: as violações das duas políticas vão ao
+    // endpoint de relatórios do PostHog na UE (ADR 0037).
+    const report = `report-uri ${REPORT_ENDPOINT}; report-to posthog`
+    expect(csp.endsWith(`upgrade-insecure-requests; ${report}`)).toBe(true)
     expect(headers['content-security-policy-report-only']).toBe(
-      "require-trusted-types-for 'script'",
+      `require-trusted-types-for 'script'; ${report}`,
     )
+    expect(headers['reporting-endpoints']).toBe(`posthog="${REPORT_ENDPOINT}"`)
     expect(headers['x-content-type-options']).toBe('nosniff')
     expect(headers['referrer-policy']).toBe('strict-origin-when-cross-origin')
     expect(headers['strict-transport-security']).toMatch(/^max-age=\d+/)
@@ -98,5 +106,29 @@ test.describe('segurança no navegador', () => {
       expect(chunk.status, chunk.url).toBe(200)
       expect(chunk.cacheControl, chunk.url).toBe('public, max-age=31536000, immutable')
     }
+  })
+
+  test('os chunks levam o chunk id do PostHog, e os source maps não são servidos', async ({
+    page,
+    request,
+  }) => {
+    const scripts: string[] = []
+    page.on('response', (response) => {
+      const { pathname } = new URL(response.url())
+      if (pathname.startsWith('/_next/static/chunks/') && pathname.endsWith('.js')) {
+        scripts.push(pathname)
+      }
+    })
+    await page.goto('/en/')
+    await page.waitForLoadState('networkidle')
+    const [script] = scripts
+    expect(script, 'algum chunk carregado').toBeDefined()
+    const body = await (await request.get(script ?? '')).text()
+    // `scripts/sourcemaps.ts inject` (offline, no up.sh): o snippet e o comentário do chunk id.
+    expect(body).toMatch(/\/\/# chunkId=[0-9a-f-]{36}\s*$/)
+    expect(body).toContain('_posthogChunkIds')
+    const map = await request.get(`${script ?? ''}.map`)
+    expect(map.status()).toBe(404)
+    expect(await map.text()).not.toContain('"mappings"')
   })
 })
