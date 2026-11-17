@@ -14,7 +14,8 @@ no [roteiro](roadmap.md); o desenho, em [`architecture/`](architecture/README.md
 | Revisão antes da F4                     | concluída em 2026-11-13                      |
 | F4 API completa                         | concluída em 2026-11-14                      |
 | F5 frontend completo                    | concluída em 2026-11-15                      |
-| F6 em diante                            | a fazer                                      |
+| F6 observabilidade                      | concluída em 2026-11-17, conferência na F7   |
+| F7 em diante                            | a fazer                                      |
 
 ## F0: contas e governança
 
@@ -124,8 +125,8 @@ Lições do primeiro run, já no código:
 run agendado), e o run manual 43462349735 no `develop` foi verde: 0 mudança e 0 erro nas 9
 páginas; `verified_at=2026-11-13` no staging pelo `teko_watch`, e a produção com o aviso esperado
 de banco sem o schema `corpus` até a primeira promoção. O harden-runner dos três jobs passou para
-`block`, com os hosts observados nesse run. O evento ao Sentry quando houver mudança fica para a
-F6, que traz o DSN (TODO no workflow).
+`block`, com os hosts observados nesse run. O evento quando houver mudança chegou na F6: vai ao
+PostHog (ADR 0037).
 
 Sem pendências: a F3 está fechada.
 
@@ -270,6 +271,54 @@ em 2026-11-16, sem mudanças. A F6 atualiza a política quando ligar o PostHog.
   `scripts/dev-watch.ts`, que só reinicia quando o código muda (no Windows, o `node --watch`
   reiniciava a cada leitura de arquivo).
 
+## F6: observabilidade
+
+Concluída em 2026-11-17 (PRs #116 a #121), em duas ondas de agentes em paralelo: analytics,
+Grafana as code e telemetria; depois Langfuse e erros. O DoD está provado item por item no
+[registro](evals/dod-f6-2026-11-17.md), e as decisões do OTel estão na
+[ADR 0013](adr/0013-otel-2x.md); as do Langfuse, na [0012](adr/0012-langfuse-cloud.md); as dos
+erros, na [0037](adr/0037-erros-no-posthog-error-tracking.md).
+
+- `add-product-analytics` (arquivada em 2026-11-16, #116): `posthog-js` por `import()` só depois do
+  consentimento, na UE, sem cookie, pageview nem autocapture; só os eventos do catálogo saem, sem o
+  texto da pergunta e sem query nas URLs. `/privacy` reescrita para a F6 inteira, com a
+  `PRIVACY_POLICY_VERSION` em 2026-11-17 (pede a escolha de novo).
+- `add-uptime-monitoring` (arquivada em 2026-11-16, #117 e #118): `infra/grafana/` com cinco
+  dashboards, os 16 alertas por e-mail e três checks do Synthetic Monitoring, aplicados por
+  `scripts/grafana-apply.ts`; `ops.yml` com os jobs `grafana`, `coverage-age` e `quotas`; runbooks
+  `provider-outage`, `quota-exhausted`, `neon-suspended`, `quotas` e `ops-alerts`.
+- `add-otel-telemetry` (arquivada em 2026-11-16, #119): SDK do OTel 2.x com OTLP direto ao Grafana
+  Cloud, flush por requisição em `BackgroundTasks`, `TekoSampler` sem o `/healthz`, `x-trace-id` em
+  toda resposta, `traceparent` do web e "ID de suporte" nos erros.
+- `add-llm-tracing-langfuse` (arquivada em 2026-11-17, #120): `LangfuseSpanProcessor` no mesmo
+  provider, `TraceSampler` pelo hash da pergunta (produção 1,0 até 35k units projetadas e 0,2 depois,
+  staging 0,1, CI 0), trace `rag-query` com custo por consulta, score `user_feedback` e annotation
+  queue do 👎, apagamento dos traces com a conta e o job `langfuse` do `ops.yml`.
+- `add-error-tracking` (arquivada em 2026-11-17, #121): erros inesperados da API e do navegador no
+  PostHog Error Tracking, sem PII e com o `trace_id`; `posthog-cli` isolado em `tools/posthog-cli`
+  com o binário conferido por sha256; relatório de CSP e de Trusted Types; evento do `source-watch`.
+
+- **Temporalidade das métricas (decisão do mantenedor em 2026-11-16):** cumulativa, no lugar do
+  delta do desenho, porque o Mimir recusa delta sem a ingestão nativa experimental (ADR 0013).
+- **Desvios registrados nas ADRs:** os spans `chat <modelo>` ficam só no Grafana; o
+  `@langfuse/client` fica de fora (o `mustache` dele não tem proveniência); o `inject` dos source
+  maps não roda no `pnpm build` (exige o binário), então o Plano B fica sem inject; o `posthog-cli`
+  manda telemetria própria aos EUA no upload; robôs (o Synthetic Monitoring e o Chromium headless)
+  não geram `$exception`.
+
+Pendências, todas da F7 (conferência no staging, roteiro em
+[O que a F7 confere](evals/dod-f6-2026-11-17.md#o-que-a-f7-confere-no-staging)):
+
+- mesmo `trace_id` no Grafana Cloud, no Langfuse Cloud e no PostHog numa pergunta real;
+- 100 perguntas no staging gerando 100 traces completos;
+- `/healthz` sem aumento de CU-h em 24 h;
+- projeção do Langfuse abaixo de 35k units;
+- stack de um erro de teste resolvida pelos source maps do upload do deploy;
+- `grafana-apply` sem `--dry-run` na stack real.
+
+A política de privacidade mudou no #116 (versão 2026-11-17, lista de parágrafos no PR) e espera a
+revisão do mantenedor.
+
 ## Antes da F7: o que o mantenedor faz
 
 Lista única das ações fora do repositório que o deploy da F7 exige. O agente que começa a F7
@@ -293,6 +342,27 @@ item aqui. Segredos nunca passam pelo chat: o mantenedor grava cada um.
 - [ ] **Checklist dos projetos e do time da Vercel** em
   [`infra/vercel/README.md`](../infra/vercel/README.md) (Build and Deployment, Deployment
   Protection, Firewall e "Time e conta"): conferir no dashboard e marcar lá.
+- [ ] **Grafana Cloud Free** com uma stack numa região da UE e o environment `ops` do GitHub (só
+  `main`), com os segredos `GRAFANA_SA_TOKEN`, `GRAFANA_SM_TOKEN`, `GRAFANA_OTLP_TOKEN`,
+  `GRAFANA_ALERT_EMAILS`, `NEON_API_KEY_PROD` e `NEON_API_KEY_STAGING` e as variáveis `GRAFANA_URL`,
+  `GRAFANA_SM_URL`, `GRAFANA_OTLP_ENDPOINT`, `GRAFANA_OTLP_INSTANCE_ID`, `NEON_PROD_PROJECT_ID`,
+  `NEON_STAGING_PROJECT_ID`, `TOKEN_EXPIRY_DATES` e, opcional, `GRAFANA_PROM_DATASOURCE_UID`
+  ([`infra/grafana/README.md`](../infra/grafana/README.md)).
+- [ ] **OTLP da API** (Sensitive) nos dois projetos da Vercel: `OTEL_EXPORTER_OTLP_ENDPOINT` e
+  `OTEL_EXPORTER_OTLP_HEADERS` (`Authorization=Basic%20<base64 de instância:token>`).
+- [ ] **Langfuse Cloud EU (Hobby)** com a organização e os projetos `teko-prod` e `teko-staging`:
+  `LANGFUSE_PUBLIC_KEY` e `LANGFUSE_SECRET_KEY` (a secreta Sensitive) em cada projeto da Vercel, com
+  as chaves do projeto correspondente, e as de produção no Render; no environment `ops`, os segredos
+  `LANGFUSE_PROD_PUBLIC_KEY`, `LANGFUSE_PROD_SECRET_KEY`, `LANGFUSE_STAGING_PUBLIC_KEY` e
+  `LANGFUSE_STAGING_SECRET_KEY` e, opcional, a variável `LANGFUSE_BASE_URL`.
+- [ ] **PostHog EU**, um projeto só: ligar o modo cookieless, o "Discard client IP data" e o Error
+  Tracking. A chave do projeto vai em `POSTHOG_PROJECT_KEY` (Sensitive) nos dois projetos da Vercel
+  e no Render, em `NEXT_PUBLIC_POSTHOG_ERRORS_KEY` no build de staging e produção, em
+  `NEXT_PUBLIC_POSTHOG_KEY` só no build de produção e na variável `POSTHOG_PROJECT_KEY` do
+  environment `staging` (evento do `source-watch`). Para o upload dos source maps, nos environments
+  de deploy: o segredo `POSTHOG_CLI_API_KEY` (chave pessoal `phx_` com `error tracking write` e
+  `organization read`) e a variável `POSTHOG_CLI_PROJECT_ID`. O pipeline da F7 define
+  `NEXT_PUBLIC_TEKO_RELEASE`.
 
 ## Revisão antes da F4 (2026-11-12)
 
