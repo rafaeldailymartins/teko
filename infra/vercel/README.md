@@ -63,29 +63,33 @@ A configuração do projeto que vive no repositório fica em `apps/api/vercel.js
 
 Aplicar nos dois projetos, no dashboard (Project Settings), e conferir todo mês.
 
+Conferido pela API da Vercel em 2026-11-17, nos dois projetos (`GET /v9/projects`, firewall ativo e
+integrações do time): os itens marcados batem. Os de "Time e conta" não aparecem na API e se
+conferem no dashboard; integrações do marketplace: nenhuma, e nenhum cron definido.
+
 **Build and Deployment**
 
-- [ ] **Root Directory:** `apps/api`.
-- [ ] **Include files outside the Root Directory in the Build Step:** ligado (padrão de projetos
+- [x] **Root Directory:** `apps/api`.
+- [x] **Include files outside the Root Directory in the Build Step:** ligado (padrão de projetos
   novos). A Function importa `packages/shared` e precisa do `pnpm-lock.yaml` da raiz.
-- [ ] **Framework Preset:** Fastify. O `vercel.json` também fixa `"framework": "fastify"`.
-- [ ] **Node.js Version:** 24.x. O `apps/api/package.json` declara `engines.node: "24.x"` (o padrão
+- [x] **Framework Preset:** Fastify. O `vercel.json` também fixa `"framework": "fastify"`.
+- [x] **Node.js Version:** 24.x. O `apps/api/package.json` declara `engines.node: "24.x"` (o padrão
   de projetos novos é 26.x), e a API recusa subir com outra major quando
   `RUNTIME_TARGET=vercel` em staging ou produção.
-- [ ] **Travas de boot** (`apps/api/src/config/env.ts`): em staging e produção, `RUNTIME_TARGET`
+- [x] **Travas de boot** (`apps/api/src/config/env.ts`): em staging e produção, `RUNTIME_TARGET`
   precisa estar definido explicitamente (sem default) e não pode ser `node`; com a variável de sistema
   `VERCEL=1` presente, qualquer valor diferente de `vercel` impede o boot (vale também para
   `vercel dev`/`vercel env pull`). Os `env.*.json` deste diretório já definem `RUNTIME_TARGET=vercel`.
-- [ ] **Install/Build Command:** sem efeito. O deploy é sempre `--prebuilt` de um `.vercel/output`
+- [x] **Install/Build Command:** sem efeito. O deploy é sempre `--prebuilt` de um `.vercel/output`
   montado no CI (ADR 0017); a Vercel não instala nem constrói nada.
 
 **Functions**
 
-- [ ] **Fluid compute:** ligado (também `"fluid": true` no `vercel.json`).
-- [ ] **Function Region:** `gru1` (também `"regions": ["gru1"]`). O Hobby permite uma região só.
-- [ ] Memória/CPU: o padrão do Hobby (2 GB / 1 vCPU, fixo). Com Fluid, memória não vai no
+- [x] **Fluid compute:** ligado (também `"fluid": true` no `vercel.json`).
+- [x] **Function Region:** `gru1` (também `"regions": ["gru1"]`). O Hobby permite uma região só.
+- [x] Memória/CPU: o padrão do Hobby (2 GB / 1 vCPU, fixo). Com Fluid, memória não vai no
   `vercel.json`.
-- [ ] `maxDuration`: 120 s (100 s de stream + 20 s de reserva), com `supportsCancellation: true`,
+- [x] `maxDuration`: 120 s (100 s de stream + 20 s de reserva), com `supportsCancellation: true`,
   declarados no `.vc-config.json` da Function `index` por `scripts/build-vercel-output.ts`. O bloco
   `functions` do `vercel.json` não vale para output pronto. A env Config `FUNCTION_MAX_DURATION_S`
   acompanha o valor e é obrigatória com `RUNTIME_TARGET=vercel`, sem padrão (a API calcula o prazo
@@ -95,30 +99,30 @@ Aplicar nos dois projetos, no dashboard (Project Settings), e conferir todo mês
 
 **Git**
 
-- [ ] **Nenhum repositório Git conectado.** O deploy só acontece pela CLI, no Actions. O
+- [x] **Nenhum repositório Git conectado.** O deploy só acontece pela CLI, no Actions. O
   `"git": { "deploymentEnabled": false }` do `vercel.json` é uma segunda barreira, caso alguém
   conecte o repositório por engano.
 
 **Deployment Protection** (os dois projetos, inclusive o staging)
 
-- [ ] **Vercel Authentication: Standard Protection** (o padrão). O domínio de produção de cada
+- [x] **Vercel Authentication: Standard Protection** (o padrão). O domínio de produção de cada
   projeto fica público, porque serve a web e a API ao navegador; as URLs únicas de deployment e
   os deployments antigos exigem login na Vercel.
-- [ ] **Nunca "All Deployments"**: bloquearia o navegador no domínio de produção.
-- [ ] **Protection Bypass for Automation:** um segredo por projeto, guardado no environment do
+- [x] **Nunca "All Deployments"**: bloquearia o navegador no domínio de produção.
+- [x] **Protection Bypass for Automation:** um segredo por projeto, guardado no environment do
   GitHub como `VERCEL_AUTOMATION_BYPASS_SECRET` e usado só pelo smoke (`vercel curl
       --protection-bypass`) contra a URL única, antes do `promote`. O smoke nunca cria um bypass
   novo.
-- [ ] Password Protection e Trusted IPs: indisponíveis no Hobby; não usar.
+- [x] Password Protection e Trusted IPs: indisponíveis no Hobby; não usar.
 
 **Firewall** (`firewall-rules.json`)
 
-- [ ] As 3 regras custom de cada projeto, ativas: (1) negar `/api/*` fora dos prefixos conhecidos
+- [x] As 3 regras custom de cada projeto, ativas: (1) negar `/api/*` fora dos prefixos conhecidos
   (o estático passa), (2) negar métodos diferentes de GET e HEAD fora de `/api/*` e `/healthz`,
   (3) rate limit de 10 `POST` por IP em 60 s no stream (a única de rate limit do Hobby).
-- [ ] Nenhuma regra com `challenge`; Attack Challenge Mode só como último recurso, pelo runbook
+- [x] Nenhuma regra com `challenge`; Attack Challenge Mode só como último recurso, pelo runbook
   `vercel-paused.md` (o navegador resolve o desafio, mas monitores e o smoke não).
-- [ ] Aplicação: dashboard ou `vercel firewall rules add --data "$(jq -c '.projects["tekoia"].rules[0]' firewall-rules.json)" --yes`
+- [x] Aplicação: dashboard ou `vercel firewall rules add --data "$(jq -c '.projects["tekoia"].rules[0]' firewall-rules.json)" --yes`
   (com o projeto linkado), regra a regra. A automação e o smoke do efeito chegam na F7.
 
 **Time e conta**
