@@ -1,0 +1,9 @@
+# Configuração do osv-scanner para o pnpm-lock.yaml desta pasta (o job osv-scanner do audit.yml).
+# Exceções só para advisories sem versão corrigida e sem caminho explorável no Tekó, com prazo de
+# revisão; o motivo completo fica no adendo de 2026-11-17 da ADR 0002 e o mesmo id em `audit.ignore`
+# do pnpm-workspace.yaml.
+
+[[IgnoredVulns]]
+id = "GHSA-fc5q-39xc-vjpf"
+ignoreUntil = 2026-12-17
+reason = "picomatch <=4.0.7 sem versão corrigida; os globs vêm sempre do próprio código (next-intl > @parcel/watcher no build, knip e outros globbers de desenvolvimento), nunca do usuário. Rever em 2026-12-17."

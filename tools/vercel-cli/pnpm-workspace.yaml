@@ -48,3 +48,13 @@ overrides:
   # e GHSA-gc25-3vc5-2jf9 (2020, todas as versões), que o OSV/Scorecard casam com o pacote novo.
   # Não usamos `vercel sandbox`: o pacote sai da árvore em vez de virar exceção.
   sandbox: "-"
+
+# Advisories sem versão corrigida, conferidos como não exploráveis aqui. Cada um tem prazo de revisão
+# no osv-scanner.toml da raiz e motivo no adendo de 2026-11-17 da ADR 0002; saem quando o upstream
+# publicar a correção.
+audit:
+  ignore:
+    # GHSA-fc5q-39xc-vjpf (high): ReDoS no picomatch <=4.0.7 com extglob repetido de um ramo só, sem
+    # versão corrigida. No CLI, via @vercel/static-build > ts-morph > fast-glob > micromatch, com
+    # globs dos arquivos do próprio projeto; o deploy é --prebuilt e não usa o static-build.
+    - GHSA-fc5q-39xc-vjpf
