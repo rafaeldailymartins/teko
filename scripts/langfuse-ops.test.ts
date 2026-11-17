@@ -110,6 +110,10 @@ interface Call {
   readonly body: unknown
 }
 
+/** Hosts exatos dos fakes (comparação por igualdade, não por sufixo). */
+const GRAFANA_HOST = 'otlp-gateway-prod-sa-east-1.grafana.net'
+const LANGFUSE_HOST = 'cloud.langfuse.com'
+
 /** API do Langfuse falsa em memória: modelos, score configs, queues e a Metrics API v2. */
 function fakeLangfuse(options: { readonly units?: number; readonly failModels?: boolean } = {}) {
   const calls: Call[] = []
@@ -125,7 +129,7 @@ function fakeLangfuse(options: { readonly units?: number; readonly failModels?: 
     const body = init?.body === undefined ? undefined : JSON.parse(String(init.body))
     calls.push({ method, url, body })
     const route = `${method} ${url.pathname}`
-    if (url.hostname.endsWith('grafana.net')) {
+    if (url.hostname === GRAFANA_HOST) {
       return new Response(null, { status: 204 })
     }
     if (route === 'GET /api/public/models') {
@@ -171,7 +175,7 @@ function deps(env: Record<string, string>, doFetch: typeof fetch) {
 
 const PROD_KEYS = { LANGFUSE_PROD_PUBLIC_KEY: 'pk-lf-p', LANGFUSE_PROD_SECRET_KEY: 'sk-lf-p' }
 const OTLP = {
-  GRAFANA_OTLP_ENDPOINT: 'https://otlp-gateway-prod-sa-east-1.grafana.net/otlp',
+  GRAFANA_OTLP_ENDPOINT: `https://${GRAFANA_HOST}/otlp`,
   GRAFANA_OTLP_INSTANCE_ID: '123',
   GRAFANA_OTLP_TOKEN: 'glc_x',
 }
@@ -201,7 +205,7 @@ describe('run', () => {
     )
     assert.ok(queue)
     assert.deepEqual((queue.body as { scoreConfigIds: string[] }).scoreConfigIds, ['cfg-1'])
-    const push = api.calls.find((call) => call.url.hostname.endsWith('grafana.net'))
+    const push = api.calls.find((call) => call.url.hostname === GRAFANA_HOST)
     const metrics = JSON.stringify(push?.body)
     assert.ok(metrics.includes('teko_langfuse_units_projected'))
     // 1450 observations + 1450 raízes no fake (a mesma contagem nas duas consultas) em 14,5 dias.
@@ -211,9 +215,8 @@ describe('run', () => {
     api.calls.length = 0
     assert.equal((await run(d, { dryRun: false })).code, 0)
     assert.equal(
-      api.calls.filter(
-        (call) => call.method === 'POST' && call.url.hostname.endsWith('langfuse.com'),
-      ).length,
+      api.calls.filter((call) => call.method === 'POST' && call.url.hostname === LANGFUSE_HOST)
+        .length,
       0,
     )
   })
@@ -225,7 +228,7 @@ describe('run', () => {
     assert.equal(result.code, 0)
     assert.equal(api.calls.filter((call) => call.method !== 'GET').length, 0)
     assert.equal(
-      api.calls.some((call) => call.url.hostname.endsWith('grafana.net')),
+      api.calls.some((call) => call.url.hostname === GRAFANA_HOST),
       false,
     )
     assert.ok(result.summary.some((line) => line.includes('(dry-run)')))
@@ -238,9 +241,7 @@ describe('run', () => {
     assert.equal(result.code, 1)
     assert.ok(lines.some((line) => line.startsWith('::error') && line.includes('500')))
     assert.ok(!lines.join('\n').includes('segredo'))
-    const push = JSON.stringify(
-      api.calls.find((call) => call.url.hostname.endsWith('grafana.net'))?.body,
-    )
+    const push = JSON.stringify(api.calls.find((call) => call.url.hostname === GRAFANA_HOST)?.body)
     assert.ok(push.includes('teko_langfuse_units_projected'))
     assert.ok(!push.includes('teko_ops_job_last_success_timestamp_seconds'))
   })
