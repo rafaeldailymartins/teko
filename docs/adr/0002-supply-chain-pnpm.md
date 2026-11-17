@@ -285,3 +285,25 @@ O primeiro run real do PR #1 mostrou duas coisas que a análise local não pegav
   10.1.10** (proveniência SLSA, MIT; dependências `@fastify/send`, `@fastify/accept-negotiator`,
   `content-disposition` e `mime`, aceitas pelo `trustPolicy: no-downgrade`), usado só pelo Plano B.
 - O `@netlify/blobs` fica até a etapa C2 da [ADR 0030](0030-artefatos-no-github-releases.md).
+
+## Adendo (2026-11-16): OpenTelemetry da API (`add-otel-telemetry`, F6)
+
+- **Entram no catálogo**, todos com proveniência SLSA e licença da allowlist (Apache-2.0; MIT no
+  `@fastify/otel`): `@opentelemetry/api` **1.10.0**, `@opentelemetry/sdk-trace-node`,
+  `@opentelemetry/sdk-metrics` e `@opentelemetry/resources` **2.12.1**, `@opentelemetry/api-logs`,
+  `@opentelemetry/sdk-logs` e os três `@opentelemetry/exporter-*-otlp-http` **0.223.1**,
+  `@opentelemetry/semantic-conventions` **1.45.0** e `@fastify/otel` **0.21.4**. Nenhuma exceção de
+  política.
+- **Linha 2.x, não a 3.** O `@fastify/otel` 1.x já exige `@opentelemetry/core` 3: por isso o
+  0.21.4 (última da linha 2). O 0.223.2 (2026-11-12) ainda não tinha 7 dias. A linha 3 espera o
+  Langfuse (ignore de major no Dependabot).
+- **`@opentelemetry/api` 1.10.0 com o SDK 2.12, que declara `< 1.10`.** A 1.10.0 já estava na árvore
+  (Next e promptfoo, com o mesmo aviso de peer do SDK 2.12.0 do promptfoo). Uma 1.9.x só na API
+  criava uma segunda variante de peer do `vitest` e o `@fast-check/vitest` deixava de achar a suíte.
+  A API é compatível dentro da major 1, e o Tekó só usa interfaces anteriores à 1.10; os testes do SDK
+  (traces, métricas, logs e o `@fastify/otel`) rodam sobre essa combinação.
+- Na árvore, o `@opentelemetry/instrumentation` (base do `@fastify/otel`) traz
+  `require-in-the-middle` e `import-in-the-middle` (com proveniência) e dois pacotes pequenos sem
+  proveniência que nunca a tiveram (`module-details-from-path` 1.0.4 e `cjs-module-lexer`), aceitos
+  pelo `no-downgrade`. Nenhum hook de módulo é ligado: o `@fastify/otel` entra como plugin
+  explícito (`init()` vazio).

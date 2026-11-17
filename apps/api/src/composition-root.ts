@@ -64,6 +64,7 @@ import {
   createWorkersAiRerankerAdapter,
 } from '#adapters/out/reranker/workers-ai/workers-ai-reranker-adapter.ts'
 import { createLogger } from '#adapters/out/telemetry/logger.ts'
+import type { TelemetryRuntime } from '#adapters/out/telemetry/sdk.ts'
 import type {
   Container,
   IngestionContainer,
@@ -80,6 +81,7 @@ import type { LlmModel } from '#app/ports/llm-port.ts'
 import type { RateLimitStore } from '#app/ports/rate-limit-store.ts'
 import type { RerankerPort } from '#app/ports/reranker-port.ts'
 import type { SafeFetcher } from '#app/ports/safe-fetcher.ts'
+import { noopTelemetry, type Telemetry } from '#app/ports/telemetry.ts'
 import type { BatchLimits } from '#app/services/embedding-batches.ts'
 import type { Lifecycle } from '#app/services/lifecycle.ts'
 import { createLifecycle } from '#app/services/lifecycle.ts'
@@ -391,6 +393,7 @@ function createRetrieval(
   resolveReferenceDate: ResolveReferenceDate,
   clock: Clock,
   router: ProviderRouter | null,
+  telemetry: Telemetry,
 ): RetrievalUseCases {
   const coverage = createCoverageSource({
     coverageRepository: createPgCoverageRepository(database.db),
@@ -412,6 +415,7 @@ function createRetrieval(
       env.QUERY_REWRITE_ENABLED && router !== null
         ? createQueryRewriter({ router, timeoutMs: REWRITE_TIMEOUT_MS })
         : null,
+    telemetry,
   })
   return {
     coverage,
@@ -605,6 +609,8 @@ export interface ContainerOverrides {
   readonly onBackgroundFailure?: (failure: BackgroundTaskFailure) => void
   /** `application_name` do pool (`teko-api`; a CLI usa `teko-cli`). */
   readonly applicationName?: string
+  /** Métricas de operação (padrão: nenhuma; o `server.ts` passa as do SDK do OTel). */
+  readonly telemetry?: Telemetry
 }
 
 /** Neurons estimados por pergunta (embedding da pergunta e reranker de 40 candidatos). */
@@ -638,10 +644,11 @@ interface QuestionWiring {
   readonly lifecycle: Lifecycle
   readonly backgroundTasks: BackgroundTasks
   readonly streamBudget: StreamBudget
+  readonly telemetry: Telemetry
 }
 
 function createQuestions(env: Env, wiring: QuestionWiring): QuestionUseCases | null {
-  const { clock, retrieval, router } = wiring
+  const { clock, retrieval, router, telemetry } = wiring
   if (router === null) {
     return null
   }
@@ -658,6 +665,7 @@ function createQuestions(env: Env, wiring: QuestionWiring): QuestionUseCases | n
     router,
     corpusVersion: async () => (await retrieval.coverage()).corpusVersion,
     nowMs: () => clock.now().getTime(),
+    telemetry,
   }
   return {
     ask: createAskQuestion({
@@ -672,6 +680,7 @@ function createQuestions(env: Env, wiring: QuestionWiring): QuestionUseCases | n
       caps,
       reservation,
       killSwitch: env.LLM_KILL_SWITCH,
+      telemetry,
     }),
     stream: createStreamAnswer({
       questions,
@@ -682,6 +691,7 @@ function createQuestions(env: Env, wiring: QuestionWiring): QuestionUseCases | n
       backgroundTasks: wiring.backgroundTasks,
       reservation,
       cacheTtlMs: env.ANSWER_CACHE_TTL_DAYS * DAY_MS,
+      telemetry,
     }),
     history: createQuestionHistory({ questions, clock, caps }),
     evalAnswer: createEvalAnswer({ ...pipeline, timeoutMs: env.STREAM_MAX_SECONDS * 1000 }),
@@ -715,6 +725,7 @@ function createAuth(env: Env, database: Database): AuthGateway | null {
 
 export function createContainer(env: Env, overrides: ContainerOverrides = {}): Container {
   const clock = overrides.clock ?? systemClock
+  const telemetry = overrides.telemetry ?? noopTelemetry
   const buildInfo = buildInfoOf(env)
   const lifecycle = createLifecycle(clock)
   const platform = createPlatformAdapters(env, {
@@ -740,8 +751,16 @@ export function createContainer(env: Env, overrides: ContainerOverrides = {}): C
     })
     platform.attachDatabasePool(database.pool)
     const models = overrides.llmModels ?? createLlmModels(env)
-    const router = models.length === 0 ? null : createProviderRouter({ models, clock })
-    retrieval = createRetrieval(env, database, embeddings, resolveReferenceDate, clock, router)
+    const router = models.length === 0 ? null : createProviderRouter({ models, clock, telemetry })
+    retrieval = createRetrieval(
+      env,
+      database,
+      embeddings,
+      resolveReferenceDate,
+      clock,
+      router,
+      telemetry,
+    )
     users = createUserUseCases({
       users: createPgUserRepository(database.db),
       clock,
@@ -764,6 +783,7 @@ export function createContainer(env: Env, overrides: ContainerOverrides = {}): C
       lifecycle,
       backgroundTasks: platform.backgroundTasks,
       streamBudget,
+      telemetry,
     })
   }
 
@@ -777,6 +797,7 @@ export function createContainer(env: Env, overrides: ContainerOverrides = {}): C
     rateLimitStore: database === null ? null : createPgRateLimitStore(database.pool),
     geo: platform.geo,
     streamBudget,
+    telemetry,
     useCases: {
       getHealth: createGetHealth({ buildInfo, appEnv: env.APP_ENV, lifecycle }),
       resolveReferenceDate,
@@ -790,6 +811,9 @@ export function createContainer(env: Env, overrides: ContainerOverrides = {}): C
     },
   }
 }
+
+/** Ambientes publicados: sem exportação de telemetria, o boot avisa. */
+const PRODUCTION_LIKE_ENVS: ReadonlySet<AppEnv> = new Set([AppEnv.Staging, AppEnv.Production])
 
 /** Janela fixa do rate limit da aplicação (plano: 60 s). */
 const RATE_LIMIT_WINDOW_MS = 60_000
@@ -845,10 +869,15 @@ export interface Runtime {
   readonly app: FastifyInstance
   readonly container: Container
   readonly shutdown: ShutdownProfile
+  readonly telemetry: TelemetryRuntime
 }
 
-/** Monta logger, container e app a partir de um env já validado (usado por `server.ts`). */
-export async function createRuntime(env: Env): Promise<Runtime> {
+/**
+ * Monta logger, container e app a partir de um env já validado e da telemetria já iniciada (usado
+ * por `server.ts`): o logger escreve também no OTel, a aplicação recebe a porta de métricas e o
+ * HTTP, o plugin do `@fastify/otel` e o flush por requisição.
+ */
+export async function createRuntime(env: Env, telemetry: TelemetryRuntime): Promise<Runtime> {
   const buildInfo = buildInfoOf(env)
   const logger = createLogger({
     level: env.LOG_LEVEL,
@@ -856,14 +885,24 @@ export async function createRuntime(env: Env): Promise<Runtime> {
     version: buildInfo.version,
     gitSha: buildInfo.gitSha,
     pretty: env.LOG_PRETTY,
+    sink: telemetry.logSink,
   })
-  const container = createContainer(env, { onBackgroundFailure: logBackgroundFailure(logger) })
+  if (!telemetry.exporting && PRODUCTION_LIKE_ENVS.has(env.APP_ENV)) {
+    logger.warn('OTEL_EXPORTER_OTLP_ENDPOINT ausente: traces, métricas e logs não são exportados')
+  }
+  const container = createContainer(env, {
+    onBackgroundFailure: logBackgroundFailure(logger),
+    telemetry: telemetry.telemetry,
+  })
   const app = await buildApp({
     container,
-    http: createHttpOptions(env, container.rateLimitStore),
+    http: {
+      ...createHttpOptions(env, container.rateLimitStore),
+      telemetry: { plugin: telemetry.fastifyPlugin, flush: telemetry.flush },
+    },
     logger,
   })
-  return { app, container, shutdown: platformShutdown(env) }
+  return { app, container, shutdown: platformShutdown(env), telemetry }
 }
 
 /**

@@ -1,4 +1,5 @@
 import type { RateLimitStore } from '#app/ports/rate-limit-store.ts'
+import type { HttpTelemetry } from './plugins/telemetry.ts'
 
 /**
  * Configuração do adapter HTTP, derivada do env e do perfil de plataforma em
@@ -37,6 +38,11 @@ export interface HttpOptions {
    * banco): memória local não limita nada com várias instâncias.
    */
   readonly rateLimit?: RateLimitOptions
+  /**
+   * Plugin do `@fastify/otel` e flush por requisição. Ausente (testes, `cli openapi export`) = sem
+   * spans de requisição nem flush; o `x-trace-id` sai do `traceparent` ou de um id aleatório.
+   */
+  readonly telemetry?: HttpTelemetry
 }
 
 export interface RateLimitOptions {

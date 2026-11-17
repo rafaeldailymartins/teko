@@ -3,7 +3,9 @@ import { type RerankerPort, RerankerUnavailableError } from '#app/ports/reranker
 import {
   postWorkersAi,
   workersAiEndpoint,
+  workersAiSpanAttributes,
 } from '../../embeddings/workers-ai/workers-ai-embedding-adapter.ts'
+import { withSpan } from '../../telemetry/tracing.ts'
 
 /**
  * `bge-reranker-base` pelo Workers AI (REST): `POST https://api.cloudflare.com/client/v4/accounts/
@@ -41,15 +43,20 @@ export function createWorkersAiRerankerAdapter(options: WorkersAiRerankerOptions
       if (texts.length === 0) {
         return []
       }
-      const reply = await postWorkersAi(
-        {
-          endpoint,
-          apiToken: options.apiToken,
-          payload: { query, contexts: texts.map((text) => ({ text })) },
-          signal: rerankOptions?.signal,
-          fetch: doFetch,
-        },
-        (message, errorOptions) => new RerankerUnavailableError(message, errorOptions),
+      const reply = await withSpan(
+        `rerank ${BGE_RERANKER_MODEL}`,
+        workersAiSpanAttributes('rerank', BGE_RERANKER_MODEL, texts.length),
+        () =>
+          postWorkersAi(
+            {
+              endpoint,
+              apiToken: options.apiToken,
+              payload: { query, contexts: texts.map((text) => ({ text })) },
+              signal: rerankOptions?.signal,
+              fetch: doFetch,
+            },
+            (message, errorOptions) => new RerankerUnavailableError(message, errorOptions),
+          ),
       )
       const parsed = responseSchema.safeParse(reply.body)
       if (!parsed.success || !parsed.data.success || !parsed.data.result) {

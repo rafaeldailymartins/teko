@@ -9,6 +9,7 @@ import { useLocale, useTranslations } from 'next-intl'
 import { useQueryStates } from 'nuqs'
 import { Suspense, useId, useState } from 'react'
 import { AppPageHeader } from '@/components/app-page-header'
+import { SupportId } from '@/components/support-id'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useProvisionTimeline } from '@/lib/api/hooks'
@@ -100,6 +101,7 @@ function ProvisionDetail({ stableKey, date, today, onDateChange }: ProvisionDeta
             />
             {tRoot(query.error.messageKey)}
           </p>
+          <SupportId traceId={query.error.traceId} />
           {notFound ? (
             <Link
               href={localePagePath(locale, 'provision')}

@@ -114,20 +114,37 @@ describe('falha do chat', () => {
       code: 'quota_exceeded',
       retryable: true,
       resetAt: '2026-11-16T03:00:00.000Z',
+      traceId: 't',
     })
     expect(chatFailure(new Error('{"code":"stream_busy","retryable":true}'))).toEqual({
       code: 'stream_busy',
       retryable: true,
       resetAt: null,
+      traceId: null,
     })
     expect(chatFailure(new Error('Failed to fetch'))?.code).toBe('internal')
   })
 
+  it('chunk error e falha genérica levam o ID de suporte do stream', () => {
+    const streamTraceId = '4bf92f3577b34da6a3ce929d0e0e4736'
+    expect(
+      chatFailure(new Error('{"code":"upstream_unavailable","retryable":true}'), streamTraceId)
+        ?.traceId,
+    ).toBe(streamTraceId)
+    expect(chatFailure(new Error('Failed to fetch'), streamTraceId)?.traceId).toBe(streamTraceId)
+  })
+
   it('cota e serviço pausado bloqueiam o composer', () => {
     expect(blocksComposer(null)).toBe(false)
-    expect(blocksComposer({ code: 'quota_exceeded', retryable: true, resetAt: null })).toBe(true)
-    expect(blocksComposer({ code: 'service_paused', retryable: true, resetAt: null })).toBe(true)
-    expect(blocksComposer({ code: 'internal', retryable: true, resetAt: null })).toBe(false)
+    expect(
+      blocksComposer({ code: 'quota_exceeded', retryable: true, resetAt: null, traceId: null }),
+    ).toBe(true)
+    expect(
+      blocksComposer({ code: 'service_paused', retryable: true, resetAt: null, traceId: null }),
+    ).toBe(true)
+    expect(
+      blocksComposer({ code: 'internal', retryable: true, resetAt: null, traceId: null }),
+    ).toBe(false)
   })
 })
 

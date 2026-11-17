@@ -3,6 +3,7 @@
 #   pnpm dev:secrets                                              # gera infra/local/.env (fora do git)
 #   docker compose -f infra/local/compose.yaml up -d --wait       # Postgres (pgvector)
 #   docker compose -f infra/local/compose.yaml --profile langfuse up -d --wait   # + Langfuse :3100
+#   docker compose -f infra/local/compose.yaml --profile otel up -d --wait       # + Grafana LGTM :3300
 #
 # Todas as portas ficam presas a 127.0.0.1. Imagens fixadas por digest (tag mantida para leitura).
 # Os valores ${...:?} vêm de infra/local/.env, lido automaticamente pelo Compose (diretório do projeto).
@@ -196,6 +197,21 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
+
+  # ---------------------------------------------------------------------------------------------
+  # Profile "otel": Grafana + Tempo + Loki + Mimir + coletor OTel num contêiner só, para ver os
+  # traces, logs e métricas da API local (staging e produção mandam OTLP direto ao Grafana Cloud).
+  # Na API: OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318. Grafana em http://localhost:3300
+  # (3000 é do `next dev` e 3100 do Langfuse). Sem volume: os dados somem com o contêiner.
+  # ---------------------------------------------------------------------------------------------
+  otel-lgtm:
+    <<: *hardening
+    profiles: [otel]
+    image: grafana/otel-lgtm:0.40.0@sha256:72e05804790e6e0d8c0b70a6d5ff1f721ef7b203463374631e99aa3429bd0cf6
+    ports:
+      - 127.0.0.1:3300:3000
+      # OTLP/HTTP (o único protocolo que a API usa).
+      - 127.0.0.1:4318:4318
 
 volumes:
   pgdata:

@@ -1,5 +1,6 @@
 import { createGoogle } from '@ai-sdk/google'
 import { createGroq } from '@ai-sdk/groq'
+import type { Span } from '@opentelemetry/api'
 import { APICallError, type LanguageModel, streamText } from 'ai'
 import { z } from 'zod'
 import {
@@ -9,6 +10,7 @@ import {
   type LlmModel,
   type LlmRequest,
 } from '#app/ports/llm-port.ts'
+import { tracedIterable } from '../telemetry/tracing.ts'
 
 /**
  * Gemini e Groq pelo AI SDK da Vercel (decisão do mantenedor em 2026-11-14: `@google/genai` não tem
@@ -133,6 +135,13 @@ interface ModelIdentity {
   readonly zeroDataRetention: boolean
 }
 
+/** Valores de `gen_ai.provider.name` da semconv de GenAI. */
+const GEN_AI_PROVIDER = { gemini: 'gcp.gemini', groq: 'groq' } as const
+
+/**
+ * Um modelo da cadeia. Cada chamada abre um span `chat <modelo>` (atributos `gen_ai.*`, com o uso
+ * de tokens no fim), filho do span ativo da requisição.
+ */
 function createAiSdkLlm(
   languageModel: LanguageModel,
   identity: ModelIdentity,
@@ -140,38 +149,58 @@ function createAiSdkLlm(
 ): LlmModel {
   return {
     ...identity,
-    async *stream(request: LlmRequest): AsyncIterable<LlmEvent> {
-      const result = streamText({
-        model: languageModel,
-        system: request.system,
-        prompt: request.prompt,
-        temperature: request.temperature,
-        maxOutputTokens: request.maxOutputTokens,
-        // Nível de raciocínio portátil do AI SDK 7 (Gemini: `thinkingLevel`; Groq: `reasoning_effort`).
-        ...(request.reasoning === undefined ? {} : { reasoning: request.reasoning }),
-        abortSignal: request.signal,
-        maxRetries: 0,
-        // O erro chega pelo `fullStream` e vira `LlmError`; o padrão do SDK o imprimiria no console.
-        onError: () => {},
-      })
-      for await (const part of result.fullStream) {
-        if (part.type === 'text-delta') {
-          yield { type: 'text', text: part.text }
-        } else if (part.type === 'error') {
-          throw toLlmError(part.error, request.signal, now())
-        } else if (part.type === 'abort') {
-          throw request.signal.reason
-        } else if (part.type === 'finish') {
-          yield {
-            type: 'finish',
-            usage: {
-              inputTokens: part.totalUsage.inputTokens ?? 0,
-              outputTokens: part.totalUsage.outputTokens ?? 0,
-            },
-          }
-        }
+    stream: (request: LlmRequest): AsyncIterable<LlmEvent> =>
+      tracedIterable(
+        `chat ${identity.model}`,
+        {
+          'gen_ai.operation.name': 'chat',
+          'gen_ai.provider.name': GEN_AI_PROVIDER[identity.provider],
+          'gen_ai.request.model': identity.model,
+          'gen_ai.request.temperature': request.temperature,
+          'gen_ai.request.max_tokens': request.maxOutputTokens,
+        },
+        (span) => streamEvents(languageModel, request, now, span),
+      ),
+  }
+}
+
+async function* streamEvents(
+  languageModel: LanguageModel,
+  request: LlmRequest,
+  now: () => number,
+  span: Span,
+): AsyncIterable<LlmEvent> {
+  const result = streamText({
+    model: languageModel,
+    system: request.system,
+    prompt: request.prompt,
+    temperature: request.temperature,
+    maxOutputTokens: request.maxOutputTokens,
+    // Nível de raciocínio portátil do AI SDK 7 (Gemini: `thinkingLevel`; Groq: `reasoning_effort`).
+    ...(request.reasoning === undefined ? {} : { reasoning: request.reasoning }),
+    abortSignal: request.signal,
+    maxRetries: 0,
+    // O erro chega pelo `fullStream` e vira `LlmError`; o padrão do SDK o imprimiria no console.
+    onError: () => {},
+  })
+  for await (const part of result.fullStream) {
+    if (part.type === 'text-delta') {
+      yield { type: 'text', text: part.text }
+    } else if (part.type === 'error') {
+      throw toLlmError(part.error, request.signal, now())
+    } else if (part.type === 'abort') {
+      throw request.signal.reason
+    } else if (part.type === 'finish') {
+      const usage = {
+        inputTokens: part.totalUsage.inputTokens ?? 0,
+        outputTokens: part.totalUsage.outputTokens ?? 0,
       }
-    },
+      span.setAttributes({
+        'gen_ai.usage.input_tokens': usage.inputTokens,
+        'gen_ai.usage.output_tokens': usage.outputTokens,
+      })
+      yield { type: 'finish', usage }
+    }
   }
 }
 

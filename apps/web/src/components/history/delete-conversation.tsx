@@ -10,6 +10,7 @@ import {
 } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { type RefObject, useEffect, useRef, useState } from 'react'
+import { SupportId } from '@/components/support-id'
 import {
   AlertDialog,
   AlertDialogClose,
@@ -203,6 +204,7 @@ export function DeleteConversationDialog({
             {message}
           </p>
         )}
+        {error instanceof ApiError && <SupportId traceId={error.traceId} />}
         <AlertDialogFooter>
           <AlertDialogClose disabled={deletion.isPending} render={<Button variant="ghost" />}>
             {t('cancel')}

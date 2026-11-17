@@ -30,6 +30,7 @@
       "licenseLink": "Licença MIT",
       "madeWith": "Feito com dados públicos e código aberto."
     },
+    "supportId": "ID de suporte",
     "theme": {
       "label": "Tema",
       "light": "Claro",

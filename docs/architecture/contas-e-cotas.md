@@ -35,17 +35,17 @@ Cotas mensais da conta, somando `tekoia` e `tekoia-staging`; o Hobby não compra
 Premissa de pior caso: tetos diários de perguntas e `stream_seconds` atingidos todo dia, 20 s de
 stream em média, cerca de 30k chamadas curtas e 150k requests de estático por mês.
 
-| Recurso              | Cota Hobby | Premissa                                                                                                           | Uso esperado/mês        |
-| -------------------- | ---------- | ------------------------------------------------------------------------------------------------------------------ | ----------------------- |
-| Provisioned Memory   | 360 GB-h   | streams (6.000 + 1.500) s/dia × 30 ≈ 62 h; chamadas curtas ≈ 2,5 h; `waitUntil` ≈ 1,5 h; cold starts e pings ≈ 2 h | cerca de 136 GB-h (38%) |
-| Active CPU           | 4 h        | só com código rodando: streams, chamadas curtas, cold starts, pings                                                | cerca de 0,9 h (23%)    |
-| Invocações           | 1M         | chamadas curtas, streams e pings de 5 min nos dois projetos; o estático não invoca a Function                      | cerca de 60k (6%)       |
-| Fast Origin Transfer | 10 GB      | só CDN ↔ Function: cerca de 10 KB por stream e 5 KB por chamada curta                                              | cerca de 0,3 GB (3%)    |
-| Fast Data Transfer   | 100 GB     | estático (cerca de 3 GB) + respostas da API                                                                        | cerca de 3,3 GB (3%)    |
-| CDN Requests         | 1M         | estático (cerca de 150k) + API (cerca de 70k)                                                                      | cerca de 220k (22%)     |
-| Deployment storage   | 10 GB      | cerca de 25 MB por deployment retida (estático + Function), staging a cada push                                    | cerca de 1,5 GB (15%)   |
-| Spans de tracing     | 1M         | tracing próprio da Vercel desligado pelo SDK de OTel                                                               | próximo de 0            |
-| Deploys              | 100/dia    | um por push no tronco e um por release                                                                             | < 10/dia                |
+| Recurso              | Cota Hobby | Premissa                                                                                                           | Uso esperado/mês          |
+| -------------------- | ---------- | ------------------------------------------------------------------------------------------------------------------ | ------------------------- |
+| Provisioned Memory   | 360 GB-h   | streams (6.000 + 1.500) s/dia × 30 ≈ 62 h; chamadas curtas ≈ 2,5 h; `waitUntil` ≈ 1,5 h; cold starts e pings ≈ 2 h | cerca de 136 GB-h (38%)   |
+| Active CPU           | 4 h        | só com código rodando: streams, chamadas curtas, cold starts, pings                                                | cerca de 0,9 h (23%)      |
+| Invocações           | 1M         | chamadas curtas, streams e pings de 5 min nos dois projetos; o estático não invoca a Function                      | cerca de 60k (6%)         |
+| Fast Origin Transfer | 10 GB      | só CDN ↔ Function: cerca de 10 KB por stream e 5 KB por chamada curta                                              | cerca de 0,3 GB (3%)      |
+| Fast Data Transfer   | 100 GB     | estático (cerca de 3 GB) + respostas da API                                                                        | cerca de 3,3 GB (3%)      |
+| CDN Requests         | 1M         | estático (cerca de 150k) + API (cerca de 70k)                                                                      | cerca de 220k (22%)       |
+| Deployment storage   | 10 GB      | cerca de 25 MB por deployment retida (estático + Function), staging a cada push                                    | cerca de 1,5 GB (15%)     |
+| Spans de tracing     | 1M         | sem `@vercel/otel`; os spans de fetch param com o SDK de OTel no pacote; sobram os de infraestrutura               | a medir no `vercel-usage` |
+| Deploys              | 100/dia    | um por push no tronco e um por release                                                                             | < 10/dia                  |
 
 - **Tráfego negado pelo WAF** (deny, challenge ou rate limit) não conta CDN Requests nem Fast Data
   Transfer, e não invoca a Function.

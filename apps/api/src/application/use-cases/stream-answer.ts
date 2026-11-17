@@ -14,6 +14,12 @@ import type {
   StreamResult,
   UsageReservation,
 } from '../ports/question-repository.ts'
+import {
+  AnswerOutcomeKind,
+  type AnswerSignal,
+  noopTelemetry,
+  type Telemetry,
+} from '../ports/telemetry.ts'
 import { PROMPT_VERSION } from '../prompts/answer.ts'
 import type { Lifecycle } from '../services/lifecycle.ts'
 import { shadowCostUsd } from '../services/pricing.ts'
@@ -56,6 +62,8 @@ export interface StreamAnswerDeps {
   readonly backgroundTasks: BackgroundTasks
   readonly reservation: UsageReservation
   readonly cacheTtlMs: number
+  /** Métricas do desfecho e da chamada de LLM (padrão: nenhuma). */
+  readonly telemetry?: Telemetry
 }
 
 /** Teto do stream estourado (o sinal do timer aborta com isto). */
@@ -139,8 +147,47 @@ function errorCodeOf(error: unknown, timedOut: boolean): ErrorCode {
   return ErrorCode.Internal
 }
 
+function unansweredSignal(
+  outcome: typeof AnswerOutcomeKind.Failed | typeof AnswerOutcomeKind.Aborted,
+  question: ClaimedQuestion,
+): AnswerSignal {
+  return {
+    outcome,
+    refusalReason: null,
+    retrievalMode: null,
+    cached: false,
+    corpusVersion: question.corpusVersion,
+  }
+}
+
+/** Sinais de uma resposta gravada: o desfecho e, se um modelo respondeu, a chamada de LLM. */
+export function recordOutcome(
+  telemetry: Telemetry,
+  outcome: AnswerOutcome,
+  result: StreamResult,
+): void {
+  telemetry.answer({
+    outcome: outcome.answer === null ? AnswerOutcomeKind.Refused : AnswerOutcomeKind.Answered,
+    refusalReason: outcome.refusal?.reason ?? null,
+    retrievalMode: outcome.retrievalMode,
+    cached: false,
+    corpusVersion: result.corpusVersion,
+  })
+  if (outcome.provider !== null && outcome.model !== null) {
+    telemetry.llmCall({
+      provider: outcome.provider,
+      model: outcome.model,
+      ttftSeconds: result.ttftMs === null ? null : result.ttftMs / 1000,
+      inputTokens: result.inputTokens,
+      outputTokens: result.outputTokens,
+      shadowCostUsd: result.shadowCostUsd,
+    })
+  }
+}
+
 export function createStreamAnswer(deps: StreamAnswerDeps): StreamAnswer {
   const nowMs = (): number => deps.clock.now().getTime()
+  const telemetry = deps.telemetry ?? noopTelemetry
 
   async function* run(
     command: StreamAnswerCommand,
@@ -174,12 +221,10 @@ export function createStreamAnswer(deps: StreamAnswerDeps): StreamAnswer {
       )
       // O pipeline sempre entrega o resultado antes de terminar sem exceção.
       const done = outcome as unknown as AnswerOutcome
-      await deps.questions.finish(
-        question.id,
-        deps.reservation,
-        resultOf(question, done, { startedMs, endedMs: nowMs() }, deps.cacheTtlMs),
-      )
+      const result = resultOf(question, done, { startedMs, endedMs: nowMs() }, deps.cacheTtlMs)
+      await deps.questions.finish(question.id, deps.reservation, result)
       recorded = true
+      recordOutcome(telemetry, done, result)
       yield {
         type: 'finish',
         messageMetadata: {
@@ -198,10 +243,12 @@ export function createStreamAnswer(deps: StreamAnswerDeps): StreamAnswer {
         status: StoredQuestionStatus.Failed,
       })
       recorded = true
+      telemetry.answer(unansweredSignal(AnswerOutcomeKind.Failed, question))
       yield createStreamErrorChunk(errorCodeOf(error, timer.signal.aborted))
     } finally {
       clearTimeout(handle)
       if (!recorded) {
+        telemetry.answer(unansweredSignal(AnswerOutcomeKind.Aborted, question))
         deps.backgroundTasks.run(
           'question-aborted',
           deps.questions.finish(question.id, deps.reservation, {

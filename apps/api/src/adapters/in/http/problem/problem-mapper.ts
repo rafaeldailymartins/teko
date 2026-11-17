@@ -27,7 +27,7 @@ import { ApplicationError } from '#app/errors.ts'
  */
 
 export interface ProblemContext {
-  /** Request id (vira o `traceId` exibido na UI como "ID de suporte"). */
+  /** `trace_id` da requisição (o `traceId` exibido na UI como "ID de suporte"). */
   readonly traceId: string
   /** Caminho da requisição, sem query string (RFC 9457 `instance`). */
   readonly instance?: string

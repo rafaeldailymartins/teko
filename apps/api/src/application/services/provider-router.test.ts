@@ -7,6 +7,7 @@ import {
   type LlmModel,
   type LlmRequest,
 } from '../ports/llm-port.ts'
+import { recordingTelemetry } from '../ports/testing/recording-telemetry.ts'
 import { BREAKER_OPEN_MS, createProviderRouter, type RoutedEvent } from './provider-router.ts'
 
 type Behavior =
@@ -228,5 +229,57 @@ describe('createProviderRouter', () => {
     ).rejects.toThrow('cliente saiu')
     await expect(collect(router.stream(REQUEST, ANY))).rejects.toBeInstanceOf(TypeError)
     expect(router.available(ANY)).toContain('gemini-a')
+  })
+})
+
+describe('sinais da cadeia', () => {
+  it('conta o erro por provedor e status e o fallback de um modelo para o outro', async () => {
+    const telemetry = recordingTelemetry()
+    const router = createProviderRouter({
+      models: [model('gemini-a', ['429']), model('gemini-b', ['5xx']), model('groq-c', ['ok'])],
+      clock: clockAt('2026-11-10T15:00:00Z').clock,
+      telemetry,
+    })
+    await collect(router.stream(REQUEST, ANY))
+    expect(telemetry.calls).toEqual([
+      { method: 'providerError', args: ['gemini', '429'] },
+      { method: 'providerError', args: ['gemini', '5xx'] },
+      { method: 'providerFallback', args: ['gemini-a', 'groq-c'] },
+    ])
+  })
+
+  it('outro 4xx sai como 4xx; a falha no meio do stream também conta', async () => {
+    const telemetry = recordingTelemetry()
+    const rejected: LlmModel = {
+      provider: 'groq',
+      model: 'groq-x',
+      zeroDataRetention: true,
+      // biome-ignore lint/correctness/useYield: falha antes do primeiro evento
+      async *stream(): AsyncIterable<LlmEvent> {
+        throw new LlmError(LlmErrorKind.Rejected, '401')
+      },
+    }
+    const router = createProviderRouter({
+      models: [rejected, model('gemini-m', ['mid-stream'])],
+      clock: clockAt('2026-11-10T15:00:00Z').clock,
+      telemetry,
+    })
+    await expect(collect(router.stream(REQUEST, ANY))).rejects.toBeInstanceOf(ApplicationError)
+    expect(telemetry.calls).toEqual([
+      { method: 'providerError', args: ['groq', '4xx'] },
+      { method: 'providerFallback', args: ['groq-x', 'gemini-m'] },
+      { method: 'providerError', args: ['gemini', '5xx'] },
+    ])
+  })
+
+  it('sem fallback não conta fallback', async () => {
+    const telemetry = recordingTelemetry()
+    const router = createProviderRouter({
+      models: [model('gemini-a', ['ok'])],
+      clock: clockAt('2026-11-10T15:00:00Z').clock,
+      telemetry,
+    })
+    await collect(router.stream(REQUEST, ANY))
+    expect(telemetry.calls).toEqual([])
   })
 })

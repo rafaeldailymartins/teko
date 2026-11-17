@@ -3,6 +3,7 @@ import type { FastifyInstance } from 'fastify'
 import type { Runtime } from './composition-root.ts'
 import { EnvValidationError, loadEnv } from './config/env.ts'
 import { createGracefulShutdown } from './graceful-shutdown.ts'
+import { startInstrumentation } from './instrumentation.ts'
 
 /**
  * Único entrypoint HTTP da API, sem mudança entre plataformas:
@@ -32,10 +33,10 @@ async function listen(app: FastifyInstance, address: ListenAddress): Promise<voi
   await app.listen(address)
 }
 
-function serve({ app, container, shutdown }: Runtime, address: ListenAddress): void {
+function serve({ app, container, shutdown, telemetry }: Runtime, address: ListenAddress): void {
   const graceful = closeWithGrace(
     { delay: shutdown.graceMs, logger: app.log },
-    createGracefulShutdown({ app, container, profile: shutdown }),
+    createGracefulShutdown({ app, container, telemetry, profile: shutdown }),
   )
   listen(app, address).catch(async (error: unknown) => {
     graceful.uninstall()
@@ -48,11 +49,13 @@ function serve({ app, container, shutdown }: Runtime, address: ListenAddress): v
 
 try {
   const env = loadEnv()
-  // Import dinâmico do resto da app (plano, `server.ts`): a partir da F6, o SDK do OTel
-  // (`instrumentation.ts`) e o do Sentry sobem aqui, antes de qualquer módulo instrumentado
-  // (Fastify, `pg`) ser carregado. Até lá, só o env (e o `zod`) é carregado antes.
+  // O SDK do OTel (`instrumentation.ts`) sobe antes do import dinâmico do resto da app (Fastify,
+  // `pg`, adapters): provider global, contexto assíncrono e propagador W3C prontos antes do
+  // primeiro span. Os spans de `pg` e dos provedores são criados à mão nos adapters, então nada
+  // depende de hook de módulo. Os erros vão ao PostHog pela `ErrorReporterPort` (F6).
+  const telemetry = startInstrumentation(env)
   const { createRuntime } = await import('./composition-root.ts')
-  const runtime = await createRuntime(env)
+  const runtime = await createRuntime(env, telemetry)
   await runtime.app.ready()
   serve(runtime, { host: env.HOST, port: env.PORT })
 } catch (error) {

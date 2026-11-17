@@ -3,6 +3,8 @@ import type { Evidence } from '#domain/qa/evidence.ts'
 import { type EmbeddingPort, EmbeddingUnavailableError } from '../ports/embedding-port.ts'
 import { type RerankerPort, RerankerUnavailableError } from '../ports/reranker-port.ts'
 import type { SearchQuery } from '../ports/search-repository.ts'
+import type { Telemetry } from '../ports/telemetry.ts'
+import { recordingTelemetry } from '../ports/testing/recording-telemetry.ts'
 import type { QueryRewriter } from '../services/query-rewriter.ts'
 import { createHybridSearch } from './hybrid-search.ts'
 
@@ -169,7 +171,10 @@ describe('createHybridSearch com reranker (ADR 0027)', () => {
     candidate('3', 'outro'),
   ]
 
-  function withReranker(rerank: RerankerPort['rerank'], options: { limit?: number } = {}) {
+  function withReranker(
+    rerank: RerankerPort['rerank'],
+    options: { limit?: number; telemetry?: Telemetry } = {},
+  ) {
     const queries: SearchQuery[] = []
     const search = createHybridSearch({
       embeddings: embeddingsOf(() => Promise.resolve([VECTOR])),
@@ -187,6 +192,7 @@ describe('createHybridSearch com reranker (ADR 0027)', () => {
       rerankCandidates: 30,
       rerankTimeoutMs: 5,
       rewriter: null,
+      ...(options.telemetry === undefined ? {} : { telemetry: options.telemetry }),
     })
     return { search, queries }
   }
@@ -203,6 +209,23 @@ describe('createHybridSearch com reranker (ADR 0027)', () => {
     )
     expect(result.evidence.map((item) => item.chunkId)).toEqual(['2', '3'])
     expect(result.reranked).toBe(true)
+  })
+
+  it('as notas na ordem final (cortadas no limite) vão para a métrica', async () => {
+    const telemetry = recordingTelemetry()
+    const { search } = withReranker(() => Promise.resolve([0.1, 0.9, 0.5]), { telemetry })
+    await search(command)
+    expect(telemetry.calls).toEqual([{ method: 'rerankerScores', args: [[0.9, 0.5]] }])
+  })
+
+  it('reranker que falha não emite notas', async () => {
+    const telemetry = recordingTelemetry()
+    const { search } = withReranker(
+      () => Promise.reject(new RerankerUnavailableError('HTTP 503')),
+      { telemetry },
+    )
+    await search(command)
+    expect(telemetry.calls).toEqual([])
   })
 
   it('empate de nota mantém a ordem do RRF', async () => {

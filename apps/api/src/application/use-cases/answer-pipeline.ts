@@ -18,6 +18,7 @@ import { createStreamSanitizer } from '#domain/qa/stream-sanitizer.ts'
 import type { ResolvedReference } from '#domain/vigencia/reference-resolution.ts'
 import type { LlmUsage } from '../ports/llm-port.ts'
 import type { StoredReferenceInput } from '../ports/question-repository.ts'
+import { noopTelemetry, type Telemetry } from '../ports/telemetry.ts'
 import {
   ANSWER_MAX_OUTPUT_TOKENS,
   ANSWER_TEMPERATURE,
@@ -64,6 +65,8 @@ export interface AnswerPipelineDeps {
   readonly router: ProviderRouter
   readonly corpusVersion: () => Promise<number>
   readonly nowMs: () => number
+  /** Sinais de RAG (citações invalidadas, sentinel); padrão: nenhum. */
+  readonly telemetry?: Telemetry
 }
 
 const TEXT_PART_ID = 'answer'
@@ -218,8 +221,17 @@ export async function* runAnswerPipeline(
     firstTokenAtMs,
   }
   const check = checkCitations(raw, prompt.sourceIds)
+  const telemetry = deps.telemetry ?? noopTelemetry
+  const corpusVersion = meta?.corpusVersion ?? null
+  const insufficient = isInsufficient(raw)
+  if (insufficient) {
+    telemetry.insufficientSentinel(corpusVersion)
+  }
+  if (check.unknown.length > 0) {
+    telemetry.citationsInvalidated(check.unknown.length, corpusVersion)
+  }
   const reason =
-    sanitizer.leaked || isInsufficient(raw)
+    sanitizer.leaked || insufficient
       ? RefusalReason.ModelInsufficient
       : check.valid.length === 0
         ? RefusalReason.CitationInvalid

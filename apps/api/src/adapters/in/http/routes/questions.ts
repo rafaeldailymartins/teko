@@ -136,10 +136,10 @@ export const questionRoutes: FastifyPluginAsyncZod = async (app) => {
         questionId: request.params.id,
         signal: disconnected.signal,
         startedAtMs,
-        traceId: request.id,
+        traceId: request.traceId,
       })
       return reply
-        .headers({ ...UI_MESSAGE_STREAM_HEADERS, 'x-trace-id': request.id })
+        .headers({ ...UI_MESSAGE_STREAM_HEADERS, 'x-trace-id': request.traceId })
         .send(sseStream(chunks))
     },
   )

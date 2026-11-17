@@ -8,6 +8,7 @@ import type {
   QuestionRepository,
   UsageSnapshot,
 } from '../ports/question-repository.ts'
+import { recordingTelemetry } from '../ports/testing/recording-telemetry.ts'
 import type { ProviderRouter } from '../services/provider-router.ts'
 import { createAskQuestion, quotaDay, quotaExceeded } from './ask-question.ts'
 
@@ -80,6 +81,7 @@ interface Options {
 
 function setup(options: Options = {}) {
   const decisions: AcceptDecision[] = []
+  const telemetry = recordingTelemetry()
   const questions = {
     insertFinished: vi.fn(async () => 'q-finished'),
     accept: vi.fn<QuestionRepository['accept']>(async (_question, _day, _reservation, decide) => {
@@ -113,6 +115,7 @@ function setup(options: Options = {}) {
     },
     reservation: { streamSeconds: 100, neurons: 5 },
     killSwitch: options.killSwitch ?? false,
+    telemetry,
   })
   const command = {
     user: options.user ?? USER,
@@ -120,7 +123,7 @@ function setup(options: Options = {}) {
     requestId: 'req-1',
     requestCountry: null,
   }
-  return { ask: () => ask(command), questions, decisions }
+  return { ask: () => ask(command), questions, decisions, telemetry }
 }
 
 describe('createAskQuestion', () => {
@@ -215,22 +218,52 @@ describe('createAskQuestion', () => {
   })
 
   it('fora da cobertura: grava a recusa sem passar pela cota', async () => {
-    const { ask, questions } = setup({ coverage: { ...COVERED, status: 'out_of_coverage' } })
+    const { ask, questions, telemetry } = setup({
+      coverage: { ...COVERED, status: 'out_of_coverage' },
+    })
     await expect(ask()).resolves.toMatchObject({
       status: 'refused',
       questionId: 'q-finished',
       refusal: { reason: 'out_of_coverage', coverage: [] },
     })
     expect(questions.accept).not.toHaveBeenCalled()
+    expect(telemetry.calls).toEqual([
+      {
+        method: 'answer',
+        args: [
+          {
+            outcome: 'refused',
+            refusalReason: 'out_of_coverage',
+            retrievalMode: null,
+            cached: false,
+            corpusVersion: 14,
+          },
+        ],
+      },
+    ])
   })
 
   it('acerto do cache responde com meta.cached, sem cota', async () => {
-    const { ask, questions } = setup({ cached: CACHED })
+    const { ask, questions, telemetry } = setup({ cached: CACHED })
     await expect(ask()).resolves.toMatchObject({
       status: 'answered',
       answer: { meta: { cached: true } },
     })
     expect(questions.accept).not.toHaveBeenCalled()
+    expect(telemetry.calls).toEqual([
+      {
+        method: 'answer',
+        args: [
+          {
+            outcome: 'answered',
+            refusalReason: null,
+            retrievalMode: CACHED.meta.retrievalMode,
+            cached: true,
+            corpusVersion: 14,
+          },
+        ],
+      },
+    ])
   })
 
   it.each([
@@ -249,6 +282,22 @@ describe('createAskQuestion', () => {
         meta: { scope: 'user_daily', resetAt: '2026-11-11T03:00:00.000Z' },
       },
     })
+  })
+})
+
+describe('cota no Grafana', () => {
+  it('o uso global do dia vai para a métrica junto com a decisão', async () => {
+    const { ask, telemetry } = setup({ usage: { ...IDLE, globalRequests: 30 } })
+    await ask()
+    expect(telemetry.of('quotaUsage')).toEqual([
+      [
+        [
+          { scope: 'global_questions', ratio: 0.1 },
+          { scope: 'global_stream_seconds', ratio: 0 },
+          { scope: 'global_neurons', ratio: 0 },
+        ],
+      ],
+    ])
   })
 })
 

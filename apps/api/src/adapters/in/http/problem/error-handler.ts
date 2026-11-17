@@ -13,7 +13,8 @@ import { notFoundProblem, type ProblemContext, problemFromError } from './proble
 function contextOf(request: FastifyRequest): ProblemContext {
   const queryStart = request.url.indexOf('?')
   const path = queryStart === -1 ? request.url : request.url.slice(0, queryStart)
-  return { traceId: request.id, instance: path }
+  // Antes do hook de telemetria (erro no parse da requisição), o request id faz as vezes.
+  return { traceId: request.traceId || request.id, instance: path }
 }
 
 function sendProblem(reply: FastifyReply, problem: ProblemDetails): FastifyReply {
