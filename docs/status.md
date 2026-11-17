@@ -316,8 +316,8 @@ Pendências, todas da F7 (conferência no staging, roteiro em
 - stack de um erro de teste resolvida pelos source maps do upload do deploy;
 - `grafana-apply` sem `--dry-run` na stack real.
 
-A política de privacidade mudou no #116 (versão 2026-11-17, lista de parágrafos no PR) e espera a
-revisão do mantenedor.
+A política de privacidade da versão 2026-11-17 (#116, lista de parágrafos no PR) foi revisada pelo
+mantenedor em 2026-11-17, sem mudanças.
 
 ## Antes da F7: o que o mantenedor faz
 
