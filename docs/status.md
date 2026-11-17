@@ -334,6 +334,10 @@ item aqui. Segredos nunca passam pelo chat: o mantenedor grava cada um.
   As chaves do Gemini do staging e da produção vêm de projetos diferentes do Google Cloud, porque a
   cota é por projeto (ADR 0007, adendo de 2026-11-15); o ZDR fica ligado no console do Groq. O
   environment `staging` do GitHub já tem as duas chaves (usadas pelo `corpus-eval`).
+- [ ] **Banco e Workers AI** (Sensitive) nos dois projetos da Vercel: `DATABASE_URL` (URL `-pooler`
+  do role `teko_app` do projeto Neon do ambiente), `CF_ACCOUNT_ID` e `CF_AI_TOKEN` (token só de
+  inferência). Os manifestos `infra/vercel/env.*.json` exigem os três desde a F2; em 2026-11-17,
+  os dois projetos só tinham a `POSTHOG_PROJECT_KEY` entre as Sensitive.
 - [ ] **Environment `production` do GitHub**, hoje sem segredo nem variável: `VERCEL_TOKEN` próprio,
   `VERCEL_AUTOMATION_BYPASS_SECRET` do `tekoia`, as vars `VERCEL_ORG_ID` e `VERCEL_PROJECT_ID` e
   `NEON_PROD_MIGRATE_URL` (tabela de environments em
