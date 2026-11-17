@@ -328,39 +328,49 @@ apresenta esta lista ao mantenedor, confere o que já foi feito (nomes de segred
 `gh secret list --env <env>`; env vars da Vercel com `vercel env ls`, sem ler valores) e marca cada
 item aqui. Segredos nunca passam pelo chat: o mantenedor grava cada um.
 
-- [ ] **OAuth apps** do GitHub e do Google, uma de staging e uma de produção, com callback em
-  `<WEB_ORIGIN>/api/auth/callback/{github,google}`.
-- [ ] **Env vars Sensitive da autenticação** nos dois projetos da Vercel: `BETTER_AUTH_SECRET`,
-  `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, `GOOGLE_CLIENT_ID` e `GOOGLE_CLIENT_SECRET`.
-- [ ] **Chaves de LLM** (Sensitive) nos dois projetos da Vercel: `GEMINI_API_KEY` e `GROQ_API_KEY`.
-  As chaves do Gemini do staging e da produção vêm de projetos diferentes do Google Cloud, porque a
-  cota é por projeto (ADR 0007, adendo de 2026-11-15); o ZDR fica ligado no console do Groq. O
-  environment `staging` do GitHub já tem as duas chaves (usadas pelo `corpus-eval`).
-- [ ] **Banco e Workers AI** (Sensitive) nos dois projetos da Vercel: `DATABASE_URL` (URL `-pooler`
-  do role `teko_app` do projeto Neon do ambiente), `CF_ACCOUNT_ID` e `CF_AI_TOKEN` (token só de
-  inferência). Os manifestos `infra/vercel/env.*.json` exigem os três desde a F2; em 2026-11-17,
-  os dois projetos só tinham a `POSTHOG_PROJECT_KEY` entre as Sensitive.
-- [ ] **Environment `production` do GitHub**, hoje só com os do PostHog: `VERCEL_TOKEN` próprio,
-  `VERCEL_AUTOMATION_BYPASS_SECRET` do `tekoia`, as vars `VERCEL_ORG_ID` e `VERCEL_PROJECT_ID` e
-  `NEON_PROD_MIGRATE_URL` (tabela de environments em
-  [`ci-cd-e-ambientes.md`](architecture/ci-cd-e-ambientes.md)).
+- [x] **OAuth apps** do GitHub e do Google (feito em 2026-11-17): uma de staging e uma de produção
+  de cada, com callback em `<WEB_ORIGIN>/api/auth/callback/{github,google}`, sem Device Flow nem
+  wildcard. Os clientes do Google ficam nos projetos `teko-staging` e `teko-prod` do Google Cloud,
+  com a tela de consentimento publicada e só os escopos `openid`, `email` e `profile`.
+- [x] **Env vars Sensitive da autenticação** nos dois projetos da Vercel (feito em 2026-11-17):
+  `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, `GOOGLE_CLIENT_ID` e `GOOGLE_CLIENT_SECRET` de cada
+  ambiente, e um `BETTER_AUTH_SECRET` aleatório (48 bytes) diferente por projeto, que só existe na
+  Vercel. No `tekoia-staging`, em production e preview.
+- [x] **Chaves de LLM** (Sensitive) nos dois projetos da Vercel (feito em 2026-11-17):
+  `GEMINI_API_KEY` de projetos diferentes do Google Cloud (a cota é por projeto, ADR 0007, adendo de
+  2026-11-15) e `GROQ_API_KEY` própria de cada ambiente. As quatro enxergam os modelos da cadeia;
+  o ZDR fica ligado no console do Groq.
+- [x] **Banco e Workers AI** (Sensitive) nos dois projetos da Vercel (feito em 2026-11-17):
+  `DATABASE_URL` (URL `-pooler` do role `teko_app` do projeto Neon do ambiente, lida pela API do
+  Neon e gravada sem passar pela saída), `CF_ACCOUNT_ID` e `CF_AI_TOKEN` (o mesmo token só de
+  inferência do environment `staging`).
+- [ ] **Environment `production` do GitHub**: já tem `NEON_PROD_MIGRATE_URL` (URL direta do
+  `neondb_owner` do `teko-prod`), as vars `VERCEL_ORG_ID` e `VERCEL_PROJECT_ID` do `tekoia` e os do
+  PostHog. Faltam o `VERCEL_TOKEN` próprio e o `VERCEL_AUTOMATION_BYPASS_SECRET` do `tekoia`
+  (tabela de environments em [`ci-cd-e-ambientes.md`](architecture/ci-cd-e-ambientes.md)).
 - [ ] **Passkey do system test** no environment `staging` (mesma tabela).
 - [ ] **Checklist dos projetos e do time da Vercel** em
   [`infra/vercel/README.md`](../infra/vercel/README.md) (Build and Deployment, Deployment
   Protection, Firewall e "Time e conta"): conferir no dashboard e marcar lá.
-- [ ] **Grafana Cloud Free** com uma stack numa região da UE e o environment `ops` do GitHub (só
-  `main`), com os segredos `GRAFANA_SA_TOKEN`, `GRAFANA_SM_TOKEN`, `GRAFANA_OTLP_TOKEN`,
-  `GRAFANA_ALERT_EMAILS`, `NEON_API_KEY_PROD` e `NEON_API_KEY_STAGING` e as variáveis `GRAFANA_URL`,
-  `GRAFANA_SM_URL`, `GRAFANA_OTLP_ENDPOINT`, `GRAFANA_OTLP_INSTANCE_ID`, `NEON_PROD_PROJECT_ID`,
-  `NEON_STAGING_PROJECT_ID`, `TOKEN_EXPIRY_DATES` e, opcional, `GRAFANA_PROM_DATASOURCE_UID`
-  ([`infra/grafana/README.md`](../infra/grafana/README.md)).
-- [ ] **OTLP da API** (Sensitive) nos dois projetos da Vercel: `OTEL_EXPORTER_OTLP_ENDPOINT` e
-  `OTEL_EXPORTER_OTLP_HEADERS` (`Authorization=Basic%20<base64 de instância:token>`).
-- [ ] **Langfuse Cloud EU (Hobby)** com a organização e os projetos `teko-prod` e `teko-staging`:
-  `LANGFUSE_PUBLIC_KEY` e `LANGFUSE_SECRET_KEY` (a secreta Sensitive) em cada projeto da Vercel, com
-  as chaves do projeto correspondente, e as de produção no Render; no environment `ops`, os segredos
-  `LANGFUSE_PROD_PUBLIC_KEY`, `LANGFUSE_PROD_SECRET_KEY`, `LANGFUSE_STAGING_PUBLIC_KEY` e
-  `LANGFUSE_STAGING_SECRET_KEY` e, opcional, a variável `LANGFUSE_BASE_URL`.
+- [x] **Grafana Cloud Free** (feito em 2026-11-17): stack `tenderferret1492` em `prod-eu-west-2`
+  (UE) e o environment `ops` com os segredos `GRAFANA_SA_TOKEN` (service account Editor),
+  `GRAFANA_SM_TOKEN`, `GRAFANA_OTLP_TOKEN` (só `metrics:write`), `GRAFANA_ALERT_EMAILS`,
+  `NEON_API_KEY_PROD` e `NEON_API_KEY_STAGING` e as variáveis `GRAFANA_URL`, `GRAFANA_SM_URL`,
+  `GRAFANA_OTLP_ENDPOINT`, `GRAFANA_OTLP_INSTANCE_ID`, `NEON_PROD_PROJECT_ID` e
+  `NEON_STAGING_PROJECT_ID` ([`infra/grafana/README.md`](../infra/grafana/README.md)). O
+  `ops.yml` aplicou a pasta, os 5 dashboards, o contact point `teko-email` (teste de envio ok), as
+  17 regras e os 3 checks (o da landing desligado até a F7). Os tokens foram criados sem data de
+  expiração, então a `TOKEN_EXPIRY_DATES` fica vazia até existirem tokens que vencem (os da Vercel,
+  na F7). O e-mail dos alertas precisa ser de um membro da organização no Grafana Cloud.
+- [x] **OTLP da API** (Sensitive) nos dois projetos da Vercel (feito em 2026-11-17):
+  `OTEL_EXPORTER_OTLP_ENDPOINT` e `OTEL_EXPORTER_OTLP_HEADERS` (token com `metrics`, `logs` e
+  `traces:write`), conferidos com exportações vazias ao endpoint.
+- [x] **Langfuse Cloud EU (Hobby)** (feito em 2026-11-17): projetos `teko-prod` e `teko-staging` na
+  mesma organização; `LANGFUSE_PUBLIC_KEY` e `LANGFUSE_SECRET_KEY` (Sensitive) em cada projeto da
+  Vercel, com as chaves do projeto correspondente; no environment `ops`, os segredos
+  `LANGFUSE_PROD_*` e `LANGFUSE_STAGING_*`. O job `langfuse` do `ops.yml` cadastrou nos dois os
+  modelos e preços, a score config `user_feedback` e a annotation queue `teko-feedback-negativo`. O
+  Render só recebe as chaves de produção quando o Plano B for criado.
 - [x] **PostHog EU** (feito em 2026-11-17), um projeto só, o 355097 "Tekó":
   - **Projeto:** cookieless, "Discard client IP data" e Error Tracking ligados; replay, autocapture,
     heatmaps, dead clicks, console log e performance desligados. Há um dashboard, "Tekó: uso e
