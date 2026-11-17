@@ -338,7 +338,7 @@ item aqui. Segredos nunca passam pelo chat: o mantenedor grava cada um.
   do role `teko_app` do projeto Neon do ambiente), `CF_ACCOUNT_ID` e `CF_AI_TOKEN` (token só de
   inferência). Os manifestos `infra/vercel/env.*.json` exigem os três desde a F2; em 2026-11-17,
   os dois projetos só tinham a `POSTHOG_PROJECT_KEY` entre as Sensitive.
-- [ ] **Environment `production` do GitHub**, hoje sem segredo nem variável: `VERCEL_TOKEN` próprio,
+- [ ] **Environment `production` do GitHub**, hoje só com os do PostHog: `VERCEL_TOKEN` próprio,
   `VERCEL_AUTOMATION_BYPASS_SECRET` do `tekoia`, as vars `VERCEL_ORG_ID` e `VERCEL_PROJECT_ID` e
   `NEON_PROD_MIGRATE_URL` (tabela de environments em
   [`ci-cd-e-ambientes.md`](architecture/ci-cd-e-ambientes.md)).
