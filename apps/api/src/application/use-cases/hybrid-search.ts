@@ -34,7 +34,7 @@ interface HybridSearchCommand {
   /** Usuário do EEE, Reino Unido ou Suíça: a reescrita só usa modelos com ZDR. */
   readonly zeroDataRetentionOnly?: boolean
   readonly signal?: AbortSignal
-  /** Trace `rag-query` (Langfuse) para a generation da reescrita. */
+  /** Trace `answer-question` (Langfuse) para a generation da reescrita. */
   readonly trace?: QueryTrace
 }
 

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import type { LlmTracingPort } from '../ports/llm-tracing.ts'
+import type { LlmTracingPort, RetrievalSummary } from '../ports/llm-tracing.ts'
 import { recordingLlmTracing } from '../ports/testing/recording-llm-tracing.ts'
 import {
   createQueryTracer,
@@ -24,9 +24,31 @@ const MID_NOVEMBER = new Date('2026-11-15T15:00:00Z')
 
 const ids = Array.from({ length: 4000 }, (_, index) => `0199${String(index).padStart(8, '0')}-q`)
 
+const EMPTY_RETRIEVAL: RetrievalSummary = {
+  query: 'Qual o prazo?',
+  rewrittenQuery: null,
+  referenceDate: '2026-11-01',
+  families: [],
+  mode: null,
+  items: [],
+  reranked: false,
+  uncoveredFamilies: [],
+  refusalReason: null,
+}
+
+const ANSWER_REQUEST = {
+  purpose: 'answer',
+  promptVersion: 'answer@1',
+  system: 's',
+  prompt: 'p',
+  temperature: 0.1,
+  maxOutputTokens: 10,
+} as const
+
 const START = {
   questionId: 'q1',
   userId: 'u1',
+  conversationId: 'c1',
   question: 'Qual o prazo?',
   locale: 'pt-BR',
   families: [],
@@ -182,27 +204,12 @@ describe('QueryTracer', () => {
     }).start(START)
     expect(trace.traceId).toBe('trace-1')
     expect(trace.units()).toBe(2)
-    trace.retrieval(1).end(
-      {
-        mode: 'hybrid',
-        topK: 0,
-        candidatesByChannel: { lexical: 0, semantic: 0, reference: 0 },
-        rrf: [],
-        reranked: false,
-        rewritten: false,
-        uncoveredFamilies: [],
-        refusalReason: null,
-      },
-      2,
-    )
+    trace.retrieval(1).end({ ...EMPTY_RETRIEVAL, mode: 'hybrid' }, 2)
     trace
       .generation({
-        name: 'answer',
+        ...ANSWER_REQUEST,
         provider: 'gemini',
         model: 'm',
-        input: 'p',
-        temperature: 0.1,
-        maxOutputTokens: 10,
         startedAtMs: 3,
       })
       .end({
@@ -211,6 +218,7 @@ describe('QueryTracer', () => {
         cost: { input: 0, output: 0, total: 0 },
         firstTokenAtMs: 4,
         output: 'x',
+        reasoning: null,
         endedAtMs: 5,
       })
     expect(trace.units()).toBe(4)
@@ -218,7 +226,7 @@ describe('QueryTracer', () => {
       outcome: 'answered',
       refusalReason: null,
       answer: 'x',
-      citations: 1,
+      citations: [],
       corpusVersion: 3,
       endedAtMs: 6,
     }
@@ -252,27 +260,12 @@ describe('QueryTracer', () => {
     }
     const trace = await createQueryTracer({ port: broken, sampler }).start(START)
     expect(() => {
-      trace.retrieval(0).end(
-        {
-          mode: null,
-          topK: 0,
-          candidatesByChannel: { lexical: 0, semantic: 0, reference: 0 },
-          rrf: [],
-          reranked: false,
-          rewritten: false,
-          uncoveredFamilies: [],
-          refusalReason: null,
-        },
-        1,
-      )
+      trace.retrieval(0).end({ ...EMPTY_RETRIEVAL, mode: null }, 1)
       trace
         .generation({
-          name: 'answer',
+          ...ANSWER_REQUEST,
           provider: 'groq',
           model: 'm',
-          input: '',
-          temperature: 0,
-          maxOutputTokens: 1,
           startedAtMs: 0,
         })
         .end({
@@ -281,13 +274,14 @@ describe('QueryTracer', () => {
           cost: { input: 0, output: 0, total: 0 },
           firstTokenAtMs: null,
           output: null,
+          reasoning: null,
           endedAtMs: 1,
         })
       trace.end({
         outcome: 'failed',
         refusalReason: null,
         answer: null,
-        citations: 0,
+        citations: [],
         corpusVersion: null,
         endedAtMs: 1,
       })

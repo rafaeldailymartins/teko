@@ -31,7 +31,7 @@ import {
   createHttpOptions,
 } from '../../../src/composition-root.ts'
 import { type Env, parseEnv } from '../../../src/config/env.ts'
-import { FIXED_NOW, FIXTURE_EMBEDDINGS, seedFixtureCorpus } from '../../setup/corpus.ts'
+import { FIXTURE_EMBEDDINGS, seedFixtureCorpus } from '../../setup/corpus.ts'
 import { createTestDatabase, type TestDatabase } from '../../setup/database.ts'
 
 /**
@@ -114,7 +114,8 @@ async function startApp(
 }
 
 async function newUser(): Promise<{ cookie: string; userId: string }> {
-  const seeder = createDevSessionSeeder(envFor({}), { now: () => new Date(FIXED_NOW) })
+  // Relógio real: a sessão vale 7 dias a partir de agora (com um instante fixo, vencia sozinha).
+  const seeder = createDevSessionSeeder(envFor({}), { now: () => new Date() })
   try {
     const session = await seeder.seed({
       email: `${randomUUID()}@teko.localhost`,
@@ -583,7 +584,7 @@ describe('traces de LLM (Langfuse) e custo-sombra', () => {
     expect(rows.rows.map((row) => row.langfuse_trace_id)).toEqual(['trace-1', 'trace-2', 'trace-3'])
     // O fake não tem preço: custo 0, mas sempre gravado.
     expect(rows.rows.map((row) => Number(row.shadow_cost_usd))).toEqual([0, 0, 0])
-    // 4 (rag-query + retrieval + answer) + 2 (cache) + 2 (recusa).
+    // 4 (answer-question + retrieve-context + generate-answer) + 2 (cache) + 2 (recusa).
     expect((await langfuseUnits()) - before).toBe(8)
 
     const feedback = await app.inject({

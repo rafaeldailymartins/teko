@@ -55,7 +55,7 @@ Workers AI ([ADR 0008](../adr/0008-bge-m3-e-halfvec.md), [ADR 0027](../adr/0027-
 - **TTFT p95 > 3 s num provedor:** em geral fila do free tier. Se persistir por mais de uma hora,
   inverta a ordem (`LLM_PROVIDER=groq`) até normalizar.
 - **p95 de `POST /api/v1/questions` > 3 s:** a criação inclui a reescrita da pergunta
-  (`QUERY_REWRITE_ENABLED`), a busca híbrida e o reranker. Veja os spans `retrieval` do trace: com
+  (`QUERY_REWRITE_ENABLED`), a busca híbrida e o reranker. Veja o retriever `retrieve-context` do trace no Langfuse: com
   o reranker lento, `RERANKER_PROVIDER=none` desliga o reranker (a ordem do RRF continua); com a
   reescrita lenta, `QUERY_REWRITE_ENABLED=false`.
 - Cold start + resume do Neon (até cerca de 10 s) aparece como pico isolado depois de horas sem

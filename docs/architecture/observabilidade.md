@@ -102,24 +102,48 @@ sobre o mesmo `NodeTracerProvider` do OTel 2.x; o Langfuse Cloud roda a v4 (mode
   amostrados. O `mask` passa o `redact` do `PiiRedactor` (`@teko/shared/pii`) em entrada, saída e
   metadata, como segunda barreira (a pergunta já chega redigida). Lote alcançado pelo flush por
   requisição (teto de 1 s por exportação), sem upload de mídia. **Desvio:** os spans `chat <modelo>`
-  (`gen_ai.*`) do adapter de LLM ficam só no Grafana: a generation `answer` já leva modelo, uso, custo
+  (`gen_ai.*`) do adapter de LLM ficam só no Grafana: a generation `generate-answer` já leva modelo, uso, custo
   e TTFT, e exportar os dois duplicaria tokens e custo no Langfuse e gastaria 1 ou 2 units a mais por
   pergunta.
-- **`TraceSampler`** (`application/services/trace-sampler.ts`): decide no início do `rag-query` pelo
-  FNV-1a do `questionId` (determinístico, independente da flag do navegador). A taxa do ambiente vale
+- **`TraceSampler`** (`application/services/trace-sampler.ts`): decide no início do `answer-question`
+  pelo FNV-1a do `questionId` (determinístico, independente da flag do navegador). A taxa do ambiente vale
   até a projeção linear do mês (`usage_daily.langfuse_units`, linha `global`, mês de São Paulo)
   chegar a `LANGFUSE_MONTHLY_UNITS_CUTOFF`; dali em diante, `LANGFUSE_SAMPLE_RATE_OVER_BUDGET` (nunca
   acima da taxa do ambiente). A projeção fica 10 min em memória por instância; falha na leitura vale
   como corte atingido. O `QueryTracer` conta as units de cada trace e engole falhas do adapter.
-- **Trace `rag-query`** (o mesmo `trace_id` do OTel: a raiz é filha do span `request` e o Langfuse a
-  marca como raiz da aplicação): usuário só por hash (`langfuseUserId`, sha256 truncado), pergunta
-  redigida, data e `ReferenceSource`, `corpus_version`, `prompt_version`, cache e famílias; saída com
-  o desfecho, o motivo da recusa, a resposta e as citações válidas. Span `retrieval` (retriever):
-  candidatos do top-k por canal, top-k, RRF, reranker, reescrita, `retrievalMode` e famílias sem
-  cobertura. Uma generation `answer` por provedor tentado (a que falhou antes do primeiro token vem
-  com `level=ERROR` e o tipo da falha), com o prompt do usuário (sem o system prompt), `usageDetails`,
-  `costDetails` a preço de tabela (`services/pricing.ts`), `metadata.billed_usd=0`, `ttft_ms` e
-  `completionStartTime`. Acerto do cache e recusa por cobertura (no `POST`) geram só a raiz.
+- **Trace `answer-question`** (o mesmo `trace_id` do OTel: a raiz é filha do span `request` e o
+  Langfuse a marca como raiz da aplicação), montado pela página de boas práticas do Langfuse
+  ("What does a good trace look like?", ADR 0012, adendo de 2026-11-17). Os nomes ficam em
+  `langfuse-names.ts`, com verbo no início e estáveis (evaluators, dashboards e filtros os
+  referenciam): trocar um deles exige refazer o que o referencia no Langfuse.
+  - **Raiz `answer-question`:** entrada = a pergunta redigida; saída = a resposta em Markdown (sem
+    saída quando não houve resposta). Metadata: data e `ReferenceSource`, famílias, locale,
+    `corpus_version`, cache, desfecho, motivo da recusa, as citações usadas (rótulo, chave,
+    documento, vigência e trecho, para um evaluator de fidelidade) e os ids das fontes não citadas;
+    `version` = `PROMPT_VERSION`. Falha sai com `ERROR` e o código do erro, desconexão com
+    `WARNING`, recusa com o motivo na mensagem de status.
+  - **Atributos de correlação em toda observation** (o Langfuse v4 filtra observations sem juntar com
+    o trace): usuário só por hash (`langfuseUserId`, sha256 truncado), `sessionId` = id da conversa
+    (UUID interno, sem PII), tags (`llm` ou `cache` e o locale) e metadata curta do trace
+    (`question_id`, data, origem, `corpus_version`, cache, locale). Vão direto nos spans, porque as
+    filhas nascem fora do contexto assíncrono da raiz (o stream).
+  - **Retriever `retrieve-context`:** entrada = a pergunta redigida, a consulta reescrita (quando
+    houve), a data de referência e as famílias; saída = os dispositivos do top-k na ordem final (id
+    do chunk, chave, rótulo, caminho de títulos, família, versão do documento, vigência, RRF e
+    posição em cada braço), sem o texto, que vai inteiro no prompt da resposta. Metadata: modo,
+    top-k, candidatos por canal, reranker, reescrita, famílias sem cobertura e recusa.
+  - **Generations `generate-answer` e `rewrite-query`**, uma por provedor tentado (a que falhou antes
+    do primeiro token vem com `level=ERROR` e o tipo da falha): entrada = as mensagens `system` e
+    `user` no formato da OpenAI, como o modelo as recebeu; saída = a mensagem do assistente e, quando
+    o modelo devolveu raciocínio, um item `reasoning` antes dela (a interface mostra como bloco
+    "Thinking"); `version` = a versão do prompt; `usageDetails`, `costDetails` a preço de tabela
+    (`services/pricing.ts`), `metadata.billed_usd=0`, `ttft_ms` e `completionStartTime`. O
+    raciocínio chega no `finish` do adapter (não como evento), para o primeiro evento continuar sendo
+    o primeiro texto e o fallback do router não mudar; o Gemini o devolve com `includeThoughts` (o
+    resumo dos pensamentos) e o `gpt-oss` do Groq sem pedir.
+  - Acerto do cache e recusa por cobertura (no `POST`) geram só a raiz. A conversa não entra no
+    prompt (cada pergunta é independente), então a sessão agrupa os turnos sem repetir o histórico
+    nas generations: serve para ver, na triagem de um 👎, as perguntas anteriores da conversa.
 - **Units** (traces + observations + scores): resposta 4, com um fallback 5, recusa na busca 3,
   cache ou fora da cobertura 2, cada score 1. O stream grava o `langfuse_trace_id` e soma as units
   em `usage_daily` na mesma transação da resposta; o `POST` (cache e cobertura) e o feedback, em

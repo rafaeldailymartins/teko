@@ -28,9 +28,14 @@ export interface LlmUsage {
   readonly outputTokens: number
 }
 
+/**
+ * O raciocínio do modelo chega junto do uso, no `finish`, e não como evento próprio: o router trata
+ * o primeiro evento como o início da resposta (depois dele, não há fallback), e o raciocínio vem
+ * antes do texto. Só o trace do Langfuse o lê.
+ */
 export type LlmEvent =
   | { readonly type: 'text'; readonly text: string }
-  | { readonly type: 'finish'; readonly usage: LlmUsage }
+  | { readonly type: 'finish'; readonly usage: LlmUsage; readonly reasoning?: string }
 
 export interface LlmModel {
   readonly provider: LlmProvider

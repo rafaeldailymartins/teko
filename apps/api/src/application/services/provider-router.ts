@@ -8,7 +8,6 @@ import {
   type LlmEvent,
   type LlmModel,
   type LlmRequest,
-  type LlmUsage,
 } from '../ports/llm-port.ts'
 import { noopTelemetry, ProviderErrorStatus, type Telemetry } from '../ports/telemetry.ts'
 
@@ -38,8 +37,7 @@ export type RoutedEvent =
       /** Instante (ms) em que a chamada a este modelo começou (antes do primeiro evento). */
       readonly attemptStartedAtMs: number
     }
-  | { readonly type: 'text'; readonly text: string }
-  | { readonly type: 'finish'; readonly usage: LlmUsage }
+  | LlmEvent
 
 /** Uma tentativa que falhou antes do primeiro token (vira uma generation com erro no Langfuse). */
 export interface FailedAttempt {

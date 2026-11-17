@@ -152,7 +152,36 @@ describe('createLlmChain', () => {
     expect(calls[0]?.headers.get('authorization')).toBe(`Bearer ${GROQ_KEY}`)
   })
 
-  it('raciocínio mínimo: thinkingLevel no Gemini, reasoning_effort no Groq; sem ele, nada', async () => {
+  it('Gemini e Groq: o raciocínio devolvido sai no finish, depois do texto', async () => {
+    const thought = { content: { role: 'model', parts: [{ text: 'Penso.', thought: true }] } }
+    const { chain } = chainWith((url) =>
+      url.startsWith(GROQ_BASE_URL)
+        ? sse(
+            [
+              {
+                ...GROQ_STREAM[0],
+                choices: [{ index: 0, delta: { role: 'assistant', reasoning: 'Pen' } }],
+              },
+              { ...GROQ_STREAM[0], choices: [{ index: 0, delta: { reasoning: 'so.' } }] },
+              ...GROQ_STREAM,
+            ],
+            true,
+          )
+        : sse([{ candidates: [{ ...thought, index: 0 }] }, ...GEMINI_STREAM]),
+    )
+    const gemini = await collect(chain[0] as LlmModel)
+    expect(gemini[0]).toEqual({ type: 'text', text: 'Vale ' })
+    expect(gemini.at(-1)).toEqual({
+      type: 'finish',
+      usage: { inputTokens: 42, outputTokens: 4 },
+      reasoning: 'Penso.',
+    })
+    const groq = await collect(chain[2] as LlmModel)
+    expect(groq[0]).toEqual({ type: 'text', text: 'Olá' })
+    expect(groq.at(-1)).toMatchObject({ type: 'finish', reasoning: 'Penso.' })
+  })
+
+  it('raciocínio: o Gemini sempre pede o resumo; nível mínimo no Gemini e no Groq só se pedido', async () => {
     const { chain, calls } = chainWith((url) =>
       url.startsWith(GROQ_BASE_URL) ? sse(GROQ_STREAM, true) : sse(GEMINI_STREAM),
     )
@@ -164,10 +193,13 @@ describe('createLlmChain', () => {
     await collect(chain[0] as LlmModel)
     const [gemini, groq, plain] = calls.map((call) => call.body as Record<string, unknown>)
     expect(gemini?.['generationConfig']).toMatchObject({
-      thinkingConfig: { thinkingLevel: 'minimal' },
+      thinkingConfig: { thinkingLevel: 'minimal', includeThoughts: true },
     })
     expect(groq?.['reasoning_effort']).toBe('low')
-    expect(plain?.['generationConfig']).not.toHaveProperty('thinkingConfig')
+    expect(plain?.['generationConfig']).toMatchObject({
+      thinkingConfig: { includeThoughts: true },
+    })
+    expect(plain?.['generationConfig']).not.toHaveProperty('thinkingConfig.thinkingLevel')
   })
 
   it.each([

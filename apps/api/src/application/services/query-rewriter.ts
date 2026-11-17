@@ -4,6 +4,7 @@ import {
   buildRewritePrompt,
   parseRewrite,
   REWRITE_MAX_OUTPUT_TOKENS,
+  REWRITE_PROMPT_VERSION,
   REWRITE_REASONING,
   REWRITE_TEMPERATURE,
 } from '../prompts/rewrite.ts'
@@ -17,9 +18,9 @@ import { type QueryTrace, untracedQuery } from './trace-sampler.ts'
  * falha da cadeia, o teto ou uma saída vazia devolvem `null`, e a busca segue com a pergunta
  * original; só o cancelamento pelo cliente propaga.
  *
- * Com o trace `rag-query` da pergunta, cada provedor tentado vira uma generation `rewrite` no
- * Langfuse, com uso e custo a preço de tabela (os tokens da reescrita não entram no custo-sombra da
- * resposta).
+ * Com o trace da pergunta, cada provedor tentado vira uma generation da reescrita no Langfuse
+ * (`rewrite-query`), com uso e custo a preço de tabela (os tokens da reescrita não entram no
+ * custo-sombra da resposta).
  */
 interface RewriteOptions {
   /** Usuário do EEE, Reino Unido ou Suíça: só modelos com ZDR. */
@@ -49,8 +50,10 @@ export function createQueryRewriter(deps: QueryRewriterDeps): QueryRewriter {
     const prompt = buildRewritePrompt(question)
     const trace = options.trace ?? untracedQuery
     const request = {
-      name: 'rewrite',
-      input: prompt.prompt,
+      purpose: 'rewrite',
+      promptVersion: REWRITE_PROMPT_VERSION,
+      system: prompt.system,
+      prompt: prompt.prompt,
       temperature: REWRITE_TEMPERATURE,
       maxOutputTokens: REWRITE_MAX_OUTPUT_TOKENS,
     } as const
@@ -82,6 +85,7 @@ export function createQueryRewriter(deps: QueryRewriterDeps): QueryRewriter {
           output += generation.text(event.text)
         } else {
           usage = event.usage
+          generation.reasoning(event.reasoning)
         }
       }
     } catch (error) {

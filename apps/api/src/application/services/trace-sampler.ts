@@ -14,8 +14,8 @@ import type {
 
 /**
  * `TraceSampler` (`docs/architecture/observabilidade.md`, "Langfuse Cloud Hobby (EU)"): decide no
- * início do `rag-query`, pelo hash do `questionId`, se a pergunta vira trace no Langfuse. A flag
- * `sampled` do navegador não entra (o OTel continua amostrando tudo para o Grafana).
+ * início do trace `answer-question`, pelo hash do `questionId`, se a pergunta vira trace no
+ * Langfuse. A flag `sampled` do navegador não entra (o OTel continua amostrando tudo para o Grafana).
  *
  * - A taxa do ambiente vale até a projeção mensal de units (`usage_daily.langfuse_units` do mês,
  *   no fuso de São Paulo, projetada linearmente) chegar ao corte; dali em diante, a taxa reduzida.
@@ -174,7 +174,7 @@ function guarded<T>(work: () => T, fallback: T): T {
 }
 
 function tracedQuery(observations: QueryObservations): QueryTrace {
-  // O trace e a observation raiz (`rag-query`).
+  // O trace e a observation raiz (`answer-question`).
   let units = 2
   let ended = false
   return {

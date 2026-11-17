@@ -50,7 +50,8 @@ pnpm --filter @teko/api seed:fixtures; echo "exit=$?"  # migrates the local data
   `infra/local/.env`):
   `docker compose -f infra/local/compose.yaml --profile langfuse up -d --wait`. `pnpm dev:secrets`
   already writes `LANGFUSE_BASE_URL` and the keys of the `teko-dev` project to `apps/api/.env`, so
-  the API sends the LLM traces (`rag-query`, `retrieval`, `answer`) of every question there
+  the API sends the LLM traces (`answer-question`, `retrieve-context`, `rewrite-query`,
+  `generate-answer`) of every question there
   (sample rate 1 in development; `LANGFUSE_SAMPLE_RATE` changes it, `LLM_TRACING_BACKEND=off`
   turns it off). To also create the model prices, the `user_feedback` score config and the 👎
   annotation queue there, run `scripts/langfuse-ops.ts` with `LANGFUSE_BASE_URL=http://localhost:3100`

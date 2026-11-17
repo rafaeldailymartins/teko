@@ -47,7 +47,7 @@ import {
  * - desconexão → o LLM é abortado pelo sinal e `aborted` é gravado em `BackgroundTasks`; a cota
  *   consumida não volta.
  *
- * O trace `rag-query` (Langfuse) começa logo depois do claim, ainda no contexto da requisição (o
+ * O trace da pergunta (Langfuse) começa logo depois do claim, ainda no contexto da requisição (o
  * mesmo `trace_id` do OTel), se o `TraceSampler` amostrar a pergunta; o `trace_id` e as units vão
  * na mesma transação da resposta, em todos os desfechos.
  */
@@ -210,12 +210,14 @@ function endUnanswered(
   outcome: typeof AnswerOutcomeKind.Failed | typeof AnswerOutcomeKind.Aborted,
   question: ClaimedQuestion,
   endedAtMs: number,
+  failure?: ErrorCode,
 ): void {
   trace.end({
     outcome,
     refusalReason: null,
+    ...(failure === undefined ? {} : { failure }),
     answer: null,
-    citations: 0,
+    citations: [],
     corpusVersion: question.corpusVersion,
     endedAtMs,
   })
@@ -265,7 +267,7 @@ export function createStreamAnswer(deps: StreamAnswerDeps): StreamAnswer {
         outcome: done.answer === null ? AnswerOutcomeKind.Refused : AnswerOutcomeKind.Answered,
         refusalReason: done.refusal?.reason ?? null,
         answer: done.answer?.markdown ?? null,
-        citations: done.answer?.citations.filter((citation) => citation.valid).length ?? 0,
+        citations: done.answer?.citations ?? [],
         corpusVersion: done.answer?.meta.corpusVersion ?? question.corpusVersion,
         endedAtMs: endedMs,
       })
@@ -287,14 +289,15 @@ export function createStreamAnswer(deps: StreamAnswerDeps): StreamAnswer {
         return
       }
       const endedMs = nowMs()
-      endUnanswered(trace, AnswerOutcomeKind.Failed, question, endedMs)
+      const code = errorCodeOf(error, timer.signal.aborted)
+      endUnanswered(trace, AnswerOutcomeKind.Failed, question, endedMs, code)
       await deps.questions.finish(question.id, deps.reservation, {
         ...baseResult({ startedMs, endedMs }, trace),
         status: StoredQuestionStatus.Failed,
       })
       recorded = true
       telemetry.answer(unansweredSignal(AnswerOutcomeKind.Failed, question))
-      yield createStreamErrorChunk(errorCodeOf(error, timer.signal.aborted))
+      yield createStreamErrorChunk(code)
     } finally {
       clearTimeout(handle)
       if (!recorded) {
@@ -328,6 +331,7 @@ export function createStreamAnswer(deps: StreamAnswerDeps): StreamAnswer {
     const trace = await tracer.start({
       questionId: question.id,
       userId: command.user.id,
+      conversationId: question.conversationId,
       question: question.questionRedacted,
       locale: question.locale,
       families: question.families,

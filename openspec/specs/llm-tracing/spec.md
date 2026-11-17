@@ -3,8 +3,8 @@
 ## Purpose
 
 Define os traces de LLM do Tekó no Langfuse Cloud: o processor no mesmo provider do OTel, a
-amostragem pelo `questionId` com corte de units, o trace `rag-query` com as generations e o custo de
-tabela, o feedback, o apagamento com a conta e o job do `ops.yml`.
+amostragem pelo `questionId` com corte de units, o trace `answer-question` com as generations e o
+custo de tabela, o feedback, o apagamento com a conta e o job do `ops.yml`.
 
 ## Requirements
 
@@ -24,7 +24,7 @@ MUST exigir `LANGFUSE_BASE_URL` em https, e as chaves SHALL vir aos pares.
 #### Scenario: Span de LLM do adapter
 
 - **WHEN** uma pergunta amostrada chama o modelo, que abre o span `chat <modelo>` com `gen_ai.*`
-- **THEN** o span vai ao Grafana e não ao Langfuse, que recebe a generation `answer`
+- **THEN** o span vai ao Grafana e não ao Langfuse, que recebe a generation `generate-answer`
 
 #### Scenario: PII que escapou da redação
 
@@ -33,8 +33,8 @@ MUST exigir `LANGFUSE_BASE_URL` em https, e as chaves SHALL vir aos pares.
 
 ### Requirement: Amostragem pelo questionId com corte de units
 
-O `TraceSampler` MUST decidir no início do `rag-query` pelo hash do `questionId`, de forma
-determinística e independente da flag `sampled` do navegador, com a taxa do ambiente (padrão:
+O `TraceSampler` MUST decidir no início do trace `answer-question` pelo hash do `questionId`, de
+forma determinística e independente da flag `sampled` do navegador, com a taxa do ambiente (padrão:
 produção 1,0, staging 0,1, CI 0) enquanto a projeção linear do mês de
 `usage_daily.langfuse_units` ficar abaixo de `LANGFUSE_MONTHLY_UNITS_CUTOFF` (35k), e a taxa
 reduzida (0,2, nunca acima da do ambiente) a partir dele ou quando a leitura falhar. Pergunta não
@@ -50,36 +50,82 @@ amostrada SHALL NOT criar observation.
 - **WHEN** a soma de `langfuse_units` falha
 - **THEN** vale a taxa reduzida e a pergunta segue normalmente
 
-### Requirement: Trace rag-query com o trace_id do OTel
+### Requirement: Trace answer-question com o trace_id do OTel
 
-Cada pergunta amostrada MUST virar um trace `rag-query` com o mesmo `trace_id` do OTel (o do
-`x-trace-id`), com o usuário só por hash, a pergunta redigida, a data e a origem, `corpus_version`,
-`prompt_version` e cache, e um span `retrieval` com os candidatos por canal, top-k, RRF, reranker e
-`retrievalMode`. Acerto do cache e recusa por cobertura SHALL gerar só a raiz. Uma falha do adapter
-SHALL NOT afetar a resposta.
+Cada pergunta amostrada MUST virar um trace `answer-question` com o `trace_id` do OTel (o do
+`x-trace-id`) e nomes estáveis com verbo no início. A raiz MUST ter a pergunta redigida como
+entrada, a resposta como saída e o contexto (data, famílias, desfecho, recusa e citações usadas com
+o trecho) na metadata. Acerto do cache e recusa por cobertura SHALL gerar só a raiz. Uma falha do
+adapter SHALL NOT afetar a resposta.
 
 #### Scenario: Mesmo trace_id
 
 - **WHEN** uma pergunta amostrada é respondida pelo stream
-- **THEN** o `x-trace-id` da resposta é o id do trace `rag-query` no Langfuse
+- **THEN** o `x-trace-id` da resposta é o id do trace `answer-question` no Langfuse
 
 #### Scenario: Acerto do cache
 
 - **WHEN** a pergunta é respondida pelo cache exato no `POST`
-- **THEN** o trace tem só a raiz `rag-query`, com `cached=true`
+- **THEN** o trace tem só a raiz `answer-question`, com `cached=true`, a pergunta na entrada e a
+  resposta do cache na saída
+
+#### Scenario: Falha da cadeia de LLM
+
+- **WHEN** a cadeia de LLM fica indisponível no stream de uma pergunta amostrada
+- **THEN** a raiz sai sem saída, com nível `ERROR` e o código do erro na mensagem de status
+
+### Requirement: Sessão e atributos de correlação em toda observation
+
+O usuário só por hash, o id da conversa como `sessionId`, as tags e a metadata curta do trace MUST
+ir em todas as observations do trace, não só na raiz.
+
+#### Scenario: Turnos de uma conversa
+
+- **WHEN** o usuário faz duas perguntas amostradas na mesma conversa
+- **THEN** os dois traces têm o id da conversa como `sessionId` e aparecem na mesma sessão
+
+#### Scenario: Filtro por usuário nas observations
+
+- **WHEN** alguém filtra as generations pelo `userId` em hash
+- **THEN** aparecem as generations das perguntas desse usuário, sem juntar com o trace
+
+### Requirement: Retriever com a consulta e os itens recuperados
+
+O retriever `retrieve-context` MUST ter na entrada a consulta redigida, a reescrita (quando houve),
+a data de referência e as famílias, e na saída os dispositivos recuperados na ordem final (chave,
+rótulo, caminho, versão, vigência, RRF e posição em cada braço), sem o texto, que vai no prompt.
+
+#### Scenario: Busca com a pergunta reescrita
+
+- **WHEN** a reescrita está ligada e a busca usa a consulta reescrita
+- **THEN** o retriever mostra a pergunta e a consulta reescrita na entrada e os dispositivos
+  recuperados, com RRF e posições, na saída
 
 ### Requirement: Uma generation por provedor tentado
 
-O trace MUST ter uma generation por provedor tentado (`answer` e, com a reescrita ligada, `rewrite`)
-com `usageDetails`, `costDetails` a preço de tabela (`services/pricing.ts`),
-`metadata.billed_usd=0` e o tempo até o primeiro token; a tentativa que falhou antes do primeiro
+O trace MUST ter uma generation por provedor tentado (`generate-answer` e, com a reescrita ligada,
+`rewrite-query`) com as mensagens `system` e `user` no formato da OpenAI na entrada, a mensagem do
+assistente na saída, a versão do prompt, `usageDetails`, `costDetails` a preço de tabela,
+`metadata.billed_usd=0` e o tempo até o primeiro token. A tentativa que falhou antes do primeiro
 token SHALL vir com `level=ERROR`, o tipo da falha e custo 0.
 
 #### Scenario: Fallback antes do primeiro token
 
 - **WHEN** o Gemini primário responde 429 e o de fallback responde
-- **THEN** o trace tem duas generations `answer`: a primeira com `level=ERROR` e `rate_limited`, sem
-  custo, e a segunda com uso, custo e TTFT
+- **THEN** o trace tem duas generations `generate-answer`: a primeira com `level=ERROR` e
+  `rate_limited`, sem custo, e a segunda com uso, custo e TTFT
+
+### Requirement: Raciocínio do modelo na generation
+
+Quando o modelo devolve raciocínio (o resumo do Gemini ou o texto do `gpt-oss`), a generation MUST
+trazê-lo num item `reasoning` antes da mensagem do assistente, sem mudar o fallback nem o tempo até
+o primeiro token, que continuam decididos pelo primeiro texto.
+
+#### Scenario: Modelo que pensa antes de responder
+
+- **WHEN** o modelo devolve raciocínio antes do texto da resposta
+- **THEN** a generation mostra o raciocínio antes da resposta, e o primeiro token e o fallback
+  continuam contados pelo texto
 
 ### Requirement: Units e custo gravados por pergunta
 

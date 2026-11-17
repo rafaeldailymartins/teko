@@ -17,7 +17,7 @@ import type { Evidence } from '#domain/qa/evidence.ts'
 import { createStreamSanitizer } from '#domain/qa/stream-sanitizer.ts'
 import type { ResolvedReference } from '#domain/vigencia/reference-resolution.ts'
 import type { LlmUsage } from '../ports/llm-port.ts'
-import type { RetrievalSummary } from '../ports/llm-tracing.ts'
+import type { RetrievalSummary, RetrievedItem } from '../ports/llm-tracing.ts'
 import type { StoredReferenceInput } from '../ports/question-repository.ts'
 import { noopTelemetry, type Telemetry } from '../ports/telemetry.ts'
 import {
@@ -25,6 +25,7 @@ import {
   ANSWER_TEMPERATURE,
   buildAnswerPrompt,
   PROMPT_CANARY,
+  PROMPT_VERSION,
 } from '../prompts/answer.ts'
 import {
   interruptionOf,
@@ -54,7 +55,7 @@ export interface AnswerPipelineInput {
   readonly locale: Locale
   readonly zeroDataRetention: boolean
   readonly signal: AbortSignal
-  /** Trace `rag-query` da pergunta (Langfuse); padrão: nenhum. */
+  /** Trace da pergunta no Langfuse; padrão: nenhum. */
   readonly trace?: QueryTrace
 }
 
@@ -119,45 +120,71 @@ type Retrieval = Awaited<ReturnType<RetrieveEvidence>>
 
 const round4 = (value: number): number => Math.round(value * 10_000) / 10_000
 
-const INTERRUPTED_RETRIEVAL: RetrievalSummary = {
-  mode: null,
-  topK: 0,
-  candidatesByChannel: { lexical: 0, semantic: 0, reference: 0 },
-  rrf: [],
-  reranked: false,
-  rewritten: false,
-  uncoveredFamilies: [],
-  refusalReason: null,
+/** O que a busca recebeu: a pergunta redigida e as famílias pedidas. */
+interface RetrievalRequest {
+  readonly query: string
+  readonly families: readonly string[]
 }
 
-/** O que o span `retrieval` do Langfuse mostra da busca (sem o texto das evidências). */
-export function retrievalSummary(retrieval: Retrieval): RetrievalSummary {
-  if (retrieval.outcome !== RetrievalOutcome.Evidence) {
+/** Busca que não chegou ao fim (cancelamento ou falha): só o que ela recebeu. */
+function interruptedRetrieval(request: RetrievalRequest): RetrievalSummary {
+  return {
+    query: request.query,
+    rewrittenQuery: null,
+    referenceDate: null,
+    families: [...request.families],
+    mode: null,
+    items: [],
+    reranked: false,
+    uncoveredFamilies: [],
+    refusalReason: null,
+  }
+}
+
+function retrievedItem(evidence: Evidence): RetrievedItem {
+  return {
+    chunkId: evidence.chunkId,
+    stableKey: evidence.stableKey,
+    label: evidence.citationLabel,
+    headingPath: evidence.headingPath,
+    family: evidence.family,
+    documentVersion: evidence.document.versionLabel,
+    validity: evidence.validity,
+    rrf: round4(evidence.rrf),
+    lexicalRank: evidence.lexicalRank,
+    semanticRank: evidence.semanticRank,
+    referenceRank: evidence.referenceRank,
+  }
+}
+
+/**
+ * O que o retriever do Langfuse mostra da busca: a consulta (e a reescrita), a data e as famílias,
+ * e os dispositivos recuperados sem o texto (que vai inteiro no prompt da resposta).
+ */
+export function retrievalSummary(
+  retrieval: Retrieval,
+  request: RetrievalRequest,
+): RetrievalSummary {
+  const base = interruptedRetrieval(request)
+  if (retrieval.outcome === RetrievalOutcome.NeedsClarification) {
+    return { ...base, refusalReason: RefusalReason.NoEvidence }
+  }
+  if (retrieval.outcome === RetrievalOutcome.Refused) {
     return {
-      ...INTERRUPTED_RETRIEVAL,
-      mode: retrieval.outcome === RetrievalOutcome.Refused ? retrieval.mode : null,
-      refusalReason:
-        retrieval.outcome === RetrievalOutcome.Refused
-          ? retrieval.reason
-          : RefusalReason.NoEvidence,
+      ...base,
+      referenceDate: retrieval.reference.value,
+      mode: retrieval.mode,
+      refusalReason: retrieval.reason,
     }
   }
-  const { evidence } = retrieval
-  const count = (rank: (item: Evidence) => number | null): number =>
-    evidence.filter((item) => rank(item) !== null).length
   return {
+    ...base,
+    rewrittenQuery: retrieval.rewrittenQuery,
+    referenceDate: retrieval.reference.value,
     mode: retrieval.mode,
-    topK: evidence.length,
-    candidatesByChannel: {
-      lexical: count((item) => item.lexicalRank),
-      semantic: count((item) => item.semanticRank),
-      reference: count((item) => item.referenceRank),
-    },
-    rrf: evidence.map((item) => round4(item.rrf)),
+    items: retrieval.evidence.map(retrievedItem),
     reranked: retrieval.reranked,
-    rewritten: retrieval.rewrittenQuery !== null,
     uncoveredFamilies: [...retrieval.uncoveredFamilies],
-    refusalReason: null,
   }
 }
 
@@ -173,6 +200,7 @@ export async function* runAnswerPipeline(
   yield { type: 'start', messageId: input.messageId }
   const trace = input.trace ?? untracedQuery
   const retrievalSpan = trace.retrieval(deps.nowMs())
+  const retrievalRequest = { query: input.question, families: input.families }
   let retrieval: Retrieval
   try {
     retrieval = await deps.retrieveEvidence({
@@ -185,11 +213,11 @@ export async function* runAnswerPipeline(
       trace,
     })
   } catch (error) {
-    // Cancelamento ou falha da busca: o span fecha vazio e o `rag-query` leva o desfecho.
-    retrievalSpan.end(INTERRUPTED_RETRIEVAL, deps.nowMs())
+    // Cancelamento ou falha da busca: o retriever fecha sem itens e a raiz leva o desfecho.
+    retrievalSpan.end(interruptedRetrieval(retrievalRequest), deps.nowMs())
     throw error
   }
-  retrievalSpan.end(retrievalSummary(retrieval), deps.nowMs())
+  retrievalSpan.end(retrievalSummary(retrieval, retrievalRequest), deps.nowMs())
   if (retrieval.outcome === RetrievalOutcome.NeedsClarification) {
     // A data já foi resolvida no POST; com a mesma entrada, não muda. Por garantia, recusa.
     const refusal: Refusal = { reason: RefusalReason.NoEvidence }
@@ -237,8 +265,10 @@ export async function* runAnswerPipeline(
   let model: string | null = null
   let firstTokenAtMs: number | null = null
   const generationRequest = {
-    name: 'answer',
-    input: prompt.prompt,
+    purpose: 'answer',
+    promptVersion: PROMPT_VERSION,
+    system: prompt.system,
+    prompt: prompt.prompt,
     temperature: ANSWER_TEMPERATURE,
     maxOutputTokens: ANSWER_MAX_OUTPUT_TOKENS,
   } as const
@@ -289,6 +319,7 @@ export async function* runAnswerPipeline(
         }
       } else {
         usage = event.usage
+        generation.reasoning(event.reasoning)
       }
     }
     tail = generation.text(sanitizer.flush())

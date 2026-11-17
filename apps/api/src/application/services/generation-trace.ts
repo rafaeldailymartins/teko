@@ -7,14 +7,14 @@ import type { QueryTrace } from './trace-sampler.ts'
 /**
  * Generations do Langfuse de uma chamada à cadeia de LLM (a resposta e a reescrita da pergunta):
  * uma por provedor tentado. A que falhou antes do primeiro token vem do `onFailedAttempt` do
- * router, sem uso nem custo; a que respondeu abre no `start` do router, junta o texto que saiu e
- * fecha uma vez, com uso, custo a preço de tabela (`pricing.ts`) e TTFT.
+ * router, sem uso nem custo; a que respondeu abre no `start` do router, junta o texto que saiu e o
+ * raciocínio do `finish`, e fecha uma vez, com uso, custo a preço de tabela (`pricing.ts`) e TTFT.
  */
 
 /** O que a chamada pede ao modelo (igual para todos os provedores tentados). */
 export type GenerationRequest = Pick<
   GenerationStart,
-  'name' | 'input' | 'temperature' | 'maxOutputTokens'
+  'purpose' | 'promptVersion' | 'system' | 'prompt' | 'temperature' | 'maxOutputTokens'
 >
 
 const NO_USAGE: LlmUsage = { inputTokens: 0, outputTokens: 0 }
@@ -39,6 +39,7 @@ export function recordFailedGeneration(
       cost: NO_COST,
       firstTokenAtMs: null,
       output: null,
+      reasoning: null,
       endedAtMs: attempt.endedAtMs,
     })
 }
@@ -49,6 +50,8 @@ export interface GenerationTracker {
   start(event: StartEvent): void
   /** Junta o texto que saiu e o devolve, para encadear. */
   text(piece: string): string
+  /** Guarda o raciocínio que o modelo devolveu no `finish` (vazio ou ausente: nenhum). */
+  reasoning(text: string | undefined): void
   /** Fecha a generation aberta (se houver), uma vez; `error` é o tipo da falha ou `null`. */
   end(usage: LlmUsage, firstTokenAtMs: number | null, error: string | null): void
 }
@@ -60,6 +63,7 @@ export function trackGeneration(
 ): GenerationTracker {
   let open: { readonly observation: GenerationObservation; readonly model: string } | null = null
   let output = ''
+  let reasoning: string | null = null
   return {
     start(event) {
       open = {
@@ -76,6 +80,9 @@ export function trackGeneration(
       output += piece
       return piece
     },
+    reasoning(text) {
+      reasoning = text === undefined || text.trim() === '' ? null : text
+    },
     end(usage, firstTokenAtMs, error) {
       if (open === null) {
         return
@@ -86,6 +93,7 @@ export function trackGeneration(
         cost: costBreakdown(open.model, usage),
         firstTokenAtMs,
         output: output === '' ? null : output,
+        reasoning,
         endedAtMs: nowMs(),
       })
       open = null
