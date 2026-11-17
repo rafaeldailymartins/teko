@@ -187,8 +187,29 @@ const MINUTES_PER_MONTH = 43_200
 const UID = /^teko-[a-z0-9-]{1,35}$/u
 const DURATION = /^\d+[smh]$/u
 const BUILTIN_VARIABLES = new Set(['__rate_interval', '__interval', '__range', 'datasource'])
-// Partes do domínio separadas por ponto, sem classes que se sobreponham (sem backtracking).
-const EMAIL = /[\w%+.-]+@[\w-]+(?:\.[\w-]+)+/u
+const EMAIL_LOCAL_CHAR = /[\w%+.-]/u
+const EMAIL_DOMAIN_CHAR = /[\w.-]/u
+
+/**
+ * Há um e-mail em `text` (um caractere de usuário, `@` e um domínio com ao menos dois rótulos)?
+ * Varre a partir de cada `@`, em tempo linear: uma regex do tipo `[\w%+.-]+@...` sem âncora é
+ * tentada em cada posição do texto e fica quadrática num texto longo sem `@` (Sonar S8786).
+ */
+export function containsEmail(text: string): boolean {
+  for (let at = text.indexOf('@'); at !== -1; at = text.indexOf('@', at + 1)) {
+    if (at === 0 || !EMAIL_LOCAL_CHAR.test(text.charAt(at - 1))) continue
+    let end = at + 1
+    while (end < text.length && EMAIL_DOMAIN_CHAR.test(text.charAt(end))) end += 1
+    // Rótulos não vazios do começo do domínio, até o primeiro vazio (`a@b.c..` ainda vale por `b.c`).
+    let labels = 0
+    for (const label of text.slice(at + 1, end).split('.')) {
+      if (label === '') break
+      labels += 1
+    }
+    if (labels >= 2) return true
+  }
+  return false
+}
 
 // --- Leitura ---------------------------------------------------------------------------------
 
@@ -423,7 +444,8 @@ export function validate(
   errors.push(...validateAlerts(code.alerts, runbooks))
   errors.push(...validateChecks(code.checks))
   for (const { file, text } of files) {
-    if (EMAIL.test(text)) errors.push(`${file}: e-mail no repositório (use GRAFANA_ALERT_EMAILS)`)
+    if (containsEmail(text))
+      errors.push(`${file}: e-mail no repositório (use GRAFANA_ALERT_EMAILS)`)
   }
   return errors
 }
@@ -630,7 +652,7 @@ export function expandContactPoint(stack: StackSpec, addresses: string): Record<
     .split(/[;,\s]+/u)
     .map((item) => item.trim())
     .filter((item) => item !== '')
-  if (list.length === 0 || list.some((item) => !EMAIL.test(item))) {
+  if (list.length === 0 || list.some((item) => !containsEmail(item))) {
     throw new RangeError('GRAFANA_ALERT_EMAILS precisa ter um ou mais e-mails separados por ;')
   }
   return {
