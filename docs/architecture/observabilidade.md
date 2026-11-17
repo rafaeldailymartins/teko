@@ -246,7 +246,9 @@ Grafana e do Synthetic Monitoring por `scripts/grafana-apply.ts`, no job `grafan
   (`teko_vercel_usage_ratio` por recurso); sinais de RAG por ambiente e `corpus_version`.
 - **Synthetic Monitoring** substitui UptimeRobot e Checkly: `/healthz` de `tekoia.vercel.app` e
   `tekoia-staging.vercel.app` a cada 5 min (sem DB) e a landing de produção (`/pt-BR/`) a cada
-  15 min, da sonda de São Paulo: cerca de 20 mil das 100 mil execuções mensais do Free.
+  15 min, da sonda de São Paulo: 20.160 das 100 mil execuções mensais do Free. O check da landing
+  fica desligado (`enabled: false`, 0 execução) até o primeiro deploy do web de produção na F7;
+  até lá são 17.280.
 - **Métricas do `ops.yml`** (job `quotas`, uma vez por dia, OTLP/HTTP com `service.name=teko-ops`):
   `teko_neon_compute_hours` e `teko_neon_cu_hours_ratio` por `project`,
   `teko_coverage_verified_age_days` por `family`, `teko_token_expiry_days` por `token` e
@@ -258,7 +260,9 @@ Grafana e do Synthetic Monitoring por `scripts/grafana-apply.ts`, no job `grafan
 - **Alertas por e-mail:** 5xx > 2% em 10 min; p95 de `POST /api/v1/questions` ou TTFT p95 > 3 s;
   429 por provedor > 20% em 15 min; `teko_quota_used_ratio` > 0,7; CU-h > 70% pró-rata; Langfuse
   projetado > 35k; `teko_vercel_usage_ratio` > 0,5 e > 0,75 (o kill switch entra em 0,85); 503
-  `DEPLOYMENT_PAUSED` visto pelo Synthetic Monitoring; `teko_coverage_verified_age_days > 3`;
+  `DEPLOYMENT_PAUSED` visto pelo Synthetic Monitoring; check do Synthetic Monitoring falhando em
+  todas as execuções de 20 min (timeout, erro de rede ou status fora de 200, inclusive o 500);
+  `teko_coverage_verified_age_days > 3`;
   achado do `prod-vuln-scan`; tokens da Vercel vencendo em até 30 dias; falha do
   `weekly-maintenance` ou do `vercel-usage`; taxa de recusa ou de `lexical_only` fora do normal.
 
@@ -271,7 +275,7 @@ Grafana e do Synthetic Monitoring por `scripts/grafana-apply.ts`, no job `grafan
 | `provider-outage.md`    | existe   | breaker e fallback; `LLM_KILL_SWITCH`; troca de modelos por env; 5xx, latência e embeddings fora do ar                                                     |
 | `quota-exhausted.md`    | existe   | qual cota estourou; reduzir tetos e amostragens por env                                                                                                    |
 | `neon-suspended.md`     | existe   | `LLM_KILL_SWITCH`; esperar o ciclo do Neon; contingência opcional com projeto novo e o corpus pelo snapshot                                                |
-| `ops-alerts.md`         | existe   | cobertura sem verificação, jobs do `ops.yml` sem sucesso, achado do `prod-vuln-scan`, recusa fora do normal                                                |
+| `ops-alerts.md`         | existe   | cobertura sem verificação, jobs do `ops.yml` sem sucesso, achado do `prod-vuln-scan`, check sintético falhando, recusa fora do normal                      |
 | `vercel-paused.md`      | F7       | diagnóstico; esperar os 30 dias e **retomar à mão** (`vercel project resume` ou a API `unpause`); corte para o Plano B Render; nunca Pro nem segunda conta |
 | `vercel-deploy.md`      | F7       | fluxo do deploy `--prebuilt`, WAF, Deployment Protection, opt-out de Model Training                                                                        |
 | `budget-kill-switch.md` | F7       | limiares 50/75/85/95%; `LLM_KILL_SWITCH` com redeploy; regra 1 do WAF                                                                                      |

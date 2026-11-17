@@ -1,5 +1,5 @@
 {
-  "$comment": "Alertas por e-mail (docs/architecture/observabilidade.md, seção 'Alertas por e-mail'), um por item; o grafana-apply.ts expande cada regra na consulta A (instantânea) e no threshold B, com noDataState OK e notificação ao contact point teko-email. Métricas empurradas uma vez por dia pelo ops.yml usam last_over_time(...[2d]). source: api (OTel da API), ops (ops.yml), synthetic (Synthetic Monitoring), langfuse (add-llm-tracing-langfuse) e f7 (vercel-usage, weekly-maintenance, prod-vuln-scan): sem a fonte, a regra fica em Normal.",
+  "$comment": "Alertas por e-mail (docs/architecture/observabilidade.md, seção 'Alertas por e-mail'), um por item; o grafana-apply.ts expande cada regra na consulta A (instantânea) e no threshold B, com noDataState OK e notificação ao contact point teko-email. Métricas empurradas uma vez por dia pelo ops.yml usam last_over_time(...[2d]). source: api (OTel da API), ops (ops.yml), synthetic (Synthetic Monitoring: 503 no /healthz e check falhando em 20 min), langfuse (add-llm-tracing-langfuse) e f7 (vercel-usage, weekly-maintenance, prod-vuln-scan): sem a fonte, a regra fica em Normal.",
   "groups": [
     { "name": "teko-api", "interval": "1m" },
     { "name": "teko-synthetic", "interval": "1m" },
@@ -119,6 +119,21 @@
       "summary": "{{ $labels.instance }} respondeu 503 ao Synthetic Monitoring",
       "description": "Na Vercel o /healthz só devolve 503 quando o projeto está pausado (DEPLOYMENT_PAUSED, cota do Hobby estourada) ou numa queda da plataforma; a drenagem por SIGTERM só existe fora dela.",
       "source": "synthetic"
+    },
+    {
+      "uid": "teko-synthetic-failed",
+      "title": "Synthetic Monitoring: check falhando há 20 min",
+      "group": "teko-synthetic",
+      "expr": "max by (job, instance) (max_over_time(probe_success{job=~\"teko-.+\"}[20m]))",
+      "op": "lt",
+      "threshold": 1,
+      "for": "0s",
+      "severity": "critical",
+      "runbook": "ops-alerts.md#check-sintetico-falhando",
+      "summary": "{{ $labels.job }} falhou em todas as execuções dos últimos 20 min ({{ $labels.instance }})",
+      "description": "Nenhuma execução do check teve sucesso em 20 min (4 dos checks de 5 min, ao menos 1 do de 15 min): timeout, erro de rede, TLS, status fora de 200 ou corpo sem o texto esperado. Um 503 no /healthz também dispara o teko-deployment-paused. Check desligado para de gerar amostras e sai do alerta em até 20 min.",
+      "source": "synthetic",
+      "rangeSeconds": 1200
     },
     {
       "uid": "teko-neon-cu-hours",

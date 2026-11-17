@@ -1,8 +1,9 @@
-# Runbook: alertas de operação (cobertura, jobs do `ops.yml` e sinais de RAG)
+# Runbook: alertas de operação (cobertura, jobs do `ops.yml`, checks sintéticos e sinais de RAG)
 
 Cobre os alertas sem runbook temático próprio: `teko-coverage-stale`, `teko-ops-job-stale`,
-`teko-prod-vuln-scan` e `teko-rag-refusal-anomaly` (`infra/grafana/alerts.json`). Os jobs do
-`ops.yml` e as métricas que eles empurram estão em [infra/grafana/README.md](../../infra/grafana/README.md).
+`teko-prod-vuln-scan`, `teko-synthetic-failed` e `teko-rag-refusal-anomaly`
+(`infra/grafana/alerts.json`). Os jobs do `ops.yml`, os checks e as métricas que eles empurram
+estão em [infra/grafana/README.md](../../infra/grafana/README.md).
 
 <a id="cobertura-sem-verificacao"></a>
 
@@ -51,6 +52,43 @@ O job diário (F7) roda o `pnpm audit --prod` e o osv-scanner no commit da produ
    com a justificativa da [ADR 0002](../adr/0002-supply-chain-pnpm.md).
 3. Publique como hotfix: release patch a partir de `main`
    ([CI/CD](../architecture/ci-cd-e-ambientes.md#releases-git-cliff--app-teko-release-bot)).
+
+<a id="check-sintetico-falhando"></a>
+
+## Check sintético falhando há 20 min
+
+`probe_success` (0 ou 1 por execução) ficou em 0 em todas as execuções de um check `teko-*` nos
+últimos 20 min: 4 seguidas dos `/healthz` (5 min) e ao menos 1 da landing (15 min). O rótulo `job`
+diz o check e `instance`, o alvo. O alerta volta a Normal na primeira execução com sucesso.
+
+1. **O que a sonda viu:** Testing & synthetics → Synthetics → Checks → o check → logs das últimas
+   execuções (motivo da falha: timeout, DNS, TLS, status, corpo sem o texto esperado). No Explore,
+   `probe_http_status_code{job="<check>"}` e `probe_duration_seconds{job="<check>"}` mostram o
+   status (0 quando não houve resposta) e quanto cada execução levou.
+2. **Confira de fora:** `curl -sS -i <instance>` da sua máquina. Responde 200 com
+   `"status":"ok"` (ou com a landing) enquanto a sonda falha: suspeite da sonda (passo 5).
+3. **Queda da API** (só o `/healthz` de um projeto, com 500 ou 504 e `x-vercel-error`
+   `FUNCTION_INVOCATION_FAILED` ou `FUNCTION_INVOCATION_TIMEOUT`, ou 200 sem `"status":"ok"`): a
+   Function não sobe ou não responde certo. O `/healthz` não toca o banco, então o Neon não explica
+   a falha. Veja os logs da deployment atual na Vercel e o dashboard **Tekó · API (RED)**; se começou
+   num deploy, volte para a deployment anterior (`release-rollback.md`, F7). O `teko-api-5xx` costuma
+   vir junto quando há tráfego.
+4. **Queda da Vercel** (os dois projetos ao mesmo tempo, ou a landing junto com o `/healthz` de
+   produção: ela é estática e não passa pela Function): confira
+   [vercel-status.com](https://www.vercel-status.com/). Não há o que fazer além de acompanhar; se
+   passar de horas, avalie o corte para o Plano B (`vercel-paused.md`, F7).
+   - **503 no `/healthz`** é `DEPLOYMENT_PAUSED` (ou queda da plataforma): o
+     `teko-deployment-paused` dispara já na primeira execução com 503, e este alerta vem uns 20 min
+     depois, porque o check só aceita 200. Siga o `vercel-paused.md` (F7); este alerta é
+     consequência.
+5. **Problema da sonda** (todos os checks falham juntos com timeout ou erro de conexão, status 0,
+   enquanto o `curl` de fora e o tráfego real vão bem): Synthetics → Probes → `SaoPaulo` (online ou
+   não) e [status.grafana.com](https://status.grafana.com/). Não há o que mudar no Tekó; o alerta
+   some quando a sonda volta. Sonda desligada por completo não gera amostra, e o alerta fica em
+   Normal (`noDataState: OK`): o painel do check mostra o buraco.
+6. **Só a landing (`teko-landing-production`):** 404 é o web de produção fora do ar ou ainda não
+   publicado; o check fica desligado (`enabled: false`) até o primeiro deploy do web de produção da
+   F7. Corpo sem `Tekó` é deploy errado na raiz.
 
 <a id="recusa-ou-lexical-only-fora-do-normal"></a>
 

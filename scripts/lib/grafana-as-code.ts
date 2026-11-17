@@ -176,6 +176,7 @@ export const REQUIRED_ALERTS: Readonly<Record<string, string>> = {
   'teko-ops-job-stale': 'falha do weekly-maintenance ou do vercel-usage',
   'teko-rag-refusal-anomaly': 'taxa de recusa fora do normal',
   'teko-rag-lexical-only': 'taxa de lexical_only fora do normal',
+  'teko-synthetic-failed': 'check do Synthetic Monitoring falhando em todas as execuções de 20 min',
 }
 
 /** Teto de execuções mensais dos checks: metade das 100 mil do Grafana Cloud Free. */
@@ -287,7 +288,14 @@ function checkExpr(where: string, expr: string, variables: ReadonlySet<string>):
   return errors
 }
 
-export function monthlyExecutions(check: Pick<CheckSpec, 'frequency' | 'probes'>): number {
+/**
+ * Execuções por mês de um check. O Synthetic Monitoring cobra cada execução feita, por sonda; check
+ * desligado (`enabled: false`) não roda e conta 0.
+ */
+export function monthlyExecutions(
+  check: Pick<CheckSpec, 'frequency' | 'probes' | 'enabled'>,
+): number {
+  if (!check.enabled) return 0
   return Math.round((check.probes.length * MINUTES_PER_MONTH) / (check.frequency / 60_000))
 }
 
@@ -376,6 +384,8 @@ function validateChecks(checks: ChecksSpec): string[] {
       errors.push(`${where}: timeout fora de 1..60 s ou maior que a frequência`)
     }
     if (check.probes.length === 0) errors.push(`${where}: sem sondas`)
+    if (typeof check.enabled !== 'boolean')
+      errors.push(`${where}: enabled precisa ser true ou false`)
     total += monthlyExecutions(check)
   }
   if (total > SM_MONTHLY_EXECUTION_BUDGET) {

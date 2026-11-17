@@ -1,5 +1,5 @@
 {
-  "$comment": "Checks do Synthetic Monitoring (corpo do POST /api/v1/check, com as sondas por nome; o grafana-apply.ts troca pelo ID). Cota do Free: 100 mil execuções/mês; conta = sondas x 43.200 / frequência em minutos (ver README.md). /healthz nunca toca o banco (get-health.ts). O domínio de produção dos dois projetos Vercel é público (Standard Protection), então nenhum check precisa do bypass.",
+  "$comment": "Checks do Synthetic Monitoring (corpo do POST /api/v1/check, com as sondas por nome; o grafana-apply.ts troca pelo ID). Cota do Free: 100 mil execuções/mês; conta = sondas x 43.200 / frequência em minutos, só dos checks ligados (ver README.md). O teko-landing-production fica com enabled false até o primeiro deploy do web de produção (F7): até lá /pt-BR/ responde 404, e o check só falharia e gastaria execuções; o deploy da F7 o liga. /healthz nunca toca o banco (get-health.ts). O domínio de produção dos dois projetos Vercel é público (Standard Protection), então nenhum check precisa do bypass.",
   "checks": [
     {
       "job": "teko-healthz-production",
@@ -45,7 +45,7 @@
       "frequency": 900000,
       "timeout": 10000,
       "probes": ["SaoPaulo"],
-      "enabled": true,
+      "enabled": false,
       "basicMetricsOnly": true,
       "alertSensitivity": "none",
       "labels": [{ "name": "env", "value": "production" }],

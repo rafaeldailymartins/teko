@@ -57,17 +57,44 @@ describe('infra/grafana (validação offline, a mesma do --validate)', () => {
 
   it('checks: /healthz dos dois projetos e a landing de produção, dentro da cota', () => {
     assert.deepEqual(
-      code.checks.checks.map((check) => check.target),
+      code.checks.checks.map((check) => [check.target, check.enabled]),
       [
-        'https://tekoia.vercel.app/healthz',
-        'https://tekoia-staging.vercel.app/healthz',
-        'https://tekoia.vercel.app/pt-BR/',
+        ['https://tekoia.vercel.app/healthz', true],
+        ['https://tekoia-staging.vercel.app/healthz', true],
+        // Desligado até o primeiro deploy do web de produção (F7): até lá só responde 404.
+        ['https://tekoia.vercel.app/pt-BR/', false],
       ],
     )
     const total = code.checks.checks.reduce((sum, check) => sum + monthlyExecutions(check), 0)
-    // 2 x (1 sonda x 43.200 / 5 min) + 1 x (43.200 / 15 min) = 8.640 + 8.640 + 2.880.
-    assert.equal(total, 20_160)
+    // 2 x (1 sonda x 43.200 / 5 min) = 8.640 + 8.640; a landing desligada não roda e conta 0.
+    assert.equal(total, 17_280)
     assert.ok(total <= SM_MONTHLY_EXECUTION_BUDGET)
+  })
+
+  it('check desligado conta 0 execuções; ligado, sondas x 43.200 / frequência em minutos', () => {
+    const landing = code.checks.checks.find((check) => check.job === 'teko-landing-production')
+    assert.ok(landing)
+    assert.equal(monthlyExecutions(landing), 0)
+    assert.equal(monthlyExecutions({ ...landing, enabled: true }), 2880)
+  })
+
+  it('alerta de check falho: todos os checks teko-* sem sucesso em 20 min', () => {
+    const rule = code.alerts.rules.find((item) => item.uid === 'teko-synthetic-failed')
+    assert.ok(rule)
+    assert.equal(
+      rule.expr,
+      'max by (job, instance) (max_over_time(probe_success{job=~"teko-.+"}[20m]))',
+    )
+    assert.deepEqual(
+      [rule.group, rule.source, rule.severity, rule.op, rule.threshold, rule.for],
+      ['teko-synthetic', 'synthetic', 'critical', 'lt', 1, '0s'],
+    )
+    assert.equal(rule.rangeSeconds, 1200)
+    // A janela de 20 min cobre 4 execuções dos checks de 5 min e ao menos 1 do de 15 min.
+    const runsInWindow = code.checks.checks.map((check) =>
+      Math.floor(20 / (check.frequency / 60_000)),
+    )
+    assert.deepEqual(runsInWindow, [4, 4, 1])
   })
 
   it('o painel de sinais de RAG cobre recusa por motivo, lexical_only e citações invalidadas', () => {
@@ -129,6 +156,11 @@ describe('validate (casos de erro)', () => {
       checks: { checks: [{ ...check, frequency: 60_000, probes: ['SaoPaulo', 'Paris'] }] },
     }
     assert.ok(validate(heavy, runbooks).some((error) => error.includes('86400 execuções/mês')))
+    // O mesmo check desligado não roda e não conta na cota.
+    const [disabled] = heavy.checks.checks
+    assert.ok(disabled)
+    const off: GrafanaAsCode = { ...code, checks: { checks: [{ ...disabled, enabled: false }] } }
+    assert.deepEqual(validate(off, runbooks), [])
   })
 
   it('e-mail em qualquer JSON de infra/grafana', () => {
@@ -306,6 +338,10 @@ describe('applyGrafana', () => {
         ...code.checks.checks.map(() => 'check:create'),
       ],
     )
+    assert.deepEqual(
+      plan.filter((item) => item.kind === 'check').map((item) => item.note),
+      ['8640 execuções/mês', '8640 execuções/mês', 'desligado, 0 execuções/mês'],
+    )
   })
 
   it('apply cria tudo na ordem, atualiza o check existente e apaga o teko-* que saiu', async () => {
@@ -338,6 +374,11 @@ describe('applyGrafana', () => {
       | { id: number; tenantId: number; probes: number[] }
       | undefined
     assert.deepEqual([update?.id, update?.tenantId, update?.probes], [11, 3, [7]])
+    // O check desligado é criado assim mesmo, com enabled false: ligar na F7 é só trocar o valor.
+    const landing = writes
+      .map((call) => call.body as { job?: string; enabled?: boolean } | undefined)
+      .find((body) => body?.job === 'teko-landing-production')
+    assert.equal(landing?.enabled, false)
     const dashboard = writes.find((call) => call.url.endsWith('/api/dashboards/db'))?.body as
       | { folderUid: string; overwrite: boolean }
       | undefined

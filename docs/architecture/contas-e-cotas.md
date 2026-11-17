@@ -97,7 +97,8 @@ públicos: só documentos oficiais, snapshots do corpus e métricas, nunca dado 
   sinal primário, com breaker e fallback.
 - **Langfuse Hobby:** 50k units/mês; o sampler corta em 35k projetados.
 - **Grafana Cloud Free** (10k séries ativas, 50 GB de logs, 14 dias de retenção, 100k execuções
-  de Synthetic Monitoring): os checks usam cerca de 20 mil execuções por mês, e a validação de
+  de Synthetic Monitoring): os checks usam 17.280 execuções por mês até a F7 e 20.160 com o da
+  landing ligado (check desligado não conta), e a validação de
   `infra/grafana/` reprova acima de 50 mil. **PostHog Free:** volumes estimados bem abaixo dos
   limites. Os dois conferidos à mão no runbook `quotas.md`.
 - **Render Free:** 750 instance-hours por mês, só durante o corte do Plano B.
