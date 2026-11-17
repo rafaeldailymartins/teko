@@ -35,12 +35,25 @@ export type RoutedEvent =
       readonly model: string
       /** Modelo que falhou antes do primeiro token (o primeiro da cadeia), quando houve fallback. */
       readonly fallbackFrom: string | null
+      /** Instante (ms) em que a chamada a este modelo começou (antes do primeiro evento). */
+      readonly attemptStartedAtMs: number
     }
   | { readonly type: 'text'; readonly text: string }
   | { readonly type: 'finish'; readonly usage: LlmUsage }
 
+/** Uma tentativa que falhou antes do primeiro token (vira uma generation com erro no Langfuse). */
+export interface FailedAttempt {
+  readonly provider: LlmModel['provider']
+  readonly model: string
+  readonly error: LlmErrorKind
+  readonly startedAtMs: number
+  readonly endedAtMs: number
+}
+
 interface RouteOptions {
   readonly zeroDataRetentionOnly: boolean
+  /** Avisado de cada modelo que falhou antes do primeiro token, antes do fallback. */
+  readonly onFailedAttempt?: (attempt: FailedAttempt) => void
 }
 
 export interface ProviderRouter {
@@ -108,6 +121,7 @@ export function createProviderRouter(deps: {
     async *stream(request, options) {
       let fallbackFrom: string | null = null
       for (const model of candidates(options)) {
+        const attemptStartedAtMs = now()
         const iterator = model.stream(request)[Symbol.asyncIterator]()
         let current: IteratorResult<LlmEvent>
         try {
@@ -117,6 +131,13 @@ export function createProviderRouter(deps: {
             throw error
           }
           recordFailure(model, error)
+          options.onFailedAttempt?.({
+            provider: model.provider,
+            model: model.model,
+            error: error.kind,
+            startedAtMs: attemptStartedAtMs,
+            endedAtMs: now(),
+          })
           fallbackFrom ??= model.model
           continue
         }
@@ -124,7 +145,13 @@ export function createProviderRouter(deps: {
         if (fallbackFrom !== null) {
           telemetry.providerFallback(fallbackFrom, model.model)
         }
-        yield { type: 'start', provider: model.provider, model: model.model, fallbackFrom }
+        yield {
+          type: 'start',
+          provider: model.provider,
+          model: model.model,
+          fallbackFrom,
+          attemptStartedAtMs,
+        }
         while (current.done !== true) {
           yield current.value
           try {

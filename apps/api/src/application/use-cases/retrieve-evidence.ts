@@ -13,6 +13,7 @@ import {
   ResolutionKind,
   type ResolvedReference,
 } from '#domain/vigencia/reference-resolution.ts'
+import type { QueryTrace } from '../services/trace-sampler.ts'
 import type { CheckCoverage } from './check-coverage.ts'
 import type { FindPeriodVersions } from './find-period-versions.ts'
 import type { HybridSearch, HybridSearchResult } from './hybrid-search.ts'
@@ -32,6 +33,8 @@ interface RetrieveEvidenceCommand extends ResolveReferenceDateCommand {
   /** Usuário do EEE, Reino Unido ou Suíça: a reescrita da pergunta só usa modelos com ZDR. */
   readonly zeroDataRetentionOnly?: boolean
   readonly signal?: AbortSignal
+  /** Trace `rag-query` (Langfuse): a reescrita da pergunta vira uma generation nele. */
+  readonly trace?: QueryTrace
 }
 
 export const RetrievalOutcome = {
@@ -62,6 +65,8 @@ type RetrievalResult =
       readonly stableKeys: readonly string[]
       /** Consulta reescrita pelo LLM que a busca usou; `null` sem reescrita (ADR 0034). */
       readonly rewrittenQuery: string | null
+      /** A ordem das evidências veio do reranker (ADR 0027). */
+      readonly reranked: boolean
     }
 
 export type RetrieveEvidence = (command: RetrieveEvidenceCommand) => Promise<RetrievalResult>
@@ -131,6 +136,7 @@ export function createRetrieveEvidence(deps: RetrieveEvidenceDeps): RetrieveEvid
         ? {}
         : { zeroDataRetentionOnly: command.zeroDataRetentionOnly }),
       ...(command.signal === undefined ? {} : { signal: command.signal }),
+      ...(command.trace === undefined ? {} : { trace: command.trace }),
     })
     if (search.evidence.length === 0 || maxRrf(search.evidence) < deps.minEvidenceRrf) {
       return {
@@ -154,6 +160,7 @@ export function createRetrieveEvidence(deps: RetrieveEvidenceDeps): RetrieveEvid
       uncoveredFamilies: decision.uncoveredFamilies,
       stableKeys: search.stableKeys,
       rewrittenQuery: search.rewrittenQuery,
+      reranked: search.reranked,
     }
   }
 }

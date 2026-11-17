@@ -336,11 +336,19 @@ check "ops: o apply do grafana pula com aviso sem o segredo (passo de conferênc
 check "ops: coverage-age no corpus-watch só com as URLs do teko_watch" \
   bash -c "[[ \"\$(yq -o=json '.jobs.\"coverage-age\"' '$ops' | grep -Eo 'secrets[.][A-Z_]+' | sort -u | tr '\n' ' ')\" == 'secrets.NEON_PROD_WATCH_URL secrets.NEON_STAGING_WATCH_URL ' ]] && yq -e '.jobs.\"coverage-age\".environment == \"corpus-watch\"' '$ops' >/dev/null"
 ops_quotas_without_database() {
-  ! grep -Eq 'WATCH_URL|neon\.tech:5432' <<<"$(job_text "$ops" quotas)$(job_text "$ops" grafana)"
+  ! grep -Eq 'WATCH_URL|neon\.tech:5432' <<<"$(job_text "$ops" quotas)$(job_text "$ops" grafana)$(job_text "$ops" langfuse)"
 }
-check "ops: quotas e grafana nunca veem URL de banco nem liberam a porta 5432" ops_quotas_without_database
-check "ops: Neon (5432) só no egress do coverage-age; grafana.net só no grafana e no quotas" \
-  yq_true '(([.jobs | to_entries[] | select(.value.steps[0].with."allowed-endpoints" | test("neon\\.tech:5432")) | .key] | join(",")) == "coverage-age") and (([.jobs | to_entries[] | select(.value.steps[0].with."allowed-endpoints" | test("grafana\\.net")) | .key] | sort | join(",")) == "grafana,quotas")' "$ops"
+check "ops: quotas, grafana e langfuse nunca veem URL de banco nem liberam a porta 5432" ops_quotas_without_database
+check "ops: Neon (5432) só no egress do coverage-age; grafana.net só no grafana, no langfuse e no quotas" \
+  yq_true '(([.jobs | to_entries[] | select(.value.steps[0].with."allowed-endpoints" | test("neon\\.tech:5432")) | .key] | join(",")) == "coverage-age") and (([.jobs | to_entries[] | select(.value.steps[0].with."allowed-endpoints" | test("grafana\\.net")) | .key] | sort | join(",")) == "grafana,langfuse,quotas")' "$ops"
+check "ops: langfuse.com só no egress do job langfuse, no environment ops" \
+  yq_true '(([.jobs | to_entries[] | select(.value.steps[0].with."allowed-endpoints" | test("langfuse\\.com")) | .key] | join(",")) == "langfuse") and (.jobs.langfuse.environment == "ops")' "$ops"
+ops_langfuse_only_its_secrets() {
+  local used
+  used="$(grep -Eo 'secrets[.][A-Z_]+' <<<"$(job_text "$ops" langfuse)" | sort -u | tr '\n' ' ')"
+  [[ "$used" == 'secrets.GRAFANA_OTLP_TOKEN secrets.LANGFUSE_PROD_PUBLIC_KEY secrets.LANGFUSE_PROD_SECRET_KEY secrets.LANGFUSE_STAGING_PUBLIC_KEY secrets.LANGFUSE_STAGING_SECRET_KEY ' ]]
+}
+check "ops: langfuse só com as chaves de admin do Langfuse e o token OTLP" ops_langfuse_only_its_secrets
 check "ops: quotas no environment ops, depois do coverage-age e mesmo se ele falhar" \
   yq_true '(.jobs.quotas.environment == "ops") and (.jobs.quotas.needs == "coverage-age") and (.jobs.quotas.if | test("!cancelled\\(\\)"))' "$ops"
 check "ops: dry-run só no workflow_dispatch" \

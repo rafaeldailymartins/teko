@@ -102,25 +102,59 @@ const FINISH_SQL = `UPDATE app.questions SET status = $2, refusal_reason = $3, a
   citations = $5::jsonb, retrieval = coalesce(retrieval, '{}'::jsonb) || $6::jsonb,
   retrieval_mode = $7, provider = $8, model = $9, prompt_version = $10,
   corpus_version = coalesce($11, corpus_version), tokens_in = $12, tokens_out = $13,
-  shadow_cost_usd = $14, ttft_ms = $15, latency_ms = $16, updated_at = now()
+  shadow_cost_usd = $14, ttft_ms = $15, latency_ms = $16, langfuse_trace_id = $17,
+  updated_at = now()
 WHERE id = $1::uuid AND status = 'streaming'
 RETURNING user_id, (created_at AT TIME ZONE 'America/Sao_Paulo')::date::text AS day`
 
+/** As units do Langfuse contam só na linha `global` (a cota é do projeto, não do usuário). */
 const SETTLE_SQL = `UPDATE app.usage_daily SET
   stream_seconds = greatest(0, stream_seconds - $3 + $4),
-  tokens_in = tokens_in + $5, tokens_out = tokens_out + $6
+  tokens_in = tokens_in + $5, tokens_out = tokens_out + $6,
+  langfuse_units = langfuse_units + CASE WHEN scope = 'global' THEN $7::int ELSE 0 END
 WHERE day = $1::date AND scope IN ('global', 'user:' || $2)`
+
+/** Units do Langfuse no dia (São Paulo) da pergunta, na linha `global`. */
+const ADD_UNITS_SQL = `INSERT INTO app.usage_daily AS u (day, scope, langfuse_units)
+SELECT day, 'global', $3::int FROM traced
+ON CONFLICT (day, scope) DO UPDATE SET langfuse_units = u.langfuse_units + EXCLUDED.langfuse_units`
+
+const RECORD_TRACE_SQL = `WITH traced AS (
+  UPDATE app.questions SET langfuse_trace_id = $2, updated_at = now() WHERE id = $1::uuid
+  RETURNING (created_at AT TIME ZONE 'America/Sao_Paulo')::date AS day
+)
+${ADD_UNITS_SQL}`
+
+const UNITS_SINCE_SQL = `SELECT coalesce(sum(langfuse_units), 0)::int AS units
+FROM app.usage_daily WHERE scope = 'global' AND day >= $1::date`
 
 const CACHE_SQL = `INSERT INTO app.answer_cache (cache_key, answer, corpus_version, expires_at)
 VALUES ($1, $2::jsonb, $3, $4)
 ON CONFLICT (cache_key) DO UPDATE SET answer = EXCLUDED.answer,
   corpus_version = EXCLUDED.corpus_version, expires_at = EXCLUDED.expires_at, created_at = now()`
 
-const FEEDBACK_SQL = `INSERT INTO app.feedback (question_id, user_id, rating, reason)
-SELECT q.id, q.user_id, $3, $4 FROM app.questions q WHERE q.id = $1::uuid AND q.user_id = $2::uuid
-ON CONFLICT (question_id) DO UPDATE SET rating = EXCLUDED.rating, reason = EXCLUDED.reason,
-  created_at = now()
-RETURNING question_id`
+/**
+ * Feedback numa instrução só: grava (ou troca) o polegar e, se a pergunta tem trace no Langfuse,
+ * soma 1 unit (o score `user_feedback`) no dia de hoje em São Paulo.
+ */
+const FEEDBACK_SQL = `WITH target AS (
+  SELECT id, user_id, langfuse_trace_id FROM app.questions
+  WHERE id = $1::uuid AND user_id = $2::uuid
+), saved AS (
+  INSERT INTO app.feedback (question_id, user_id, rating, reason)
+  SELECT id, user_id, $3, $4 FROM target
+  ON CONFLICT (question_id) DO UPDATE SET rating = EXCLUDED.rating, reason = EXCLUDED.reason,
+    created_at = now()
+  RETURNING question_id
+), traced AS (
+  SELECT (now() AT TIME ZONE 'America/Sao_Paulo')::date AS day FROM target
+  WHERE langfuse_trace_id IS NOT NULL AND EXISTS (SELECT 1 FROM saved)
+), units AS (
+  INSERT INTO app.usage_daily AS u (day, scope, langfuse_units)
+  SELECT day, 'global', 1 FROM traced
+  ON CONFLICT (day, scope) DO UPDATE SET langfuse_units = u.langfuse_units + 1
+)
+SELECT target.langfuse_trace_id FROM target JOIN saved ON saved.question_id = target.id`
 
 /**
  * Exclusão de uma conversa: primeiro trava as perguntas dela (o claim de um stream concorrente
@@ -343,6 +377,7 @@ export function createPgQuestionRepository(pool: pg.Pool): QuestionRepository {
           result.shadowCostUsd,
           result.ttftMs,
           result.latencyMs,
+          result.langfuseTraceId,
         ])
         const row = updated.rows[0]
         if (row === undefined) {
@@ -355,6 +390,7 @@ export function createPgQuestionRepository(pool: pg.Pool): QuestionRepository {
           result.streamSeconds,
           result.inputTokens,
           result.outputTokens,
+          result.langfuseUnits,
         ])
         if (result.cache !== null) {
           await client.query(CACHE_SQL, [
@@ -408,8 +444,25 @@ export function createPgQuestionRepository(pool: pg.Pool): QuestionRepository {
     },
 
     async recordFeedback(questionId, userId, rating, reason) {
-      const { rowCount } = await pool.query(FEEDBACK_SQL, [questionId, userId, rating, reason])
-      return rowCount === 1
+      const { rows } = await pool.query<{ langfuse_trace_id: string | null }>(FEEDBACK_SQL, [
+        questionId,
+        userId,
+        rating,
+        reason,
+      ])
+      const row = rows[0]
+      return row === undefined ? null : { langfuseTraceId: row.langfuse_trace_id }
+    },
+
+    async recordTrace(questionId, traceId, units) {
+      await pool.query(RECORD_TRACE_SQL, [questionId, traceId, units])
+    },
+
+    async langfuseUnitsSince(day) {
+      const { rows } = await retryTransientRead(() =>
+        pool.query<{ units: number }>(UNITS_SINCE_SQL, [day]),
+      )
+      return rows[0]?.units ?? 0
     },
 
     deleteConversation: (userId, conversationId) =>

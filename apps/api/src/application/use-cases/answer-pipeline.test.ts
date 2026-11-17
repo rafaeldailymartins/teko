@@ -1,12 +1,20 @@
 import type { TekoStreamChunk } from '@teko/shared/contracts'
 import { describe, expect, it } from 'vitest'
 import type { Evidence } from '#domain/qa/evidence.ts'
-import type { LlmEvent, LlmModel, LlmRequest } from '../ports/llm-port.ts'
+import { LlmError, type LlmEvent, type LlmModel, type LlmRequest } from '../ports/llm-port.ts'
 import type { Telemetry } from '../ports/telemetry.ts'
+import { recordingLlmTracing } from '../ports/testing/recording-llm-tracing.ts'
 import { recordingTelemetry } from '../ports/testing/recording-telemetry.ts'
 import { PROMPT_CANARY } from '../prompts/answer.ts'
 import { createProviderRouter } from '../services/provider-router.ts'
-import { type AnswerOutcome, runAnswerPipeline, toCitation, toResolved } from './answer-pipeline.ts'
+import { createQueryTracer, type QueryTrace } from '../services/trace-sampler.ts'
+import {
+  type AnswerOutcome,
+  retrievalSummary,
+  runAnswerPipeline,
+  toCitation,
+  toResolved,
+} from './answer-pipeline.ts'
 import type { RetrieveEvidence } from './retrieve-evidence.ts'
 
 const REFERENCE = {
@@ -54,6 +62,7 @@ const FOUND = retrieveWith({
   uncoveredFamilies: ['cte'],
   stableKeys: [],
   rewrittenQuery: null,
+  reranked: true,
 })
 
 function scriptedModel(text: string): LlmModel & { requests: LlmRequest[] } {
@@ -77,6 +86,7 @@ async function run(
   retrieve: RetrieveEvidence,
   answer: string,
   telemetry?: Telemetry,
+  options: { readonly trace?: QueryTrace; readonly models?: LlmModel[] } = {},
 ): Promise<{
   chunks: TekoStreamChunk[]
   outcome: AnswerOutcome | null
@@ -89,7 +99,10 @@ async function run(
   for await (const chunk of runAnswerPipeline(
     {
       retrieveEvidence: retrieve,
-      router: createProviderRouter({ models: [model], clock: { now: () => new Date(0) } }),
+      router: createProviderRouter({
+        models: options.models ?? [model],
+        clock: { now: () => new Date(now) },
+      }),
       corpusVersion: async () => 14,
       ...(telemetry === undefined ? {} : { telemetry }),
       nowMs: () => {
@@ -106,6 +119,7 @@ async function run(
       locale: 'pt-BR',
       zeroDataRetention: false,
       signal: new AbortController().signal,
+      ...(options.trace === undefined ? {} : { trace: options.trace }),
     },
     (value) => {
       outcome = value
@@ -222,6 +236,144 @@ describe('sinais de RAG', () => {
     const telemetry = recordingTelemetry()
     await run(FOUND, 'Vale a regra [S1].', telemetry)
     expect(telemetry.calls).toEqual([])
+  })
+})
+
+async function tracedRun(
+  retrieve: RetrieveEvidence,
+  answer: string,
+  models?: LlmModel[],
+): Promise<ReturnType<typeof recordingLlmTracing>['queries'][number]> {
+  const port = recordingLlmTracing()
+  const tracer = createQueryTracer({ port, sampler: { shouldSample: async () => true } })
+  const trace = await tracer.start({
+    questionId: 'q1',
+    userId: 'u1',
+    question: 'Qual o prazo?',
+    locale: 'pt-BR',
+    families: [],
+    referenceDate: '2006-05-01',
+    referenceSource: 'periodo_apuracao',
+    corpusVersion: 14,
+    promptVersion: 'answer@1',
+    cached: false,
+    startedAtMs: 0,
+  })
+  await run(retrieve, answer, undefined, { trace, ...(models === undefined ? {} : { models }) })
+  return port.queries[0] as ReturnType<typeof recordingLlmTracing>['queries'][number]
+}
+
+function failingModel(model: string): LlmModel {
+  return {
+    provider: 'gemini',
+    model,
+    zeroDataRetention: false,
+    // biome-ignore lint/correctness/useYield: falha antes do primeiro evento, como um 429
+    async *stream(): AsyncIterable<LlmEvent> {
+      throw new LlmError('rate_limited', '429')
+    },
+  }
+}
+
+describe('trace rag-query (Langfuse)', () => {
+  it('span retrieval com o resumo da busca e uma generation com uso, custo e TTFT', async () => {
+    const query = await tracedRun(FOUND, 'Vale a regra [S1].')
+    expect(query.retrievals).toHaveLength(1)
+    expect(query.retrievals[0]?.summary).toEqual({
+      mode: 'hybrid',
+      topK: 2,
+      candidatesByChannel: { lexical: 2, semantic: 2, reference: 0 },
+      rrf: [0.03, 0.03],
+      reranked: true,
+      rewritten: false,
+      uncoveredFamilies: ['cte'],
+      refusalReason: null,
+    })
+    expect(query.generations).toHaveLength(1)
+    const [generation] = query.generations
+    expect(generation?.start).toMatchObject({
+      provider: 'gemini',
+      model: 'gemini-test',
+      temperature: 0.1,
+    })
+    expect(generation?.start.input).toContain('<source id="S1"')
+    expect(generation?.end).toMatchObject({
+      error: null,
+      usage: { inputTokens: 100, outputTokens: 20 },
+      cost: { input: 0, output: 0, total: 0 },
+      // O texto que o usuário viu (já saneado), não o bruto do modelo.
+      output: 'Vale a regra [S1](cite:S1).',
+    })
+    expect(generation?.end?.firstTokenAtMs).toBeGreaterThan(0)
+  })
+
+  it('uma generation por provedor tentado: a que falhou antes do token vem com o erro', async () => {
+    const query = await tracedRun(FOUND, 'Vale a regra [S1].', [
+      failingModel('gemini-3.5-flash-lite'),
+      { ...scriptedModel('Vale a regra [S1].'), model: 'gemini-3.6-flash' },
+    ])
+    expect(query.generations.map((item) => [item.start.model, item.end?.error])).toEqual([
+      ['gemini-3.5-flash-lite', 'rate_limited'],
+      ['gemini-3.6-flash', null],
+    ])
+    expect(query.generations[0]?.end?.cost.total).toBe(0)
+    expect(query.generations[1]?.end?.cost).toEqual({
+      input: 0.00003,
+      output: 0.00005,
+      total: 0.00008,
+    })
+  })
+
+  it('recusa na busca: só o span retrieval, sem generation', async () => {
+    const query = await tracedRun(
+      retrieveWith({
+        outcome: 'refused',
+        reason: 'no_evidence',
+        reference: REFERENCE,
+        coverage: [],
+        mode: 'lexical_only',
+      }),
+      '',
+    )
+    expect(query.retrievals[0]?.summary).toMatchObject({
+      mode: 'lexical_only',
+      topK: 0,
+      refusalReason: 'no_evidence',
+    })
+    expect(query.generations).toEqual([])
+  })
+
+  it('busca que falha fecha o span retrieval vazio e propaga o erro', async () => {
+    const port = recordingLlmTracing()
+    const trace = await createQueryTracer({
+      port,
+      sampler: { shouldSample: async () => true },
+    }).start({
+      questionId: 'q1',
+      userId: 'u1',
+      question: 'x',
+      locale: 'pt-BR',
+      families: [],
+      referenceDate: '2006-05-01',
+      referenceSource: 'explicit',
+      corpusVersion: null,
+      promptVersion: 'p',
+      cached: false,
+      startedAtMs: 0,
+    })
+    const failing: RetrieveEvidence = () => Promise.reject(new Error('banco fora'))
+    await expect(run(failing, '', undefined, { trace })).rejects.toThrow('banco fora')
+    expect(port.queries[0]?.retrievals[0]?.summary).toMatchObject({ mode: null, topK: 0 })
+  })
+
+  it('resumo de um pedido de esclarecimento: recusa no_evidence sem modo', () => {
+    expect(
+      retrievalSummary({
+        outcome: 'needs_clarification',
+        reason: 'ambiguous_text',
+        candidates: [],
+      }),
+    ).toMatchObject({ mode: null, refusalReason: 'no_evidence' })
   })
 })
 

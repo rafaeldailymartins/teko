@@ -8,6 +8,7 @@ import { type RerankerPort, RerankerUnavailableError } from '../ports/reranker-p
 import type { SearchRepository } from '../ports/search-repository.ts'
 import { noopTelemetry, type Telemetry } from '../ports/telemetry.ts'
 import type { QueryRewriter } from '../services/query-rewriter.ts'
+import type { QueryTrace } from '../services/trace-sampler.ts'
 
 /**
  * `HybridSearch`: embedding da pergunta (teto de 3 s) e uma única instrução SQL com os três braços
@@ -33,6 +34,8 @@ interface HybridSearchCommand {
   /** Usuário do EEE, Reino Unido ou Suíça: a reescrita só usa modelos com ZDR. */
   readonly zeroDataRetentionOnly?: boolean
   readonly signal?: AbortSignal
+  /** Trace `rag-query` (Langfuse) para a generation da reescrita. */
+  readonly trace?: QueryTrace
 }
 
 export interface HybridSearchResult {
@@ -118,7 +121,7 @@ async function embedQuestion(
 
 export function createHybridSearch(deps: HybridSearchDeps): HybridSearch {
   const telemetry = deps.telemetry ?? noopTelemetry
-  return async ({ question, referenceDate, families, zeroDataRetentionOnly, signal }) => {
+  return async ({ question, referenceDate, families, zeroDataRetentionOnly, signal, trace }) => {
     if (families.length === 0) {
       const stableKeys = extractProvisionRefs(question, families)
       return {
@@ -135,6 +138,7 @@ export function createHybridSearch(deps: HybridSearchDeps): HybridSearch {
         : await deps.rewriter(question, {
             zeroDataRetentionOnly: zeroDataRetentionOnly ?? false,
             ...(signal === undefined ? {} : { signal }),
+            ...(trace === undefined ? {} : { trace }),
           })
     const stableKeys =
       rewrittenQuery === null

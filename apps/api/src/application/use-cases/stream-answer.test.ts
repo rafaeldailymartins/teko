@@ -2,7 +2,7 @@ import { parseStreamError, type TekoStreamChunk } from '@teko/shared/contracts'
 import { describe, expect, it, vi } from 'vitest'
 import type { SessionUser } from '../ports/auth-gateway.ts'
 import type { BackgroundTasks } from '../ports/background-tasks.ts'
-import type { LlmEvent, LlmModel, LlmRequest } from '../ports/llm-port.ts'
+import { LlmError, type LlmEvent, type LlmModel, type LlmRequest } from '../ports/llm-port.ts'
 import type {
   ClaimedQuestion,
   ClaimOutcome,
@@ -10,8 +10,10 @@ import type {
   StreamResult,
 } from '../ports/question-repository.ts'
 import type { Telemetry } from '../ports/telemetry.ts'
+import { recordingLlmTracing } from '../ports/testing/recording-llm-tracing.ts'
 import { recordingTelemetry } from '../ports/testing/recording-telemetry.ts'
 import { createProviderRouter } from '../services/provider-router.ts'
+import { createQueryTracer, type QueryTracer } from '../services/trace-sampler.ts'
 import type { RetrieveEvidence } from './retrieve-evidence.ts'
 import { createStreamAnswer, recordOutcome, resultOf, StreamTimeoutError } from './stream-answer.ts'
 
@@ -67,9 +69,10 @@ const RETRIEVE: RetrieveEvidence = async () => ({
   uncoveredFamilies: [],
   stableKeys: [],
   rewrittenQuery: null,
+  reranked: false,
 })
 
-type Script = 'answer' | 'hang' | 'boom'
+type Script = 'answer' | 'hang' | 'boom' | 'down'
 
 function model(script: Script): LlmModel {
   return {
@@ -77,6 +80,9 @@ function model(script: Script): LlmModel {
     model: 'fake-llm-1',
     zeroDataRetention: true,
     async *stream(request: LlmRequest): AsyncIterable<LlmEvent> {
+      if (script === 'down') {
+        throw new LlmError('unavailable', '503')
+      }
       if (script === 'boom') {
         throw new TypeError('bug')
       }
@@ -105,6 +111,8 @@ function setup(
     timeoutMs?: number
     draining?: boolean
     telemetry?: Telemetry
+    tracer?: QueryTracer
+    retrieve?: RetrieveEvidence
   } = {},
 ) {
   const finished: { id: string; result: StreamResult }[] = []
@@ -126,7 +134,7 @@ function setup(
   const stream = createStreamAnswer({
     questions,
     pipeline: {
-      retrieveEvidence: RETRIEVE,
+      retrieveEvidence: options.retrieve ?? RETRIEVE,
       router: createProviderRouter({
         models: [model(options.script ?? 'answer')],
         clock: { now: () => new Date(0) },
@@ -146,6 +154,7 @@ function setup(
     reservation: { streamSeconds: 100, neurons: 5 },
     cacheTtlMs: 1000,
     ...(options.telemetry === undefined ? {} : { telemetry: options.telemetry }),
+    ...(options.tracer === undefined ? {} : { tracer: options.tracer }),
   })
   return { stream, finished, background, questions }
 }
@@ -211,6 +220,16 @@ describe('createStreamAnswer', () => {
       retryable: true,
     })
     expect(finished[0]?.result.status).toBe('failed')
+  })
+
+  it('cadeia de LLM fora do ar → error com o código dela e pergunta failed', async () => {
+    const { stream, finished } = setup({ script: 'down' })
+    const chunks = await collect(await stream(command()))
+    const last = chunks.at(-1)
+    expect(parseStreamError(last?.type === 'error' ? last.errorText : '')).toMatchObject({
+      code: 'upstream_unavailable',
+    })
+    expect(finished[0]?.result).toMatchObject({ status: 'failed', shadowCostUsd: 0 })
   })
 
   it('erro inesperado → error internal', async () => {
@@ -359,6 +378,113 @@ describe('sinais do stream', () => {
         },
       ],
     ])
+  })
+})
+
+function traced(sampled = true) {
+  const port = recordingLlmTracing()
+  const tracer = createQueryTracer({ port, sampler: { shouldSample: async () => sampled } })
+  return { port, tracer }
+}
+
+describe('trace rag-query e custo-sombra em todos os desfechos', () => {
+  it('resposta: trace com retrieval e answer (4 units), trace_id e units gravados', async () => {
+    const { port, tracer } = traced()
+    const { stream, finished } = setup({ tracer })
+    await collect(await stream(command()))
+    const [query] = port.queries
+    expect(query?.start).toMatchObject({
+      questionId: 'q1',
+      userId: 'u1',
+      question: 'Qual o prazo?',
+      cached: false,
+      corpusVersion: 14,
+    })
+    expect(query?.retrievals).toHaveLength(1)
+    expect(query?.generations).toHaveLength(1)
+    expect(query?.end).toMatchObject({ outcome: 'answered', citations: 1, refusalReason: null })
+    expect(finished[0]?.result).toMatchObject({
+      status: 'answered',
+      langfuseTraceId: 'trace-1',
+      langfuseUnits: 4,
+      shadowCostUsd: 0,
+    })
+  })
+
+  it('recusa na busca: trace refused com o motivo, sem generation, custo 0 (3 units)', async () => {
+    const { port, tracer } = traced()
+    const { stream, finished } = setup({
+      tracer,
+      retrieve: async () => ({
+        outcome: 'refused',
+        reason: 'no_evidence',
+        reference: {
+          value: '2006-05-01',
+          source: 'periodo_apuracao',
+          periodBoundaryInside: false,
+          alternatives: [],
+          periodo: '2006-05',
+        },
+        coverage: [],
+        mode: 'hybrid',
+      }),
+    })
+    const chunks = await collect(await stream(command()))
+    expect(chunks.at(-1)).toMatchObject({ type: 'finish', messageMetadata: { model: 'none' } })
+    expect(port.queries[0]?.generations).toEqual([])
+    expect(port.queries[0]?.end).toMatchObject({
+      outcome: 'refused',
+      refusalReason: 'no_evidence',
+      answer: null,
+      citations: 0,
+      corpusVersion: 14,
+    })
+    expect(finished[0]?.result).toMatchObject({
+      status: 'refused',
+      shadowCostUsd: 0,
+      langfuseUnits: 3,
+    })
+  })
+
+  it('pergunta não amostrada: nada no Langfuse, trace_id nulo e 0 units', async () => {
+    const { port, tracer } = traced(false)
+    const { stream, finished } = setup({ tracer })
+    await collect(await stream(command()))
+    expect(port.queries).toEqual([])
+    expect(finished[0]?.result).toMatchObject({ langfuseTraceId: null, langfuseUnits: 0 })
+  })
+
+  it('falha: trace failed e shadow_cost_usd 0 gravado', async () => {
+    const { port, tracer } = traced()
+    const { stream, finished } = setup({ tracer, script: 'boom' })
+    await collect(await stream(command()))
+    expect(port.queries[0]?.end).toMatchObject({ outcome: 'failed', answer: null })
+    expect(finished[0]?.result).toMatchObject({
+      status: 'failed',
+      shadowCostUsd: 0,
+      langfuseTraceId: 'trace-1',
+      langfuseUnits: 3,
+    })
+  })
+
+  it('desconexão: trace aborted, generation interrompida e shadow_cost_usd 0', async () => {
+    const { port, tracer } = traced()
+    const controller = new AbortController()
+    const { stream, finished, background } = setup({ tracer, script: 'hang' })
+    for await (const chunk of await stream(command(controller.signal))) {
+      if (chunk.type === 'text-start') {
+        controller.abort(new Error('cliente saiu'))
+      }
+    }
+    await background[0]?.task
+    const [query] = port.queries
+    expect(query?.end).toMatchObject({ outcome: 'aborted' })
+    expect(query?.generations[0]?.end).toMatchObject({ error: 'aborted' })
+    expect(finished[0]?.result).toMatchObject({
+      status: 'aborted',
+      shadowCostUsd: 0,
+      langfuseUnits: 4,
+    })
   })
 })
 

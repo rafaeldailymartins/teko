@@ -12,7 +12,9 @@ import {
 } from '@teko/shared/contracts'
 import { ErrorCode } from '@teko/shared/errors'
 import { ApplicationError } from '../errors.ts'
+import type { BackgroundTasks } from '../ports/background-tasks.ts'
 import type { Clock } from '../ports/clock.ts'
+import type { TraceFeedbackPort } from '../ports/llm-tracing.ts'
 import type {
   ConversationCursor,
   ConversationRecord,
@@ -110,10 +112,18 @@ function notFound(): ApplicationError {
   return new ApplicationError({ code: ErrorCode.NotFound, detail: 'Question not found' })
 }
 
+/** Teto do score e da annotation queue do Langfuse (tarefa pós-resposta). */
+const TRACE_FEEDBACK_TIMEOUT_MS = 2000
+
 export function createQuestionHistory(deps: {
   readonly questions: QuestionRepository
   readonly clock: Clock
   readonly caps: UsageCaps
+  /** Feedback no trace do Langfuse (padrão: nenhum). */
+  readonly traceFeedback?: {
+    readonly port: TraceFeedbackPort
+    readonly tasks: BackgroundTasks
+  }
 }): QuestionHistory {
   return {
     async get(userId, questionId) {
@@ -153,14 +163,25 @@ export function createQuestionHistory(deps: {
       }
     },
     async recordFeedback(userId, questionId, request) {
-      const saved = await deps.questions.recordFeedback(
-        questionId,
-        userId,
-        request.rating,
-        request.reason ?? null,
-      )
-      if (!saved) {
+      const reason = request.reason ?? null
+      const saved = await deps.questions.recordFeedback(questionId, userId, request.rating, reason)
+      if (saved === null) {
         throw notFound()
+      }
+      const { traceFeedback } = deps
+      if (saved.langfuseTraceId !== null && traceFeedback !== undefined) {
+        // Score e annotation queue depois da resposta, com teto: uma falha do Langfuse não chega
+        // ao usuário (o Postgres já gravou o polegar).
+        traceFeedback.tasks.run(
+          'langfuse-feedback',
+          traceFeedback.port.recordFeedback({
+            traceId: saved.langfuseTraceId,
+            questionId,
+            rating: request.rating,
+            reason,
+          }),
+          { timeoutMs: TRACE_FEEDBACK_TIMEOUT_MS },
+        )
       }
     },
     async deleteConversation(userId, conversationId) {

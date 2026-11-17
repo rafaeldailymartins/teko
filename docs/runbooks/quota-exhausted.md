@@ -51,10 +51,15 @@ uso acima da premissa de pior caso.
 ## Langfuse acima de 35k units projetadas
 
 O `TraceSampler` da produção amostra 1,0 até a projeção chegar a 35k e cai para 0,2 depois;
-staging fica em 0,1. Acima de 35k com o corte já aplicado:
+staging fica em 0,1. O corte da API usa a projeção do próprio ambiente (`usage_daily.langfuse_units`,
+relida a cada 10 min por instância); o alerta usa a do job `langfuse` do `ops.yml`, que soma os dois
+projetos pela Metrics API. Acima de 35k com o corte já aplicado:
 
-1. Confira a projeção no próprio Langfuse (Settings → Usage) e no dashboard **Tekó · Cotas**.
-2. Reduza a amostragem por env no projeto Vercel (a variável da mudança `add-llm-tracing-langfuse`)
-   e faça redeploy; staging pode ir a 0.
-3. Em último caso, `LLM_TRACING_BACKEND=off` desliga os traces de LLM; o custo por consulta
-   continua em `app.questions.shadow_cost_usd`.
+1. Confira a projeção no próprio Langfuse (Settings → Usage) e no dashboard **Tekó · Cotas**. Se o
+   job `langfuse` falhou, o alerta de job sem sucesso aparece antes.
+2. Reduza a amostragem em `infra/vercel/env.{production,staging}.json`: `LANGFUSE_SAMPLE_RATE` (a
+   taxa até o corte), `LANGFUSE_SAMPLE_RATE_OVER_BUDGET` (depois dele) ou
+   `LANGFUSE_MONTHLY_UNITS_CUTOFF` (o próprio corte). Aplique pelo sync de env e faça redeploy;
+   staging pode ir a `LANGFUSE_SAMPLE_RATE=0`.
+3. Em último caso, `LLM_TRACING_BACKEND=off` desliga os traces de LLM (o feedback continua no
+   Postgres, sem score); o custo por consulta continua em `app.questions.shadow_cost_usd`.

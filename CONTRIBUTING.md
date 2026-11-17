@@ -48,7 +48,15 @@ pnpm --filter @teko/api seed:fixtures; echo "exit=$?"  # migrates the local data
   the API (ADR 0029).
 - Optional local Langfuse (UI on `http://localhost:3100`, user `dev@teko.localhost`, password in
   `infra/local/.env`):
-  `docker compose -f infra/local/compose.yaml --profile langfuse up -d --wait`.
+  `docker compose -f infra/local/compose.yaml --profile langfuse up -d --wait`. `pnpm dev:secrets`
+  already writes `LANGFUSE_BASE_URL` and the keys of the `teko-dev` project to `apps/api/.env`, so
+  the API sends the LLM traces (`rag-query`, `retrieval`, `answer`) of every question there
+  (sample rate 1 in development; `LANGFUSE_SAMPLE_RATE` changes it, `LLM_TRACING_BACKEND=off`
+  turns it off). To also create the model prices, the `user_feedback` score config and the 👎
+  annotation queue there, run `scripts/langfuse-ops.ts` with `LANGFUSE_BASE_URL=http://localhost:3100`
+  and the project keys in `LANGFUSE_PROD_PUBLIC_KEY`/`LANGFUSE_PROD_SECRET_KEY`. Langfuse v4 reads
+  back through the v2 observations API (`/api/public/v2/observations?traceId=...`), not
+  `/api/public/traces`.
 - Optional local Grafana with traces, logs and metrics of the API (`grafana/otel-lgtm`, UI on
   `http://localhost:3300`, user `admin`/`admin`):
   `docker compose -f infra/local/compose.yaml --profile otel up -d --wait`, then add
