@@ -50,21 +50,21 @@ timer de exportação: a instância da Vercel pausa entre requisições.
   com URL encoding; no Grafana Cloud, `Authorization=Basic%20<base64 de instância:token>`), as duas
   Sensitive na Vercel. Staging e produção exigem https; sem o endpoint (CI, testes, dev sem a stack),
   nada é exportado, a porta de métricas é no-op e o boot de staging ou produção avisa no log.
-- **Temporalidade das métricas:** delta por padrão, como pede o desenho;
-  `OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE=cumulative` troca para cumulativa (o total da
-  instância, uma série por `service.instance.id`). **Pendente de decisão do mantenedor:** o Mimir
-  recusa métricas delta enquanto a ingestão nativa de delta (`-distributor.otel-native-delta-ingestion`,
-  experimental) estiver desligada, e o Prometheus do `otel-lgtm` também (na prova local, só o gauge
-  chegou em delta; tudo chegou em cumulativo). Se a stack do Grafana Cloud não aceitar delta, staging
-  e produção precisam da variável em `cumulative` (`infra/vercel/env.*.json`).
+- **Temporalidade das métricas:** cumulativa (decisão do mantenedor em 2026-11-16, no lugar do delta
+  do desenho original). Cada exportação leva o total da instância desde que ela subiu, numa série
+  própria por `service.instance.id`; o `rate()`/`increase()` trata o recomeço do zero de uma
+  instância nova. O Mimir recusa métricas delta enquanto a ingestão nativa de delta
+  (`-distributor.otel-native-delta-ingestion`, experimental) estiver desligada, e o Prometheus do
+  `otel-lgtm` também: na prova local, em delta só o gauge chegou; em cumulativo, tudo.
+  `OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE=delta` fica como opção para um destino que
+  aceite delta.
 - **Tracing da Vercel:** os spans de fetch da Vercel param quando o pacote lista
   `@opentelemetry/api` ou `@opentelemetry/sdk-trace-node`, e os de framework e custom só existem com
   `@vercel/otel`, que o Tekó não usa; sobram os de infraestrutura da própria Vercel, que o
   `vercel-usage` (F7) mede contra a cota de 1M.
 - **Dev local:** profile `otel` em `infra/local/compose.yaml` (`grafana/otel-lgtm`, Grafana em
   `http://localhost:3300`, OTLP/HTTP em `127.0.0.1:4318`); na API,
-  `OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318` e
-  `OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE=cumulative`.
+  `OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318`.
 
 ### Métricas (contrato com os painéis e alertas)
 

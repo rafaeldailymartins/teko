@@ -100,8 +100,8 @@ describe('startTelemetry', () => {
     expect(logs.getFinishedLogRecords().map((record) => record.body)).toEqual(['oi'])
   })
 
-  it('métricas em delta, exportadas no máximo uma vez por minuto', async () => {
-    const { runtime, metrics, advance } = setup()
+  it('métricas em delta (opção), exportadas no máximo uma vez por minuto', async () => {
+    const { runtime, metrics, advance } = setup({ metricsTemporality: 'delta' })
     runtime.telemetry.answer(ANSWERED)
     await runtime.flush()
     expect(metrics.getMetrics()).toHaveLength(1)
@@ -120,8 +120,8 @@ describe('startTelemetry', () => {
     expect(counterTotal(exported[1], 'teko.rag.answers')).toBe(1)
   })
 
-  it('em cumulativo, cada exportação leva o total da instância', async () => {
-    const { runtime, metrics, advance } = setup({ metricsTemporality: 'cumulative' })
+  it('em cumulativo (padrão), cada exportação leva o total da instância', async () => {
+    const { runtime, metrics, advance } = setup()
     runtime.telemetry.answer(ANSWERED)
     await runtime.flush()
     runtime.telemetry.answer(ANSWERED)

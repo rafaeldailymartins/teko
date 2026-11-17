@@ -57,7 +57,7 @@ com pai local descartado, os filhos SHALL ser descartados também.
 
 Ao fim de cada requisição de `/api` (exceto `/api/healthz`), a API MUST agendar em `BackgroundTasks`,
 com teto de 500 ms, o `forceFlush` de traces e logs; as métricas SHALL sair no mesmo flush, no máximo
-uma vez por minuto por instância, em temporalidade delta por padrão ou cumulativa por configuração. Nenhuma exportação MUST depender de timer, e
+uma vez por minuto por instância, em temporalidade cumulativa por padrão ou delta por configuração. Nenhuma exportação MUST depender de timer, e
 uma falha de exportação MUST NOT falhar a requisição nem gerar log. No encerramento gracioso, a API
 SHALL exportar o que restou, métricas inclusive.
 

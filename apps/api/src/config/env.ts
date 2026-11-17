@@ -307,13 +307,13 @@ const envSchema = z
     /** Headers das exportações OTLP (Grafana Cloud: basic auth); Sensitive na Vercel. */
     OTEL_EXPORTER_OTLP_HEADERS: otlpHeadersSchema.optional(),
     /**
-     * Temporalidade das métricas (nome padrão do OTel; só `delta` e `cumulative`). O padrão é o da
-     * arquitetura (`delta`); o Mimir e o Prometheus recusam delta sem a ingestão nativa de delta
-     * ligada, e aí vale `cumulative` (uma série por instância).
+     * Temporalidade das métricas (nome padrão do OTel; só `delta` e `cumulative`). O padrão é
+     * `cumulative` (uma série por instância): o Mimir e o Prometheus recusam delta sem a ingestão
+     * nativa de delta, experimental. `delta` fica como opção para um destino que a aceite.
      */
     OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE: z
       .enum(['delta', 'cumulative'])
-      .default('delta'),
+      .default('cumulative'),
     // --- Ingestão (CLI `ingest`, `snapshot`, `eval-fixture`; só no Actions e localmente) -------
     /**
      * Onde ficam os artefatos da ingestão (ADR 0030). Com `github-releases` (o que os workflows

@@ -51,7 +51,7 @@ PostHog (`add-product-analytics`), Grafana as code e Synthetic Monitoring (`add-
   `sampled=0`, porque não grava nada), com pai local segue a decisão (filhos de um `/healthz`
   descartado não viram spans soltos). Descarta `/healthz` e `/api/healthz` por `url.path` ou
   `http.route`, os atributos que o `@fastify/otel` põe no início do span.
-- **Leitor de métricas sem timer (`OnDemandMetricReader`).** Delta, coleta e exporta só no
+- **Leitor de métricas sem timer (`OnDemandMetricReader`).** Cumulativo, coleta e exporta só no
   `forceFlush`; o flush por requisição chama no máximo 1x/min por instância; o `shutdown` exporta o
   resto. O `PeriodicExportingMetricReader` teria um timer que não dispara com a instância congelada.
 - **Flush depois de uma volta do event loop.** O hook `onResponse` agenda `setImmediate` + flush em
@@ -84,12 +84,13 @@ PostHog (`add-product-analytics`), Grafana as code e Synthetic Monitoring (`add-
 
 ## Risks / Trade-offs
 
-- **Delta pode não chegar ao Grafana Cloud.** O Mimir recusa métricas delta sem a ingestão nativa de
-  delta (experimental), e o Prometheus do `otel-lgtm` também: na prova local, em delta só o gauge
-  apareceu; em cumulativo, tudo. O padrão segue o desenho (delta), e
-  `OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE=cumulative` liga a alternativa (com
-  `service.instance.id` no resource, uma série por instância). A troca do padrão em staging e
-  produção fica para o mantenedor decidir, porque contraria a arquitetura.
+- **Métricas em cumulativo, não em delta (decisão do mantenedor em 2026-11-16).** O desenho pedia
+  delta, mas o Mimir recusa métricas delta sem a ingestão nativa de delta (experimental), e o
+  Prometheus do `otel-lgtm` também: na prova local, em delta só o gauge apareceu; em cumulativo,
+  tudo. O padrão passou a ser cumulativo, com `service.instance.id` no resource (uma série por
+  instância; o `rate()` trata o recomeço do zero quando a instância some). O custo é ter mais
+  séries, folgado no Grafana Cloud Free. `OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE=delta`
+  continua como opção para um destino que aceite delta.
 
 - Telemetria de uma invocação que estoura o prazo ou o teto de 500 ms se perde (aceito na
   arquitetura). O exporter tem teto de 1 s por requisição: um envio que continua depois do

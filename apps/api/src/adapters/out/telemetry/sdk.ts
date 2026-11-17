@@ -37,7 +37,7 @@ import { TRACER_NAME } from './tracing.ts'
  *   `BatchSpanProcessor` com exporter OTLP/HTTP direto ao Grafana Cloud e os processors extras
  *   (`spanProcessors`, o ponto de extensão do Langfuse) no mesmo provider, logo com o mesmo
  *   `trace_id`.
- * - **Métricas:** leitor sob demanda, em temporalidade delta, sem timer: exporta só no `flush`, no
+ * - **Métricas:** leitor sob demanda, em temporalidade cumulativa, sem timer: exporta só no `flush`, no
  *   máximo uma vez por `metricsIntervalMs` por instância.
  * - **Logs:** `LoggerProvider` com exporter OTLP/HTTP (Loki), alimentado pelo pino (`logSink`).
  * - **Flush:** `flush()` roda o `forceFlush` de traces e logs (e das métricas, se venceu o
@@ -91,9 +91,9 @@ export interface TelemetryOptions {
   readonly registerGlobal?: boolean
   readonly metricsIntervalMs?: number
   /**
-   * Temporalidade das métricas (padrão `delta`, a da arquitetura). O Mimir (e o Prometheus do
-   * `otel-lgtm`) recusa delta se a ingestão nativa de delta não estiver ligada; com `cumulative`,
-   * cada instância é uma série própria (`service.instance.id`).
+   * Temporalidade das métricas (padrão `cumulative`: cada instância é uma série própria, pelo
+   * `service.instance.id`). O Mimir (e o Prometheus do `otel-lgtm`) recusa delta se a ingestão
+   * nativa de delta, experimental, não estiver ligada; `delta` fica como opção.
    */
   readonly metricsTemporality?: MetricsTemporality
   readonly nowMs?: () => number
@@ -120,15 +120,15 @@ export interface TelemetryRuntime {
 
 /**
  * Leitor de métricas sem timer: coleta e exporta só quando alguém chama `forceFlush` (o flush por
- * requisição, já limitado a uma vez por minuto). Em delta (padrão), cada exportação leva só o que
- * mudou desde a anterior; em cumulativo, o total da instância desde que ela subiu.
+ * requisição, já limitado a uma vez por minuto). Em cumulativo (padrão), cada exportação leva o
+ * total da instância desde que ela subiu; em delta, só o que mudou desde a anterior.
  */
 export class OnDemandMetricReader extends MetricReader {
   readonly #exporter: PushMetricExporter
 
   constructor(
     exporter: PushMetricExporter,
-    temporality: MetricsTemporality = MetricsTemporality.Delta,
+    temporality: MetricsTemporality = MetricsTemporality.Cumulative,
   ) {
     const selected =
       temporality === MetricsTemporality.Cumulative

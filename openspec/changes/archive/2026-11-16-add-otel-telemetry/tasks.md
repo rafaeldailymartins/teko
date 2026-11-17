@@ -7,7 +7,7 @@
 
 ## 2. SDK na API
 
-- [x] 2.1 `adapters/out/telemetry/sdk.ts`: resource, traces, métricas delta sem timer, logs e flush
+- [x] 2.1 `adapters/out/telemetry/sdk.ts`: resource, traces, métricas cumulativas sem timer, logs e flush
 - [x] 2.2 `TekoSampler` (descarta `/healthz`; pai remoto sem a flag `sampled`)
 - [x] 2.3 `src/instrumentation.ts` chamado por `server.ts` antes do `import()`; regra no
   dependency-cruiser; ponto de extensão `additionalSpanProcessors`
@@ -39,7 +39,7 @@
 
 ## 6. Testes e gates
 
-- [x] 6.1 Unitários: sampler, SDK (flush, métricas 1x/min, delta, shutdown, extensão), métricas com
+- [x] 6.1 Unitários: sampler, SDK (flush, métricas 1x/min, cumulativo e delta, shutdown, extensão), métricas com
   exporter em memória, log sink, `pg`, plugin HTTP (`x-trace-id`, flush), env, encerramento
 - [x] 6.2 Unitários da aplicação para cada sinal emitido; web: `traceparent`, `ApiError` e
   `SupportId`

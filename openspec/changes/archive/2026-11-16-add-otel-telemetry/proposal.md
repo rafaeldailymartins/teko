@@ -12,7 +12,7 @@ Langfuse, do Error Tracking, do analytics e do uptime vêm sobre ela.
 
 - **SDK do OTel na API** (`src/instrumentation.ts` e `adapters/out/telemetry/`), iniciado por
   `server.ts` antes do `import()` da raiz de composição: traces (`BatchSpanProcessor` + OTLP/HTTP),
-  métricas (delta, leitor sem timer) e logs (pino → OTLP), resource com serviço, versão, ambiente,
+  métricas (cumulativas, leitor sem timer) e logs (pino → OTLP), resource com serviço, versão, ambiente,
   commit, runtime e região. Sem `@vercel/otel` e sem coletor.
 - **Sampler próprio:** sempre amostra, menos `/healthz`; reaproveita o `trace_id` do `traceparent`
   do navegador e ignora a flag `sampled` dele.

@@ -38,18 +38,18 @@ function problemsOf(source: Record<string, string | undefined>): readonly string
 }
 
 describe('telemetria OTLP (F6)', () => {
-  it('sem endpoint, sem exportação; métricas em delta por padrão', () => {
+  it('sem endpoint, sem exportação; métricas em cumulativo por padrão', () => {
     const env = parseEnv(DEV_ENV)
     expect(env.OTEL_EXPORTER_OTLP_ENDPOINT).toBeUndefined()
     expect(env.OTEL_EXPORTER_OTLP_HEADERS).toBeUndefined()
-    expect(env.OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE).toBe('delta')
+    expect(env.OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE).toBe('cumulative')
   })
 
   it('aceita só delta e cumulative como temporalidade', () => {
     expect(
-      parseEnv({ ...DEV_ENV, OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE: 'cumulative' })
+      parseEnv({ ...DEV_ENV, OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE: 'delta' })
         .OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE,
-    ).toBe('cumulative')
+    ).toBe('delta')
     expect(
       problemsOf({ ...DEV_ENV, OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE: 'lowmemory' }),
     ).toHaveLength(1)
