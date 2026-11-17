@@ -237,8 +237,18 @@ describe('applyGrafana', () => {
     readonly body: unknown
   }
 
-  /** Grafana e SM falsos: tudo vazio (404) exceto o datasource, o contact point e as sondas. */
-  function fakeFetch(existing: { contactPoint?: boolean; checks?: unknown[] } = {}) {
+  /**
+   * Grafana e SM falsos: tudo vazio (404) exceto o datasource, o contact point, as pastas e as
+   * sondas. Como no Grafana Cloud com papel Editor, `GET /api/folders/:uid` responde 403 para
+   * qualquer uid; só a listagem diz se a pasta existe.
+   */
+  function fakeFetch(
+    existing: {
+      contactPoint?: boolean
+      checks?: unknown[]
+      folders?: { uid: string; title: string }[]
+    } = {},
+  ) {
     const calls: Call[] = []
     const json = (value: unknown, status = 200) => new Response(JSON.stringify(value), { status })
     const doFetch = (async (input: URL | string, init?: RequestInit) => {
@@ -254,6 +264,10 @@ describe('applyGrafana', () => {
         return json({ type: 'prometheus' })
       if (url.pathname === '/api/v1/provisioning/contact-points') {
         return json(existing.contactPoint ? [{ uid: 'teko-email' }] : [])
+      }
+      if (url.pathname === '/api/folders') return json(existing.folders ?? [])
+      if (url.pathname.startsWith('/api/folders/')) {
+        return json({ message: 'Permissions needed: folders:read' }, 403)
       }
       if (url.pathname === '/api/v1/check') return json(existing.checks ?? [])
       if (url.pathname === '/api/v1/probe') return json([{ id: 7, name: 'SaoPaulo' }])
@@ -328,6 +342,30 @@ describe('applyGrafana', () => {
       | { folderUid: string; overwrite: boolean }
       | undefined
     assert.deepEqual([dashboard?.folderUid, dashboard?.overwrite], ['teko-ops', true])
+  })
+
+  it('acha a pasta pela listagem (o GET por uid dá 403 com Editor): mantém ou renomeia', async () => {
+    const { title } = code.stack.folder
+    for (const [existingTitle, action] of [
+      [title, 'keep'],
+      ['Título antigo', 'update'],
+    ] as const) {
+      const { calls, doFetch } = fakeFetch({ folders: [{ uid: 'teko-ops', title: existingTitle }] })
+      const plan = await applyGrafana(code, env, {
+        mode: 'apply',
+        fetch: doFetch,
+        log: () => {},
+        sha: 'abc1234',
+      })
+      assert.equal(plan.find((item) => item.kind === 'folder')?.action, action)
+      const folderWrites = calls.filter(
+        (call) => call.method !== 'GET' && call.url.includes('/api/folders'),
+      )
+      assert.deepEqual(
+        folderWrites.map((call) => `${call.method} ${call.url}`),
+        action === 'keep' ? [] : ['PUT teko.grafana.net/api/folders/teko-ops'],
+      )
+    }
   })
 
   it('sem e-mails nem contact point existente, pula os alertas; sem token do SM, pula os checks', async () => {
