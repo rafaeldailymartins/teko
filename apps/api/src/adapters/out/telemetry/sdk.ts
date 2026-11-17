@@ -174,7 +174,10 @@ function telemetryResource(identity: TelemetryIdentity): Resource {
 }
 
 function otlpExporters(target: OtlpTarget): TelemetryExporters {
-  const base = target.endpoint.replace(/\/+$/, '')
+  let base = target.endpoint
+  while (base.endsWith('/')) {
+    base = base.slice(0, -1)
+  }
   const options = (signal: string) => ({
     url: `${base}/v1/${signal}`,
     headers: { ...target.headers },
