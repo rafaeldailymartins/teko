@@ -86,6 +86,11 @@ de sair. O release dos erros vai como propriedade (`release`) de cada exceção,
 os source maps a `teko@<versão>`. O snippet injetado no topo de cada chunk só registra o chunk id
 num objeto global; o e2e roda sobre o export injetado.
 
+O CLI também manda telemetria própria (uso e erros do CLI) a `us.i.posthog.com`, sem opção
+documentada para desligar. No `inject` o proxy a barra (o CLI só avisa que descartou o evento); no
+`upload` ela sai do runner do deploy, sem dado de usuário. O harden-runner do job de deploy (F7) pode
+deixar `us.i.posthog.com` fora da allowlist.
+
 ## Consequências
 
 - Uma conta a menos (o Sentry sai de [contas e cotas](../architecture/contas-e-cotas.md)); staging e

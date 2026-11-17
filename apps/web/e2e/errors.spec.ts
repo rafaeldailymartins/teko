@@ -8,9 +8,17 @@ import { POSTHOG_API_HOST } from '../src/lib/analytics/posthog-hosts.ts'
  * é forçada a um 500 `internal` com um `trace_id` conhecido. Sem consentimento de medição (o estado
  * inicial das jornadas é a recusa), o erro vai à UE como `$exception`, com o `trace_id` da resposta
  * e o release do build, e nada é gravado no navegador.
+ *
+ * O `posthog-js` descarta eventos de robôs (`navigator.webdriver`, o user agent e as marcas do
+ * `userAgentData` do Chromium headless): só aqui o navegador se apresenta como um Chrome comum, para
+ * o evento sair.
  */
 
 const TRACE_ID = '0af7651916cd43dd8448eb211c80319c'
+const CHROME_UA =
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'
+
+test.use({ userAgent: CHROME_UA })
 
 interface Sent {
   readonly url: string
@@ -52,7 +60,15 @@ function exceptionsIn(sent: readonly Sent[]): Record<string, unknown>[] {
     } catch {
       continue
     }
-    const batch = Array.isArray(parsed) ? parsed : [parsed]
+    // `{ api_key, batch: [...] }` no `/e/`; um evento solto nos outros caminhos.
+    const inner: unknown =
+      typeof parsed === 'object' && parsed !== null ? Reflect.get(parsed, 'batch') : undefined
+    let batch: unknown[] = [parsed]
+    if (Array.isArray(inner)) {
+      batch = inner
+    } else if (Array.isArray(parsed)) {
+      batch = parsed
+    }
     for (const event of batch) {
       if (
         typeof event === 'object' &&
@@ -72,6 +88,11 @@ test.describe('erros do navegador', () => {
     context,
   }) => {
     test.skip(test.info().project.name === 'mobile', 'mesmo caminho no desktop')
+    await page.addInitScript(() => {
+      Object.defineProperty(navigator, 'webdriver', { get: () => false })
+      // O Chromium headless anuncia a marca `HeadlessChrome` aqui também.
+      Object.defineProperty(navigator, 'userAgentData', { get: () => undefined })
+    })
     const sent = await mockPosthog(page)
     await page.route('**/api/v1/coverage', (route) =>
       route.fulfill({
