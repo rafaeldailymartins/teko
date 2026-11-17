@@ -53,7 +53,9 @@ telefone BR, chave NF-e; regex de `@teko/shared/pii`), `CitationValidator`, `Pro
 Vercel), `ClientIp` (sobre `x-real-ip` na Vercel), `Telemetry`, `LlmTracingPort` e
 `TraceFeedbackPort` (Langfuse, [observabilidade](observabilidade.md)), `UnitOfWork`, `ErrorReporterPort`,
 `BackgroundTasks` (`waitUntil` na Vercel; nas outras plataformas só acompanha a promise),
-`AnalyticsErasurePort` e `TraceErasurePort` (usadas por `DeleteMyData`), `BlobStore` (só CLI).
+`TraceErasurePort` (usada por `DeleteMyData`), `BlobStore` (só CLI). Não há porta de apagamento do
+PostHog: o analytics não usa `identify`, e os eventos ficam ligados só a um identificador aleatório
+do navegador, sem ligação com a conta.
 
 **Injeção.** Fiação manual e tipada em `composition-root.ts` (`createContainer(env)` →
 `{useCases, close}`), exposta por `app.decorate('container')`. O container HTTP só monta o que a
