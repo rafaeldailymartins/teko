@@ -359,7 +359,9 @@ item aqui. Segredos nunca passam pelo chat: o mantenedor grava cada um.
   Tracking. A chave do projeto vai em `POSTHOG_PROJECT_KEY` (Sensitive) nos dois projetos da Vercel
   e no Render, em `NEXT_PUBLIC_POSTHOG_ERRORS_KEY` no build de staging e produção, em
   `NEXT_PUBLIC_POSTHOG_KEY` só no build de produção e na variável `POSTHOG_PROJECT_KEY` do
-  environment `staging` (evento do `source-watch`). Para o upload dos source maps, nos environments
+  environment `staging` (evento do `source-watch`). Uma chave pessoal do PostHog vai em
+  `POSTHOG_PERSONAL_API_KEY` (Sensitive) nos dois projetos da Vercel, para o apagamento com a conta
+  (`DeleteMyData`). Para o upload dos source maps, nos environments
   de deploy: o segredo `POSTHOG_CLI_API_KEY` (chave pessoal `phx_` com `error tracking write` e
   `organization read`) e a variável `POSTHOG_CLI_PROJECT_ID`. O pipeline da F7 define
   `NEXT_PUBLIC_TEKO_RELEASE`.
