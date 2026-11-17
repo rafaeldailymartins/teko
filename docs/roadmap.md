@@ -127,9 +127,21 @@ seguimento que troca `develop` por `main` no código.
 
 ## F7: Deploy de staging e produção
 
-- **Primeiro passo:** apresentar ao mantenedor a lista
-  [Antes da F7](status.md#antes-da-f7-o-que-o-mantenedor-faz) do status, com o que já está feito e o
-  que falta do lado dele (contas, OAuth apps, chaves e segredos).
+- **Primeiro passo:** reconferir a lista
+  [Antes da F7](status.md#antes-da-f7-o-que-o-mantenedor-faz) do status, que ficou pronta em
+  2026-11-17 (contas, OAuth apps, chaves e segredos): só os nomes, sem ler valores. Se algo sumiu,
+  avisar o mantenedor antes de seguir; se está tudo lá, começar as mudanças sem esperar outra
+  confirmação.
+- **Passkey do system test** (tarefa da F7, com o mantenedor): o system test do staging entra
+  com um usuário persistente de teste e uma passkey pré-registrada (`ci-cd-e-ambientes.md`,
+  "System test"; `qualidade-e-seguranca.md`).
+  1. Junto com o system test, o agente prepara o caminho no código: como ele guarda e usa a
+     credencial (autenticador virtual do Playwright com a credencial exportada) e o nome do segredo
+     no environment `staging`.
+  2. Depois do primeiro deploy do staging, o mantenedor cria a conta de teste lá, porque criar
+     conta pede o aval dele, e o agente registra nela a passkey do autenticador virtual.
+  3. A credencial vai para o environment `staging` pelo stdin do `gh secret set`, sem passar pelo
+     chat, e o item correspondente do status é marcado.
 - **Mudanças previstas:** `add-vercel-deployment`, `add-deploy-pipelines`, `add-smoke-tests`,
   `add-usage-guard`.
 - **Entregas:** WAF aplicado (`infra/vercel/firewall-rules.json`), sync de env, deploy único do
@@ -147,6 +159,7 @@ seguimento que troca `develop` por `main` no código.
   - cold start p95 + resume do Neon abaixo de 10 s;
   - purge semanal comprovado contra o staging;
   - ensaio do Plano B: smoke verde contra o host do Render e volta ao estado parado;
+  - system test verde no staging, entrando com a passkey do usuário de teste;
   - check `teko-landing-production` do Synthetic Monitoring ligado (`enabled: true`) no primeiro
     deploy do web de produção, com execuções verdes;
   - itens da F6 que pedem tráfego real conferidos no staging, com o roteiro do
