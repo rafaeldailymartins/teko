@@ -4,6 +4,7 @@ import { describe, it } from 'node:test'
 import { applyGrafana, checkBody, GRAFANA_DIR, grafanaBase } from './grafana-apply.ts'
 import {
   type AlertRuleSpec,
+  containsEmail,
   expandContactPoint,
   expandDashboard,
   expandRuleGroup,
@@ -249,6 +250,24 @@ describe('expansão', () => {
     assert.ok(check)
     assert.deepEqual(checkBody(check, new Map([['SaoPaulo', 7]]))['probes'], [7])
     assert.throws(() => checkBody(check, new Map()), /sonda pública SaoPaulo não existe/u)
+  })
+})
+
+describe('containsEmail', () => {
+  it('acha e-mail em texto e recusa o que não é e-mail', () => {
+    for (const text of ['alertas@teko.dev', '{"to":"a.b+c@mail.example.com"}', 'x a@b.c..d']) {
+      assert.equal(containsEmail(text), true, text)
+    }
+    for (const text of ['nao-e-email', '@teko.dev', 'a@localhost', 'a@.dev', 'a@b..c', '']) {
+      assert.equal(containsEmail(text), false, text)
+    }
+  })
+
+  it('é linear num texto longo, com ou sem @', () => {
+    const started = performance.now()
+    assert.equal(containsEmail('a'.repeat(200_000)), false)
+    assert.equal(containsEmail('a@'.repeat(50_000)), false)
+    assert.ok(performance.now() - started < 1000)
   })
 })
 

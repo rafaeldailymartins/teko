@@ -360,6 +360,11 @@ function summarize(code: GrafanaAsCode): string[] {
   ]
 }
 
+/** Uma linha por chamada: quebra de linha vinda de erro ou resposta não forja comando do Actions. */
+function logLine(line: string): void {
+  console.log(line.replaceAll(/[\r\n]/gu, ' '))
+}
+
 async function main(): Promise<number> {
   const { values } = parseArgs({
     options: {
@@ -401,7 +406,7 @@ async function main(): Promise<number> {
     {
       mode,
       fetch,
-      log: (line) => console.log(line),
+      log: logLine,
       sha: (optional('GITHUB_SHA') ?? 'local').slice(0, 7),
     },
   )

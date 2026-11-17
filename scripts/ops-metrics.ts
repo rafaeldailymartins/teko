@@ -358,6 +358,11 @@ export async function run(
 
 const JOB_NAME = /^[a-z][a-z0-9-]{0,39}$/u
 
+/** Uma linha por chamada: quebra de linha vinda de erro ou resposta não forja comando do Actions. */
+function logLine(line: string): void {
+  console.log(line.replaceAll(/[\r\n]/gu, ' '))
+}
+
 async function main(): Promise<number> {
   const { values } = parseArgs({
     options: {
@@ -372,7 +377,7 @@ async function main(): Promise<number> {
     throw new RangeError('--job precisa ser um nome curto em minúsculas (ex.: quotas)')
   }
   const { code, summary } = await run(
-    { env: process.env, now: new Date(), fetch, log: (line) => console.log(line) },
+    { env: process.env, now: new Date(), fetch, log: logLine },
     { dryRun: values['dry-run'], job },
   )
   const summaryFile = process.env['GITHUB_STEP_SUMMARY']
