@@ -417,6 +417,6 @@ proxy assinado (`x-nf-sign`), o `NETLIFY_CLIENT_IP_TRUSTED`, o corte de 26 s e o
 minúsculas deixam de existir no desenho; os resultados acima ficam como registro histórico. O
 achado do `supportsCancellation` (spike (b)) e o do pooler do Neon (spike (d)) continuam valendo.
 
-## Revisão (2026-11-18): sem Plano B ([ADR 0038](0038-sem-plano-b-no-render.md))
+## Revisão (2026-11-18): sem Plano B ([ADR 0039](0039-sem-plano-b-no-render.md))
 
 A conferência do Render na tabela do spike (g) fica como registro: o Plano B não será criado.

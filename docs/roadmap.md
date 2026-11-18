@@ -234,7 +234,7 @@ severidades entram no próximo release.
 
 | Risco                                                            | Mitigação                                                                                                                 |
 | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| Uma cota do Hobby estoura e a Vercel pausa web e API por 30 dias | tetos na aplicação, WAF, `vercel-usage` com kill switch, nenhuma carga contra a Vercel; sem plataforma reserva (ADR 0038) |
+| Uma cota do Hobby estoura e a Vercel pausa web e API por 30 dias | tetos na aplicação, WAF, `vercel-usage` com kill switch, nenhuma carga contra a Vercel; sem plataforma reserva (ADR 0039) |
 | CU-h ou espaço do Neon esgotam                                   | `/healthz` sem DB, cache da cobertura, guardas de 800 MB, índices parciais e poda de vetores                              |
 | Gemini muda cotas ou modelos                                     | IDs em env, breaker, Groq, cache, kill switch                                                                             |
 | Vigência errada no parser                                        | golden cp1252, propriedades, `review_queue` fora da produção, disjuntor de churn, gate de saúde                           |

@@ -2,7 +2,7 @@
 
 ## Why
 
-O mantenedor decidiu em 2026-11-18 que não haverá Plano B no Render (ADR 0038). O serviço
+O mantenedor decidiu em 2026-11-18 que não haverá Plano B no Render (ADR 0039). O serviço
 `teko-api-planb` nunca foi criado, mas deixou no código e nas specs um terceiro perfil de plataforma
 (`RUNTIME_TARGET=render`), a variável `TRUST_PROXY` obrigatória só para ele, o plugin que fazia a
 API servir o export do web (`WEB_STATIC_DIR`, `@fastify/static`) e cenários que citam o Render. É código sem uso que ainda precisa de teste, revisão e atualização de dependência.
@@ -40,7 +40,7 @@ API servir o export do web (`WEB_STATIC_DIR`, `@fastify/static`) e cenários que
 - `scripts/`: `build-vercel-output.ts`, `caddy-static-site.ts`, `root-locale.test.ts` e os testes
   passam a importar `scripts/lib/static-site-policy.ts`.
 - `pnpm-workspace.yaml` e `pnpm-lock.yaml` sem o `@fastify/static`.
-- Docs: ADR 0038 e notas nas ADRs que citavam o Plano B, roteiro, status, arquitetura, READMEs,
+- Docs: ADR 0039 e notas nas ADRs que citavam o Plano B, roteiro, status, arquitetura, READMEs,
   `SECURITY.md`, `CLAUDE.md` e runbooks.
 - Fase: transversal, antes da F7 (o ensaio do Plano B saía do DoD da F7).
 - Fora de escopo: os runbooks e workflows da F7 (`vercel-paused.md`, `budget-kill-switch.md`,

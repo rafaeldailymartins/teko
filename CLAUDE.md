@@ -17,7 +17,7 @@ docs, mensagens), no estilo do que já existe: frases diretas, sem jargão desne
 - Versões: vale o `catalog` do `pnpm-workspace.yaml`.
 - Custo zero absoluto: nenhum serviço pago nem domínio próprio. Web e API no mesmo projeto Vercel
   Hobby (`tekoia` e `tekoia-staging`, `gru1`), banco no Neon Free, artefatos de ingestão no GitHub
-  Releases. Não há plataforma reserva (ADR 0038).
+  Releases. Não há plataforma reserva (ADR 0039).
 
 ## Como trabalhar
 

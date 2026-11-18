@@ -393,7 +393,7 @@ sem ler valores) e segue. Segredos nunca passam pelo chat: o mantenedor grava ca
 ## Sem plataforma reserva (2026-11-18)
 
 O mantenedor decidiu não ter um serviço reserva no Render
-([ADR 0038](adr/0038-sem-plano-b-no-render.md)). Saíram o `RUNTIME_TARGET=render`, a `TRUST_PROXY`,
+([ADR 0039](adr/0039-sem-plano-b-no-render.md)). Saíram o `RUNTIME_TARGET=render`, a `TRUST_PROXY`,
 o plugin `static-site` com a `WEB_STATIC_DIR`, o `@fastify/static` e a configuração do serviço em
 `infra/`; o ensaio de corte saiu do DoD da F7. Se a Vercel pausar o projeto ou encerrar a conta, o
 Tekó fica fora do ar até o ciclo virar ou até migrar.

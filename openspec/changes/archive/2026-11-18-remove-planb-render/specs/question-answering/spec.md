@@ -14,7 +14,7 @@ streams novos MUST receber 503 `service_paused`, e os streams em andamento SHALL
 
 ### Requirement: Drenagem fora da Vercel
 
-**Reason**: o cenário citava o Render, que deixou de ser plataforma (ADR 0038); fora da Vercel só
+**Reason**: o cenário citava o Render, que deixou de ser plataforma (ADR 0039); fora da Vercel só
 resta o processo Node.
 
 **Migration**: o mesmo comportamento está em "Drenagem do processo Node".

@@ -2,7 +2,7 @@
 
 Fastify 5 em Node 24, hexagonal, publicado como uma única Vercel Function (Fluid compute, `gru1`)
 no mesmo projeto que serve o estático da web (ADR 0029). O mesmo `server.ts` roda na stack de CI,
-no Docker local e no `pnpm dev`. Não há plataforma reserva (ADR 0038).
+no Docker local e no `pnpm dev`. Não há plataforma reserva (ADR 0039).
 
 ## Stack
 

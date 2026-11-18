@@ -355,6 +355,6 @@ O primeiro run real do PR #1 mostrou duas coisas que a análise local não pegav
 - **Saída:** quando o `picomatch` publicar a correção, a versão nova entra pelo lockfile (ou por
   override) e o id sai dos três arquivos.
 
-## Revisão (2026-11-18): sem Plano B ([ADR 0038](0038-sem-plano-b-no-render.md))
+## Revisão (2026-11-18): sem Plano B ([ADR 0039](0039-sem-plano-b-no-render.md))
 
 O `@fastify/static`, que só o Plano B usava, saiu do `apps/api/package.json` e do catálogo.

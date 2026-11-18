@@ -4,7 +4,7 @@
 
 O Plano B (ADR 0004, seção "Plano B: Render Free", e item 10 da ADR 0029) previa um web service do
 Render Free servindo web e API se a Vercel Hobby pausasse o projeto. O mantenedor decidiu não tê-lo
-(ADR 0038). O serviço nunca foi criado, então não há nada a desligar fora do repositório.
+(ADR 0039). O serviço nunca foi criado, então não há nada a desligar fora do repositório.
 
 ## Goals / Non-Goals
 
@@ -46,7 +46,7 @@ Alternativas consideradas:
 
 - `/websites/vercel`: comportamento do Hobby ao estourar uma cota (o recurso para por cerca de 30
   dias; a equipe pausada só volta com ação do dono ou pelo suporte), base da consequência registrada
-  na ADR 0038. Consultado em 2026-11-18.
+  na ADR 0039. Consultado em 2026-11-18.
 - Nenhuma biblioteca nova nem versão alterada: a mudança só remove o `@fastify/static` 10.1.10.
 
 ## Risks / Trade-offs

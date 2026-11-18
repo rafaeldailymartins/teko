@@ -60,7 +60,7 @@ esse desenho por web e API na mesma origem, num projeto Vercel por ambiente. Fal
   (OAuth e passkey).
 - Public Suffix List: `vercel.app` está na seção privada, mantida pela própria Vercel.
 
-## Revisão (2026-11-18): sem Plano B ([ADR 0038](0038-sem-plano-b-no-render.md))
+## Revisão (2026-11-18): sem Plano B ([ADR 0039](0039-sem-plano-b-no-render.md))
 
 Sem Plano B, a troca de host que obrigaria a recadastrar as passkeys fica só no caso de um domínio
 futuro.

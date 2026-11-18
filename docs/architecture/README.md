@@ -33,7 +33,7 @@ O domínio público é `tekoia.vercel.app`, porque `teko.vercel.app` pertence a 
 | -------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
 | Custo zero absoluto                    | Só free tiers que param em vez de cobrar; tetos calculados abaixo das cotas; nenhum cartão cadastrado                |
 | Sem domínio próprio                    | Web e API no mesmo domínio `*.vercel.app` (ADR 0029); login por OAuth GitHub/Google + passkey, sem e-mail            |
-| Vercel Hobby: cotas mensais fixas      | Estourar uma cota bloqueia o recurso por cerca de 30 dias; tetos na aplicação, WAF e guarda diária de uso (ADR 0038) |
+| Vercel Hobby: cotas mensais fixas      | Estourar uma cota bloqueia o recurso por cerca de 30 dias; tetos na aplicação, WAF e guarda diária de uso (ADR 0039) |
 | Vercel Hobby é pessoal e não comercial | Gratuito e MIT, sem anúncios, afiliados, plano pago ou consultoria paga ligada ao deploy; doações permitidas         |
 | Gemini free usa os prompts para treino | PII redigida, aviso na UI, termos 18+, EEE/UK/CH só no Groq (ZDR), opt-out de Model Training na Vercel               |
 | Mantenedor solo, máquina pessoal       | Nada depende da máquina dele: tudo reproduzível pelo Actions e por `infra/`                                          |

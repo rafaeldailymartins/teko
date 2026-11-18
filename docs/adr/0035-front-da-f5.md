@@ -53,6 +53,6 @@ saíram nos PRs #100 a #108 e valem para as próximas fases.
 - A política de privacidade diz que medição e pesquisas ainda não estão ligadas; a F6 atualiza o texto
   e a `PRIVACY_POLICY_VERSION` junto com o SDK.
 
-## Revisão (2026-11-18): sem Plano B ([ADR 0038](0038-sem-plano-b-no-render.md))
+## Revisão (2026-11-18): sem Plano B ([ADR 0039](0039-sem-plano-b-no-render.md))
 
 A política do estático vale na Vercel e no Caddy da stack de CI; o Plano B (`static-site.ts`) saiu.

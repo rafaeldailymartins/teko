@@ -145,6 +145,6 @@ leva o `server.mjs` e os chunks que ele importa (o tsdown gera chunks compartilh
 `cli.mjs`). O `FUNCTION_MAX_DURATION_S` deixou de ter padrão e é obrigatório com
 `RUNTIME_TARGET=vercel`.
 
-## Revisão (2026-11-18): sem Plano B ([ADR 0038](0038-sem-plano-b-no-render.md))
+## Revisão (2026-11-18): sem Plano B ([ADR 0039](0039-sem-plano-b-no-render.md))
 
 O bundle do tsdown serve a Vercel, a stack de CI e o Docker; o Render saiu com o Plano B.

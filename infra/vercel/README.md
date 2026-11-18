@@ -134,7 +134,7 @@ sem nenhuma API key e nenhum cartão em Billing Information.
 - [x] AI Gateway, integrações do marketplace e Vercel Cron desligados (todo agendamento fica no
   Actions).
 - [x] Nenhum cartão cadastrado. Estourar uma cota do Hobby bloqueia o recurso por cerca de 30 dias
-  (503 `DEPLOYMENT_PAUSED`); não há plataforma reserva (ADR 0038).
+  (503 `DEPLOYMENT_PAUSED`); não há plataforma reserva (ADR 0039).
 
 ## Variáveis de ambiente
 

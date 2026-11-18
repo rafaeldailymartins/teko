@@ -21,7 +21,7 @@
 - [x] 3.1 `infra/planb-render/` sai; comentários de `apps/web`, `scripts`, `.github`, `.semgrep` e
   `packages/shared` sem o Plano B (verificar: `git grep -i "planb\|plano b\|onrender"` só acha o
   histórico)
-- [x] 3.2 ADR 0038 e notas nas ADRs que citavam o Plano B; roteiro, status, arquitetura, READMEs,
+- [x] 3.2 ADR 0039 e notas nas ADRs que citavam o Plano B; roteiro, status, arquitetura, READMEs,
   `SECURITY.md`, `CLAUDE.md` e runbooks (verificar: revisão do diff)
 
 ## 4. Specs

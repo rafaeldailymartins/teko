@@ -52,6 +52,6 @@ first-party. A API roda em várias instâncias da Fluid compute, sem estado em m
   rotas de e-mail fica mais rígido, e `GET /api/v1/auth/providers` diz ao web quais entradas mostrar.
   Development e ci sobem sem OAuth apps; staging e produção continuam exigindo os dois.
 
-## Revisão (2026-11-18): sem Plano B ([ADR 0038](0038-sem-plano-b-no-render.md))
+## Revisão (2026-11-18): sem Plano B ([ADR 0039](0039-sem-plano-b-no-render.md))
 
 Não há mais corte para o Plano B; as passkeys continuam valendo por host.

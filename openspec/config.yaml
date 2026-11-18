@@ -26,7 +26,7 @@ context: |
     projetos (tekoia e tekoia-staging, domínios tekoia.vercel.app e tekoia-staging.vercel.app),
     sem integração Git: o CI monta e atesta o .vercel/output e publica com vercel deploy
     --prebuilt + vercel promote. Sessão por cookie e checagem de Origin, inclusive no stream; sem
-    proxy, ticket nem CORS. Sem plataforma reserva: uma pausa do Hobby derruba web e API (ADR 0038).
+    proxy, ticket nem CORS. Sem plataforma reserva: uma pausa do Hobby derruba web e API (ADR 0039).
   - Artefatos de ingestão (snapshots, raws, cache do Docling, estado do watch, histórico de
     evals) no GitHub Releases (ADR 0030).
   - Supply chain: o catálogo do pnpm-workspace.yaml é a fonte da verdade das versões
