@@ -1,0 +1,131 @@
+# System test do staging (F7, mudança OpenSpec add-smoke-tests; docs/architecture/ci-cd-e-ambientes.md,
+# "System test"): Playwright (apps/web/playwright.system.config.ts, apps/web/system/) contra
+# https://tekoia-staging.vercel.app. O usuário persistente de teste entra por passkey (autenticador
+# virtual do Chromium com a credencial do segredo SYSTEM_TEST_PASSKEY), faz 1 pergunta do pool de 30
+# escolhida pelo run_number com o stream até o finish, repete a pergunta (cache), pede uma data fora
+# da cobertura (recusa sem LLM) e troca o idioma. No máximo 2 gerações por run e nenhum retry.
+#
+#   - workflow_call: o deploy do staging chama depois do smoke, com o sha da deployment;
+#   - workflow_dispatch: à mão.
+#
+# Só em main (o environment staging também só aceita main). Sem o segredo, o job avisa e termina
+# verde: a passkey é registrada pelo mantenedor (docs/runbooks/system-test.md).
+name: System test
+
+on:
+  workflow_call:
+    inputs:
+      expected-sha:
+        description: SHA (40 hex) que o staging precisa estar servindo. Vazio = não confere.
+        type: string
+        required: false
+        default: ""
+  workflow_dispatch:
+    inputs:
+      expected-sha:
+        description: SHA (40 hex) que o staging precisa estar servindo. Vazio = não confere.
+        type: string
+        required: false
+        default: ""
+
+permissions: {}
+
+concurrency:
+  group: system-test
+  cancel-in-progress: false
+
+env:
+  TURBO_TELEMETRY_DISABLED: "1"
+
+jobs:
+  system-test:
+    name: system-test
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    environment: staging
+    permissions:
+      contents: read
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          # GitHub (checkout, setup, cache e artifact), npm e nodejs.org (setup), o CDN dos
+          # browsers do Playwright e o staging. Nada mais: o navegador do teste não precisa de
+          # outro host (o consentimento recusado deixa o PostHog de produto desligado).
+          egress-policy: block
+          allowed-endpoints: >
+            github.com:443
+            api.github.com:443
+            codeload.github.com:443
+            objects.githubusercontent.com:443
+            raw.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+            results-receiver.actions.githubusercontent.com:443
+            *.actions.githubusercontent.com:443
+            *.blob.core.windows.net:443
+            registry.npmjs.org:443
+            nodejs.org:443
+            cdn.playwright.dev:443
+            playwright.download.prss.microsoft.com:443
+            tekoia-staging.vercel.app:443
+
+      - name: Conferir o segredo da passkey
+        id: secrets
+        env:
+          SYSTEM_TEST_PASSKEY: ${{ secrets.SYSTEM_TEST_PASSKEY }}
+        run: |
+          if [[ -z "$SYSTEM_TEST_PASSKEY" ]]; then
+            echo "::warning title=system-test::Sem o segredo SYSTEM_TEST_PASSKEY no environment 'staging': system test pulado (docs/runbooks/system-test.md)."
+            echo "ready=false" >>"$GITHUB_OUTPUT"
+          else
+            echo "ready=true" >>"$GITHUB_OUTPUT"
+          fi
+
+      - name: Checkout
+        if: steps.secrets.outputs.ready == 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Conferir o sha do staging
+        if: steps.secrets.outputs.ready == 'true' && inputs.expected-sha != ''
+        env:
+          EXPECTED_SHA: ${{ inputs.expected-sha }}
+        run: |
+          if [[ ! "$EXPECTED_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error title=system-test::expected-sha precisa de 40 caracteres hexadecimais."
+            exit 2
+          fi
+          served="$(curl -fsS --max-time 30 https://tekoia-staging.vercel.app/healthz | jq -r '.gitSha')"
+          if [[ "$served" != "$EXPECTED_SHA" ]]; then
+            echo "::error title=system-test::O staging serve ${served}, e não ${EXPECTED_SHA}."
+            exit 1
+          fi
+
+      - name: Setup
+        if: steps.secrets.outputs.ready == 'true'
+        uses: ./.github/actions/setup
+
+      - name: Instalar o Chromium do Playwright
+        if: steps.secrets.outputs.ready == 'true'
+        run: pnpm --filter @teko/web exec playwright install chromium
+
+      - name: System test (staging)
+        if: steps.secrets.outputs.ready == 'true'
+        env:
+          CI: "true"
+          SYSTEM_TEST_PASSKEY: ${{ secrets.SYSTEM_TEST_PASSKEY }}
+        # A pergunta do pool sai do GITHUB_RUN_NUMBER (o do workflow que chamou, no workflow_call).
+        run: pnpm --filter @teko/web test:system
+
+      - name: Screenshots da falha
+        if: failure() && steps.secrets.outputs.ready == 'true'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: system-test-failure
+          path: |
+            apps/web/test-results
+            apps/web/reports/junit-system.xml
+          if-no-files-found: ignore
+          retention-days: 7

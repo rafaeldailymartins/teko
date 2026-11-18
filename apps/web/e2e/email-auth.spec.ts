@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { expect, type Page, test } from '@playwright/test'
 import ptBR from '../messages/pt-BR.json' with { type: 'json' }
+import { completeOnboarding, deleteAccount } from './support/accounts.ts'
 import { enforcedViolations, recordViolations } from './support/csp.ts'
 
 /**
@@ -53,17 +54,7 @@ test.describe('e-mail e senha pela tela', () => {
     await page.getByRole('button', { name: email.submitSignUp }).click()
 
     // Conta nova: o chat abre com o onboarding bloqueante.
-    await expect(page).toHaveURL(/\/pt-BR\/chat\/$/)
-    const onboarding = page.getByRole('dialog', { name: ptBR.onboarding.title })
-    await expect(onboarding).toBeVisible()
-    await onboarding.getByRole('checkbox', { name: ptBR.onboarding.adult }).check()
-    await onboarding.getByRole('checkbox', { name: /Termos de uso/ }).check()
-    await expect(onboarding.getByRole('combobox', { name: ptBR.onboarding.country })).toContainText(
-      'Brasil',
-    )
-    await onboarding.getByRole('button', { name: ptBR.onboarding.submit }).click()
-    await expect(onboarding).toBeHidden()
-    await expect(page.getByRole('textbox', { name: 'Sua pergunta' })).toBeEnabled()
+    await completeOnboarding(page)
 
     // Sai pelo menu da conta.
     await page.getByRole('button', { name: `Conta de ${name}` }).click()
@@ -85,12 +76,7 @@ test.describe('e-mail e senha pela tela', () => {
     // As configurações mostram o método de entrada; a exclusão apaga a conta e a sessão.
     await expect(page.getByText(ptBR.settings.account.methods.email)).toBeVisible()
     await expect(page.getByText(address)).toBeVisible()
-    await page.getByRole('button', { name: ptBR.settings.delete.button }).click()
-    const removal = page.getByRole('dialog', { name: ptBR.settings.delete.title })
-    await removal.getByRole('textbox').fill(ptBR.settings.delete.word)
-    await removal.getByRole('button', { name: ptBR.settings.delete.confirm }).click()
-    await expect(page).toHaveURL(/\/pt-BR\/$/)
-    expect((await page.request.get('/api/v1/me')).status()).toBe(401)
+    await deleteAccount(page)
 
     expect(await enforcedViolations(page)).toEqual([])
   })

@@ -354,6 +354,42 @@ check "ops: quotas no environment ops, depois do coverage-age e mesmo se ele fal
 check "ops: dry-run só no workflow_dispatch" \
   yq_true '.env.DRY_RUN == "${{ github.event_name == '"'"'workflow_dispatch'"'"' && inputs.dry_run }}"' "$ops"
 
+# --- F7: smoke.yml e system-test.yml (add-smoke-tests) -------------------------------------------
+smoke=.github/workflows/smoke.yml
+system=.github/workflows/system-test.yml
+for wf in "$smoke" "$system"; do
+  check "$(basename "$wf"): permissions {} no topo, harden-runner em block com allowed-endpoints como primeiro step" \
+    yq_true '((.permissions | length) == 0) and ([.jobs[] | .steps[0] | ((.uses | test("^step-security/harden-runner@")) and (.with."egress-policy" == "block") and (((.with."allowed-endpoints" // "") | length) > 0))] | all)' "$wf"
+  check "$(basename "$wf"): nenhum job com escrita e concurrency sem cancelamento" \
+    yq_true '(([.jobs[].permissions // {} | to_entries[] | select(.value == "write")] | length) == 0) and (.concurrency."cancel-in-progress" == false)' "$wf"
+done
+check "smoke: workflow_call e workflow_dispatch com environment (staging|production) e expected-sha" \
+  yq_true '(.on | keys | sort | join(",")) == "workflow_call,workflow_dispatch" and .on.workflow_call.inputs.environment.required == true and (.on.workflow_dispatch.inputs.environment.options | join(",")) == "staging,production" and (.on.workflow_call.inputs | has("expected-sha")) and (.on.workflow_dispatch.inputs | has("expected-sha"))' "$smoke"
+check "smoke: sem environment nem segredo (o canônico não usa o bypass)" \
+  bash -c "yq -e '[.jobs[] | has(\"environment\")] | any | not' '$smoke' >/dev/null && ! grep -q 'secrets\\.' '$smoke'"
+check "smoke: roda scripts/smoke.ts no modo canonical, com os inputs só por env" \
+  bash -c "yq -r '.jobs.smoke.steps[].run // \"\"' '$smoke' | grep -q 'node scripts/smoke.ts --env \"\$ENVIRONMENT\" --mode canonical' && ! yq -r '.jobs.smoke.steps[].run // \"\"' '$smoke' | grep -q '\${{'"
+check "smoke: egress só para os domínios canônicos e antigos dos dois projetos (fora o GitHub e o Node)" \
+  bash -c "[[ \"\$(tr ' ' '\n' <<<\"\$(yq -r '.jobs.smoke.steps[0].with.\"allowed-endpoints\"' '$smoke')\" | grep -F 'vercel.app' | sort | tr '\n' ' ')\" == 'teko-api-staging.vercel.app:443 teko-api.vercel.app:443 tekoia-staging.vercel.app:443 tekoia.vercel.app:443 ' ]]"
+check "system-test: só em main, no environment staging, com workflow_call e workflow_dispatch" \
+  yq_true '(.on | keys | sort | join(",")) == "workflow_call,workflow_dispatch" and .jobs."system-test".if == "github.ref == '"'"'refs/heads/main'"'"'" and .jobs."system-test".environment == "staging" and (.on.workflow_call.inputs | has("expected-sha"))' "$system"
+check "system-test: sem SYSTEM_TEST_PASSKEY avisa e pula o resto do job" \
+  bash -c "yq -r '.jobs.\"system-test\".steps[] | select(.id == \"secrets\") | .run' '$system' | grep -q '::warning' && yq -e '[.jobs.\"system-test\".steps[2:][] | .if // \"\" | test(\"steps\\\\.secrets\\\\.outputs\\\\.ready == .true.\")] | (length >= 5 and all)' '$system' >/dev/null"
+system_test_only_passkey() {
+  local used
+  used="$(grep -Eo 'secrets[.][A-Z_]+' <<<"$(job_text "$system" system-test)" | sort -u)"
+  [[ "$used" == 'secrets.SYSTEM_TEST_PASSKEY' ]]
+}
+check "system-test: o único segredo é o SYSTEM_TEST_PASSKEY" system_test_only_passkey
+check "system-test: roda o projeto Playwright separado (test:system), e o e2e não olha system/" \
+  bash -c "yq -r '.jobs.\"system-test\".steps[].run // \"\"' '$system' | grep -qx 'pnpm --filter @teko/web test:system' && grep -Fq \"testDir: './e2e'\" apps/web/playwright.config.ts && grep -Fq \"testDir: './system'\" apps/web/playwright.system.config.ts && grep -Fq 'retries: 0' apps/web/playwright.system.config.ts"
+check "system-test: o staging é o único host de aplicação no egress" \
+  bash -c "[[ \"\$(tr ' ' '\n' <<<\"\$(yq -r '.jobs.\"system-test\".steps[0].with.\"allowed-endpoints\"' '$system')\" | grep -F 'vercel.app' | tr '\n' ' ')\" == 'tekoia-staging.vercel.app:443 ' ]]"
+# O system test lê o segredo do próprio environment (job com `environment` no workflow chamado); o
+# smoke não usa segredo. Quem os chama nunca repassa todos os segredos.
+check "nenhum workflow usa secrets: inherit" \
+  bash -c "! grep -Eq '^[[:space:]]*secrets:[[:space:]]*inherit' .github/workflows/*.yml"
+
 # --- Semgrep: as fixtures rodam no CI (GHA-4) ---------------------------------------------------
 check "security.yml roda semgrep test .semgrep/" \
   bash -c "yq -r '.jobs.semgrep.steps[].run // \"\"' .github/workflows/security.yml | grep -q 'semgrep test .semgrep/'"

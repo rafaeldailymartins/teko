@@ -91,7 +91,8 @@ cache do Turbo salvo só em push no tronco.
 | `ingest.yml`       | dispatch; `workflow_call` do `source-watch`        | discover → extract → load → corpus-eval → lock-pr; modo `eval-only` ([ingestão](ingestao-e-avaliacao.md#ingestyml))              |
 | `source-watch.yml` | cron diário                                        | `detect` (environment `staging`) e `mark-coverage` (environment `corpus-watch`)                                                  |
 | deploy (F7)        | push no tronco → staging; `release.yml` → produção | um só `.vercel/output` (estático + Function) por ambiente: build, tarball, scan, attest, migrate, env sync, deploy, smoke        |
-| `smoke.yml`        | `workflow_call` (input `env`)                      | smoke + rollback                                                                                                                 |
+| `smoke.yml`        | `workflow_call`; dispatch                          | smoke canônico (`scripts/smoke.ts`), inputs `environment` e `expected-sha`, sem environment; o rollback fica no deploy           |
+| `system-test.yml`  | `workflow_call`; dispatch; só `main`               | system test do staging (Playwright, `apps/web/system/`), environment `staging`, segredo `SYSTEM_TEST_PASSKEY`                    |
 | `release.yml`      | dispatch; push de tag `v*`                         | PR de release; `release-gate` e jobs de produção (F9)                                                                            |
 | `ops.yml`          | cron diário e semanal (environment `ops`)          | cotas e CU-h, expiração de tokens, Grafana e modelos do Langfuse as code, `vercel-usage`, `prod-vuln-scan`, `weekly-maintenance` |
 
@@ -141,8 +142,10 @@ Um deploy publica, de uma vez, o estático e a Function do mesmo commit (ADR 002
 6. sync da Config de `infra/vercel/env.<ambiente>.json` (falha se faltar Sensitive);
 7. `gh attestation verify` do tarball e `vercel deploy --prebuilt --prod --skip-domain
    --archive=tgz --meta artifactSha256=<sha256> --meta gitSha=<sha>`;
-8. smoke da URL única com `vercel curl --protection-bypass` (`/healthz` com o `gitSha`);
-9. `vercel promote`, e o smoke de produção no domínio canônico.
+8. smoke da URL única: `node scripts/smoke.ts --mode deployment`, com o bypass de automação
+   (`VERCEL_AUTOMATION_BYPASS_SECRET`) no header `x-vercel-protection-bypass`;
+9. `vercel promote`, e o smoke canônico (`smoke.yml`, `--mode canonical`) no domínio do ambiente;
+   no staging, depois dele, o system test (`system-test.yml`).
 
 **O que garante que produção roda o código do CI:** o `--prebuilt` envia exatamente o output
 atestado, com a atestação verificada antes, a `meta.artifactSha256` na deployment e o
@@ -155,12 +158,61 @@ promote` de uma deployment de produção mais antiga. A âncora de longo prazo �
 do release (`gh attestation verify` + `vercel deploy --prebuilt`). Env vars não voltam junto. O
 corpus tem rollback próprio ([ingestão](ingestao-e-avaliacao.md#snapshot-promoção-e-rollback)).
 
-**Smoke** (cerca de 15 requests, sem LLM): `GET /` (redirect por idioma), `/pt-BR/` e `/en/` com
-headers; `/healthz` com o `gitSha` esperado; `GET /api/v1/coverage` (1 leitura no DB, `no-store`,
-sem cache HIT); stream sem sessão → 401 e com `Origin` errado → 403; WAF: `GET /api/qualquer-coisa`
-→ 403; domínio antigo `teko-api*.vercel.app` → 308 para o canônico; URL única sem bypass não chega
-à API.
+### Smoke
 
-**System test** (staging): login por passkey, 1 pergunta de um pool de 30 escolhida por
-`run_number` (stream até o `finish`), repetição para conferir cache hit, recusa fora da cobertura e
-troca de locale; no máximo 2 gerações por run.
+`scripts/smoke.ts` (Node 24, sem dependências; testes em `scripts/smoke.test.ts`), cerca de 15
+requests, sem LLM nem sessão. Contrato fixo, o mesmo do deploy e do `smoke.yml`:
+
+```bash
+node scripts/smoke.ts --env staging|production --mode deployment|canonical \
+  --base-url <url> --expected-sha <40 hex> [--out <arquivo.json>]
+```
+
+Sai com 0 (verde), 1 (alguma checagem falhou) ou 2 (argumento inválido, sem request nenhum).
+
+- **Checagens dos dois modos:** `/healthz` e `/api/healthz` com o `gitSha` esperado e o `env`;
+  `GET /` → 302 para `/en/` ou `/pt-BR/` pelo `Accept-Language`, com `private, no-store`; `/pt-BR/`
+  e `/en/` com os headers do estático e a CSP do documento; duas leituras de `GET /api/v1/coverage`
+  (a primeira de uma instância lê o Neon), com `no-store` e sem `x-vercel-cache` HIT; stream sem
+  sessão → 401 `unauthenticated` e com `Origin` de outro site → 403 `forbidden`.
+- **`--mode deployment`** (URL única, antes do `promote`): a `--base-url` precisa ser
+  `https://<projeto>-<...>.vercel.app` do projeto do ambiente, e cada request leva o header
+  `x-vercel-protection-bypass` com o `VERCEL_AUTOMATION_BYPASS_SECRET` do env (nunca argumento,
+  log ou relatório). A checagem `deployment-protection` confere que a URL sem o header não chega à
+  API (401/403 ou redirect para o login da Vercel).
+- **`--mode canonical`** (domínio público, depois do `promote`): a `--base-url` precisa ser o
+  `WEB_ORIGIN` de `infra/vercel/env.<env>.json`. Soma o WAF (`GET /api/qualquer-coisa` → 403) e o
+  domínio antigo (`teko-api.vercel.app` ou `teko-api-staging.vercel.app` → 308 para o canônico, com
+  o caminho). Só o `/healthz` repete, e só enquanto servir o `gitSha` anterior (até 6 vezes com
+  5 s): logo depois do `promote`, a Vercel ainda pode servir a deployment antiga por um instante.
+- **Relatório:** `--out` (dentro do repositório) grava o JSON com status, tentativas e tempo de cada
+  checagem (o primeiro `/healthz` mede o cold start); com `GITHUB_STEP_SUMMARY`, uma tabela vai para
+  o resumo do job.
+
+O `smoke.yml` roda o modo canônico por `workflow_call` ou à mão (inputs `environment` e
+`expected-sha`; sem sha, vale o do `/healthz`), sem environment do GitHub: não há segredo, e a
+produção não pede aprovação. O modo deployment roda dentro do deploy, que tem o bypass.
+
+### System test
+
+Staging, depois do smoke canônico: projeto Playwright separado
+(`apps/web/playwright.system.config.ts`, testes em `apps/web/system/`, fora da suíte e2e), Chromium
+só, 1 worker, sem retry, sem trace nem vídeo. Workflow `system-test.yml` (`workflow_call` com
+`expected-sha`, ou à mão), só em `main`, environment `staging`.
+
+1. **Login por passkey** do usuário persistente de teste: a credencial do segredo
+   `SYSTEM_TEST_PASSKEY` (JSON com `version`, `rpId`, `credentialId`, `privateKey` PKCS#8,
+   `userHandle` e `signCount`, binários em base64) vai para um autenticador virtual do Chromium (CDP
+   `WebAuthn.addVirtualAuthenticator` e `WebAuthn.addCredential`), com um contador que cresce entre
+   runs. O mantenedor registra a passkey com `apps/web/system/register-passkey.ts`
+   ([runbook](../runbooks/system-test.md)); sem o segredo, o job avisa e termina verde.
+2. **1 pergunta** do pool versionado de 30 (`apps/web/system/questions.json`), escolhida por
+   `run_number`, num dos 24 meses mais recentes que a família cobre (lidos do `/api/v1/coverage`),
+   com o stream até o `finish` e o `[DONE]`.
+3. **Repetição** da mesma pergunta: `answered` com `meta.cached: true`.
+4. **Recusa fora da cobertura** (`out_of_coverage`, sem LLM e sem cota).
+5. **Troca de idioma** no chat, mantendo a query.
+
+No máximo 2 gerações por run: a primeira pergunta, e a repetição só se o cache falhar (e então o
+teste reprova). O mesmo caminho da passkey (cadastrar, exportar, importar, entrar) roda a cada PR no
+e2e `apps/web/e2e/passkey.spec.ts`, na stack de CI.

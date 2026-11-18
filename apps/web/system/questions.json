@@ -1,0 +1,62 @@
+[
+  { "family": "efd-icms-ipi", "question": "Quais campos o registro C170 da EFD ICMS/IPI tem?" },
+  {
+    "family": "efd-icms-ipi",
+    "question": "Quando o registro C100 da EFD ICMS/IPI deve ser informado?"
+  },
+  { "family": "efd-icms-ipi", "question": "O que o registro E110 da EFD ICMS/IPI apura?" },
+  { "family": "efd-icms-ipi", "question": "Qual o prazo de entrega da EFD ICMS/IPI?" },
+  { "family": "efd-icms-ipi", "question": "Como preencher o registro 0200 da EFD ICMS/IPI?" },
+  { "family": "efd-icms-ipi", "question": "Para que serve o bloco K da EFD ICMS/IPI?" },
+  {
+    "family": "efd-icms-ipi",
+    "question": "O que informar no registro H010 do inventário na EFD ICMS/IPI?"
+  },
+  {
+    "family": "efd-icms-ipi",
+    "question": "Quais documentos são escriturados no registro C500 da EFD ICMS/IPI?"
+  },
+  { "family": "efd-reinf", "question": "O que o evento R-2010 da EFD-Reinf informa?" },
+  {
+    "family": "efd-reinf",
+    "question": "Quando enviar o evento R-2099 de fechamento da EFD-Reinf?"
+  },
+  { "family": "efd-reinf", "question": "Quais informações vão no evento R-1000 da EFD-Reinf?" },
+  { "family": "efd-reinf", "question": "Para que serve o evento R-4020 da EFD-Reinf?" },
+  {
+    "family": "efd-reinf",
+    "question": "Como informar a retenção de contribuição previdenciária na EFD-Reinf?"
+  },
+  { "family": "rcte", "question": "Quem é contribuinte do ICMS segundo o RCTE de Goiás?" },
+  { "family": "rcte", "question": "Quando ocorre o fato gerador do ICMS no RCTE?" },
+  { "family": "rcte", "question": "Qual o prazo de validade da nota fiscal segundo o RCTE?" },
+  {
+    "family": "rcte",
+    "question": "O que o RCTE diz sobre a substituição tributária nas operações internas?"
+  },
+  { "family": "rcte", "question": "Como o RCTE trata o crédito do ICMS na entrada de mercadoria?" },
+  { "family": "rcte", "question": "Quais livros fiscais o RCTE exige do contribuinte?" },
+  { "family": "cte", "question": "Quais tributos o Código Tributário de Goiás institui?" },
+  { "family": "cte", "question": "Qual a base de cálculo do ICMS no Código Tributário de Goiás?" },
+  { "family": "cte", "question": "O que o Código Tributário de Goiás diz sobre o IPVA?" },
+  { "family": "efd-go", "question": "Quem está obrigado a entregar a EFD em Goiás?" },
+  { "family": "efd-go", "question": "Qual o prazo de entrega da EFD para contribuintes de Goiás?" },
+  {
+    "family": "efd-go",
+    "question": "Como informar os ajustes de apuração do ICMS de Goiás na EFD?"
+  },
+  { "family": "efd-go", "question": "Quais registros específicos de Goiás a EFD exige?" },
+  { "family": "efd-go", "question": "Como retificar a EFD entregue em Goiás?" },
+  {
+    "family": "tabelas-go",
+    "question": "Quais códigos de ajuste de apuração do ICMS Goiás publica?"
+  },
+  {
+    "family": "tabelas-go",
+    "question": "Qual código de ajuste usar para crédito outorgado em Goiás?"
+  },
+  {
+    "family": "tabelas-go",
+    "question": "Quais códigos de informações adicionais da apuração existem em Goiás?"
+  }
+]

@@ -1,0 +1,132 @@
+# Smoke canônico (F7, mudança OpenSpec add-smoke-tests; docs/architecture/ci-cd-e-ambientes.md,
+# "Smoke"): scripts/smoke.ts --mode canonical contra o domínio público do ambiente, depois do
+# promote. Cerca de 15 requests, sem LLM, sem sessão e sem segredo: headers e CSP do estático,
+# redirect por idioma, /healthz com o gitSha esperado, /api/v1/coverage sem cache da CDN, stream
+# sem sessão (401) e com Origin errado (403), WAF (/api/qualquer-coisa → 403) e o domínio antigo
+# teko-api*.vercel.app (308 para o canônico).
+#
+#   - workflow_call: o deploy chama depois do promote, com o sha da deployment em expected-sha;
+#   - workflow_dispatch: à mão, a qualquer hora; sem expected-sha, vale o gitSha que o /healthz do
+#     ambiente responde (o smoke então só confere o resto).
+#
+# Sem environment: o modo canônico não usa segredo (o bypass de automação é só do modo deployment,
+# dentro do deploy), e assim a produção não pede aprovação. O relatório JSON (tempo de cada
+# request, útil para o cold start) sai como artifact e numa tabela no resumo do job.
+name: Smoke
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: staging ou production.
+        type: string
+        required: true
+      expected-sha:
+        description: SHA (40 hex) da deployment promovida. Vazio = o gitSha atual do /healthz.
+        type: string
+        required: false
+        default: ""
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Ambiente cujo domínio canônico recebe o smoke.
+        type: choice
+        options: [staging, production]
+        default: staging
+      expected-sha:
+        description: SHA (40 hex) esperado no /healthz. Vazio = o que estiver no ar.
+        type: string
+        required: false
+        default: ""
+
+permissions: {}
+
+concurrency:
+  group: smoke-${{ inputs.environment }}
+  cancel-in-progress: false
+
+jobs:
+  smoke:
+    name: smoke (${{ inputs.environment }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          # GitHub (checkout, setup-node e artifact), nodejs.org e os domínios canônicos e antigos
+          # dos dois projetos Vercel (infra/vercel/README.md).
+          egress-policy: block
+          allowed-endpoints: >
+            github.com:443
+            api.github.com:443
+            codeload.github.com:443
+            objects.githubusercontent.com:443
+            raw.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+            results-receiver.actions.githubusercontent.com:443
+            *.actions.githubusercontent.com:443
+            *.blob.core.windows.net:443
+            nodejs.org:443
+            tekoia.vercel.app:443
+            tekoia-staging.vercel.app:443
+            teko-api.vercel.app:443
+            teko-api-staging.vercel.app:443
+
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Node (.nvmrc)
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+
+      - name: Alvo (domínio canônico e sha esperado)
+        id: target
+        env:
+          ENVIRONMENT: ${{ inputs.environment }}
+          EXPECTED_SHA: ${{ inputs.expected-sha }}
+        run: |
+          case "$ENVIRONMENT" in
+            staging | production) ;;
+            *)
+              echo "::error title=smoke::environment precisa ser staging ou production."
+              exit 2
+              ;;
+          esac
+          origin="$(jq -r '.config.WEB_ORIGIN.value' "infra/vercel/env.${ENVIRONMENT}.json")"
+          sha="$EXPECTED_SHA"
+          if [[ -z "$sha" ]]; then
+            sha="$(curl -fsS --max-time 30 "${origin}/healthz" | jq -r '.gitSha')"
+            echo "::notice title=smoke::Sem expected-sha: usando o gitSha atual do /healthz (${sha})."
+          fi
+          if [[ ! "$sha" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error title=smoke::SHA esperado inválido (precisa de 40 caracteres hexadecimais): ${sha}"
+            exit 2
+          fi
+          {
+            echo "origin=${origin}"
+            echo "sha=${sha}"
+          } >>"$GITHUB_OUTPUT"
+
+      - name: Smoke canônico
+        env:
+          ENVIRONMENT: ${{ inputs.environment }}
+          ORIGIN: ${{ steps.target.outputs.origin }}
+          SHA: ${{ steps.target.outputs.sha }}
+        run: >-
+          node scripts/smoke.ts --env "$ENVIRONMENT" --mode canonical --base-url "$ORIGIN"
+          --expected-sha "$SHA" --out reports/smoke-canonical.json
+
+      - name: Relatório do smoke
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: smoke-${{ inputs.environment }}-canonical
+          path: reports/smoke-canonical.json
+          if-no-files-found: ignore
+          retention-days: 30

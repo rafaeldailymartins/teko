@@ -28,8 +28,8 @@ pré-release (ADR 0032). Nenhum gate de PR pode ficar vermelho num merge: o `ci-
 | Python              | pytest, hypothesis, ruff (com `S`), pyright strict                                         | PR em `tools/ingest/**`                              | verde, cobertura ≥ 85%                                |
 | Retrieval evals     | promptfoo sobre a fixture ([avaliação](ingestao-e-avaliacao.md#avaliação-ragops-adr-0031)) | PR em `rag`/`ingest`                                 | `thresholds.json`                                     |
 | E2E                 | Playwright, 5 a 8 jornadas, Chromium + viewport mobile, axe                                | PR (se `web`/`api` afetados), na stack de CI         | verde, `forbidOnly`, 2 retries                        |
-| Sistema             | Playwright `@system`                                                                       | após deploy de staging                               | bloqueia o release (`staging-verified`)               |
-| Smoke               | Playwright `request` `@smoke`                                                              | após cada deploy                                     | falha → rollback                                      |
+| Sistema             | Playwright, projeto `playwright.system.config.ts` (`apps/web/system/`), passkey virtual    | após deploy de staging (`system-test.yml`)           | bloqueia o release (`staging-verified`)               |
+| Smoke               | `scripts/smoke.ts` (Node, sem dependências): URL única e domínio canônico                  | após cada deploy (`smoke.yml` no canônico)           | falha → rollback                                      |
 | Contrato            | OpenAPI × `uiMessageChunkSchema` × cliente gerado                                          | PR                                                   | verde                                                 |
 | Desempenho          | `sql-perf` (gate); Vitest bench e autocannon (informativos)                                | PR em `api`/`rag`                                    | plano de execução e teto relativo ao runner           |
 | Carga               | k6 na stack de CI: `smoke.ts` e `load.ts`                                                  | PR em `api` (smoke); pré-release (load)              | thresholds k6                                         |
@@ -51,8 +51,10 @@ integração que citam o requisito.
 - **Banco de teste:** um container com tmpfs e `fsync=off`; cria `teko_app` e `teko_watch`, aplica
   as migrações reais e faz `snapshot()`; cada arquivo restaura o snapshot.
 - **Login nos testes:** o e2e cria usuário e sessão direto no Postgres efêmero (sem endpoint HTTP)
-  e cobre a passkey com autenticador virtual (CDP `WebAuthn.addCredential`); o system test usa um
-  usuário persistente do staging com passkey pré-registrada (chave no environment `staging`).
+  e cobre a passkey com autenticador virtual (`e2e/passkey.spec.ts`: cadastro pela tela,
+  `WebAuthn.getCredentials`, `WebAuthn.addCredential` num navegador novo); o system test usa um
+  usuário persistente do staging com passkey pré-registrada (segredo `SYSTEM_TEST_PASSKEY` no
+  environment `staging`, [runbook](../runbooks/system-test.md)).
 - **Fakes:** `FakeEmbeddingAdapter` (lookup por hash na fixture; em `strict`, miss falha);
   `FakeLLMAdapter` com marcadores de falha (`[[fault:429]]`, `[[fault:timeout]]`, `[[fault:5xx]]`,
   `[[fault:bad-citation]]`, `[[fault:xss]]`); MSW com handlers gerados no front;
