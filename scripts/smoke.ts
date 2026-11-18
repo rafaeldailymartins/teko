@@ -624,13 +624,14 @@ export function parseCli(
   }
 }
 
+/** Os dois arquivos possíveis, fixos: nenhum valor da linha de comando vira caminho. */
+const ENV_FILES: Readonly<Record<SmokeEnv, string>> = {
+  staging: join(REPO_ROOT, 'infra', 'vercel', 'env.staging.json'),
+  production: join(REPO_ROOT, 'infra', 'vercel', 'env.production.json'),
+}
+
 function readEnvJson(env: SmokeEnv): unknown {
-  const file = resolveInsideRoot(
-    REPO_ROOT,
-    join(REPO_ROOT, 'infra', 'vercel', `env.${env}.json`),
-    REPO_ROOT,
-  )
-  return JSON.parse(readFileSync(file, 'utf8')) as unknown
+  return JSON.parse(readFileSync(ENV_FILES[env], 'utf8')) as unknown
 }
 
 /** Tabela em markdown para o `GITHUB_STEP_SUMMARY`. */

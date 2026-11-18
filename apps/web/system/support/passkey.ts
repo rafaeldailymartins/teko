@@ -38,8 +38,6 @@ export class PasskeySecretError extends Error {
   override readonly name = 'PasskeySecretError'
 }
 
-const BASE64 = /^[A-Za-z0-9+/]+={0,2}$/
-
 /** base64url (ou base64) → base64 padrão com padding, validado. */
 function toBase64(value: unknown, field: string): string {
   if (typeof value !== 'string' || value === '') {
@@ -47,7 +45,9 @@ function toBase64(value: unknown, field: string): string {
   }
   const standard = value.replaceAll('-', '+').replaceAll('_', '/').replace(/=+$/, '')
   const padded = standard + '='.repeat((4 - (standard.length % 4)) % 4)
-  if (!BASE64.test(padded) || padded.length % 4 !== 0) {
+  // Ida e volta pelo Buffer: o decoder ignora caracteres fora do alfabeto, então só base64 válido
+  // (alfabeto e padding) volta idêntico. Sem regex, sem backtracking.
+  if (Buffer.from(padded, 'base64').toString('base64') !== padded) {
     throw new PasskeySecretError(`${PASSKEY_SECRET_ENV}: ${field} não é base64`)
   }
   return padded

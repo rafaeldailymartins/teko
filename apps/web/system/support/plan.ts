@@ -152,12 +152,13 @@ export function pickPeriodo(
 export function outOfCoveragePeriodo(coverage: readonly FamilyCoverage[]): string {
   const starts = coverage.flatMap((family) => family.covered.map((interval) => interval.from))
   if (starts.length > 0 && starts.every((start): start is string => start !== null)) {
-    const earliest = [...starts].sort()[0] ?? ''
+    const earliest = [...starts].sort((a, b) => a.localeCompare(b))[0] ?? ''
     const before = shiftMonth(earliest, -1)
     if (coverage.every((family) => !isCovered(`${before}-01`, family))) {
       return before
     }
   }
-  const latest = [...coverage.map((family) => family.verifiedAt)].sort().at(-1) ?? ''
+  const latest =
+    [...coverage.map((family) => family.verifiedAt)].sort((a, b) => a.localeCompare(b)).at(-1) ?? ''
   return shiftMonth(latest, 1)
 }

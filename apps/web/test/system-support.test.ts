@@ -27,7 +27,7 @@ const SECRET = {
   version: 1,
   rpId: STAGING_RP_ID,
   credentialId: 'q83v-A',
-  privateKey: 'MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQg',
+  privateKey: 'ZmFrZS1rZXkx',
   userHandle: 'dXNlci1pZA',
   signCount: 3,
 }
