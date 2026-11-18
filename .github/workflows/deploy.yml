@@ -598,7 +598,7 @@ jobs:
           EXPECTED_SHA: ${{ steps.deploy.outputs.sha || steps.redeploy.outputs.sha }}
         run: |
           bash .github/scripts/deploy-smoke.sh "$DEPLOY_ENV" deployment "$URL" "$EXPECTED_SHA" \
-            "${RUNNER_TEMP}/smoke-deployment.json"
+            reports/smoke-deployment.json
 
       - name: vercel promote
         id: promote
@@ -616,12 +616,8 @@ jobs:
           EXPECTED_SHA: ${{ steps.deploy.outputs.sha || steps.redeploy.outputs.sha }}
         run: |
           bash .github/scripts/deploy-smoke.sh "$DEPLOY_ENV" canonical "$ORIGIN" "$EXPECTED_SHA" \
-            "${RUNNER_TEMP}/smoke-canonical.json"
+            reports/smoke-canonical.json
           echo "- smoke verde em ${ORIGIN}" >>"$GITHUB_STEP_SUMMARY"
-
-      # System test (mudança add-smoke-tests, system-test.yml): entra aqui, só no staging, depois do
-      # promote e do smoke canônico (login por passkey, 1 pergunta, cache hit, recusa e locale).
-      # Falha dele também cai no rollback abaixo.
 
       - name: Rollback (falha depois do promote)
         if: failure() && steps.promote.outcome == 'success'
@@ -651,3 +647,18 @@ jobs:
         # Só os metadados (região, Functions, estado); os logs de runtime podem ter dados de uso e
         # ficam no dashboard.
         run: vercel inspect "$URL" --token "${VERCEL_TOKEN}" || echo "::warning::vercel inspect falhou"
+
+  # System test do staging (mudança add-smoke-tests, system-test.yml): login por passkey, 1 pergunta,
+  # cache hit, recusa e locale, contra o domínio já promovido e com o SHA deste run. Só no staging e
+  # só no deploy (o redeploy não muda o código). Um job à parte, porque o system-test.yml tem o
+  # environment e o segredo próprios; a falha dele não desfaz o promote sozinha: o runbook
+  # docs/runbooks/rollback.md diz como voltar.
+  system-test:
+    name: system-test
+    needs: [plan, deploy]
+    if: needs.plan.outputs.env == 'staging' && needs.plan.outputs.phase == 'deploy'
+    permissions:
+      contents: read
+    uses: ./.github/workflows/system-test.yml
+    with:
+      expected-sha: ${{ github.sha }}
