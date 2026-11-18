@@ -484,7 +484,35 @@ interface KillSwitchEnv {
   readonly updatedAt?: number
 }
 
-/** `LLM_KILL_SWITCH` do ambiente Production do projeto (`undefined`: não existe). */
+/**
+ * Valor em claro da variável. A listagem (`GET /v10/projects/{id}/env`) só garante o valor em claro
+ * de variável `plain` ou com `decrypted: true`; a `encrypted` pode vir cifrada mesmo com
+ * `decrypt=true`, e então o valor sai do `GET /v1/projects/{id}/env/{envId}`.
+ */
+async function plainValue(
+  ctx: Context,
+  project: Project,
+  entry: Record<string, unknown>,
+): Promise<unknown> {
+  if (entry['type'] === 'plain' || entry['decrypted'] === true) {
+    return entry['value']
+  }
+  const id = entry['id']
+  if (typeof id !== 'string') {
+    throw new Error(`${project.name}: ${KILL_SWITCH} cifrada e sem id na listagem da Vercel`)
+  }
+  const one = (await vercelApi(ctx, 'GET', `/v1/projects/${project.id}/env/${id}`)) as Record<
+    string,
+    unknown
+  >
+  return one['value']
+}
+
+/**
+ * `LLM_KILL_SWITCH` do ambiente Production do projeto (`undefined`: não existe). Valor que não é
+ * `true` nem `false` é erro: tratá-lo como desligado fez a volta manual dizer "já está desligado"
+ * com o kill switch ligado (exercício da F7 no staging).
+ */
 async function readKillSwitch(ctx: Context, project: Project): Promise<KillSwitchEnv | undefined> {
   const body = (await vercelApi(ctx, 'GET', `/v10/projects/${project.id}/env`, {
     query: { decrypt: 'true' },
@@ -498,10 +526,16 @@ async function readKillSwitch(ctx: Context, project: Project): Promise<KillSwitc
   if (entry === undefined) {
     return undefined
   }
-  const value = entry['value']
+  const value = await plainValue(ctx, project, entry)
+  const normalized = typeof value === 'string' ? value.trim().toLowerCase() : ''
+  if (normalized !== 'true' && normalized !== 'false') {
+    throw new Error(
+      `${project.name}: ${KILL_SWITCH} com valor ilegível (nem true nem false); confira no dashboard da Vercel`,
+    )
+  }
   const updatedAt = entry['updatedAt']
   return {
-    on: typeof value === 'string' && value.trim().toLowerCase() === 'true',
+    on: normalized === 'true',
     ...(typeof updatedAt === 'number' ? { updatedAt } : {}),
   }
 }
@@ -603,7 +637,8 @@ async function applyKillSwitch(
         body: {
           key: KILL_SWITCH,
           value,
-          type: 'encrypted',
+          // true/false não é segredo: `plain` volta em claro na listagem que o readKillSwitch lê.
+          type: 'plain',
           target: ['production'],
           comment: 'Guarda de uso (scripts/vercel-usage.ts); runbook budget-kill-switch.md',
         },
