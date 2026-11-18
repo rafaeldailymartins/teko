@@ -15,12 +15,26 @@
 #     apps/api/src/application/services/pricing.ts, a score config user_feedback e a annotation
 #     queue do 👎, e empurra teko_langfuse_units_projected (Metrics API dos dois projetos) e o
 #     sucesso do job. Dispatch com dry_run só lê.
+#   - vercel-usage (environment ops, F7, mudança add-usage-guard): scripts/vercel-usage.ts lê o uso
+#     de 30 dias da conta Vercel Hobby (Vercel CLI de tools/vercel-cli), empurra
+#     teko_vercel_usage_ratio{resource} e o sucesso, e aplica a guarda: 85% liga LLM_KILL_SWITCH com
+#     redeploy nos dois projetos, 95% também o lockdown do WAF (scripts/vercel-firewall.ts). Nunca
+#     desliga sozinho. O dispatch exercita a guarda num projeto (kill_switch 0.85 ou 0.95) e faz a
+#     volta (release); runbook docs/runbooks/budget-kill-switch.md.
+#   - weekly-maintenance (environment maintenance, domingo 06:00 UTC): `cli maintenance purge`
+#     (PurgeExpiredData, role teko_app) no staging e na produção; produção sem schema (antes da
+#     primeira migração) é aviso. O OTLP fica no environment ops, então o sucesso vai por output ao
+#     weekly-maintenance-metrics, que o registra com scripts/ops-metrics.ts --success-only.
+#
+# Cada job escolhe o cron pelo github.event.schedule: o diário roda grafana, coverage-age, quotas,
+# langfuse e vercel-usage; o semanal, só o weekly-maintenance. No dispatch, `job` escolhe um job
+# (all = os diários).
 #
 # O environment ops pode estar vazio: cada job confere os segredos e, sem eles, avisa no resumo e
 # termina verde (o grafana ainda valida os arquivos). Quem cadastra é o mantenedor
-# (infra/grafana/README.md).
+# (infra/grafana/README.md e docs/architecture/contas-e-cotas.md).
 #
-# Para acrescentar um job (vercel-usage, weekly-maintenance e prod-vuln-scan da F7), copie o
+# Para acrescentar um job (o prod-vuln-scan da F7), copie o
 # `quotas`: environment ops, harden-runner em
 # block com os hosts exatos do serviço, checkout sem credenciais, setup-node, um script em scripts/
 # com teste no test:scripts, segredos só no `env` do passo que os usa e falta de segredo como
@@ -34,6 +48,8 @@ on:
   schedule:
     # 09:40 UTC = 06:40 em America/Sao_Paulo, 40 min depois do source-watch.
     - cron: "40 9 * * *"
+    # Domingo 06:00 UTC: manutenção semanal (weekly-maintenance).
+    - cron: "0 6 * * 0"
   push:
     branches: [main]
     paths:
@@ -43,9 +59,44 @@ on:
   workflow_dispatch:
     inputs:
       dry_run:
-        description: Só ler o estado real e mostrar o plano (Grafana) e as métricas (quotas), sem escrever nem enviar.
+        description: Só ler o estado real e mostrar o plano (Grafana, Vercel) e as métricas, sem escrever, enviar nem expurgar.
         type: boolean
         default: true
+      job:
+        description: Job a rodar (all = os diários; o weekly-maintenance só roda se escolhido).
+        type: choice
+        default: all
+        options:
+          - all
+          - grafana
+          - quotas
+          - langfuse
+          - vercel-usage
+          - weekly-maintenance
+      maintenance_target:
+        description: weekly-maintenance — banco do purge (o cron usa both).
+        type: choice
+        default: staging
+        options:
+          - staging
+          - production
+          - both
+      kill_switch:
+        description: vercel-usage — exercício da guarda (0.85 liga o kill switch, 0.95 também o lockdown; release desliga os dois) em vez da leitura diária.
+        type: choice
+        default: none
+        options:
+          - none
+          - "0.85"
+          - "0.95"
+          - release
+      kill_switch_target:
+        description: vercel-usage — projeto do exercício ou da volta.
+        type: choice
+        default: staging
+        options:
+          - staging
+          - production
 
 permissions: {}
 
@@ -61,7 +112,10 @@ env:
 jobs:
   grafana:
     name: grafana
-    if: github.ref == 'refs/heads/main'
+    if: >-
+      github.ref == 'refs/heads/main' && (github.event_name == 'push' ||
+      github.event.schedule == '40 9 * * *' || (github.event_name == 'workflow_dispatch' &&
+      contains(fromJSON('["all","grafana"]'), inputs.job)))
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     environment: ops
@@ -130,7 +184,9 @@ jobs:
 
   coverage-age:
     name: coverage-age
-    if: github.event_name != 'push'
+    if: >-
+      github.event.schedule == '40 9 * * *' || (github.event_name == 'workflow_dispatch' &&
+      contains(fromJSON('["all","quotas"]'), inputs.job))
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     environment: corpus-watch
@@ -206,7 +262,9 @@ jobs:
   quotas:
     name: quotas
     needs: coverage-age
-    if: ${{ !cancelled() && github.event_name != 'push' }}
+    if: >-
+      !cancelled() && (github.event.schedule == '40 9 * * *' ||
+      (github.event_name == 'workflow_dispatch' && contains(fromJSON('["all","quotas"]'), inputs.job)))
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     environment: ops
@@ -262,7 +320,9 @@ jobs:
 
   langfuse:
     name: langfuse
-    if: github.event_name != 'push'
+    if: >-
+      github.event.schedule == '40 9 * * *' || (github.event_name == 'workflow_dispatch' &&
+      contains(fromJSON('["all","langfuse"]'), inputs.job))
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     environment: ops
@@ -314,3 +374,250 @@ jobs:
           else
             node scripts/langfuse-ops.ts
           fi
+
+  vercel-usage:
+    name: vercel-usage
+    if: >-
+      github.event.schedule == '40 9 * * *' || (github.event_name == 'workflow_dispatch' &&
+      contains(fromJSON('["all","vercel-usage"]'), inputs.job))
+    runs-on: ubuntu-24.04
+    # A espera do READY do redeploy dos dois projetos cabe aqui (até 15 min cada, no pior caso).
+    timeout-minutes: 40
+    environment: ops
+    permissions:
+      contents: read
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          # GitHub (checkout e setup), o cache do setup-node, o npm (pnpm e o Vercel CLI de
+          # tools/vercel-cli), nodejs.org, a API REST da Vercel e o gateway OTLP do Grafana Cloud.
+          egress-policy: block
+          allowed-endpoints: >
+            github.com:443
+            api.github.com:443
+            codeload.github.com:443
+            objects.githubusercontent.com:443
+            raw.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+            results-receiver.actions.githubusercontent.com:443
+            *.actions.githubusercontent.com:443
+            *.blob.core.windows.net:443
+            registry.npmjs.org:443
+            nodejs.org:443
+            api.vercel.com:443
+            *.grafana.net:443
+
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Conferir o token de uso da Vercel (environment ops)
+        id: secrets
+        env:
+          VERCEL_USAGE_TOKEN: ${{ secrets.VERCEL_USAGE_TOKEN }}
+        run: |
+          if [[ -z "$VERCEL_USAGE_TOKEN" ]]; then
+            echo "::warning title=vercel-usage::Sem o segredo VERCEL_USAGE_TOKEN no environment 'ops': uso da Vercel não medido e kill switch automático inativo (docs/runbooks/budget-kill-switch.md)."
+            echo "ready=false" >>"$GITHUB_OUTPUT"
+          else
+            echo "ready=true" >>"$GITHUB_OUTPUT"
+          fi
+
+      - name: Setup (pnpm e Node, sem instalar o workspace)
+        if: steps.secrets.outputs.ready == 'true'
+        uses: ./.github/actions/setup
+        with:
+          install: "false"
+
+      - name: Vercel CLI isolado (tools/vercel-cli, lockfile congelado)
+        if: steps.secrets.outputs.ready == 'true'
+        run: pnpm --dir tools/vercel-cli install --frozen-lockfile
+
+      - name: Guarda de uso da Vercel (OTLP ao Grafana Cloud)
+        if: steps.secrets.outputs.ready == 'true'
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_USAGE_TOKEN }}
+          VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
+          GRAFANA_OTLP_ENDPOINT: ${{ vars.GRAFANA_OTLP_ENDPOINT }}
+          GRAFANA_OTLP_INSTANCE_ID: ${{ vars.GRAFANA_OTLP_INSTANCE_ID }}
+          GRAFANA_OTLP_TOKEN: ${{ secrets.GRAFANA_OTLP_TOKEN }}
+          KILL_SWITCH: ${{ github.event_name == 'workflow_dispatch' && inputs.kill_switch || 'none' }}
+          KILL_SWITCH_TARGET: ${{ inputs.kill_switch_target }}
+        run: |
+          args=()
+          if [[ "$DRY_RUN" == true ]]; then
+            args+=(--dry-run)
+          fi
+          case "$KILL_SWITCH" in
+            none) ;;
+            0.85 | 0.95) args+=(--force-threshold "$KILL_SWITCH" --only "$KILL_SWITCH_TARGET") ;;
+            release) args+=(--release --only "$KILL_SWITCH_TARGET") ;;
+            *)
+              echo "::error title=vercel-usage::kill_switch desconhecido"
+              exit 1
+              ;;
+          esac
+          node scripts/vercel-usage.ts "${args[@]}"
+
+  weekly-maintenance:
+    name: weekly-maintenance
+    if: >-
+      github.event.schedule == '0 6 * * 0' || (github.event_name == 'workflow_dispatch' &&
+      inputs.job == 'weekly-maintenance')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    environment: maintenance
+    permissions:
+      contents: read
+    outputs:
+      ok: ${{ steps.purge.outputs.ok }}
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          # Os mesmos hosts do coverage-age: checkout, setup e o Neon (role teko_app). Sem o Grafana:
+          # o sucesso vai ao weekly-maintenance-metrics, no environment ops.
+          egress-policy: block
+          allowed-endpoints: >
+            github.com:443
+            api.github.com:443
+            codeload.github.com:443
+            objects.githubusercontent.com:443
+            raw.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+            results-receiver.actions.githubusercontent.com:443
+            *.actions.githubusercontent.com:443
+            *.blob.core.windows.net:443
+            registry.npmjs.org:443
+            nodejs.org:443
+            *.neon.tech:5432
+
+      - name: Conferir as URLs do teko_app (environment maintenance)
+        id: secrets
+        env:
+          NEON_PROD_APP_URL: ${{ secrets.NEON_PROD_APP_URL }}
+          NEON_STAGING_APP_URL: ${{ secrets.NEON_STAGING_APP_URL }}
+        run: |
+          if [[ -z "$NEON_PROD_APP_URL" && -z "$NEON_STAGING_APP_URL" ]]; then
+            echo "::warning title=weekly-maintenance::Sem NEON_PROD_APP_URL e NEON_STAGING_APP_URL no environment 'maintenance': purge não rodou (docs/runbooks/neon-roles.md)."
+            echo "ready=false" >>"$GITHUB_OUTPUT"
+          else
+            echo "ready=true" >>"$GITHUB_OUTPUT"
+          fi
+
+      - name: Checkout
+        if: steps.secrets.outputs.ready == 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup
+        if: steps.secrets.outputs.ready == 'true'
+        uses: ./.github/actions/setup
+
+      - name: Build da CLI (@teko/api → dist/cli.mjs)
+        if: steps.secrets.outputs.ready == 'true'
+        run: pnpm --filter @teko/api build
+
+      - name: Purge (cli maintenance purge, role teko_app)
+        id: purge
+        if: steps.secrets.outputs.ready == 'true'
+        env:
+          NEON_PROD_APP_URL: ${{ secrets.NEON_PROD_APP_URL }}
+          NEON_STAGING_APP_URL: ${{ secrets.NEON_STAGING_APP_URL }}
+          # O cron purga os dois bancos; o dispatch, o escolhido (padrão: staging).
+          MAINTENANCE_TARGET: ${{ github.event_name == 'workflow_dispatch' && inputs.maintenance_target || 'both' }}
+        run: |
+          set -uo pipefail
+          failed=0
+          ran=0
+          {
+            echo "### weekly-maintenance"
+            echo
+            echo "| Banco | Situação | Contagens |"
+            echo "|---|---|---|"
+          } >>"$GITHUB_STEP_SUMMARY"
+          for target in staging production; do
+            if [[ "$MAINTENANCE_TARGET" != both && "$MAINTENANCE_TARGET" != "$target" ]]; then
+              continue
+            fi
+            out=""
+            if [[ "$target" == staging ]]; then
+              url="$NEON_STAGING_APP_URL"
+              extra=()
+            else
+              url="$NEON_PROD_APP_URL"
+              # Até a primeira migração da produção (primeiro deploy da F7), o banco não tem schema.
+              extra=(--allow-missing-schema)
+            fi
+            if [[ -z "$url" ]]; then
+              status="sem URL"
+              echo "::warning title=weekly-maintenance::Sem a URL do teko_app de ${target}: purge pulado."
+            elif [[ "$DRY_RUN" == true ]]; then
+              status="dry-run (não rodou)"
+            elif out="$(DATABASE_URL="$url" node apps/api/dist/cli.mjs maintenance purge "${extra[@]}")"; then
+              ran=$((ran + 1))
+              status="ok"
+              if [[ "$out" == *schema_missing* ]]; then
+                status="sem schema (aviso)"
+                echo "::warning title=weekly-maintenance::${target} sem schema (antes da primeira migração): nada expurgado."
+              fi
+            else
+              failed=$((failed + 1))
+              status="falhou"
+              echo "::error title=weekly-maintenance::Purge de ${target} falhou."
+            fi
+            echo "| ${target} | ${status} | \`${out}\` |" >>"$GITHUB_STEP_SUMMARY"
+          done
+          if ((failed == 0 && ran > 0)); then
+            echo "ok=true" >>"$GITHUB_OUTPUT"
+          else
+            echo "ok=false" >>"$GITHUB_OUTPUT"
+          fi
+          exit $((failed > 0))
+
+  weekly-maintenance-metrics:
+    name: weekly-maintenance-metrics
+    needs: weekly-maintenance
+    if: needs.weekly-maintenance.outputs.ok == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment: ops
+    permissions:
+      contents: read
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          # GitHub (checkout e setup-node), nodejs.org e o gateway OTLP do Grafana Cloud.
+          egress-policy: block
+          allowed-endpoints: >
+            github.com:443
+            api.github.com:443
+            codeload.github.com:443
+            objects.githubusercontent.com:443
+            raw.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+            results-receiver.actions.githubusercontent.com:443
+            *.actions.githubusercontent.com:443
+            nodejs.org:443
+            *.grafana.net:443
+
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Node (.nvmrc)
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+
+      - name: Sucesso do weekly-maintenance (OTLP ao Grafana Cloud)
+        env:
+          GRAFANA_OTLP_ENDPOINT: ${{ vars.GRAFANA_OTLP_ENDPOINT }}
+          GRAFANA_OTLP_INSTANCE_ID: ${{ vars.GRAFANA_OTLP_INSTANCE_ID }}
+          GRAFANA_OTLP_TOKEN: ${{ secrets.GRAFANA_OTLP_TOKEN }}
+        run: node scripts/ops-metrics.ts --job weekly-maintenance --success-only

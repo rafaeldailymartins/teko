@@ -31,14 +31,23 @@ estão em [infra/grafana/README.md](../../infra/grafana/README.md).
 ## Job do `ops.yml` sem sucesso
 
 `teko_ops_job_last_success_timestamp_seconds{ops_job}` só é gravado quando o job termina sem erro.
-O alerta olha o `vercel-usage` (mais de 30 h) e o `weekly-maintenance` (mais de 8 dias), ambos da
-F7; o `quotas` da F6 aparece no dashboard **Tekó · Cotas**.
+O alerta olha o `vercel-usage` (diário, mais de 30 h) e o `weekly-maintenance` (domingo 06:00 UTC,
+mais de 8 dias); o `quotas` da F6 aparece no dashboard **Tekó · Cotas**. Um job sem o segredo
+avisa e termina verde, mas não registra sucesso: o alerta dispara do mesmo jeito.
 
 1. Actions → Ops → último run do job: a falha diz qual segredo faltou ou qual API respondeu erro.
 2. Segredo vencido (tokens da Vercel duram 90 dias): `secret-rotation.md` (F7) e atualize a data
    em `TOKEN_EXPIRY_DATES`.
-3. `vercel-usage` parado é o mais grave: sem ele, o kill switch de 85% não liga sozinho. Até
-   voltar, confira o uso à mão (Vercel → Usage) todo dia.
+3. `vercel-usage` parado é o mais grave: sem ele, o kill switch de 85% não liga sozinho
+   ([budget-kill-switch.md](budget-kill-switch.md)). Até voltar, confira o uso à mão
+   (Vercel → Usage) todo dia. Saída do `vercel billing usage` em formato novo (o job reprova com
+   "unidade desconhecida" ou "nenhum recurso do relatório casou"): ajuste `HOBBY_QUOTAS` e o
+   parser de `scripts/vercel-usage.ts` com a saída real como fixture do teste.
+4. `weekly-maintenance`: o resumo traz a situação de cada banco. URL do `teko_app` errada no
+   environment `maintenance`: [neon-roles.md](neon-roles.md); Neon suspenso:
+   [neon-suspended.md](neon-suspended.md). Depois de corrigir, rode de novo: Actions → Ops → Run
+   workflow com `job: weekly-maintenance`, `maintenance_target: both` e `dry_run: false`. O
+   sucesso só é registrado pelo `weekly-maintenance-metrics` quando o purge rodou sem falha.
 
 <a id="prod-vuln-scan"></a>
 
@@ -79,7 +88,7 @@ diz o check e `instance`, o alvo. O alerta volta a Normal na primeira execução
    passar de horas, avalie o corte para o Plano B (`vercel-paused.md`, F7).
    - **503 no `/healthz`** é `DEPLOYMENT_PAUSED` (ou queda da plataforma): o
      `teko-deployment-paused` dispara já na primeira execução com 503, e este alerta vem uns 20 min
-     depois, porque o check só aceita 200. Siga o `vercel-paused.md` (F7); este alerta é
+     depois, porque o check só aceita 200. Siga o [vercel-paused.md](vercel-paused.md); este alerta é
      consequência.
 5. **Problema da sonda** (todos os checks falham juntos com timeout ou erro de conexão, status 0,
    enquanto o `curl` de fora e o tráfego real vão bem): Synthetics → Probes → `SaoPaulo` (online ou

@@ -120,7 +120,9 @@ describe('validate (casos de erro)', () => {
     const anchor = validate(withRule({ runbook: 'provider-outage.md#nao-existe' }), runbooks)
     assert.ok(anchor.some((error) => error.includes('sem a âncora <a id="nao-existe"></a>')))
     // Runbook previsto para a F7 (tabela da arquitetura) é aceito, com qualquer âncora.
-    assert.equal(runbooks.get('vercel-paused.md'), null)
+    assert.equal(runbooks.get('secret-rotation.md'), null)
+    // Runbook escrito (F7, add-usage-guard): vale com as âncoras explícitas.
+    assert.ok(runbooks.get('vercel-paused.md')?.has('retomar'))
   })
 
   it('métrica fora do contrato e parênteses desbalanceados', () => {
