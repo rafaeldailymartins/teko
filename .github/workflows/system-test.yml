@@ -50,9 +50,10 @@ jobs:
       - name: Harden runner
         uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
         with:
-          # GitHub (checkout, setup, cache e artifact), npm e nodejs.org (setup), o CDN dos
-          # browsers do Playwright e o staging. Nada mais: o navegador do teste não precisa de
-          # outro host (o consentimento recusado deixa o PostHog de produto desligado).
+          # GitHub (checkout, setup, cache e artifact), npm e nodejs.org (setup), os CDNs dos
+          # browsers do Playwright (o Chromium vem do Chrome for Testing, em storage.googleapis.com)
+          # e o staging. Nada mais: o navegador do teste não precisa de outro host (o consentimento
+          # recusado deixa o PostHog de produto desligado).
           egress-policy: block
           allowed-endpoints: >
             github.com:443
@@ -68,6 +69,7 @@ jobs:
             nodejs.org:443
             cdn.playwright.dev:443
             playwright.download.prss.microsoft.com:443
+            storage.googleapis.com:443
             tekoia-staging.vercel.app:443
 
       - name: Conferir o segredo da passkey
