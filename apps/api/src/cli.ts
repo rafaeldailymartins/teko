@@ -15,6 +15,7 @@ import { runIngestLoad } from '#adapters/in/cli/ingest/load.ts'
 import { loadOverrides } from '#adapters/in/cli/ingest/overrides-loader.ts'
 import { PARSER_REVISIONS, PARSERS } from '#adapters/in/cli/ingest/parsers/index.ts'
 import { allowedHostsOf, httpHostsOf, loadCorpusConfig } from '#adapters/in/cli/ingest/sources.ts'
+import { parsePurgeArgs, runPurge } from '#adapters/in/cli/maintenance/purge.ts'
 import { DEFAULT_FIXTURE_DIR, seedFixtures } from '#adapters/in/cli/seed-fixtures/seed-fixtures.ts'
 import { runSnapshotExport, runSnapshotPromote } from '#adapters/in/cli/snapshot/snapshot.ts'
 import { runCoverageAge } from '#adapters/in/cli/sources-watch/run-coverage-age.ts'
@@ -61,8 +62,9 @@ import { type Env, EnvValidationError, loadCliEnv, loadWatchEnv } from './config
  * - `seed-dev-session [--email …] [--name …] [--country BR]` (F4): usuário com onboarding e sessão
  *   do Better Auth direto no banco, para o login local e o e2e (só development e ci).
  *
- * - `maintenance purge` (F4): expurgo da manutenção semanal (`PurgeExpiredData`) sobre `DATABASE_URL`
- *   (role `teko_app`); imprime as contagens em JSON.
+ * - `maintenance purge [--allow-missing-schema]` (F4; opção da F7): expurgo da manutenção semanal
+ *   (`PurgeExpiredData`) sobre `DATABASE_URL` (role `teko_app`); imprime as contagens em JSON. Com a
+ *   opção, banco sem schema (produção antes da primeira migração) é aviso e saída 0.
  *
  * - `openapi export [--out <arquivo>]` (F5): grava o OpenAPI versionado da web (padrão
  *   `apps/web/openapi.json`), sem banco e sem servidor; fonte do cliente gerado do web.
@@ -90,7 +92,7 @@ const USAGE = [
   '     cli eval-fixture export --from staging --out <dir> [--fixture <dir>]',
   '     cli coverage-age --out <arquivo.json>',
   '     cli seed-dev-session [--email <e-mail>] [--name <nome>] [--country <ISO>]',
-  '     cli maintenance purge',
+  '     cli maintenance purge [--allow-missing-schema]',
   '     cli openapi export [--out <arquivo>]',
 ].join('\n')
 
@@ -297,14 +299,18 @@ async function runSeedDevSession(args: readonly string[]): Promise<number> {
 }
 
 async function runMaintenance(args: readonly string[]): Promise<number> {
-  if (args.length !== 1 || args[0] !== 'purge') {
+  const [subcommand, ...rest] = args
+  if (subcommand !== 'purge') {
     console.error(USAGE)
     return EXIT_USAGE
   }
+  const options = parsePurgeArgs(rest)
   const maintenance = createMaintenance(loadCliEnv())
   try {
-    print(JSON.stringify(await maintenance.purge()))
-    return 0
+    return await runPurge(maintenance.purge, options, {
+      print,
+      warn: (line) => console.error(line),
+    })
   } finally {
     await maintenance.close()
   }

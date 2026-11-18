@@ -14,12 +14,15 @@
  * aviso (o environment `ops` pode estar vazio); fonte configurada que falha deixa o job vermelho
  * depois de enviar o resto. Sem a credencial OTLP, as métricas só são impressas.
  *
- * Uso: node scripts/ops-metrics.ts [--dry-run] [--job quotas]
+ * Uso: node scripts/ops-metrics.ts [--dry-run] [--job quotas] [--success-only]
+ *
+ * `--success-only` não lê fonte nenhuma e só registra o sucesso de `--job`: é o caminho do
+ * `weekly-maintenance`, cujo purge roda no environment `maintenance`, sem a credencial OTLP.
  */
 import { appendFileSync } from 'node:fs'
 import { exit } from 'node:process'
 import { parseArgs } from 'node:util'
-import { buildMetricsPayload, type GaugePoint, pushMetrics } from './lib/otlp-metrics.ts'
+import { envValue, type GaugePoint, logLine, publishPoints } from './lib/otlp-metrics.ts'
 
 /** Cota do Neon Free por projeto e por mês (docs/architecture/contas-e-cotas.md). */
 export const NEON_CU_HOURS_QUOTA = 100
@@ -236,10 +239,7 @@ async function fetchNeonUsage(
   }
 }
 
-function value(env: RunDeps['env'], name: string): string | undefined {
-  const raw = env[name]?.trim()
-  return raw === undefined || raw === '' ? undefined : raw
-}
+const value = envValue
 
 /** Coleta tudo o que estiver configurado; devolve os pontos e as falhas das fontes configuradas. */
 export async function collect(
@@ -297,77 +297,43 @@ export async function collect(
   return { points, failures }
 }
 
-function describePoint(point: GaugePoint): string {
-  const labels = Object.entries({
-    ...(point.environment === undefined ? {} : { env: point.environment }),
-    ...point.labels,
-  })
-    .map(([key, labelValue]) => `${key}=${labelValue}`)
-    .join(', ')
-  return `| ${point.name} | ${labels} | ${String(Math.round(point.value * 1000) / 1000)} |`
-}
-
-/** Coleta, imprime e envia. Código de saída: 0 ok (ou só avisos), 1 fonte ou envio falhou. */
+/**
+ * Coleta, imprime e envia. Código de saída: 0 ok (ou só avisos), 1 fonte ou envio falhou. Com
+ * `successOnly`, não coleta nada e só registra o sucesso do job (ex.: `weekly-maintenance`, que roda
+ * no environment `maintenance` e passa o resultado a um job seguinte no `ops`).
+ */
 export async function run(
   deps: RunDeps,
-  options: { dryRun: boolean; job: string },
+  options: { dryRun: boolean; job: string; successOnly?: boolean },
 ): Promise<{
   code: number
   summary: string[]
 }> {
-  const { points, failures } = await collect(deps)
+  const { points, failures } =
+    options.successOnly === true ? { points: [], failures: [] } : await collect(deps)
   if (failures.length === 0) {
     points.push(jobSuccessPoint(options.job, deps.now))
   }
-  const summary = [
-    `### ops-metrics (${options.job})`,
-    '',
-    '| Métrica | Labels | Valor |',
-    '|---|---|---|',
-    ...points.map(describePoint),
-  ]
   for (const failure of failures) {
     deps.log(`::error title=ops-metrics::${failure}`)
   }
-  const endpoint = value(deps.env, 'GRAFANA_OTLP_ENDPOINT')
-  const instanceId = value(deps.env, 'GRAFANA_OTLP_INSTANCE_ID')
-  const token = value(deps.env, 'GRAFANA_OTLP_TOKEN')
-  const payload = buildMetricsPayload(points, { serviceName: SERVICE_NAME, now: deps.now })
-  if (options.dryRun) {
-    deps.log(JSON.stringify(payload, null, 2))
-    summary.push('', 'Dry-run: nada foi enviado.')
-  } else if (endpoint === undefined || instanceId === undefined || token === undefined) {
-    deps.log(
-      '::warning title=ops-metrics::sem GRAFANA_OTLP_ENDPOINT, GRAFANA_OTLP_INSTANCE_ID ou ' +
-        'GRAFANA_OTLP_TOKEN no environment ops: métricas calculadas e não enviadas',
-    )
-    summary.push('', 'Sem credencial OTLP: nada foi enviado.')
-  } else if (points.length > 0) {
-    try {
-      await pushMetrics({ endpoint, instanceId, token }, payload, deps.fetch)
-      summary.push('', `${String(points.length)} ponto(s) enviados ao Grafana Cloud.`)
-    } catch (error) {
-      deps.log(
-        `::error title=ops-metrics::${error instanceof Error ? error.message : String(error)}`,
-      )
-      return { code: 1, summary }
-    }
-  }
-  return { code: failures.length === 0 ? 0 : 1, summary }
+  const published = await publishPoints(points, deps, {
+    dryRun: options.dryRun,
+    serviceName: SERVICE_NAME,
+    title: 'ops-metrics',
+  })
+  const summary = [`### ops-metrics (${options.job})`, '', ...published.summary]
+  return { code: failures.length === 0 && published.ok ? 0 : 1, summary }
 }
 
 const JOB_NAME = /^[a-z][a-z0-9-]{0,39}$/u
-
-/** Uma linha por chamada: quebra de linha vinda de erro ou resposta não forja comando do Actions. */
-function logLine(line: string): void {
-  console.log(line.replaceAll(/[\r\n]/gu, ' '))
-}
 
 async function main(): Promise<number> {
   const { values } = parseArgs({
     options: {
       'dry-run': { type: 'boolean', default: false },
       job: { type: 'string', default: 'quotas' },
+      'success-only': { type: 'boolean', default: false },
     },
     strict: true,
   })
@@ -378,7 +344,7 @@ async function main(): Promise<number> {
   }
   const { code, summary } = await run(
     { env: process.env, now: new Date(), fetch, log: logLine },
-    { dryRun: values['dry-run'], job },
+    { dryRun: values['dry-run'], job, successOnly: values['success-only'] },
   )
   const summaryFile = process.env['GITHUB_STEP_SUMMARY']
   if (summaryFile) {

@@ -311,4 +311,40 @@ describe('run', () => {
     assert.ok(d.lines.includes('::error title=ops-metrics::teko-prod: falta NEON_PROD_PROJECT_ID'))
     assert.deepEqual(d.requests, [])
   })
+
+  it('successOnly: não lê fonte nenhuma e envia só o sucesso do job', async () => {
+    const d = deps(
+      {
+        NEON_API_KEY_PROD: 'k1',
+        GRAFANA_OTLP_ENDPOINT: 'https://otlp.example.grafana.net/otlp',
+        GRAFANA_OTLP_INSTANCE_ID: '1',
+        GRAFANA_OTLP_TOKEN: 't',
+      },
+      { 'https://otlp.example.grafana.net/otlp/v1/metrics': new Response('{}') },
+    )
+    const result = await run(d, { dryRun: false, job: 'weekly-maintenance', successOnly: true })
+    assert.equal(result.code, 0)
+    assert.deepEqual(d.requests, ['https://otlp.example.grafana.net/otlp/v1/metrics'])
+    assert.deepEqual(
+      d.lines.filter((line) => line.startsWith('::')),
+      [],
+    )
+    assert.ok(result.summary.some((line) => line.includes('ops_job=weekly-maintenance')))
+  })
+
+  it('falha no envio OTLP deixa o job vermelho', async () => {
+    const d = deps(
+      {
+        GRAFANA_OTLP_ENDPOINT: 'https://otlp.example.grafana.net/otlp',
+        GRAFANA_OTLP_INSTANCE_ID: '1',
+        GRAFANA_OTLP_TOKEN: 't',
+      },
+      {},
+    )
+    const result = await run(d, { dryRun: false, job: 'weekly-maintenance', successOnly: true })
+    assert.equal(result.code, 1)
+    assert.ok(
+      d.lines.some((line) => line.startsWith('::error title=ops-metrics::OTLP respondeu 404')),
+    )
+  })
 })
