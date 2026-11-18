@@ -123,8 +123,15 @@ sem nenhuma API key e nenhum cartão em Billing Information.
   (3) rate limit de 10 `POST` por IP em 60 s no stream (a única de rate limit do Hobby).
 - [x] Nenhuma regra com `challenge`; Attack Challenge Mode só como último recurso, pelo runbook
   `vercel-paused.md` (o navegador resolve o desafio, mas monitores e o smoke não).
-- [x] Aplicação: dashboard ou `vercel firewall rules add --data "$(jq -c '.projects["tekoia"].rules[0]' firewall-rules.json)" --yes`
-  (com o projeto linkado), regra a regra. A automação e o smoke do efeito chegam na F7.
+- [x] Aplicação: `scripts/vercel-firewall.ts --env <ambiente>` a cada deploy (`deploy.yml`, F7),
+  pela API REST de firewall, comparando por nome e escrevendo só o que difere; o smoke confere o
+  efeito (`GET /api/qualquer-coisa` → 403).
+- [x] **Lockdown** (payload `lockdown` do JSON): `node scripts/vercel-firewall.ts --env <ambiente>
+  --lockdown on|off [--dry-run]` troca a regra 1 por uma que nega tudo exceto `/healthz`,
+  `/api/healthz`, a página de aviso (`/aviso/`, `/<locale>/aviso/`) e `/_next/static/*`. Quem liga é
+  o guarda de uso (95% de uma cota) ou o mantenedor; o sync do deploy mantém um lockdown ativo, e só
+  `--lockdown off` volta ao normal. Com `GITHUB_OUTPUT`, o script grava `lockdown=on|off` e
+  `changes=<n>`.
 
 **Time e conta**
 
@@ -139,9 +146,15 @@ sem nenhuma API key e nenhum cartão em Billing Information.
 ## Variáveis de ambiente
 
 - **Config** (não secretas): versionadas em `env.<ambiente>.json`, campo `config`, com o valor e a
-  fase (`since`) em que a API passa a lê-las. Antes de cada deploy, `scripts/vercel-env-sync.ts`
-  (F7) as aplica como env vars do tipo Config e falha se faltar alguma Sensitive obrigatória para a
-  fase (`vercel env ls`).
+  fase (`since`) em que a API passa a lê-las. Antes de cada deploy,
+  `node scripts/vercel-env-sync.ts --env <ambiente> [--dry-run]` (F7) as aplica pela API REST como
+  env vars não sensíveis (`encrypted`) do ambiente Production, criando ou editando só as que
+  mudaram, e falha antes de escrever se faltar alguma Sensitive obrigatória para a fase
+  (`requiredFrom` até a F7). Nenhum valor vai para o log. Env vars do projeto fora do JSON ficam
+  como estão.
+- `GIT_SHA` e `APP_VERSION` não são env vars do projeto (o sync recusa): vão no `environment` do
+  `.vc-config.json` da Function, gravados por `scripts/build-vercel-output.ts` a partir do commit e
+  da versão do deploy, e por isso ficam dentro do tarball atestado.
 - **Sensitive** (write-only): só os nomes ficam aqui, no campo `sensitive`. O mantenedor grava o
   valor pelo dashboard ou com `vercel env add NAME production --sensitive` lendo o valor do stdin
   (nunca na linha de comando). Elas não existem no GitHub e nunca entram no build: o `vercel pull`
@@ -150,9 +163,9 @@ sem nenhuma API key e nenhum cartão em Billing Information.
   cota) ou o mantenedor o gravam, e um sync de deploy não pode desligá-lo.
 - `VERCEL_REGION` é variável de sistema (só em runtime; falta no build com `--prebuilt`). A API exige
   `gru1` em staging e produção.
-- Env var só vale em deployment nova. Rotação: atualizar a Sensitive e rodar o `deploy-api.yml` com
+- Env var só vale em deployment nova. Rotação: atualizar a Sensitive e rodar o `deploy.yml` com
   `phase: redeploy` (`vercel redeploy` da deployment de produção atual, reaproveitando o output
-  prebuilt atestado).
+  prebuilt atestado; [runbook de deploy](../../docs/runbooks/deploy.md#rotação-de-sensitive-redeploy)).
 
 ## Como o deploy acontece
 
@@ -163,20 +176,23 @@ esse projeto com `--frozen-lockfile` e chamam o binário dele. No app, o único 
 `@vercel/functions` 3.7.6 (a última versão com proveniência), confinado a
 `apps/api/src/adapters/out/platform/vercel` pelo dependency-cruiser.
 
-Fluxo do `deploy-api.yml` (push em `main` → `tekoia-staging`; tag `v*` → `tekoia`), com
-`VERCEL_TOKEN`, `VERCEL_ORG_ID` e `VERCEL_PROJECT_ID` do environment do GitHub. O workflow chega na
-F7. O `spike-api-vercel.yml` da F1 exercitou parte dele no `teko-api-staging` (bundle, tarball
-atestado, deploy `--prebuilt`, smoke e `promote`, sem migrações nem env sync) e saiu do repositório
-em 2026-11-12 (ADR 0032); a referência fica no histórico do git:
+Fluxo do `.github/workflows/deploy.yml` (push em `main` → `tekoia-staging`; tag `v*`, criada pelo
+`release.yml` → `tekoia`), com `VERCEL_TOKEN`, `VERCEL_ORG_ID` e `VERCEL_PROJECT_ID` do environment
+do GitHub. Passo a passo, falhas e rotação no [runbook de deploy](../../docs/runbooks/deploy.md);
+rollback no [runbook de rollback](../../docs/runbooks/rollback.md). O job `build` não recebe nenhum
+segredo; o job `deploy` verifica o tarball antes de qualquer escrita:
 
-1. `pnpm install --frozen-lockfile`, `pnpm audit --prod` e osv-scanner no commit exato;
+1. `pnpm install --frozen-lockfile`, `pnpm audit --prod` e osv-scanner no commit exato
+   (`audit.yml`); na produção, o staging verde para o mesmo SHA (`staging-verified.sh`);
 2. sem `vercel pull` nem `vercel build` (ADR 0017): `pnpm --filter @teko/web build` (export
-   estático em `apps/web/out`), `pnpm --filter @teko/api build` (tsdown),
-   `pnpm --filter @teko/api --prod deploy --ignore-scripts --config.node-linker=hoisted
-   dist/vercel/api-prod` (dependências de produção, sem links simbólicos);
-3. `node scripts/build-vercel-output.ts`: recria `.vercel/output` (Build Output API v3) com o
-   export em `static/`, as rotas da mesma origem no `config.json` (ADR 0029) e a Function `index`
-   (o `server.mjs` e os chunks que ele importa);
+   estático em `apps/web/out`), `pnpm --filter @teko/api build` (tsdown), chunk ids do PostHog e o
+   pós-build do web de novo, `pnpm --filter @teko/api --prod deploy --ignore-scripts
+   --config.node-linker=hoisted dist/vercel/api-prod` (dependências de produção, sem links
+   simbólicos);
+3. `node scripts/build-vercel-output.ts` (com `GIT_SHA` e `APP_VERSION`): recria `.vercel/output`
+   (Build Output API v3) com o export em `static/`, as rotas da mesma origem no `config.json` (ADR
+   0029) e a Function `index` (o `server.mjs` e os chunks que ele importa, e o commit e a versão no
+   `environment` do `.vc-config.json`);
 4. `node scripts/pack-vercel-output.ts --env production|staging`: tarball determinístico do
    `.vercel/output` (sem `.vercel/.env*` nem `project.json`), com sha256. `--env` é o único
    argumento; o resto é fixo: env vars de `infra/vercel/env.<env>.json`, build no primeiro de
@@ -185,14 +201,20 @@ em 2026-11-12 (ADR 0032); a referência fica no histórico do git:
    `bytes` no `GITHUB_OUTPUT`. `gitleaks` e `tar` saem só de diretórios absolutos e protegidos do
    PATH, então o job instala o gitleaks verificado por SHA-256 num diretório que acrescenta ao
    `GITHUB_PATH`;
-5. SBOM (syft) e Grype; `actions/attest` do tarball;
-6. migrações (`drizzle-kit migrate`; as migrações existem desde a F2, e a primeira de cada projeto
-   Neon roda aqui, depois dos roles do runbook [`neon-roles.md`](../../docs/runbooks/neon-roles.md));
-7. `scripts/vercel-env-sync.ts` (F7);
-8. `gh attestation verify`, extração e `vercel deploy --prebuilt --prod --skip-domain
-   --archive=tgz --meta artifactSha256=<sha256> --meta gitSha=$GITHUB_SHA`;
-9. smoke da URL única com `vercel curl` e o bypass de automação;
-10. `vercel promote <url>`; preflight CORS real no domínio de produção; falha → `vercel rollback`.
+5. SBOM (syft) e Grype; `actions/attest` do tarball (proveniência e SBOM); artifact
+   `vercel-output-<env>`; na produção, antes do deploy, o `neon-rehearsal.yml` (migrações num branch
+   efêmero do `teko-prod`);
+6. no job `deploy`: sha256 e `gh attestation verify` do tarball (assinado pelo `deploy.yml`, para o
+   commit), depois as migrações (`drizzle-kit migrate` na URL direta do owner, com a checagem de
+   extensões e `pg_settings`; a primeira de produção roda aqui, depois dos roles do runbook
+   [`neon-roles.md`](../../docs/runbooks/neon-roles.md); o staging já foi migrado pelo `ingest.yml`);
+7. `scripts/vercel-env-sync.ts`, `scripts/vercel-firewall.ts` e o upload dos source maps ao PostHog;
+8. extração e `vercel deploy --prebuilt --prod --skip-domain --archive=tgz --meta
+   artifactSha256=<sha256> --meta gitSha=$GITHUB_SHA`;
+9. smoke da URL única com o bypass de automação (`.github/scripts/deploy-smoke.sh`, que chama o
+   `scripts/smoke.ts`);
+10. `vercel promote <url>` e o smoke do domínio canônico (no staging, depois o system test); falha
+    depois do promote → `vercel rollback`.
 
 O `.vercel/` gerado no CI fica no `.gitignore` e nunca entra em artifact ou release além do
 tarball filtrado.

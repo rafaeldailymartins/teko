@@ -1,0 +1,154 @@
+# Ensaio das migrações no banco de produção (F7, mudança OpenSpec add-deploy-pipelines;
+# docs/architecture/ci-cd-e-ambientes.md, "Releases"): cria um branch efêmero do `teko-prod` pela
+# API do Neon, roda `drizzle-kit migrate` nele com o owner, confere extensões e pg_settings
+# (.github/scripts/neon-extensions-check.sh) e apaga o branch sempre, mesmo com falha.
+#
+# Reutilizável: o deploy.yml de produção chama antes do job deploy (F7), e o `release-gate` do
+# release.yml completo chama na F9. O dispatch serve para ensaiar à mão, a partir de uma tag v*.
+#
+# Environment `release-rehearsal` (só tag v*, sem revisor): `NEON_API_KEY_PROD` (API key do
+# projeto) e `NEON_PROD_PROJECT_ID`. Sem eles, o job avisa e termina verde, sem tocar o Neon.
+name: Neon rehearsal
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  rehearsal:
+    name: rehearsal
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    environment:
+      name: release-rehearsal
+      deployment: false
+    permissions:
+      contents: read
+    env:
+      NEON_API: https://console.neon.tech/api/v2
+      # O mesmo banco e owner do runbook neon-roles.md (o owner roda o drizzle-kit migrate).
+      DATABASE_NAME: neondb
+      OWNER_ROLE: neondb_owner
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          # GitHub (checkout e setup), npm e Node, a API do Neon e o Postgres do branch efêmero.
+          egress-policy: block
+          allowed-endpoints: >
+            github.com:443
+            api.github.com:443
+            codeload.github.com:443
+            objects.githubusercontent.com:443
+            raw.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+            results-receiver.actions.githubusercontent.com:443
+            *.actions.githubusercontent.com:443
+            *.blob.core.windows.net:443
+            registry.npmjs.org:443
+            nodejs.org:443
+            console.neon.tech:443
+            *.neon.tech:5432
+
+      - name: Conferir o environment release-rehearsal
+        id: secrets
+        env:
+          NEON_API_KEY_PROD: ${{ secrets.NEON_API_KEY_PROD }}
+          NEON_PROD_PROJECT_ID: ${{ vars.NEON_PROD_PROJECT_ID }}
+        run: |
+          if [[ -z "$NEON_API_KEY_PROD" || -z "$NEON_PROD_PROJECT_ID" ]]; then
+            echo "::warning title=neon-rehearsal::Sem o segredo NEON_API_KEY_PROD ou a variável NEON_PROD_PROJECT_ID no environment 'release-rehearsal': ensaio das migrações pulado."
+            echo "- neon-rehearsal: pulado (environment release-rehearsal sem a API key ou o id do projeto)" >>"$GITHUB_STEP_SUMMARY"
+            echo "ready=false" >>"$GITHUB_OUTPUT"
+          elif [[ ! "$NEON_PROD_PROJECT_ID" =~ ^[a-z0-9-]+$ ]]; then
+            echo "::error title=neon-rehearsal::NEON_PROD_PROJECT_ID fora do formato do Neon."
+            exit 1
+          else
+            echo "ready=true" >>"$GITHUB_OUTPUT"
+          fi
+
+      - name: Checkout
+        if: steps.secrets.outputs.ready == 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup
+        if: steps.secrets.outputs.ready == 'true'
+        uses: ./.github/actions/setup
+
+      - name: Criar o branch efêmero do teko-prod
+        id: branch
+        if: steps.secrets.outputs.ready == 'true'
+        env:
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY_PROD }}
+          PROJECT_ID: ${{ vars.NEON_PROD_PROJECT_ID }}
+          NAME: rehearsal-${{ github.run_id }}-${{ github.run_attempt }}
+        run: |
+          body="$(jq -nc --arg name "$NAME" '{branch: {name: $name}, endpoints: [{type: "read_write"}]}')"
+          # -f sem --fail-with-body: o corpo de erro nunca vai para o log.
+          created="$(curl -fsS --retry 3 -X POST "${NEON_API}/projects/${PROJECT_ID}/branches" \
+            -H "Authorization: Bearer ${NEON_API_KEY}" -H 'Content-Type: application/json' \
+            -H 'Accept: application/json' -d "$body")"
+          id="$(jq -r '.branch.id // empty' <<<"$created")"
+          if [[ ! "$id" =~ ^br-[a-z0-9-]+$ ]]; then
+            echo "::error title=neon-rehearsal::a API do Neon não devolveu o id do branch."
+            exit 1
+          fi
+          echo "id=${id}" >>"$GITHUB_OUTPUT"
+          # Espera o branch ficar pronto (a cópia do teko-prod é por copy-on-write, segundos).
+          for _ in $(seq 1 30); do
+            state="$(curl -fsS "${NEON_API}/projects/${PROJECT_ID}/branches/${id}" \
+              -H "Authorization: Bearer ${NEON_API_KEY}" -H 'Accept: application/json' \
+              | jq -r '.branch.current_state // empty')"
+            [[ "$state" == ready ]] && break
+            sleep 4
+          done
+          if [[ "$state" != ready ]]; then
+            echo "::error title=neon-rehearsal::o branch ${id} não ficou pronto (${state:-sem estado})."
+            exit 1
+          fi
+          echo "- neon-rehearsal: branch efêmero \`${id}\` criado do teko-prod" >>"$GITHUB_STEP_SUMMARY"
+
+      - name: URL do owner no branch efêmero
+        if: steps.secrets.outputs.ready == 'true'
+        env:
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY_PROD }}
+          PROJECT_ID: ${{ vars.NEON_PROD_PROJECT_ID }}
+          BRANCH_ID: ${{ steps.branch.outputs.id }}
+        run: |
+          # URL direta (sem pooled): o drizzle-kit migrate usa transação e DDL.
+          uri="$(curl -fsS -G "${NEON_API}/projects/${PROJECT_ID}/connection_uri" \
+            --data-urlencode "branch_id=${BRANCH_ID}" \
+            --data-urlencode "database_name=${DATABASE_NAME}" \
+            --data-urlencode "role_name=${OWNER_ROLE}" \
+            -H "Authorization: Bearer ${NEON_API_KEY}" -H 'Accept: application/json' \
+            | jq -r '.uri // empty')"
+          if [[ "$uri" != postgresql://* ]]; then
+            echo "::error title=neon-rehearsal::a API do Neon não devolveu a URL de conexão."
+            exit 1
+          fi
+          echo "::add-mask::${uri}"
+          password="$(sed -E 's#^postgresql://[^:]+:([^@]+)@.*#\1#' <<<"$uri")"
+          echo "::add-mask::${password}"
+          echo "DATABASE_MIGRATE_URL=${uri}" >>"$GITHUB_ENV"
+
+      - name: drizzle-kit migrate no branch efêmero
+        if: steps.secrets.outputs.ready == 'true'
+        run: |
+          pnpm --filter @teko/api exec drizzle-kit migrate
+          bash .github/scripts/neon-extensions-check.sh
+          echo "- neon-rehearsal: migrações aplicadas no branch efêmero; extensões e pg_settings conferidos" >>"$GITHUB_STEP_SUMMARY"
+
+      - name: Apagar o branch efêmero (sempre)
+        if: always() && steps.branch.outputs.id != ''
+        env:
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY_PROD }}
+          PROJECT_ID: ${{ vars.NEON_PROD_PROJECT_ID }}
+          BRANCH_ID: ${{ steps.branch.outputs.id }}
+        run: |
+          curl -fsS --retry 3 -o /dev/null -X DELETE "${NEON_API}/projects/${PROJECT_ID}/branches/${BRANCH_ID}" \
+            -H "Authorization: Bearer ${NEON_API_KEY}" -H 'Accept: application/json'
+          echo "- neon-rehearsal: branch \`${BRANCH_ID}\` apagado" >>"$GITHUB_STEP_SUMMARY"

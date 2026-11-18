@@ -10,9 +10,11 @@ rules:
     ignore:
       - audit.yml
       - ci.yml
+      - deploy.yml
       - e2e.yml
       - ingest.yml
       - mutation.yml
+      - neon-rehearsal.yml
       - ops.yml
       - perf.yml
       - pr-gate.yml

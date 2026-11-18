@@ -3,12 +3,17 @@
     "Regras custom do WAF da Vercel por projeto (Hobby: 3 regras custom, das quais 1 de rate limit).",
     "Cada item de 'rules' é o payload aceito por `vercel firewall rules add --data '<json>' --yes`",
     "(Vercel CLI >= 65.11.0, em tools/vercel-cli) e pela API REST de firewall (PATCH",
-    "/v1/security/firewall/config, action 'rules.insert'). A aplicação é feita na F7; o smoke confere",
-    "o efeito. Nenhuma regra usa 'challenge'. Web e API na mesma origem (ADR 0029): todo navegador",
-    "chega direto à borda, então o IP de cada requisição é o do cliente e o rate limit por IP vale.",
-    "Regra 1: o estático passa (a CDN serve sem invocar a Function); em /api/* só os prefixos",
-    "conhecidos (no staging, também /api/docs). Regra 2: o estático só aceita GET e HEAD. Regra 3:",
-    "a única de rate limit do Hobby, no stream; as demais rotas usam o rate limit da aplicação."
+    "/v1/security/firewall/config, actions 'rules.insert' e 'rules.update'). Quem aplica é o",
+    "scripts/vercel-firewall.ts, a cada deploy (deploy.yml, F7): compara por nome e só escreve o que",
+    "difere; o smoke confere o efeito. Nenhuma regra usa 'challenge'. Web e API na mesma origem (ADR",
+    "0029): todo navegador chega direto à borda, então o IP de cada requisição é o do cliente e o rate",
+    "limit por IP vale. Regra 1: o estático passa (a CDN serve sem invocar a Function); em /api/* só",
+    "os prefixos conhecidos (no staging, também /api/docs). Regra 2: o estático só aceita GET e HEAD.",
+    "Regra 3: a única de rate limit do Hobby, no stream; as demais rotas usam o rate limit da aplicação.",
+    "'lockdown': o payload que substitui a regra de mesmo nome (a 1) com `vercel-firewall.ts --lockdown",
+    "on` (guarda de uso a 95% de uma cota, ou o mantenedor): nega tudo exceto /healthz, /api/healthz, a",
+    "página de aviso (/aviso/ e /<locale>/aviso/) e /_next/static/*. O sync do deploy não desfaz um",
+    "lockdown ativo; só `--lockdown off` volta à regra normal."
   ],
   "projects": {
     "tekoia": {
@@ -109,7 +114,32 @@
             }
           }
         }
-      ]
+      ],
+      "lockdown": {
+        "name": "deny-unknown-api",
+        "description": "LOCKDOWN (cota a 95%): nega tudo exceto /healthz, /api/healthz, a página de aviso e /_next/static/*. Sai com vercel-firewall.ts --lockdown off.",
+        "active": true,
+        "conditionGroup": [
+          {
+            "conditions": [
+              {
+                "type": "path",
+                "op": "re",
+                "value": "^/(?:healthz|api/healthz|(?:pt-BR/|en/)?aviso(?:/.*)?|_next/static/.*|favicon\\.ico)$",
+                "neg": true
+              }
+            ]
+          }
+        ],
+        "action": {
+          "mitigate": {
+            "action": "deny",
+            "rateLimit": null,
+            "redirect": null,
+            "actionDuration": null
+          }
+        }
+      }
     },
     "tekoia-staging": {
       "rules": [
@@ -209,7 +239,32 @@
             }
           }
         }
-      ]
+      ],
+      "lockdown": {
+        "name": "deny-unknown-api",
+        "description": "LOCKDOWN (cota a 95%): nega tudo exceto /healthz, /api/healthz, a página de aviso e /_next/static/*. Sai com vercel-firewall.ts --lockdown off.",
+        "active": true,
+        "conditionGroup": [
+          {
+            "conditions": [
+              {
+                "type": "path",
+                "op": "re",
+                "value": "^/(?:healthz|api/healthz|(?:pt-BR/|en/)?aviso(?:/.*)?|_next/static/.*|favicon\\.ico)$",
+                "neg": true
+              }
+            ]
+          }
+        ],
+        "action": {
+          "mitigate": {
+            "action": "deny",
+            "rateLimit": null,
+            "redirect": null,
+            "actionDuration": null
+          }
+        }
+      }
     }
   }
 }

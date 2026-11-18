@@ -20,7 +20,8 @@ on:
 permissions: {}
 
 concurrency:
-  group: audit-${{ github.event_name }}-${{ github.ref }}
+  # Com o nome do workflow que chama: o audit do deploy.yml não disputa o grupo com o do push.
+  group: audit-${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
