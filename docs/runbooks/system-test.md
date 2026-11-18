@@ -27,10 +27,13 @@ repositório.
    autenticador virtual, cadastra a passkey "system test (CI)" em Configurações → Passkeys, exporta
    a credencial (`WebAuthn.getCredentials`), confere que ela entra sozinha num navegador novo e só
    então escreve o JSON no stdout, que o pipe entrega ao `gh secret set`. Mensagens e erros vão para
-   o stderr. Se ele falhar depois do cadastro, remova a passkey "system test (CI)" nas configurações
-   da conta de teste antes de rodar de novo.
+   o stderr. Se ele falhar, o pipe entrega um stdout vazio e o `gh secret set` grava o segredo
+   **vazio** assim mesmo (e diz "Set Actions secret"): o system test trata o vazio como ausente,
+   avisa e fica verde sem testar nada. Corrija o erro e rode de novo; se ele falhou depois do
+   cadastro, remova antes a passkey "system test (CI)" nas configurações da conta de teste.
 4. **Conferir:** `gh secret list --env staging` mostra `SYSTEM_TEST_PASSKEY`; dispare o
-   `system-test.yml` (`gh workflow run system-test.yml --ref main`) e veja o job verde.
+   `system-test.yml` (`gh workflow run system-test.yml --ref main`) e veja o job verde **sem** o
+   aviso "Sem o segredo SYSTEM_TEST_PASSKEY" (com o aviso, o segredo ficou vazio).
 
 ## Formato do segredo
 

@@ -118,7 +118,10 @@ async function main(): Promise<void> {
     say('Cadastrando a passkey nas configurações…')
     await page.getByLabel(ptBR.settings.passkeys.nameLabel).fill(PASSKEY_NAME)
     await page.getByRole('button', { name: ptBR.settings.passkeys.add }).click()
-    await page.getByText(ptBR.settings.passkeys.added).waitFor({ timeout: 30_000 })
+    // Texto exato: sem ele, "Passkey cadastrada." casa com "Nenhuma passkey cadastrada." (o
+    // getByText ignora maiúsculas e aceita trecho) e o script segue antes da cerimônia.
+    await page.getByText(ptBR.settings.passkeys.added, { exact: true }).waitFor({ timeout: 30_000 })
+    await page.getByText(PASSKEY_NAME, { exact: true }).waitFor({ timeout: 30_000 })
     const passkey = await exportPasskey(authenticator)
     await context.close()
 
