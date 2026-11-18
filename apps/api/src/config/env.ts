@@ -661,6 +661,19 @@ export function loadCliEnv(
 }
 
 /**
+ * Ambiente do `cli maintenance purge` (job `weekly-maintenance`, environment `maintenance`): só a
+ * `DATABASE_URL` do role `teko_app`, sem passar pelo schema da CLI. O schema exige o resto da
+ * configuração da API (por exemplo `EMBEDDINGS_PROVIDER` com `DATABASE_URL`), que o expurgo não usa
+ * e o environment não tem.
+ */
+export function loadMaintenanceEnv(
+  source: Readonly<Record<string, string | undefined>> = process.env,
+): Readonly<Record<'DATABASE_URL', string | undefined>> {
+  const url = source['DATABASE_URL']
+  return { DATABASE_URL: url === '' ? undefined : url }
+}
+
+/**
  * Ambiente do `coverage-mark` (job `mark-coverage`, environment `corpus-watch`): só as URLs do
  * role `teko_watch`, sem passar pelo schema da CLI (o job não tem `DATABASE_URL`).
  */

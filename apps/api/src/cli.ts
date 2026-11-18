@@ -40,7 +40,13 @@ import {
   exportWebOpenApi,
   migrateDatabase,
 } from './composition-root.ts'
-import { type Env, EnvValidationError, loadCliEnv, loadWatchEnv } from './config/env.ts'
+import {
+  type Env,
+  EnvValidationError,
+  loadCliEnv,
+  loadMaintenanceEnv,
+  loadWatchEnv,
+} from './config/env.ts'
 
 /**
  * Entrypoint da CLI (`pnpm --filter @teko/api cli <subcomando>`; empacotada como `dist/cli.mjs`).
@@ -305,7 +311,7 @@ async function runMaintenance(args: readonly string[]): Promise<number> {
     return EXIT_USAGE
   }
   const options = parsePurgeArgs(rest)
-  const maintenance = createMaintenance(loadCliEnv())
+  const maintenance = createMaintenance(loadMaintenanceEnv().DATABASE_URL)
   try {
     return await runPurge(maintenance.purge, options, {
       print,
