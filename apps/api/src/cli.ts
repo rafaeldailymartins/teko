@@ -15,7 +15,7 @@ import { runIngestLoad } from '#adapters/in/cli/ingest/load.ts'
 import { loadOverrides } from '#adapters/in/cli/ingest/overrides-loader.ts'
 import { PARSER_REVISIONS, PARSERS } from '#adapters/in/cli/ingest/parsers/index.ts'
 import { allowedHostsOf, httpHostsOf, loadCorpusConfig } from '#adapters/in/cli/ingest/sources.ts'
-import { parsePurgeArgs, runPurge } from '#adapters/in/cli/maintenance/purge.ts'
+import { runMaintenanceCommand } from '#adapters/in/cli/maintenance/purge.ts'
 import { DEFAULT_FIXTURE_DIR, seedFixtures } from '#adapters/in/cli/seed-fixtures/seed-fixtures.ts'
 import { runSnapshotExport, runSnapshotPromote } from '#adapters/in/cli/snapshot/snapshot.ts'
 import { runCoverageAge } from '#adapters/in/cli/sources-watch/run-coverage-age.ts'
@@ -299,21 +299,7 @@ async function runSeedDevSession(args: readonly string[]): Promise<number> {
 }
 
 async function runMaintenance(args: readonly string[]): Promise<number> {
-  const [subcommand, ...rest] = args
-  if (subcommand !== 'purge') {
-    console.error(USAGE)
-    return EXIT_USAGE
-  }
-  const options = parsePurgeArgs(rest)
-  const maintenance = createMaintenance(loadCliEnv())
-  try {
-    return await runPurge(maintenance.purge, options, {
-      print,
-      warn: (line) => console.error(line),
-    })
-  } finally {
-    await maintenance.close()
-  }
+  return runMaintenanceCommand(args, () => createMaintenance(loadCliEnv()), USAGE)
 }
 
 async function runOpenApi(args: readonly string[]): Promise<number> {

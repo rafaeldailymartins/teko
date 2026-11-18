@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest'
-import { parsePurgeArgs, runPurge } from './purge.ts'
+import { describe, expect, it, vi } from 'vitest'
+import { parsePurgeArgs, runMaintenanceCommand, runPurge } from './purge.ts'
 
 const COUNTS = {
   questions: 3,
@@ -71,5 +71,64 @@ describe('runPurge', () => {
       throw pgError('42501')
     }
     await expect(runPurge(failing, { allowMissingSchema: true }, io())).rejects.toThrow()
+  })
+})
+
+describe('runMaintenanceCommand', () => {
+  function handle(purge: () => Promise<typeof COUNTS>) {
+    const state = { opened: 0, closed: 0 }
+    const open = () => {
+      state.opened += 1
+      return {
+        purge,
+        close: async () => {
+          state.closed += 1
+        },
+      }
+    }
+    return { state, open }
+  }
+
+  it('subcomando desconhecido mostra o uso e sai com 64 sem abrir o banco', async () => {
+    const out = io()
+    const { state, open } = handle(async () => COUNTS)
+    await expect(runMaintenanceCommand(['vacuum'], open, 'uso: cli …', out)).resolves.toBe(64)
+    await expect(runMaintenanceCommand([], open, 'uso: cli …', out)).resolves.toBe(64)
+    expect(out.warned).toEqual(['uso: cli …', 'uso: cli …'])
+    expect(state.opened).toBe(0)
+  })
+
+  it('purge imprime as contagens e fecha a conexão', async () => {
+    const out = io()
+    const { state, open } = handle(async () => COUNTS)
+    await expect(runMaintenanceCommand(['purge'], open, 'uso', out)).resolves.toBe(0)
+    expect(out.printed).toEqual([JSON.stringify(COUNTS)])
+    expect(state).toEqual({ opened: 1, closed: 1 })
+  })
+
+  it('fecha a conexão mesmo quando o purge falha', async () => {
+    const { state, open } = handle(async () => {
+      throw pgError('42501')
+    })
+    await expect(runMaintenanceCommand(['purge'], open, 'uso', io())).rejects.toThrow()
+    expect(state).toEqual({ opened: 1, closed: 1 })
+  })
+
+  it('repassa --allow-missing-schema e, sem io, escreve no stdout e no stderr', async () => {
+    const log = vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
+    const error = vi.spyOn(process.stderr, 'write').mockImplementation(() => true)
+    try {
+      const { open } = handle(async () => {
+        throw pgError('42P01')
+      })
+      await expect(
+        runMaintenanceCommand(['purge', '--allow-missing-schema'], open, 'uso'),
+      ).resolves.toBe(0)
+      expect(log).toHaveBeenCalledWith('{"skipped":"schema_missing"}\n')
+      expect(String(error.mock.calls[0]?.[0])).toContain('schema ausente')
+    } finally {
+      log.mockRestore()
+      error.mockRestore()
+    }
   })
 })
