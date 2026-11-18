@@ -539,17 +539,18 @@ export function createDevSessionSeeder(
 
 /**
  * `cli maintenance purge` (manutenção semanal, environment `maintenance`, role `teko_app`):
- * `PurgeExpiredData` sobre `DATABASE_URL`.
+ * `PurgeExpiredData` sobre a `DATABASE_URL` (`loadMaintenanceEnv`). Não recebe o `Env`: o
+ * expurgo não usa o resto da configuração da API.
  */
 export function createMaintenance(
-  env: Env,
+  databaseUrl: string | undefined,
   clock: Clock = systemClock,
 ): { readonly purge: PurgeExpiredData; close(): Promise<void> } {
-  if (env.DATABASE_URL === undefined) {
+  if (databaseUrl === undefined) {
     throw new Error('maintenance exige DATABASE_URL (role teko_app)')
   }
   const database = createDatabase({
-    url: env.DATABASE_URL,
+    url: databaseUrl,
     applicationName: 'teko-maintenance',
     maxConnections: 1,
   })

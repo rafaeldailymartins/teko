@@ -208,7 +208,7 @@ describe('cli maintenance purge', () => {
        VALUES ('10.9.9.1|/sign-in/email', 3, $1), ('10.9.9.2|/sign-in/email', 1, $2)`,
       [now - 2 * 86_400_000, now],
     )
-    const maintenance = createMaintenance(env)
+    const maintenance = createMaintenance(env.DATABASE_URL)
     try {
       const counts = await maintenance.purge()
       expect(counts.questions).toBeGreaterThanOrEqual(1)

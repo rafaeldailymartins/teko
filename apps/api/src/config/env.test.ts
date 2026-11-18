@@ -8,6 +8,7 @@ import {
   HOBBY_MAX_DURATION_S,
   langfuseSettings,
   loadCliEnv,
+  loadMaintenanceEnv,
   loadWatchEnv,
   parseEnv as parseProcessEnv,
   type RuntimeFacts,
@@ -778,6 +779,22 @@ describe('loadCliEnv', () => {
     expect(loadCliEnv({}).APP_ENV).toBe('development')
     expect(loadCliEnv({}).WEB_ORIGIN).toBe('http://localhost:3000')
     expect(loadCliEnv({ APP_ENV: 'ci' }).APP_ENV).toBe('ci')
+  })
+})
+
+describe('loadMaintenanceEnv', () => {
+  it('lê só a DATABASE_URL, sem exigir o resto da configuração da API', () => {
+    expect(
+      loadMaintenanceEnv({
+        DATABASE_URL: 'postgresql://app',
+        NEON_PROD_WATCH_URL: 'postgresql://p',
+      }),
+    ).toEqual({ DATABASE_URL: 'postgresql://app' })
+  })
+
+  it('trata a URL vazia (segredo ausente no Actions) como ausente', () => {
+    expect(loadMaintenanceEnv({ DATABASE_URL: '' })).toEqual({ DATABASE_URL: undefined })
+    expect(loadMaintenanceEnv({})).toEqual({ DATABASE_URL: undefined })
   })
 })
 
