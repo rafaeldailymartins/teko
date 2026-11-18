@@ -369,7 +369,9 @@ jobs:
         with:
           # GitHub (checkout, setup, artifacts e atestações), npm e Node, o TUF do Sigstore (gh
           # attestation verify), a API e o CLI da Vercel, as URLs *.vercel.app (smoke), o Neon (só
-          # a porta do Postgres, para o migrate) e o app do PostHog na UE (source maps).
+          # a porta do Postgres, para o migrate) e o app do PostHog na UE (source maps): o upload
+          # dos .map vai por URL pré-assinada direto ao bucket S3 de assets do PostHog EU (run
+          # 44338601361). A telemetria do posthog-cli (us.i.posthog.com) fica bloqueada de propósito.
           egress-policy: block
           allowed-endpoints: >
             github.com:443
@@ -389,6 +391,7 @@ jobs:
             *.vercel.app:443
             *.neon.tech:5432
             eu.posthog.com:443
+            s3.eu-central-1.amazonaws.com:443
 
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
