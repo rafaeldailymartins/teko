@@ -304,8 +304,19 @@ export interface BuildPaths {
   readonly outputDir: string
 }
 
+/**
+ * Documentação Markdown das dependências (`README.md`, `CHANGELOG.md`, `docs/*.mdx`): não roda, e os
+ * exemplos `NOME=valor` dela derrubam a checagem de env var do `pack-vercel-output.ts`. Licenças e
+ * avisos ficam.
+ */
+const DEPENDENCY_DOC = /\.(?:md|mdx|markdown)$/i
+const LICENSE_FILE = /^(?:licen[cs]e|notice|copying)/i
+
 function skipped(name: string, topLevel: boolean): boolean {
   if (name === '.bin') {
+    return true
+  }
+  if (!topLevel && DEPENDENCY_DOC.test(name) && !LICENSE_FILE.test(name)) {
     return true
   }
   return topLevel && (SKIPPED_TOP_LEVEL.has(name) || PNPM_STATE_FILE.test(name))
