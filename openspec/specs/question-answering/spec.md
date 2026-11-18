@@ -73,16 +73,6 @@ SHALL terminar com `error` `upstream_unavailable`.
 - **WHEN** o cliente fecha a conexão durante o texto
 - **THEN** o sinal do LLM aborta em menos de 1 s e a pergunta fica `aborted`
 
-### Requirement: Drenagem fora da Vercel
-
-Em drenagem (SIGTERM fora da Vercel), perguntas e streams novos MUST receber 503 `service_paused`,
-e os streams em andamento SHALL terminar.
-
-#### Scenario: SIGTERM no Render
-
-- **WHEN** o processo entrou em drenagem e chega uma pergunta nova
-- **THEN** a API responde 503 `service_paused`
-
 ### Requirement: Histórico, feedback e cota
 
 O usuário MUST ler o histórico da conversa, o detalhe de cada pergunta (inclusive para reler uma
@@ -93,3 +83,13 @@ outro usuário SHALL dar 404.
 
 - **WHEN** um usuário envia feedback para uma pergunta que não é dele
 - **THEN** a API responde 404 `not_found`
+
+### Requirement: Drenagem do processo Node
+
+Em drenagem (SIGTERM com `RUNTIME_TARGET=node`: stack de CI, Docker e `pnpm dev`), perguntas e
+streams novos MUST receber 503 `service_paused`, e os streams em andamento SHALL terminar.
+
+#### Scenario: SIGTERM na stack de CI
+
+- **WHEN** o processo entrou em drenagem e chega uma pergunta nova
+- **THEN** a API responde 503 `service_paused`

@@ -1,15 +1,15 @@
 /**
  * Idioma da raiz `/`: inglês quando o primeiro idioma do `Accept-Language` é inglês (`en`,
  * `en-US`...), português no resto e na falta do header. É a mesma regra das rotas de produção (a
- * Vercel pelo `config.json`, o Caddy da stack de CI e o Plano B), cuja fonte é
- * `ACCEPT_LANGUAGE_EN` em `apps/api/src/adapters/in/http/static-site/policy.ts`; o teste
- * `scripts/root-locale.test.ts` confere que as duas expressões são iguais.
+ * Vercel pelo `config.json` e o Caddy da stack de CI), cuja fonte é `ACCEPT_LANGUAGE_EN` em
+ * `scripts/lib/static-site-policy.ts`; o teste `scripts/root-locale.test.ts` confere que as duas
+ * expressões são iguais.
  *
  * Sem import nenhum: o `next.config.ts` e os scripts da raiz (Node com type stripping) importam
  * este arquivo direto.
  */
 
-/** Primeiro idioma do `Accept-Language` é inglês. Cópia de `ACCEPT_LANGUAGE_EN` do `policy.ts`. */
+/** Primeiro idioma do `Accept-Language` é inglês. Cópia da expressão de `static-site-policy.ts`. */
 export const ACCEPT_LANGUAGE_EN = '^\\s*en(?:-[A-Za-z0-9]+)*\\s*(?:[;,]|$)'
 
 /** Locale padrão do Tekó (o primeiro de `LOCALES` em `@teko/shared/i18n`). */

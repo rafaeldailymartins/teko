@@ -5,8 +5,8 @@ import type { Lifecycle } from '../services/lifecycle.ts'
 /**
  * Liveness do processo (`GET /healthz`). Regra do plano (CU-h no Neon): **nunca** toca o banco
  * nem qualquer dependência externa. O Synthetic Monitoring do Grafana (a cada 5 min,
- * `infra/grafana/synthetic-monitoring/checks.json`), o smoke do deploy e os healthchecks do Caddy
- * (stack de CI) e do Render batem aqui; se isso acordasse o Neon, o scale-to-zero nunca
+ * `infra/grafana/synthetic-monitoring/checks.json`), o smoke do deploy e o healthcheck do Caddy
+ * (stack de CI) batem aqui; se isso acordasse o Neon, o scale-to-zero nunca
  * aconteceria.
  */
 export type GetHealth = () => HealthResponse

@@ -13,7 +13,7 @@ import { compareCodeUnits } from '#domain/shared/compare-code-units.ts'
  *   (`LLM_PROVIDER=fake`, `EMBEDDINGS_PROVIDER=fake`) e saída `pino-pretty`;
  * - qualquer `*_BASE_URL`/`*_API_BASE` de provedor de modelo derruba o boot (os hosts dos
  *   provedores são fixos no código, nunca configuráveis);
- * - staging e produção exigem `RUNTIME_TARGET` explícito (`vercel` ou `render`): o padrão `node`
+ * - staging e produção exigem `RUNTIME_TARGET=vercel` explícito: o padrão `node`
  *   (trustProxy na rede do Caddy, `x-request-id` aceito do proxy) só vale em development e ci, e
  *   `node` explícito é proibido ali. Sem isso, um sync de env esquecido subiria a produção no
  *   perfil do CI, pulando em silêncio as asserções da Vercel abaixo;
@@ -21,13 +21,11 @@ import { compareCodeUnits } from '#domain/shared/compare-code-units.ts'
  *   em qualquer `APP_ENV`;
  * - com `RUNTIME_TARGET=vercel` em staging ou produção, o Node precisa ser `v24.*` e a variável de
  *   sistema `VERCEL_REGION` (presente em runtime) precisa ser `gru1`;
- * - o `trustProxy` nunca é um valor fixo para todas as plataformas: na Vercel é 1 salto, fixo no
- *   código (`TRUST_PROXY` é proibida); no Render vem do ensaio do Plano B (`TRUST_PROXY`
- *   obrigatória); no CI e local, a rede do Caddy (`DEFAULT_TRUST_PROXY`, só em development e ci);
+ * - o `trustProxy` vem da plataforma, nunca do ambiente: na Vercel é 1 salto, fixo no código; no
+ *   CI e local, a rede do Caddy (`DEFAULT_TRUST_PROXY`, só em development e ci);
  * - ingestão (F3): `NEON_API_KEY_STAGING` e `NEON_STAGING_PROJECT_ID` vêm aos pares;
  *   `BLOB_STORE=github-releases` exige o `GITHUB_TOKEN` (ADR 0030); e as credenciais da ingestão
- *   (inclusive o `GITHUB_TOKEN`) são proibidas na API publicada (`RUNTIME_TARGET` vercel ou
- *   render).
+ *   (inclusive o `GITHUB_TOKEN`) são proibidas na API publicada (`RUNTIME_TARGET=vercel`).
  *
  * As mensagens de erro citam só o nome da variável, nunca o valor (pode ser segredo).
  */
@@ -40,8 +38,6 @@ export const RuntimeTarget = {
   Node: 'node',
   /** Vercel Hobby (`tekoia`, `tekoia-staging`), uma Function Fastify em Fluid compute. */
   Vercel: 'vercel',
-  /** Plano B: web service do Render Free. */
-  Render: 'render',
 } as const
 export type RuntimeTarget = (typeof RuntimeTarget)[keyof typeof RuntimeTarget]
 
@@ -92,9 +88,8 @@ const postgresUrlSchema = z
 /**
  * Rede Docker do Caddy da stack de CI (`infra/ci`) e do proxy local: a sub-rede privada que o
  * compose fixa para o proxy, a única origem confiável de `X-Forwarded-For` nesses ambientes. É
- * configuração, não um endereço de serviço: vale só em development e ci (`CADDY_NETWORK_APP_ENVS`)
- * e é substituída por inteiro quando `TRUST_PROXY` está definida. Se a sub-rede do compose mudar,
- * mude aqui.
+ * configuração, não um endereço de serviço: vale só em development e ci (`CADDY_NETWORK_APP_ENVS`).
+ * Se a sub-rede do compose mudar, mude aqui.
  */
 const CADDY_DOCKER_NETWORK = { address: [172, 30, 0, 0], prefixLength: 24 } as const
 
@@ -152,27 +147,6 @@ const exactOriginSchema = z
       'deve ser uma origem exata, sem caminho nem barra final (ex.: https://tekoia.vercel.app)',
   })
 
-const trustProxyListSchema = z.array(z.union([z.ipv4(), z.ipv6(), z.cidrv4(), z.cidrv6()])).min(1)
-
-/**
- * Número de saltos confiáveis (`1`) ou lista de IPs/CIDRs separados por vírgula. O Render usa o
- * formato que o ensaio do Plano B medir.
- */
-const trustProxySchema = z
-  .string()
-  .trim()
-  .transform((value): number | string[] =>
-    /^\d+$/.test(value)
-      ? Number(value)
-      : value
-          .split(',')
-          .map((entry) => entry.trim())
-          .filter((entry) => entry !== ''),
-  )
-  .pipe(z.union([z.int().min(1).max(10), trustProxyListSchema]))
-
-export type TrustProxy = z.output<typeof trustProxySchema>
-
 /**
  * `OTEL_EXPORTER_OTLP_HEADERS` no formato da especificação do OTel: pares `chave=valor` separados
  * por vírgula, com o valor em URL encoding (o Grafana Cloud entrega
@@ -222,7 +196,6 @@ const envSchema = z
     RUNTIME_TARGET: z.enum(RuntimeTarget).optional(),
     /** Variável de sistema da Vercel (`1` no build e no runtime); nunca defina à mão. */
     VERCEL: z.string().optional(),
-    TRUST_PROXY: trustProxySchema.optional(),
     /** Variável de sistema da Vercel (só em runtime; falta no build com `--prebuilt`). */
     VERCEL_REGION: z.string().trim().min(1).optional(),
     /**
@@ -231,11 +204,6 @@ const envSchema = z
      * e sem padrão: um padrão (o antigo era 300 s) divergiria em silêncio do `.vc-config.json`.
      */
     FUNCTION_MAX_DURATION_S: z.coerce.number().int().min(1).max(HOBBY_MAX_DURATION_S).optional(),
-    /**
-     * Export estático do web (`apps/web/out`) servido pela própria API, na mesma origem: só no
-     * Plano B (Render; ADR 0029). Proibida com `RUNTIME_TARGET=vercel`, onde a CDN serve o export.
-     */
-    WEB_STATIC_DIR: z.string().trim().min(1).optional(),
     SHUTDOWN_GRACE_MS: z.coerce
       .number()
       .int()
@@ -421,20 +389,11 @@ const envSchema = z
     if (env.DRAIN_DELAY_MS >= env.SHUTDOWN_GRACE_MS) {
       issue('DRAIN_DELAY_MS', 'deve ser menor que SHUTDOWN_GRACE_MS')
     }
-    if (env.RUNTIME_TARGET === RuntimeTarget.Vercel && env.TRUST_PROXY !== undefined) {
-      issue('TRUST_PROXY', 'não se aplica com RUNTIME_TARGET=vercel (1 salto, fixo no código)')
-    }
     if (env.RUNTIME_TARGET === RuntimeTarget.Vercel && env.FUNCTION_MAX_DURATION_S === undefined) {
       issue(
         'FUNCTION_MAX_DURATION_S',
         'obrigatória com RUNTIME_TARGET=vercel (o maxDuration do .vc-config.json)',
       )
-    }
-    if (env.RUNTIME_TARGET === RuntimeTarget.Vercel && env.WEB_STATIC_DIR !== undefined) {
-      issue('WEB_STATIC_DIR', 'não se aplica com RUNTIME_TARGET=vercel (a CDN serve o export)')
-    }
-    if (env.RUNTIME_TARGET === RuntimeTarget.Render && env.TRUST_PROXY === undefined) {
-      issue('TRUST_PROXY', 'obrigatória com RUNTIME_TARGET=render (valor medido no ensaio)')
     }
     if (env.VERCEL === VERCEL_SYSTEM_FLAG && env.RUNTIME_TARGET !== RuntimeTarget.Vercel) {
       issue(
@@ -510,18 +469,12 @@ const envSchema = z
         'NEON_API_KEY_STAGING e NEON_STAGING_PROJECT_ID vêm juntas (medição de CU-h da ingestão)',
       )
     }
-    if (
-      env.RUNTIME_TARGET === RuntimeTarget.Vercel ||
-      env.RUNTIME_TARGET === RuntimeTarget.Render
-    ) {
+    if (env.RUNTIME_TARGET === RuntimeTarget.Vercel) {
       // A API publicada nunca recebe credenciais da ingestão (artefatos e API do Neon ficam no
       // Actions).
       for (const name of ['GITHUB_TOKEN', 'NEON_API_KEY_STAGING'] as const) {
         if (env[name] !== undefined) {
-          issue(
-            name,
-            `proibida com RUNTIME_TARGET=${env.RUNTIME_TARGET} (só a CLI de ingestão usa)`,
-          )
+          issue(name, 'proibida com RUNTIME_TARGET=vercel (só a CLI de ingestão usa)')
         }
       }
     }
@@ -539,7 +492,7 @@ const envSchema = z
     } else if (env.RUNTIME_TARGET === RuntimeTarget.Node) {
       issue(
         'RUNTIME_TARGET',
-        `node é proibido com APP_ENV=${env.APP_ENV} (staging e produção rodam na Vercel ou no Render)`,
+        `node é proibido com APP_ENV=${env.APP_ENV} (staging e produção rodam na Vercel)`,
       )
     }
     if (!env.WEB_ORIGIN.startsWith('https://')) {

@@ -20,7 +20,6 @@ conferidas pelo `ops.yml` a partir da F6/F7.
 | SonarQube Cloud                                                           | análise informativa de PRs e do branch principal                     | Free (OSS)   | `SONAR_TOKEN` → repositório e Dependabot                                                                      | —                                                                                      |
 | Stryker Dashboard, OpenSSF Best Practices                                 | badge de mutação; selo `passing` (projeto 16550)                     | OSS          | `STRYKER_DASHBOARD_API_KEY` → repositório                                                                     | —                                                                                      |
 | Socket.dev (GitHub App)                                                   | SCA de supply chain no PR                                            | Free (OSS)   | nenhum                                                                                                        | só o repositório `teko` liberado                                                       |
-| Render                                                                    | Plano B (web service `teko-api-planb`, Virginia)                     | Free         | segredos de runtime de produção → env do serviço; deploy hook → `production`                                  | serviço parado fora do ensaio; nenhuma forma de pagamento                              |
 
 **Saíram na revisão de 2026-11-12:** Netlify (web e Blobs, ADRs 0029 e 0030), Codecov (o gate é o
 threshold do Vitest, ADR 0032), Checkly e UptimeRobot (o Synthetic Monitoring do Grafana cobre).
@@ -108,7 +107,6 @@ públicos: só documentos oficiais, snapshots do corpus e métricas, nunca dado 
   landing ligado (check desligado não conta), e a validação de
   `infra/grafana/` reprova acima de 50 mil. **PostHog Free:** volumes estimados bem abaixo dos
   limites. Os dois conferidos à mão no runbook `quotas.md`.
-- **Render Free:** 750 instance-hours por mês, só durante o corte do Plano B.
 
 ## Limites que não se leem por API
 

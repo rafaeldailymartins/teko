@@ -17,21 +17,18 @@ import type { BackgroundTaskFailure, BackgroundTasks } from '#app/ports/backgrou
 import type { ClientIp } from '#app/ports/client-ip.ts'
 import type { GeoResolver } from '#app/ports/geo-resolver.ts'
 import type { InvocationDeadline } from '#app/ports/invocation-deadline.ts'
-import {
-  CADDY_NETWORK_APP_ENVS,
-  DEFAULT_TRUST_PROXY,
-  type Env,
-  RuntimeTarget,
-  type TrustProxy,
-} from './env.ts'
+import { CADDY_NETWORK_APP_ENVS, DEFAULT_TRUST_PROXY, type Env, RuntimeTarget } from './env.ts'
 
 /**
- * Perfil de plataforma: lê `RUNTIME_TARGET` (`vercel | render | node`) e escolhe os adapters de
- * `adapters/out/platform`. O mesmo `server.ts` roda nas três; nada fora daqui (e da raiz de
+ * Perfil de plataforma: lê `RUNTIME_TARGET` (`vercel | node`) e escolhe os adapters de
+ * `adapters/out/platform`. O mesmo `server.ts` roda nas duas; nada fora daqui (e da raiz de
  * composição) sabe em qual está.
  *
- * O `attachDatabasePool` só age na Vercel; nas demais plataformas o pool vive com o processo.
+ * O `attachDatabasePool` só age na Vercel; no `node` o pool vive com o processo.
  */
+
+/** Proxies confiáveis para `X-Forwarded-*`: número de saltos ou lista de IPs/CIDRs. */
+type TrustProxy = number | readonly string[]
 
 /** Na Vercel, a borda sobrescreve `X-Forwarded-For`/`x-real-ip`: confia-se em exatamente 1 salto. */
 const VERCEL_TRUST_PROXY_HOPS = 1
@@ -45,13 +42,11 @@ export const VERCEL_SHUTDOWN = { drainDelayMs: 0, graceMs: 450, backgroundDrainM
 /** Fora da Vercel, as tarefas pós-resposta têm até 5 s depois que o servidor fechou. */
 export const NODE_BACKGROUND_DRAIN_MS = 5000
 
-/** Header com o request id da borda (ou do Caddy); `null` = sempre um UUID próprio. */
+/** Header com o request id da borda (ou do Caddy). */
 const REQUEST_ID_HEADER = {
   [RuntimeTarget.Vercel]: 'x-vercel-id',
   [RuntimeTarget.Node]: 'x-request-id',
-  // O Render repassa `X-Request-Id` do cliente sem sobrescrever: não serve de correlação.
-  [RuntimeTarget.Render]: null,
-} as const satisfies Record<RuntimeTarget, string | null>
+} as const satisfies Record<RuntimeTarget, string>
 
 export interface ShutdownProfile {
   /** Espera com `/healthz` em 503 antes de fechar a porta. */
@@ -65,7 +60,7 @@ export interface ShutdownProfile {
 /** Parte de rede do perfil, sem adapters (alimenta as opções do Fastify). */
 export interface PlatformNetwork {
   readonly trustProxy: TrustProxy
-  readonly requestIdHeader: string | null
+  readonly requestIdHeader: string
   /**
    * Limite de atraso do event loop do `under-pressure` (503 acima de 1 s). Desligado na Vercel:
    * em Fluid compute a instância fica congelada entre invocações, o timer de amostragem para, e o
@@ -76,17 +71,13 @@ export interface PlatformNetwork {
 }
 
 /**
- * Fora da Vercel: o valor medido (`TRUST_PROXY`) ou, só em development e ci, a rede do Caddy.
- * `parseEnv` já impede o resto (Render exige `TRUST_PROXY`; `node` é proibido em staging e
- * produção); este guarda impede que um `Env` montado de outro jeito caia no padrão do CI.
+ * No `node`: a rede do Caddy, só em development e ci. `parseEnv` já proíbe `node` em staging
+ * e produção; este guarda impede que um `Env` montado de outro jeito caia no padrão do CI.
  */
-function nonVercelTrustProxy(env: Env): TrustProxy {
-  if (env.TRUST_PROXY !== undefined) {
-    return env.TRUST_PROXY
-  }
+function nodeTrustProxy(env: Env): TrustProxy {
   if (!CADDY_NETWORK_APP_ENVS.has(env.APP_ENV)) {
     throw new Error(
-      `TRUST_PROXY ausente com APP_ENV=${env.APP_ENV}: o padrão (rede do Caddy) só vale em development e ci`,
+      `RUNTIME_TARGET=node com APP_ENV=${env.APP_ENV}: a rede do Caddy só vale em development e ci`,
     )
   }
   return [DEFAULT_TRUST_PROXY]
@@ -95,7 +86,7 @@ function nonVercelTrustProxy(env: Env): TrustProxy {
 export function platformNetwork(env: Env): PlatformNetwork {
   const vercel = env.RUNTIME_TARGET === RuntimeTarget.Vercel
   return {
-    trustProxy: vercel ? VERCEL_TRUST_PROXY_HOPS : nonVercelTrustProxy(env),
+    trustProxy: vercel ? VERCEL_TRUST_PROXY_HOPS : nodeTrustProxy(env),
     requestIdHeader: REQUEST_ID_HEADER[env.RUNTIME_TARGET],
     eventLoopDelayGuard: !vercel,
   }

@@ -17,7 +17,7 @@ import { startInstrumentation } from './instrumentation.ts'
  *   aguardado no topo do módulo, mas o `listen` não: aguardá-lo no topo travaria o `import()` para
  *   sempre (o evento `listening` só sai depois que o import termina). O runtime espera até 1 s
  *   pela captura depois do import; como o app já está pronto, o `listen` chega em microtarefas.
- * - **Render** (Plano B), **stack de CI**, **Docker** e **`pnpm dev`**: `node dist/server.mjs` (ou
+ * - **Stack de CI**, **Docker** e **`pnpm dev`**: `node dist/server.mjs` (ou
  *   `node --watch src/server.ts`), com `listen` normal em `HOST:PORT`.
  *
  * Em todas, o encerramento no SIGTERM segue o perfil da plataforma (`graceful-shutdown.ts`).

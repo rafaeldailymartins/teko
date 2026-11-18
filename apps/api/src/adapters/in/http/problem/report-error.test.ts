@@ -45,11 +45,7 @@ async function appWith(errorReporter: ErrorReporterPort, backgroundTasks: Backgr
   instance.addHook('onRequest', async (request) => {
     request.traceId = TRACE_ID
   })
-  registerProblemHandlers(
-    instance,
-    undefined,
-    reportUnexpectedErrors({ errorReporter, backgroundTasks }),
-  )
+  registerProblemHandlers(instance, reportUnexpectedErrors({ errorReporter, backgroundTasks }))
   instance.get('/boom/:id', async () => {
     throw new Error('bug com maria@example.com')
   })

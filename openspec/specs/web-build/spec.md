@@ -3,8 +3,7 @@
 ## Purpose
 
 Define o build do web como export estático puro, com a CSP de cada documento gerada no build, os
-mesmos headers e rotas de plataforma na Vercel, no Plano B e na stack de CI, e o orçamento de bundle
-total.
+mesmos headers e rotas de plataforma na Vercel e na stack de CI, e o orçamento de bundle total.
 
 ## Requirements
 
@@ -68,7 +67,7 @@ diretiva de relatório entra. Uma chave fora do formato `phc_…` MUST derrubar 
 
 ### Requirement: Headers do estático iguais em todo host
 
-A Vercel, o Plano B e o Caddy da stack de CI MUST servir o export com HSTS, `nosniff`,
+A Vercel e o Caddy da stack de CI MUST servir o export com HSTS, `nosniff`,
 `X-Frame-Options: DENY`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy`
 restritiva e COOP/CORP `same-origin`, e cada HTML com os headers do seu documento no manifesto,
 inclusive as páginas de 404. O manifesto e os source maps (`*.map`) SHALL NOT ser servidos.
@@ -122,7 +121,7 @@ acesso (sem o polyfill `nomodule` e sem `import()` sob demanda) e falhar se a so
 
 Em `next dev`, o `next.config.ts` MUST redirecionar `/` com a mesma regra das rotas de produção:
 `/en/` quando o primeiro idioma do `Accept-Language` é inglês e `/pt-BR/` nos demais casos. Um teste
-SHALL conferir que a expressão do web é a do `policy.ts` da API.
+SHALL conferir que a expressão do web é a de `scripts/lib/static-site-policy.ts`.
 
 #### Scenario: Raiz em desenvolvimento
 

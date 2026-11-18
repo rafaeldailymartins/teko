@@ -130,14 +130,18 @@ describe('createHttpOptions', () => {
   })
 
   it('em produção não expõe docs', () => {
-    const env = parseEnv({
-      ...BASE,
-      APP_ENV: 'production',
-      NODE_ENV: 'production',
-      WEB_ORIGIN: 'https://tekoia.vercel.app',
-      RUNTIME_TARGET: 'render',
-      TRUST_PROXY: '1',
-    })
+    const env = parseEnv(
+      {
+        ...BASE,
+        APP_ENV: 'production',
+        NODE_ENV: 'production',
+        WEB_ORIGIN: 'https://tekoia.vercel.app',
+        RUNTIME_TARGET: 'vercel',
+        VERCEL_REGION: 'gru1',
+        FUNCTION_MAX_DURATION_S: '120',
+      },
+      { nodeVersion: 'v24.12.0' },
+    )
     expect(createHttpOptions(env).docs).toBe(false)
   })
 
@@ -148,15 +152,6 @@ describe('createHttpOptions', () => {
     expect(options.trustProxy).toBe(1)
     expect(options.requestIdHeader).toBe('x-vercel-id')
     expect(options.eventLoopDelayGuard).toBe(false)
-  })
-
-  it('no Render usa o trustProxy medido e nunca o X-Request-Id do cliente', () => {
-    const options = createHttpOptions(
-      parseEnv({ ...BASE, RUNTIME_TARGET: 'render', TRUST_PROXY: '10.0.0.0/8' }),
-    )
-    expect(options.trustProxy).toEqual(['10.0.0.0/8'])
-    expect(options.requestIdHeader).toBeNull()
-    expect(options.eventLoopDelayGuard).toBe(true)
   })
 })
 

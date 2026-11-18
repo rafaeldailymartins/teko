@@ -17,7 +17,7 @@ export const PROBLEM_CONTENT_TYPE = 'application/problem+json'
  * Prefixo do `type`. É uma tag URI (RFC 4151), que a RFC 9457 sugere para tipos que não são
  * desreferenciáveis: identifica o problema de forma estável sem prometer uma página na web. A
  * autoridade é o domínio de produção da API na Vercel (`teko-api.vercel.app`, fixado pelo deploy
- * placeholder da F0); o identificador não muda se a API for servida pelo Plano B (Render).
+ * placeholder da F0); o identificador não muda se a API mudar de host.
  */
 export const PROBLEM_TYPE_PREFIX = 'tag:teko-api.vercel.app,2026:problems/'
 

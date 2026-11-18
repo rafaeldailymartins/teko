@@ -3,18 +3,18 @@ import { spawnSync } from 'node:child_process'
 import { existsSync, readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { describe, it } from 'node:test'
+import { caddySnippets } from './caddy-static-site.ts'
 import {
   ACCEPT_LANGUAGE_EN,
   IMMUTABLE_CACHE_CONTROL,
   parseHeadersManifest,
   STATIC_HEADERS,
-} from '../apps/api/src/adapters/in/http/static-site/policy.ts'
-import { caddySnippets } from './caddy-static-site.ts'
+} from './lib/static-site-policy.ts'
 
 /**
  * Snippets do Caddy da stack de CI (`pnpm test:scripts`). O comportamento real (redirects, 404 por
  * locale, CSP sem violação no navegador) é conferido pelo `apps/web/e2e/platform.spec.ts` contra a
- * stack; aqui fica a forma do que é gerado a partir do `policy.ts` e do manifesto.
+ * stack; aqui fica a forma do que é gerado a partir do `static-site-policy.ts` e do manifesto.
  */
 
 const REPO_ROOT = resolve(import.meta.dirname, '..')
@@ -42,7 +42,7 @@ describe('caddySnippets', () => {
     assert.match(compose, /- \.\/\.static-site\.caddy:\/etc\/caddy\/static-site\.caddy:ro/)
   })
 
-  it('aplica os headers do policy.ts, a CSP por documento e o cache imutável', () => {
+  it('aplica os headers do static-site-policy.ts, a CSP por documento e o cache imutável', () => {
     for (const [name, value] of Object.entries(STATIC_HEADERS)) {
       assert.ok(snippets.includes(`${name} "${value}"`), name)
     }

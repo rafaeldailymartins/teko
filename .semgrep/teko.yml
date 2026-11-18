@@ -329,13 +329,13 @@ rules:
       plan: "Segurança > Regras do Semgrep: fetch externo só pelo SafeFetcher"
 
   # ---------------------------------------------------------------------------------------------
-  # Plataforma: @vercel/functions só no adapter da Vercel (o resto roda igual no Render e no CI).
+  # Plataforma: @vercel/functions só no adapter da Vercel (o resto roda igual no CI e local).
   # ---------------------------------------------------------------------------------------------
   - id: teko-vercel-functions-only-in-platform-adapter
     message: >-
       @vercel/functions importado fora de apps/api/src/adapters/out/platform/vercel. waitUntil,
       attachDatabasePool e afins ficam atrás das portas BackgroundTasks/ClientIp, escolhidas por
-      config/platform.ts conforme RUNTIME_TARGET (vercel | render | node).
+      config/platform.ts conforme RUNTIME_TARGET (vercel | node).
     severity: ERROR
     languages: [javascript, typescript]
     pattern-either:

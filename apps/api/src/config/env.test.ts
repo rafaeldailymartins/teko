@@ -9,22 +9,32 @@ import {
   langfuseSettings,
   loadCliEnv,
   loadWatchEnv,
-  parseEnv,
+  parseEnv as parseProcessEnv,
+  type RuntimeFacts,
   VERCEL_FUNCTION_REGION,
 } from './env.ts'
 
 const DEV_ENV = { APP_ENV: 'development', WEB_ORIGIN: 'http://localhost:3000' } as const
 
-/** Produção mínima válida sem depender da região nem do Node da Vercel: Plano B (Render). */
+/** Produção mínima válida: a Vercel em gru1 (o Node vem injetado, `NODE_24`). */
 const PROD_ENV = {
   NODE_ENV: 'production',
   APP_ENV: 'production',
   WEB_ORIGIN: 'https://tekoia.vercel.app',
-  RUNTIME_TARGET: 'render',
-  TRUST_PROXY: '1',
-  // Ignorada fora da Vercel; presente para os casos que trocam o RUNTIME_TARGET para vercel.
+  RUNTIME_TARGET: 'vercel',
+  VERCEL_REGION: 'gru1',
   FUNCTION_MAX_DURATION_S: '120',
 } as const
+
+const NODE_24: RuntimeFacts = { nodeVersion: 'v24.12.0' }
+
+/** `parseEnv` com o Node 24 injetado: os casos não dependem da versão de quem roda a suíte. */
+function parseEnv(
+  source: Readonly<Record<string, string | undefined>>,
+  runtime: RuntimeFacts = NODE_24,
+) {
+  return parseProcessEnv(source, runtime)
+}
 
 function problemsOf(source: Record<string, string | undefined>): readonly string[] {
   try {
@@ -140,28 +150,21 @@ describe('parseEnv', () => {
       SHUTDOWN_GRACE_MS: DEFAULT_SHUTDOWN_GRACE_MS,
       DRAIN_DELAY_MS: DEFAULT_DRAIN_DELAY_MS,
     })
-    expect(env.TRUST_PROXY).toBeUndefined()
     expect(env.FUNCTION_MAX_DURATION_S).toBeUndefined()
     expect(env.VERCEL_REGION).toBeUndefined()
     expect(env.LLM_PROVIDER).toBeUndefined()
   })
 
-  it('aceita TRUST_PROXY como número de saltos', () => {
-    expect(parseEnv({ ...DEV_ENV, TRUST_PROXY: ' 2 ' }).TRUST_PROXY).toBe(2)
-  })
-
-  it('converte números, booleanos e listas', () => {
+  it('converte números e booleanos', () => {
     const env = parseEnv({
       ...DEV_ENV,
       PORT: '8080',
       LOG_PRETTY: 'true',
-      TRUST_PROXY: ' 10.0.0.1 , 172.30.0.0/24,::1 ',
       GIT_SHA: 'ABCDEF1234567',
       SHUTDOWN_GRACE_MS: '30000',
     })
     expect(env.PORT).toBe(8080)
     expect(env.LOG_PRETTY).toBe(true)
-    expect(env.TRUST_PROXY).toEqual(['10.0.0.1', '172.30.0.0/24', '::1'])
     expect(env.GIT_SHA).toBe('abcdef1234567')
     expect(env.SHUTDOWN_GRACE_MS).toBe(30_000)
   })
@@ -181,8 +184,9 @@ describe('parseEnv', () => {
     const PROD = {
       APP_ENV: 'production',
       NODE_ENV: 'production',
-      RUNTIME_TARGET: 'render',
-      TRUST_PROXY: '1',
+      RUNTIME_TARGET: 'vercel',
+      VERCEL_REGION: 'gru1',
+      FUNCTION_MAX_DURATION_S: '120',
       WEB_ORIGIN: 'https://tekoia.vercel.app',
     }
 
@@ -355,8 +359,9 @@ describe('parseEnv', () => {
     const problems = problemsOf({
       APP_ENV: appEnv,
       WEB_ORIGIN: 'http://example.test',
-      RUNTIME_TARGET: 'render',
-      TRUST_PROXY: '1',
+      RUNTIME_TARGET: 'vercel',
+      VERCEL_REGION: 'gru1',
+      FUNCTION_MAX_DURATION_S: '120',
     })
     expect(problems).toEqual([
       `NODE_ENV: APP_ENV=${appEnv} exige NODE_ENV=production`,
@@ -548,8 +553,8 @@ describe('parseEnv', () => {
         NEON_STAGING_PROJECT_ID: 'p1',
       })
       expect(problems).toEqual([
-        'GITHUB_TOKEN: proibida com RUNTIME_TARGET=render (só a CLI de ingestão usa)',
-        'NEON_API_KEY_STAGING: proibida com RUNTIME_TARGET=render (só a CLI de ingestão usa)',
+        'GITHUB_TOKEN: proibida com RUNTIME_TARGET=vercel (só a CLI de ingestão usa)',
+        'NEON_API_KEY_STAGING: proibida com RUNTIME_TARGET=vercel (só a CLI de ingestão usa)',
       ])
     })
 
@@ -626,16 +631,10 @@ describe('parseEnv', () => {
   })
 
   it('sem fatos injetados, confere a versão do próprio processo', () => {
-    const vercelProd = {
-      ...PROD_ENV,
-      RUNTIME_TARGET: 'vercel',
-      TRUST_PROXY: undefined,
-      VERCEL_REGION: 'gru1',
-    } as const
     if (process.version.startsWith('v24.')) {
-      expect(parseEnv(vercelProd).RUNTIME_TARGET).toBe('vercel')
+      expect(parseProcessEnv(PROD_ENV).RUNTIME_TARGET).toBe('vercel')
     } else {
-      expect(() => parseEnv(vercelProd)).toThrow(/exige Node 24/)
+      expect(() => parseProcessEnv(PROD_ENV)).toThrow(/exige Node 24/)
     }
   })
 
@@ -654,11 +653,8 @@ describe('parseEnv', () => {
     ['PORT', '0'],
     ['PORT', 'abc'],
     ['LOG_LEVEL', 'verbose'],
-    ['TRUST_PROXY', 'not-an-ip'],
-    ['TRUST_PROXY', ' , '],
-    ['TRUST_PROXY', '0'],
-    ['TRUST_PROXY', '11'],
     ['RUNTIME_TARGET', 'lambda'],
+    ['RUNTIME_TARGET', 'render'],
     ['RUNTIME_TARGET', 'vm'],
     ['FUNCTION_MAX_DURATION_S', '301'],
     ['FUNCTION_MAX_DURATION_S', '0'],
@@ -678,28 +674,11 @@ describe('parseEnv', () => {
       parseEnv({ ...DEV_ENV, RUNTIME_TARGET: 'vercel', FUNCTION_MAX_DURATION_S: max })
         .FUNCTION_MAX_DURATION_S,
     ).toBe(HOBBY_MAX_DURATION_S)
-    expect(
-      parseEnv({ ...DEV_ENV, RUNTIME_TARGET: 'render', TRUST_PROXY: '1' }).FUNCTION_MAX_DURATION_S,
-    ).toBeUndefined()
-  })
-
-  it('na Vercel o trustProxy é fixo; no Render, obrigatório', () => {
-    expect(
-      problemsOf({
-        ...DEV_ENV,
-        RUNTIME_TARGET: 'vercel',
-        TRUST_PROXY: '1',
-        FUNCTION_MAX_DURATION_S: '120',
-      }),
-    ).toEqual(['TRUST_PROXY: não se aplica com RUNTIME_TARGET=vercel (1 salto, fixo no código)'])
-    expect(problemsOf({ ...DEV_ENV, RUNTIME_TARGET: 'render' })).toEqual([
-      'TRUST_PROXY: obrigatória com RUNTIME_TARGET=render (valor medido no ensaio)',
-    ])
-    expect(parseEnv({ ...DEV_ENV, RUNTIME_TARGET: 'render', TRUST_PROXY: '1' }).TRUST_PROXY).toBe(1)
+    expect(parseEnv(DEV_ENV).FUNCTION_MAX_DURATION_S).toBeUndefined()
   })
 
   describe('RUNTIME_TARGET explícito em staging e produção (sem padrão)', () => {
-    const NO_TARGET = { ...PROD_ENV, RUNTIME_TARGET: undefined, TRUST_PROXY: undefined }
+    const NO_TARGET = { ...PROD_ENV, RUNTIME_TARGET: undefined, VERCEL_REGION: undefined }
 
     it.each(['staging', 'production'])('em %s derruba o boot sem RUNTIME_TARGET', (appEnv) => {
       expect(problemsOf({ ...NO_TARGET, APP_ENV: appEnv })).toEqual([
@@ -709,7 +688,7 @@ describe('parseEnv', () => {
 
     it.each(['staging', 'production'])('em %s proíbe RUNTIME_TARGET=node', (appEnv) => {
       expect(problemsOf({ ...NO_TARGET, APP_ENV: appEnv, RUNTIME_TARGET: 'node' })).toEqual([
-        `RUNTIME_TARGET: node é proibido com APP_ENV=${appEnv} (staging e produção rodam na Vercel ou no Render)`,
+        `RUNTIME_TARGET: node é proibido com APP_ENV=${appEnv} (staging e produção rodam na Vercel)`,
       ])
     })
 
@@ -717,8 +696,8 @@ describe('parseEnv', () => {
       expect(parseEnv({ ...DEV_ENV, APP_ENV: appEnv }).RUNTIME_TARGET).toBe('node')
     })
 
-    it('aceita render com TRUST_PROXY medido em produção', () => {
-      expect(parseEnv(PROD_ENV).RUNTIME_TARGET).toBe('render')
+    it('aceita vercel em produção', () => {
+      expect(parseEnv(PROD_ENV).RUNTIME_TARGET).toBe('vercel')
     })
   })
 
@@ -726,10 +705,8 @@ describe('parseEnv', () => {
     it.each([
       ['development', undefined],
       ['ci', 'node'],
-      ['ci', 'render'],
       ['production', undefined],
       ['production', 'node'],
-      ['production', 'render'],
     ])('APP_ENV=%s com RUNTIME_TARGET=%j derruba o boot', (appEnv, target) => {
       const problems = problemsOf({
         ...PROD_ENV,
@@ -744,16 +721,7 @@ describe('parseEnv', () => {
     })
 
     it('aceita VERCEL=1 com RUNTIME_TARGET=vercel', () => {
-      const env = parseEnv(
-        {
-          ...PROD_ENV,
-          RUNTIME_TARGET: 'vercel',
-          TRUST_PROXY: undefined,
-          VERCEL: '1',
-          VERCEL_REGION: 'gru1',
-        },
-        { nodeVersion: 'v24.12.0' },
-      )
+      const env = parseEnv({ ...PROD_ENV, VERCEL: '1' }, NODE_24)
       expect(env.RUNTIME_TARGET).toBe('vercel')
     })
 
@@ -763,13 +731,7 @@ describe('parseEnv', () => {
   })
 
   describe('RUNTIME_TARGET=vercel em staging e produção', () => {
-    const VERCEL_PROD = {
-      ...PROD_ENV,
-      RUNTIME_TARGET: 'vercel',
-      TRUST_PROXY: undefined,
-      VERCEL_REGION: 'gru1',
-    } as const
-    const NODE_24 = { nodeVersion: 'v24.12.0' }
+    const VERCEL_PROD = PROD_ENV
 
     it('aceita gru1 com Node 24', () => {
       expect(parseEnv(VERCEL_PROD, NODE_24).VERCEL_REGION).toBe(VERCEL_FUNCTION_REGION)

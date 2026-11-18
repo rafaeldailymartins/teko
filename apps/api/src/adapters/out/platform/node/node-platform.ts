@@ -8,7 +8,7 @@ import { createTrackedBackgroundTasks } from '../tracked-background-tasks.ts'
 
 /**
  * Adapters de plataforma para um processo Node comum: `RUNTIME_TARGET=node` (local, stack de CI,
- * Docker) e `RUNTIME_TARGET=render` (Plano B). O processo vive além da resposta, então as tarefas
+ * Docker). O processo vive além da resposta, então as tarefas
  * pós-resposta só são acompanhadas e o encerramento gracioso as espera.
  */
 export function createNodeBackgroundTasks(
@@ -19,7 +19,7 @@ export function createNodeBackgroundTasks(
 
 /**
  * O IP é o que o Fastify calculou (`request.ip`) com o `trustProxy` da plataforma: a rede do proxy
- * da stack de CI e localhost no dev, o valor medido no ensaio no Render.
+ * da stack de CI e localhost no dev.
  */
 export function createNodeClientIp(): ClientIp {
   return {

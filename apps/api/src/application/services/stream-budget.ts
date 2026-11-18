@@ -5,7 +5,7 @@ import type { InvocationDeadline } from '../ports/invocation-deadline.ts'
  * `min(100 s, prazo da invocação − agora − 20 s)`.
  *
  * Os 20 s de reserva sobram para a finalização (transação curta) e para as tarefas de
- * `BackgroundTasks`, que dividem o prazo da invocação. Sem prazo de plataforma (Render, CI,
+ * `BackgroundTasks`, que dividem o prazo da invocação. Sem prazo de plataforma (CI,
  * local), vale só o teto de 100 s. O resultado nunca é negativo: `0` significa "sem prazo para
  * começar um stream".
  */

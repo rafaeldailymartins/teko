@@ -1,8 +1,7 @@
 /**
  * Gera os snippets do Caddy da stack de CI (`infra/ci/Caddyfile`) que servem o export do web com a
- * mesma semântica das rotas da Vercel (`scripts/build-vercel-output.ts`) e do Plano B
- * (`apps/api/src/adapters/in/http/static-site`): a política vem do mesmo `policy.ts`, e a CSP de
- * cada documento, do manifesto que o pós-build do web grava em `apps/web/out/.teko-headers.json`.
+ * mesma semântica das rotas da Vercel (`scripts/build-vercel-output.ts`): a política vem do mesmo
+ * `scripts/lib/static-site-policy.ts`, e a CSP de cada documento, do manifesto que o pós-build do web grava em `apps/web/out/.teko-headers.json`.
  *
  * - `(teko_static)`: headers de segurança, CSP por documento, `/_next/static/*` imutável, `/` →
  *   `/en/` ou `/pt-BR/` pelo `Accept-Language` (302, sem cache compartilhado), `/pt-br/...` →
@@ -18,6 +17,7 @@ import { readFileSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import process from 'node:process'
 import { parseArgs } from 'node:util'
+import { compareCodeUnits, resolveInsideRoot } from './lib/cli-guards.ts'
 import {
   ACCEPT_LANGUAGE_EN,
   type DocumentHeaders,
@@ -29,8 +29,7 @@ import {
   ROOT_REDIRECT_HEADERS,
   STATIC_HEADERS,
   STATIC_LOCALES,
-} from '../apps/api/src/adapters/in/http/static-site/policy.ts'
-import { compareCodeUnits, resolveInsideRoot } from './lib/cli-guards.ts'
+} from './lib/static-site-policy.ts'
 
 const REPO_ROOT = resolve(import.meta.dirname, '..')
 
@@ -76,7 +75,7 @@ export function caddySnippets(documents: DocumentHeaders): string {
     return headers
   }
   const lines: string[] = [
-    '# Gerado por scripts/caddy-static-site.ts (policy.ts + manifesto do export). Não edite.',
+    '# Gerado por scripts/caddy-static-site.ts (static-site-policy.ts + manifesto do export). Não edite.',
     '',
     '(teko_static) {',
     `\troot * ${CADDY_SITE_ROOT}`,

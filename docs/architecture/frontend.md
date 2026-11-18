@@ -24,11 +24,10 @@ o cliente do Better Auth, PostHog depois do consentimento e orçamento total) es
 - **Rotas de plataforma** (no `config.json` do Build Output, não no Next): `/` redireciona para
   `/pt-BR/` ou `/en/` por `Accept-Language`; 404 por locale (`app/[locale]/[...rest]/page.tsx` com
   `generateStaticParams → {rest:['404']}`); `/_next/static/*` com
-  `Cache-Control: public, max-age=31536000, immutable`. A mesma semântica vale no Plano B
-  (`static-site.ts`) e no Caddy da stack de CI (snippets de `scripts/caddy-static-site.ts`); o
-  `apps/web/e2e/platform.spec.ts` acessa `/en/xyz` e confere headers e CSP. Em `next dev`, um
+  `Cache-Control: public, max-age=31536000, immutable`. A mesma semântica vale no Caddy da stack de
+  CI (snippets de `scripts/caddy-static-site.ts`); o `apps/web/e2e/platform.spec.ts` acessa `/en/xyz` e confere headers e CSP. Em `next dev`, um
   `redirects()` só de desenvolvimento aplica a mesma regra da raiz (`src/lib/i18n/root-locale.ts`,
-  presa ao `policy.ts` por `scripts/root-locale.test.ts`); a página estática de `/` é uma tela neutra
+  presa ao `static-site-policy.ts` por `scripts/root-locale.test.ts`); a página estática de `/` é uma tela neutra
   com a logo que vai na hora para o idioma do navegador (`public/root-locale.js`).
 - **Dev local:** `pnpm dev` sobe web (`:3000`) e API (`:4000`); em desenvolvimento, `rewrites()` do
   Next manda `/api/*` para a API, e o navegador vê uma origem só. Não há proxy assinado nem segredo
@@ -191,12 +190,11 @@ Content-Security-Policy: default-src 'self'; script-src 'self' 'sha256-…'; sty
   frame-ancestors 'none'; upgrade-insecure-requests[; report-uri …/report/?token=<chave>; report-to posthog]
 ```
 
-- Os três lugares que servem o export consomem o mesmo manifesto, validado por
-  `parseHeadersManifest` (`apps/api/src/adapters/in/http/static-site/policy.ts`, que também guarda
-  os headers comuns): o `build-vercel-output` vira cada documento numa rota do `config.json` (o
-  caminho exato que o serve, sensível à caixa, e as rotas de 404 com a CSP da página delas), o
-  Plano B aplica pelo caminho e o Caddy da stack de CI importa os snippets gerados. O manifesto
-  nunca é servido. Nenhuma rota da Vercel define o mesmo header que outra para a mesma resposta.
+- Os dois lugares que servem o export consomem o mesmo manifesto, validado por
+  `parseHeadersManifest` (`scripts/lib/static-site-policy.ts`, que também guarda os headers
+  comuns): o `build-vercel-output` vira cada documento numa rota do `config.json` (o caminho exato
+  que o serve, sensível à caixa, e as rotas de 404 com a CSP da página delas), e o Caddy da stack de
+  CI importa os snippets gerados. O manifesto nunca é servido. Nenhuma rota da Vercel define o mesmo header que outra para a mesma resposta.
 - Só os documentos têm CSP; JS, CSS, fontes e payloads RSC recebem os demais headers.
 - Sem `'strict-dynamic'` (anularia o `'self'` dos scripts do Next); `style-src-attr 'unsafe-inline'`
   é concessão consciente (Motion e painéis redimensionáveis).
@@ -205,11 +203,11 @@ Content-Security-Policy: default-src 'self'; script-src 'self' 'sha256-…'; sty
   `report-uri https://eu.i.posthog.com/report/?token=<chave>; report-to posthog`, e o documento ganha
   `Reporting-Endpoints: posthog="<o mesmo endpoint>"` (o terceiro header que o manifesto aceita). Uma
   violação de `require-trusted-types-for` é um relatório de CSP como outro e vai ao mesmo endpoint.
-  Sem a chave (dev, Plano B sem ela), a CSP fica igual e as violações só aparecem no console.
+  Sem a chave (dev), a CSP fica igual e as violações só aparecem no console.
 - **Source maps** (`productionBrowserSourceMaps`): ficam no `out/` para o deploy enviá-los ao PostHog
   (`scripts/sourcemaps.ts`) e nunca são servidos: o `build-vercel-output` não os copia para o
-  `static/`, o Plano B responde 404 e o Caddy da stack de CI também. Os chunks levam o snippet do chunk
-  id do PostHog (`_posthogChunkIds`), injetado offline.
+  `static/`, e o Caddy da stack de CI os esconde. Os chunks levam o snippet do chunk id do PostHog
+  (`_posthogChunkIds`), injetado offline.
 - PostHog com `disable_external_dependency_loading: true` e surveys no bundle. O
   `eu-assets.i.posthog.com` está no `connect-src` porque o SDK lê dele, por `fetch`, a configuração
   remota do projeto; nenhum script vem de fora. Os estilos das pesquisas são um `<style>` injetado no

@@ -88,7 +88,8 @@ Browser ── tekoia.vercel.app (same origin) ──┬── static site (Verc
   `tekoia-staging`.
 - GitHub Actions builds and attests the artifact and deploys it with `vercel deploy --prebuilt`;
   there is no Git integration. ADRs [0004](docs/adr/0004-vercel-hobby-api.md) and 0029 explain why.
-- If Vercel goes away, there is a Plan B on Render Free that serves both the site and the API.
+- There is no fallback platform: if Vercel pauses the project, Tekó stays offline until it is
+  back ([ADR 0039](docs/adr/0039-sem-plano-b-no-render.md)).
 - The full design, by area, is in [`docs/architecture/`](docs/architecture/) (in Portuguese).
 
 ## 🚀 Getting started

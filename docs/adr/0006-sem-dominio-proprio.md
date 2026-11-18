@@ -59,3 +59,8 @@ esse desenho por web e API na mesma origem, num projeto Vercel por ambiente. Fal
 - [ADR 0029](0029-web-e-api-na-mesma-origem.md) (mesma origem) e [ADR 0019](0019-oauth-e-passkey.md)
   (OAuth e passkey).
 - Public Suffix List: `vercel.app` está na seção privada, mantida pela própria Vercel.
+
+## Revisão (2026-11-18): sem Plano B ([ADR 0039](0039-sem-plano-b-no-render.md))
+
+Sem Plano B, a troca de host que obrigaria a recadastrar as passkeys fica só no caso de um domínio
+futuro.
