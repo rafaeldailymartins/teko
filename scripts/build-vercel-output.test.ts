@@ -23,6 +23,7 @@ import {
 } from '../apps/api/src/adapters/in/http/static-site/policy.ts'
 import {
   BuildOutputError,
+  buildIdentityFromEnv,
   buildVercelOutput,
   bundleClosure,
   FUNCTION_NAME,
@@ -322,6 +323,17 @@ describe('buildVercelOutput', () => {
       supportsCancellation: true,
     })
     assert.equal(MAX_DURATION_S, 120)
+  })
+
+  it('grava GIT_SHA e APP_VERSION no environment da Function quando há identidade (F7)', () => {
+    const gitSha = 'a'.repeat(40)
+    const { functionDir } = buildVercelOutput(paths, { gitSha, version: '0.1.0-rc.1' })
+    const config = readJson(join(functionDir, '.vc-config.json'))
+    assert.deepEqual(Reflect.get(Object(config), 'environment'), {
+      GIT_SHA: gitSha,
+      APP_VERSION: '0.1.0-rc.1',
+    })
+    assert.equal(Reflect.get(Object(config), 'runtime'), 'nodejs24.x')
   })
 
   it('leva o export para static/, o handler com os chunks que ele importa e só as dependências de produção', () => {
@@ -637,6 +649,39 @@ describe('rotas do config.json', () => {
     const chunk = route(staticDir(), { path: `/_next/static/chunks/${asset}` })
     assert.equal(chunk.kind, 'static')
     assert.equal(chunk.headers['Cache-Control'], 'public, max-age=31536000, immutable')
+  })
+})
+
+describe('buildIdentityFromEnv', () => {
+  const sha = '0123456789abcdef0123456789abcdef01234567'
+
+  it('sem SHA (build local): sem identidade', () => {
+    assert.equal(buildIdentityFromEnv({}), undefined)
+    assert.equal(buildIdentityFromEnv({ GIT_SHA: '  ' }), undefined)
+  })
+
+  it('GIT_SHA tem prioridade sobre GITHUB_SHA, com a versão obrigatória', () => {
+    assert.deepEqual(
+      buildIdentityFromEnv({ GIT_SHA: sha, GITHUB_SHA: 'f'.repeat(40), APP_VERSION: '0.1.0' }),
+      { gitSha: sha, version: '0.1.0' },
+    )
+    assert.deepEqual(buildIdentityFromEnv({ GITHUB_SHA: sha, APP_VERSION: '0.0.0-0123456' }), {
+      gitSha: sha,
+      version: '0.0.0-0123456',
+    })
+  })
+
+  it('recusa SHA curto ou maiúsculo, versão ausente, com v ou fora do SemVer', () => {
+    for (const env of [
+      { GIT_SHA: 'abc1234', APP_VERSION: '0.1.0' },
+      { GIT_SHA: sha.toUpperCase(), APP_VERSION: '0.1.0' },
+      { GIT_SHA: sha },
+      { GIT_SHA: sha, APP_VERSION: 'v0.1.0' },
+      { GIT_SHA: sha, APP_VERSION: '0.1' },
+      { APP_VERSION: '0.1.0' },
+    ]) {
+      assert.throws(() => buildIdentityFromEnv(env), BuildOutputError, JSON.stringify(env))
+    }
   })
 })
 
