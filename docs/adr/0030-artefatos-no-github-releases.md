@@ -136,3 +136,8 @@ OpenTelemetry que ele forçava), as variáveis `NETLIFY_*` e o valor `netlify` d
 `detect`, no job do `source-watch.yml` que chama o `ingest.yml` e no `corpus-eval-history`, um
 job novo que grava o histórico do `corpus-eval` sem nunca rodar o código de um PR (`ref`): o
 `corpus-eval`, que roda esse código no modo eval-only, ficou só com leitura.
+
+## Revisão (2026-11-18): sem Plano B ([ADR 0039](0039-sem-plano-b-no-render.md))
+
+A API publicada é só a da Vercel (`RUNTIME_TARGET=vercel`); a proibição das credenciais da
+ingestão continua valendo nela.

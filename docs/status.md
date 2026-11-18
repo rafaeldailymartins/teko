@@ -194,7 +194,7 @@ shell e build), telas (chat, histórico, autenticação, legais e consentimento)
   shell no grupo `(app)` com paleta `Ctrl/⌘+K` e aviso fixo, área de trabalho do chat em três
   painéis (Sheet e Drawer abaixo de 768 px), páginas-esqueleto nos dois locales e a landing revista.
 - `add-web-build-security` (arquivada em 2026-11-15): guard de estático puro no build, CSP por
-  documento com hash dos inline (Vercel, Plano B e Caddy da stack de CI), redirect da raiz por
+  documento com hash dos inline (Vercel e Caddy da stack de CI), redirect da raiz por
   `Accept-Language` e 404 por locale, orçamento de bundle total e o e2e `platform.spec.ts`. Na
   integração, o Zod passou a rodar sem JIT no navegador (`instrumentation-client.ts`), porque o
   teste de `new Function` dele violava a CSP.
@@ -302,9 +302,8 @@ erros, na [0037](adr/0037-erros-no-posthog-error-tracking.md).
   delta do desenho, porque o Mimir recusa delta sem a ingestão nativa experimental (ADR 0013).
 - **Desvios registrados nas ADRs:** os spans `chat <modelo>` ficam só no Grafana; o
   `@langfuse/client` fica de fora (o `mustache` dele não tem proveniência); o `inject` dos source
-  maps não roda no `pnpm build` (exige o binário), então o Plano B fica sem inject; o `posthog-cli`
-  manda telemetria própria aos EUA no upload; robôs (o Synthetic Monitoring e o Chromium headless)
-  não geram `$exception`.
+  maps não roda no `pnpm build` (exige o binário); o `posthog-cli` manda telemetria própria aos EUA
+  no upload; robôs (o Synthetic Monitoring e o Chromium headless) não geram `$exception`.
 
 Pendências, todas da F7 (conferência no staging, roteiro em
 [O que a F7 confere](evals/dod-f6-2026-11-17.md#o-que-a-f7-confere-no-staging)):
@@ -374,8 +373,7 @@ sem ler valores) e segue. Segredos nunca passam pelo chat: o mantenedor grava ca
   mesma organização; `LANGFUSE_PUBLIC_KEY` e `LANGFUSE_SECRET_KEY` (Sensitive) em cada projeto da
   Vercel, com as chaves do projeto correspondente; no environment `ops`, os segredos
   `LANGFUSE_PROD_*` e `LANGFUSE_STAGING_*`. O job `langfuse` do `ops.yml` cadastrou nos dois os
-  modelos e preços, a score config `user_feedback` e a annotation queue `teko-feedback-negativo`. O
-  Render só recebe as chaves de produção quando o Plano B for criado.
+  modelos e preços, a score config `user_feedback` e a annotation queue `teko-feedback-negativo`.
 - [x] **PostHog EU** (feito em 2026-11-17), um projeto só, o 355097 "Tekó":
   - **Projeto:** cookieless, "Discard client IP data" e Error Tracking ligados; replay, autocapture,
     heatmaps, dead clicks, console log e performance desligados. Há um dashboard, "Tekó: uso e
@@ -389,10 +387,16 @@ sem ler valores) e segue. Segredos nunca passam pelo chat: o mantenedor grava ca
   - **Source maps:** segredo `POSTHOG_CLI_API_KEY` (chave pessoal `phx_` com `error tracking write`
     e `organization read`) e variável `POSTHOG_CLI_PROJECT_ID` nos environments `staging` e
     `production`.
-  - **Plano B (decisão do mantenedor em 2026-11-17):** sem `POSTHOG_PROJECT_KEY` no Render; os erros
-    da API do Plano B ficam só no log e nos traces.
   - Não há chave pessoal no runtime: o analytics não se liga à conta, então não há o que apagar no
     PostHog com a exclusão dela.
+
+## Sem plataforma reserva (2026-11-18)
+
+O mantenedor decidiu não ter um serviço reserva no Render
+([ADR 0039](adr/0039-sem-plano-b-no-render.md)). Saíram o `RUNTIME_TARGET=render`, a `TRUST_PROXY`,
+o plugin `static-site` com a `WEB_STATIC_DIR`, o `@fastify/static` e a configuração do serviço em
+`infra/`; o ensaio de corte saiu do DoD da F7. Se a Vercel pausar o projeto ou encerrar a conta, o
+Tekó fica fora do ar até o ciclo virar ou até migrar.
 
 ## Revisão antes da F4 (2026-11-12)
 

@@ -51,7 +51,7 @@ const nextConfig: NextConfig = {
         output: 'export',
         // `.map` dos chunks para o PostHog Error Tracking resolver a pilha (ADR 0037): o
         // `scripts/sourcemaps.ts` injeta o chunk id e o deploy os envia; nenhum host os serve (a
-        // Vercel, o Plano B e o Caddy da stack de CI deixam `*.map` de fora).
+        // Vercel e o Caddy da stack de CI deixam `*.map` de fora).
         productionBrowserSourceMaps: true,
       }),
   trailingSlash: true,

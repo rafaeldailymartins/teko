@@ -26,7 +26,7 @@
 # Corpus versionado
 /corpus/ @rafaeldailymartins
 
-# Infraestrutura (Vercel, CI, local, Grafana, Plano B Render)
+# Infraestrutura (Vercel, CI, local, Grafana)
 /infra/ @rafaeldailymartins
 
 # Vercel CLI isolado: lockfile próprio e as únicas exceções de trustPolicy para a Vercel

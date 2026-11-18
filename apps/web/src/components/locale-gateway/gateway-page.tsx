@@ -26,7 +26,7 @@ export const gatewayMetadata: Metadata = {
 export const ROOT_LOCALE_SCRIPT = '/root-locale.js'
 
 /**
- * Entrada `/` do export estático. Na Vercel, no Caddy e no Plano B o servidor responde antes (302
+ * Entrada `/` do export estático. Na Vercel e no Caddy o servidor responde antes (302
  * por `Accept-Language`); esta página só aparece em outro servidor estático. Ela não oferece escolha
  * de idioma: é uma tela neutra com a logo, e o script vai na hora para o idioma do navegador. Sem
  * JavaScript, o `<meta refresh>` leva ao locale padrão, e os links dos dois idiomas ficam no

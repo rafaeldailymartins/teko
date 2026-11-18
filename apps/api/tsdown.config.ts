@@ -1,8 +1,8 @@
 import { defineConfig } from 'tsdown'
 
 /**
- * Bundle da API (`dist/*.mjs`, ESM para Node 24) para a Vercel, o Render (Plano B), a stack de CI
- * e o Docker local. Na Vercel, `scripts/build-vercel-output.ts` põe `dist/server.mjs` como handler
+ * Bundle da API (`dist/*.mjs`, ESM para Node 24) para a Vercel, a stack de CI e o Docker
+ * local. Na Vercel, `scripts/build-vercel-output.ts` põe `dist/server.mjs` como handler
  * da única Function do Build Output API (`.vercel/output`), no lugar do builder zero-config do
  * Fastify, que mantinha os imports `.ts` e quebrava no boot (spike F1 (b), ADR 0017).
  *

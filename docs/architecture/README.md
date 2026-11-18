@@ -7,7 +7,7 @@ código, e o documento é corrigido no mesmo PR.
 
 | Documento                                            | Conteúdo                                                                            |
 | ---------------------------------------------------- | ----------------------------------------------------------------------------------- |
-| [backend.md](backend.md)                             | API Fastify: domínio, pipeline HTTP, autenticação, streaming, LLM, Vercel e Plano B |
+| [backend.md](backend.md)                             | API Fastify: domínio, pipeline HTTP, autenticação, streaming, LLM e Vercel          |
 | [ingestao-e-avaliacao.md](ingestao-e-avaliacao.md)   | Corpus, parsers, embeddings, snapshot, artefatos no GitHub Releases, watch e RAGOps |
 | [frontend.md](frontend.md)                           | Export estático do Next, design system, chat, i18n, a11y e segurança no navegador   |
 | [qualidade-e-seguranca.md](qualidade-e-seguranca.md) | Matriz de testes, gates, pipeline de segurança, ameaças e LGPD                      |
@@ -29,14 +29,14 @@ O domínio público é `tekoia.vercel.app`, porque `teko.vercel.app` pertence a 
 
 ## Restrições
 
-| Restrição                              | Consequência                                                                                                       |
-| -------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| Custo zero absoluto                    | Só free tiers que param em vez de cobrar; tetos calculados abaixo das cotas; nenhum cartão cadastrado              |
-| Sem domínio próprio                    | Web e API no mesmo domínio `*.vercel.app` (ADR 0029); login por OAuth GitHub/Google + passkey, sem e-mail          |
-| Vercel Hobby: cotas mensais fixas      | Estourar uma cota bloqueia o recurso por cerca de 30 dias; tetos na aplicação, WAF, guarda diária de uso e Plano B |
-| Vercel Hobby é pessoal e não comercial | Gratuito e MIT, sem anúncios, afiliados, plano pago ou consultoria paga ligada ao deploy; doações permitidas       |
-| Gemini free usa os prompts para treino | PII redigida, aviso na UI, termos 18+, EEE/UK/CH só no Groq (ZDR), opt-out de Model Training na Vercel             |
-| Mantenedor solo, máquina pessoal       | Nada depende da máquina dele: tudo reproduzível pelo Actions e por `infra/`                                        |
+| Restrição                              | Consequência                                                                                                         |
+| -------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| Custo zero absoluto                    | Só free tiers que param em vez de cobrar; tetos calculados abaixo das cotas; nenhum cartão cadastrado                |
+| Sem domínio próprio                    | Web e API no mesmo domínio `*.vercel.app` (ADR 0029); login por OAuth GitHub/Google + passkey, sem e-mail            |
+| Vercel Hobby: cotas mensais fixas      | Estourar uma cota bloqueia o recurso por cerca de 30 dias; tetos na aplicação, WAF e guarda diária de uso (ADR 0039) |
+| Vercel Hobby é pessoal e não comercial | Gratuito e MIT, sem anúncios, afiliados, plano pago ou consultoria paga ligada ao deploy; doações permitidas         |
+| Gemini free usa os prompts para treino | PII redigida, aviso na UI, termos 18+, EEE/UK/CH só no Groq (ZDR), opt-out de Model Training na Vercel               |
+| Mantenedor solo, máquina pessoal       | Nada depende da máquina dele: tudo reproduzível pelo Actions e por `infra/`                                          |
 
 Os testes usam relógio fixo em **2026-11-10**.
 
@@ -125,7 +125,7 @@ teko/
 │  └─ vercel-cli/   # Vercel CLI isolado, com lockfile e exceções de proveniência próprios (ADR 0002)
 ├─ corpus/          # sources.yaml, leiaute-periods.yaml, overrides/, watch.yaml, corpus.lock.json
 ├─ scripts/         # scripts da raiz em TypeScript (type stripping): build/pack do .vercel/output etc.
-├─ infra/           # local/ (compose), vercel/ (WAF, env não secreta), planb-render/
+├─ infra/           # local/ (compose), vercel/ (WAF, env não secreta)
 ├─ openspec/        # specs/ (requisitos vigentes) e changes/
 ├─ docs/            # roadmap.md, status.md, architecture/, adr/, runbooks/
 └─ .github/         # workflows/, actions/setup/, affected-paths.yml, dependabot.yml, CODEOWNERS

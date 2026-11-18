@@ -85,7 +85,7 @@ diz o check e `instance`, o alvo. O alerta volta a Normal na primeira execução
 4. **Queda da Vercel** (os dois projetos ao mesmo tempo, ou a landing junto com o `/healthz` de
    produção: ela é estática e não passa pela Function): confira
    [vercel-status.com](https://www.vercel-status.com/). Não há o que fazer além de acompanhar; se
-   passar de horas, avalie o corte para o Plano B (`vercel-paused.md`, F7).
+   passar de horas, siga o `vercel-paused.md` (F7).
    - **503 no `/healthz`** é `DEPLOYMENT_PAUSED` (ou queda da plataforma): o
      `teko-deployment-paused` dispara já na primeira execução com 503, e este alerta vem uns 20 min
      depois, porque o check só aceita 200. Siga o [vercel-paused.md](vercel-paused.md); este alerta é

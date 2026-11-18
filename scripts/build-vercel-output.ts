@@ -40,8 +40,8 @@
  * derruba o script. Ficam de fora também os metadados do pnpm (`.pnpm`, `.modules.yaml` etc.) e o
  * `@teko/shared`, que já está no bundle. Argumento na linha de comando termina com código 2;
  * falha de montagem, com 1. Não usa dependências: só o Node 24 (type stripping) e a política do site
- * estático da API (`apps/api/src/adapters/in/http/static-site/policy.ts`, sem imports), a mesma que o
- * Plano B (Render) usa.
+ * estático (`scripts/lib/static-site-policy.ts`, sem imports), a mesma que o Caddy da stack de CI
+ * usa.
  *
  * Identidade do commit (F7): com `GIT_SHA` (ou `GITHUB_SHA`, no Actions) no ambiente, o
  * `.vc-config.json` ganha `environment: { GIT_SHA, APP_VERSION }` (campo `environment` do Build
@@ -64,6 +64,7 @@ import {
 import { join, resolve } from 'node:path'
 import process from 'node:process'
 import { parseArgs } from 'node:util'
+import { compareCodeUnits, resolveInsideRoot } from './lib/cli-guards.ts'
 import {
   ACCEPT_LANGUAGE_EN,
   type DocumentHeaders,
@@ -75,8 +76,7 @@ import {
   ROOT_REDIRECT_HEADERS,
   STATIC_HEADERS,
   STATIC_LOCALES,
-} from '../apps/api/src/adapters/in/http/static-site/policy.ts'
-import { compareCodeUnits, resolveInsideRoot } from './lib/cli-guards.ts'
+} from './lib/static-site-policy.ts'
 
 const REPO_ROOT = resolve(import.meta.dirname, '..')
 

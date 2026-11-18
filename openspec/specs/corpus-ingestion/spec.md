@@ -167,7 +167,7 @@ credenciais da ingestão (`GITHUB_TOKEN`, `NEON_API_KEY_STAGING`), sem citar o v
 
 #### Scenario: Token do GitHub na API publicada
 
-- **WHEN** a API sobe com `RUNTIME_TARGET=render` e `GITHUB_TOKEN` definido
+- **WHEN** a API sobe com `RUNTIME_TARGET=vercel` e `GITHUB_TOKEN` definido
 - **THEN** o boot falha citando só o nome da variável
 
 #### Scenario: Backend sem credencial

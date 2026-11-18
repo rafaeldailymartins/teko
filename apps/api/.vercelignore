@@ -18,7 +18,7 @@ vitest.config.ts
 vitest.stryker.config.ts
 .dependency-cruiser.cjs
 
-# Build do tsdown (Render, stack de CI e Docker); a Vercel compila src/server.ts
+# Build do tsdown (stack de CI e Docker); a Vercel compila src/server.ts
 dist/
 
 # Imagem da stack de CI (nunca publicada)

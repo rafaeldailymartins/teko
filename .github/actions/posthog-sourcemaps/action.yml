@@ -5,7 +5,7 @@ description: >-
   .map ao PostHog da UE com o release teko@<versão>. Exige o pnpm do setup. Ordem no deploy (F7):
   build do web e da API → inject → pós-build do web de novo, com o mesmo env (o orçamento mede os
   chunks injetados) → scripts/build-vercel-output.ts → upload → deploy. Os .map nunca são servidos
-  (a Vercel, o Plano B e o Caddy os deixam de fora).
+  (a Vercel e o Caddy os deixam de fora).
 
 inputs:
   mode:

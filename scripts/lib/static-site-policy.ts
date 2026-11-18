@@ -4,10 +4,10 @@
  *
  * - a Vercel, pelas rotas do `config.json` que `scripts/build-vercel-output.ts` gera (a CDN serve o
  *   estático, sem invocar a Function);
- * - o Plano B (Render), pelo plugin `static-site.ts`, quando `WEB_STATIC_DIR` está definida.
+ * - o Caddy da stack de CI, pelos snippets que `scripts/caddy-static-site.ts` gera.
  *
- * Só constantes e funções puras, sem import: o script de build (Node com type stripping) importa
- * este arquivo direto.
+ * Só constantes e funções puras, sem import: os scripts (Node com type stripping) importam este
+ * arquivo direto. Os testes ficam em `static-site-policy.test.ts` (`pnpm test:scripts`).
  */
 
 /** Locales do export; o primeiro é o padrão (o mesmo `LOCALES` de `@teko/shared/i18n`). */
@@ -37,8 +37,8 @@ export const STATIC_HEADERS = {
 
 /**
  * Manifesto de headers por documento, na raiz do export (`apps/web/out/.teko-headers.json`), gravado
- * pelo `apps/web/scripts/postbuild.ts`. Nunca é servido: a Vercel não o copia para o `static/`, o
- * `@fastify/static` ignora dotfiles e o Caddy o esconde.
+ * pelo `apps/web/scripts/postbuild.ts`. Nunca é servido: a Vercel não o copia para o `static/` e o
+ * Caddy o esconde.
  */
 export const HEADERS_MANIFEST_FILE = '.teko-headers.json'
 
@@ -110,18 +110,6 @@ export function parseHeadersManifest(value: unknown): DocumentHeaders {
 }
 
 /**
- * Arquivo do export que atende o caminho com status 200 (`/en/` e `/en/index.html` →
- * `en/index.html`; `/404.html` → `404.html`), ou `null` se o caminho não é de documento. A raiz `/`
- * não serve documento: ela redireciona.
- */
-export function documentFileFor(path: string): string | null {
-  if (path.endsWith('/')) {
-    return path === '/' ? null : `${path.slice(1)}index.html`
-  }
-  return path.endsWith('.html') ? path.slice(1) : null
-}
-
-/**
  * Regex (sensível à caixa) dos caminhos que servem o arquivo com status 200: `x/index.html` casa
  * `/x/` e `/x/index.html`; outro `.html` casa só o próprio caminho; o `index.html` da raiz, só
  * `/index.html` (a raiz redireciona).
@@ -139,8 +127,8 @@ export function documentPathPattern(file: string): string {
 
 /**
  * Source map do export (`*.js.map`): fica no `out/` para o deploy enviá-lo ao PostHog Error
- * Tracking e nunca é servido (ADR 0037). A Vercel não o copia para o `static/`, o Plano B responde
- * 404 e o Caddy o esconde.
+ * Tracking e nunca é servido (ADR 0037). A Vercel não o copia para o `static/` e o Caddy o
+ * esconde.
  */
 export function isSourceMapPath(path: string): boolean {
   return path.toLowerCase().endsWith('.map')

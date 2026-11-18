@@ -6,9 +6,9 @@ import { compareCodeUnits, type ParsedDocument } from './html.ts'
  * CSP por documento do export estático (`docs/architecture/frontend.md`, "Segurança no navegador").
  * O export não tem servidor para gerar nonce, então cada `<script>` e `<style>` inline entra pelo
  * sha256 do conteúdo, e cada HTML ganha a própria CSP. O resultado vai para o manifesto
- * `out/.teko-headers.json`, que os três lugares que servem o export consomem: a Vercel (rotas do
- * `config.json`, `scripts/build-vercel-output.ts`), o Plano B (`apps/api`, `static-site.ts`) e o
- * Caddy da stack de CI (`scripts/caddy-static-site.ts`).
+ * `out/.teko-headers.json`, que os dois lugares que servem o export consomem: a Vercel (rotas do
+ * `config.json`, `scripts/build-vercel-output.ts`) e o Caddy da stack de CI
+ * (`scripts/caddy-static-site.ts`).
  */
 
 /** Nome do manifesto de headers por documento, na raiz do export (nunca servido). */

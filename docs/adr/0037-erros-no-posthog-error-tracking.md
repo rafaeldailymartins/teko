@@ -130,3 +130,8 @@ deixar `us.i.posthog.com` fora da allowlist.
   pelo CLI, CSP tracking, persistência e cookieless, API de captura, limites do plano Free).
 - [Observabilidade](../architecture/observabilidade.md#erros), [frontend](../architecture/frontend.md#segurança-no-navegador),
   ADR 0002 (adendo de 2026-11-17) e mudança OpenSpec `add-error-tracking`.
+
+## Revisão (2026-11-18): sem Plano B ([ADR 0039](0039-sem-plano-b-no-render.md))
+
+Sem Plano B, não há `POSTHOG_PROJECT_KEY` no Render nem build sem `inject`: os `.map` ficam fora
+do que a Vercel e o Caddy da stack de CI servem.

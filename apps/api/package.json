@@ -48,7 +48,6 @@
     "@fastify/otel": "catalog:",
     "@fastify/rate-limit": "catalog:",
     "@fastify/sensible": "catalog:",
-    "@fastify/static": "catalog:",
     "@fastify/swagger": "catalog:",
     "@fastify/under-pressure": "catalog:",
     "@langfuse/otel": "catalog:",

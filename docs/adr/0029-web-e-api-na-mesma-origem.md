@@ -119,3 +119,9 @@ Na revisão de arquitetura de 2026-11-12, o mantenedor aprovou servir a web e a 
   0003](0003-f1-spikes.md) (spikes (a) e (c)), [ADR 0004](0004-vercel-hobby-api.md) (projetos,
   domínios e WAF) e [ADR 0017](0017-vercel-build-output-tsdown.md) (rotas do `config.json`).
 - Ações manuais do mantenedor: `infra/vercel/README.md`, seção "Mesma origem (ADR 0029)".
+
+## Revisão (2026-11-18): sem Plano B ([ADR 0039](0039-sem-plano-b-no-render.md))
+
+O item 10 está superado: sem Plano B, a API não serve mais o export (saem o plugin `static-site`,
+a `WEB_STATIC_DIR` e o `@fastify/static`). A política das rotas do estático passou para
+`scripts/lib/static-site-policy.ts`, usada pelo `build-vercel-output` e pelo Caddy da stack de CI.

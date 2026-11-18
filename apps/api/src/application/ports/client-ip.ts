@@ -4,7 +4,7 @@
  * terceiros no meio.
  *
  * - Vercel: `x-real-ip`, que a borda sobrescreve e nunca repassa do cliente;
- * - fora dela (CI, local, Render): o IP que o servidor HTTP calculou com o `trustProxy` da
+ * - fora dela (CI, local): o IP que o servidor HTTP calculou com o `trustProxy` da
  *   plataforma.
  *
  * O resultado serve para rate limit, log e geo; nunca para autorização.
@@ -12,7 +12,7 @@
 export const ClientIpSource = {
   /** Header da borda da plataforma (`x-real-ip` na Vercel). */
   Platform: 'platform',
-  /** Socket + `X-Forwarded-For` filtrado pelo `trustProxy` (CI, local, Render). */
+  /** Socket + `X-Forwarded-For` filtrado pelo `trustProxy` (CI, local). */
   TrustedProxy: 'trusted_proxy',
   /** Nenhuma fonte confiável. */
   None: 'none',

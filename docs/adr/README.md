@@ -36,6 +36,7 @@ o roteiro, em [`docs/roadmap.md`](../roadmap.md).
 | [0036](0036-login-por-email-e-senha.md)              | Login por e-mail e senha, sem confirmação de e-mail nem recuperação de senha         | accepted |
 | [0037](0037-erros-no-posthog-error-tracking.md)      | Erros no PostHog Error Tracking, com source maps e relatório de CSP                  | accepted |
 | [0038](0038-release-minimo-da-f7.md)                 | Produção na F7 por um `release.yml` mínimo, antes do fluxo completo da F9            | accepted |
+| [0039](0039-sem-plano-b-no-render.md)                | Sem Plano B no Render                                                                | accepted |
 
 As ADRs 0029 a 0032 chegam pelos PRs da revisão de 2026-11-12 ([status](../status.md)), um por
 pacote; o link entra quando o arquivo estiver em `main`.
@@ -52,6 +53,12 @@ uma nota de revisão apontando para a ADR nova, sem reescrever a decisão origin
 | 0004         | projetos `tekoia` e `tekoia-staging`, mesma origem, WAF sem a regra do `x-nf-sign`       | 0029       |
 | 0017         | o `.vercel/output` leva o estático e rotas próprias; a Function leva os chunks do bundle | 0029       |
 | 0024         | o `release-rehearsal` passa a aceitar só a tag `v*`; não há mais PR de release           | 0033       |
+
+### Revisão de 2026-11-18: sem Plano B
+
+O mantenedor decidiu não ter Plano B no Render ([ADR 0039](0039-sem-plano-b-no-render.md)). A ADR
+0004 (seção "Plano B: Render Free") e a 0029 (item 10) ficam superadas em parte; as ADRs 0001,
+0002, 0003, 0006, 0017, 0019, 0030, 0035 e 0037, que citavam o Plano B, ganham uma nota de revisão.
 
 ## Numeração e lista do plano
 

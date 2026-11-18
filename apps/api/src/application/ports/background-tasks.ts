@@ -5,7 +5,7 @@
  * - Na Vercel, a tarefa vai para o `waitUntil`: a invocação continua viva até ela terminar, mas o
  *   `waitUntil` divide o prazo da invocação, é cancelado no fim dele e mantém a memória
  *   provisionada cobrando enquanto roda. Por isso toda tarefa tem teto próprio (`timeoutMs`).
- * - No Render, no CI e local, a promise só é acompanhada, e o encerramento gracioso a espera
+ * - No CI e local, a promise só é acompanhada, e o encerramento gracioso a espera
  *   (`drain`).
  *
  * Uma tarefa nunca derruba o processo: erro ou estouro do teto vira um `BackgroundTaskFailure`

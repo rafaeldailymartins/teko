@@ -152,10 +152,7 @@ describe('boot em staging e produção', () => {
   it.each(['staging', 'production'] as const)(
     'em %s com VERCEL=1 não sobe fora do perfil vercel (trustProxy do CI, x-request-id do cliente)',
     (name) => {
-      for (const extra of [
-        { RUNTIME_TARGET: undefined },
-        { RUNTIME_TARGET: 'render', TRUST_PROXY: '1' },
-      ]) {
+      for (const extra of [{ RUNTIME_TARGET: undefined }, { RUNTIME_TARGET: 'node' }]) {
         expect(() => parseEnv({ ...ENVS[name], ...extra }, NODE_24)).toThrow(
           /VERCEL=1 está presente; exige RUNTIME_TARGET=vercel/,
         )
@@ -186,7 +183,6 @@ describe('perfil de plataforma', () => {
 
   it.each([
     ['vercel', { FUNCTION_MAX_DURATION_S: '120' }, '198.51.100.5'],
-    ['render', { TRUST_PROXY: '2' }, '203.0.113.50'],
     ['node', {}, '127.0.0.1'],
   ] as const)('trustProxy em %s', async (target, extra, expectedIp) => {
     const { app } = await start('ci', { RUNTIME_TARGET: target, ...extra })
@@ -210,15 +206,6 @@ describe('perfil de plataforma', () => {
         forwardedIp: '127.0.0.1',
       }),
     ).toEqual({ ip: '203.0.113.9', source: 'platform' })
-  })
-
-  it('no Render não confia no X-Request-Id do cliente', async () => {
-    const { app } = await start('ci', { RUNTIME_TARGET: 'render', TRUST_PROXY: '1' })
-    const res = await app.inject({
-      url: '/healthz',
-      headers: { 'x-request-id': 'cliente-forjado-0001' },
-    })
-    expect(res.headers['x-request-id']).toMatch(/^[0-9a-f-]{36}$/)
   })
 })
 

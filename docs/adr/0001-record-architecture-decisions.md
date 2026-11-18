@@ -111,3 +111,8 @@ Decisão do mantenedor na revisão antes da F4:
 - **Numeração.** Decisões fora da lista temática do plano recebem o próximo número livre (a
   revisão usou 0029 a 0033); os números reservados da lista seguem a regra do
   [índice](README.md#numeração-e-lista-do-plano).
+
+## Revisão (2026-11-18): sem Plano B ([ADR 0039](0039-sem-plano-b-no-render.md))
+
+O Plano B no Render citado na tabela histórica acima não existe mais: o mantenedor decidiu não
+tê-lo. A tabela viva fica em [`docs/architecture/README.md`](../architecture/README.md#decisões-e-desvios-do-pedido-original).

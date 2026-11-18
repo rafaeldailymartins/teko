@@ -8,8 +8,8 @@
  * Alvos (constantes; nenhum caminho vem da linha de comando):
  *
  * - `web`: os chunks do export estático (`apps/web/out/_next/static`, com os `.map` do
- *   `productionBrowserSourceMaps`; os `.map` nunca são servidos: a Vercel, o Plano B e o Caddy os
- *   deixam de fora);
+ *   `productionBrowserSourceMaps`; os `.map` nunca são servidos: a Vercel e o Caddy os deixam
+ *   de fora);
  * - `api`: o bundle do tsdown (`apps/api/dist`), antes do `build-vercel-output`, que copia os `.mjs`
  *   já injetados para a Function.
  *
