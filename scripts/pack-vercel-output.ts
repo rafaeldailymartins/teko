@@ -11,7 +11,8 @@
  * - link simbólico que aponta para fora do output derruba o script;
  * - nenhum arquivo pode trazer uma env var conhecida já com valor (linha `NOME=` de dotenv ou chave
  *   JSON `"NOME": "..."`), para os nomes de Config e de Sensitive de `infra/vercel/env.<env>.json`;
- * - o gitleaks (`gitleaks dir`) varre o conteúdo e precisa terminar limpo.
+ * - o gitleaks (`gitleaks dir`, com `infra/vercel/gitleaks-output.toml`: regras padrão e só a chave
+ *   pública `phc_` do PostHog liberada) varre o conteúdo e precisa terminar limpo.
  *
  * O tar é determinístico: GNU tar com `--sort=name`, `--mtime` fixo (`SOURCE_DATE_EPOCH`, ou 0),
  * dono 0:0 numérico e cabeçalhos pax sem atime/ctime; o gzip do Node não grava nome nem data. Os
@@ -60,6 +61,11 @@ import { envAssignmentPattern } from './lib/env-assignment.ts'
 import { parseGitleaksReport, summarizeGitleaks } from './lib/gitleaks-report.ts'
 
 const REPO_ROOT = resolve(import.meta.dirname, '..')
+/**
+ * Regras padrão do gitleaks com uma exceção só: a chave de projeto do PostHog (`phc_`), pública, que
+ * vai no `report-uri` da CSP de cada página do `config.json`.
+ */
+const GITLEAKS_CONFIG = join(REPO_ROOT, 'infra', 'vercel', 'gitleaks-output.toml')
 /** Onde o `vercel build` grava o `.vercel/` (raiz do repositório ou Root Directory `apps/api`). */
 const VERCEL_DIR_CANDIDATES = [
   join(REPO_ROOT, '.vercel'),
@@ -231,6 +237,8 @@ function runGitleaks(outputDir: string): void {
     run(findOnSafePath('gitleaks'), [
       'dir',
       outputDir,
+      '--config',
+      GITLEAKS_CONFIG,
       '--no-banner',
       '--redact',
       '--exit-code',
