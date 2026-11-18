@@ -53,6 +53,7 @@ import process, { env } from 'node:process'
 import { parseArgs } from 'node:util'
 import { gzipSync } from 'node:zlib'
 import { compareCodeUnits, findOnSafePath, resolveInsideRoot } from './lib/cli-guards.ts'
+import { envAssignmentPattern } from './lib/env-assignment.ts'
 
 const REPO_ROOT = resolve(import.meta.dirname, '..')
 /** Onde o `vercel build` grava o `.vercel/` (raiz do repositório ou Root Directory `apps/api`). */
@@ -166,10 +167,6 @@ function assertSymlinksInside(root: string, entries: readonly Entry[]): void {
   }
 }
 
-function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-}
-
 /** Nomes de env vars de `infra/vercel/env.*.json` (Config e Sensitive). */
 function knownEnvNames(envFiles: readonly string[]): string[] {
   const names = new Set<string>()
@@ -191,18 +188,6 @@ function knownEnvNames(envFiles: readonly string[]): string[] {
     throw new PackError(`nenhuma env var conhecida em ${envFiles.join(', ')}`)
   }
   return [...names].sort(compareCodeUnits)
-}
-
-/**
- * Uma env var "com valor" no output: linha de dotenv (`NOME=valor`) ou chave JSON com string não
- * vazia (`"NOME": "valor"`). O código-fonte compilado cita os nomes (`env.WEB_ORIGIN`,
- * `issue('NODE_ENV', ...)`) sem casar com nenhum dos dois formatos.
- */
-function envAssignmentPattern(names: readonly string[]): RegExp {
-  const alternatives = names.map(escapeRegExp).join('|')
-  return new RegExp(
-    `(?:^|\\n)\\s*(?:export\\s+)?(?:${alternatives})=\\S|"(?:${alternatives})"\\s*:\\s*"[^"]`,
-  )
 }
 
 function assertNoEnvAssignments(entries: readonly Entry[], pattern: RegExp): void {

@@ -132,6 +132,9 @@ beforeEach(() => {
   const nm = paths.nodeModulesDir
   write(join(nm, 'fastify', 'package.json'), '{"name":"fastify"}')
   write(join(nm, 'fastify', 'fastify.js'))
+  write(join(nm, 'fastify', 'README.md'), 'LANGFUSE_SECRET_KEY=sk-lf-exemplo\n')
+  write(join(nm, 'fastify', 'LICENSE.md'))
+  write(join(nm, 'fastify', 'docs', 'guia.mdx'), 'GROQ_API_KEY=exemplo\n')
   write(join(nm, 'fast-json-stringify', 'node_modules', 'ajv', 'package.json'), '{}')
   write(join(nm, 'fast-json-stringify', 'node_modules', '.bin', 'tool'))
   write(join(nm, '.bin', 'pino'))
@@ -352,6 +355,8 @@ describe('buildVercelOutput', () => {
       'functions/index.func/node_modules/fast-json-stringify/node_modules/ajv',
       'functions/index.func/node_modules/fast-json-stringify/node_modules/ajv/package.json',
       'functions/index.func/node_modules/fastify',
+      'functions/index.func/node_modules/fastify/LICENSE.md',
+      'functions/index.func/node_modules/fastify/docs',
       'functions/index.func/node_modules/fastify/fastify.js',
       'functions/index.func/node_modules/fastify/package.json',
       'functions/index.func/server.mjs',
