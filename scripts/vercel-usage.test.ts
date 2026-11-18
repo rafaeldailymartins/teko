@@ -193,8 +193,14 @@ interface Call {
 }
 
 interface FakeVercel {
-  /** `LLM_KILL_SWITCH` por projeto: `undefined` = não existe. */
-  readonly killSwitch: Record<string, { value: string; updatedAt: number } | undefined>
+  /**
+   * `LLM_KILL_SWITCH` por projeto: `undefined` = não existe. Sem `type`, é `encrypted` e a listagem
+   * devolve o valor cifrado (como a Vercel fez no exercício da F7); o claro sai do GET por id.
+   */
+  readonly killSwitch: Record<
+    string,
+    { value: string; updatedAt: number; type?: 'plain' | 'encrypted' } | undefined
+  >
   /** Deployment de produção atual por domínio (`undefined` = 404). */
   readonly production: Record<string, { id: string; createdAt: number } | undefined>
   /** Estados devolvidos a cada GET da deployment nova. */
@@ -250,12 +256,30 @@ function fakeDeps(
       const envMatch = /^\/v10\/projects\/(prj_\w+)\/env$/u.exec(url.pathname)
       if (envMatch && method === 'GET') {
         const current = vercel.killSwitch[envMatch[1] ?? '']
+        if (current === undefined) {
+          return json({ envs: [{ key: 'APP_ENV', value: 'staging', target: ['production'] }] })
+        }
+        const plain = current.type === 'plain'
         return json({
-          envs:
-            current === undefined
-              ? [{ key: 'APP_ENV', value: 'staging', target: ['production'] }]
-              : [{ key: 'LLM_KILL_SWITCH', target: ['production'], type: 'encrypted', ...current }],
+          envs: [
+            {
+              id: 'env_kill',
+              key: 'LLM_KILL_SWITCH',
+              target: ['production'],
+              type: current.type ?? 'encrypted',
+              updatedAt: current.updatedAt,
+              decrypted: plain,
+              value: plain ? current.value : 'eyJ2IjoiY2lmcmFkbyJ9',
+            },
+          ],
         })
+      }
+      const envById = /^\/v1\/projects\/(prj_\w+)\/env\/env_kill$/u.exec(url.pathname)
+      if (envById && method === 'GET') {
+        const current = vercel.killSwitch[envById[1] ?? '']
+        return current === undefined
+          ? json({ error: { code: 'not_found', message: 'env not found' } }, 404)
+          : json({ id: 'env_kill', key: 'LLM_KILL_SWITCH', decrypted: true, value: current.value })
       }
       if (envMatch && method === 'POST') {
         return json({ created: [{ key: 'LLM_KILL_SWITCH' }] }, 201)
@@ -378,7 +402,7 @@ describe('run', () => {
       {
         key: 'LLM_KILL_SWITCH',
         value: 'true',
-        type: 'encrypted',
+        type: 'plain',
         target: ['production'],
         comment: undefined,
       },
@@ -498,6 +522,39 @@ describe('run', () => {
       d.execs.map((exec) => exec.args.slice(1).join(' ')),
       ['--env staging --lockdown off'],
     )
+  })
+
+  it('variável encrypted vem cifrada na listagem: lê o valor pelo GET por id', async () => {
+    const d = fakeDeps(BASE_ENV, {
+      killSwitch: { [STAGING]: { value: 'true', updatedAt: OLDER } },
+      production: BOTH_LIVE,
+    })
+    const result = await run(d, { dryRun: true, release: true, only: 'staging' })
+    assert.equal(result.code, 0, d.lines.join('\n'))
+    assert.ok(d.calls.some((call) => call.path === `/v1/projects/${STAGING}/env/env_kill`))
+    assert.ok(result.summary.some((line) => line.includes('gravar LLM_KILL_SWITCH=false')))
+  })
+
+  it('variável plain: usa o valor da listagem, sem o GET por id', async () => {
+    const d = fakeDeps(BASE_ENV, {
+      killSwitch: { [STAGING]: { value: 'true', updatedAt: OLDER, type: 'plain' } },
+      production: BOTH_LIVE,
+    })
+    const result = await run(d, { dryRun: true, release: true, only: 'staging' })
+    assert.equal(result.code, 0, d.lines.join('\n'))
+    assert.ok(!d.calls.some((call) => call.path.startsWith('/v1/projects/')))
+    assert.ok(result.summary.some((line) => line.includes('gravar LLM_KILL_SWITCH=false')))
+  })
+
+  it('valor ilegível (nem true nem false) é falha, sem gravar nem redeployar', async () => {
+    const d = fakeDeps(BASE_ENV, {
+      killSwitch: { [STAGING]: { value: 'talvez', updatedAt: OLDER, type: 'plain' } },
+      production: BOTH_LIVE,
+    })
+    const result = await run(d, { dryRun: false, release: true, only: 'staging' })
+    assert.notEqual(result.code, 0)
+    assert.deepEqual(writes(d.calls), [])
+    assert.ok(d.lines.some((line) => line.includes('valor ilegível')))
   })
 
   it('--release sem a variável não redeploya', async () => {
