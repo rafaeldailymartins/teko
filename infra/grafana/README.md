@@ -106,22 +106,23 @@ runbook apontam para `main` no GitHub.
 | `teko-quota-used`          | `teko_quota_used_ratio` > 0,7                                        | API                              | `quota-exhausted.md#cotas-da-aplicacao`   |
 | `teko-rag-refusal-anomaly` | recusa em 1 h > 2× a de 7 dias, > 25% e ≥ 20 respostas               | API                              | `ops-alerts.md#recusa-...`                |
 | `teko-rag-lexical-only`    | `lexical_only` > 10% em 30 min, ≥ 5 respostas                        | API                              | `provider-outage.md#embeddings`           |
-| `teko-deployment-paused`   | `/healthz` respondeu 503 ao Synthetic Monitoring                     | Synthetic Monitoring             | `vercel-paused.md` (F7)                   |
+| `teko-deployment-paused`   | `/healthz` respondeu 503 ao Synthetic Monitoring                     | Synthetic Monitoring             | `vercel-paused.md`                        |
 | `teko-synthetic-failed`    | check `teko-*` sem nenhum sucesso em 20 min (`probe_success` < 1)    | Synthetic Monitoring             | `ops-alerts.md#check-sintetico-...`       |
 | `teko-neon-cu-hours`       | `teko_neon_cu_hours_ratio` > 0,7                                     | `ops.yml` (`quotas`)             | `neon-suspended.md#cu-h-...`              |
 | `teko-langfuse-units`      | `teko_langfuse_units_projected` > 35.000                             | `ops.yml` (Langfuse)             | `quota-exhausted.md#langfuse`             |
-| `teko-vercel-usage-50`     | `teko_vercel_usage_ratio` > 0,5                                      | `ops.yml` (`vercel-usage`, F7)   | `budget-kill-switch.md` (F7)              |
-| `teko-vercel-usage-75`     | `teko_vercel_usage_ratio` > 0,75                                     | `ops.yml` (`vercel-usage`, F7)   | `budget-kill-switch.md` (F7)              |
+| `teko-vercel-usage-50`     | `teko_vercel_usage_ratio` > 0,5                                      | `ops.yml` (`vercel-usage`)       | `budget-kill-switch.md`                   |
+| `teko-vercel-usage-75`     | `teko_vercel_usage_ratio` > 0,75                                     | `ops.yml` (`vercel-usage`)       | `budget-kill-switch.md`                   |
 | `teko-coverage-stale`      | `teko_coverage_verified_age_days` > 3                                | `ops.yml` (`coverage-age`)       | `ops-alerts.md#cobertura-sem-verificacao` |
 | `teko-prod-vuln-scan`      | `teko_prod_vuln_findings{severity=~"high\|critical"}` > 0            | `ops.yml` (`prod-vuln-scan`, F7) | `ops-alerts.md#prod-vuln-scan`            |
 | `teko-token-expiry`        | `teko_token_expiry_days` < 30                                        | `ops.yml` (`quotas`)             | `secret-rotation.md` (F7)                 |
-| `teko-ops-job-stale`       | `vercel-usage` sem sucesso há 30 h ou `weekly-maintenance` há 8 dias | `ops.yml` (F7)                   | `ops-alerts.md#job-sem-sucesso`           |
+| `teko-ops-job-stale`       | `vercel-usage` sem sucesso há 30 h ou `weekly-maintenance` há 8 dias | `ops.yml`                        | `ops-alerts.md#job-sem-sucesso`           |
 
 **Contrato para as fontes que chegam depois** (o validador só aceita estes nomes): a mudança
 `add-llm-tracing-langfuse` emite `teko_langfuse_units_projected` (gauge, sem labels); a F7 emite
-`teko_vercel_usage_ratio{resource}`, `teko_prod_vuln_findings{severity}` e
-`teko_ops_job_last_success_timestamp_seconds{ops_job="vercel-usage"|"weekly-maintenance"}`, todos
-pelo `scripts/lib/otlp-metrics.ts` (gauges sem `unit`, `service.name=teko-ops`). Métrica empurrada
+`teko_vercel_usage_ratio{resource}` e
+`teko_ops_job_last_success_timestamp_seconds{ops_job="vercel-usage"|"weekly-maintenance"}`
+(`scripts/vercel-usage.ts` e `scripts/ops-metrics.ts --success-only`, mudança `add-usage-guard`) e
+`teko_prod_vuln_findings{severity}`, todos pelo `scripts/lib/otlp-metrics.ts` (gauges sem `unit`, `service.name=teko-ops`). Métrica empurrada
 uma vez por dia some do Mimir 5 min depois do envio; por isso os painéis e alertas usam
 `last_over_time(...[2d])`.
 
@@ -168,5 +169,18 @@ Nada disso passa pelo chat nem pelo repositório: `gh secret set NOME --env ops`
     `LANGFUSE_PROD_PUBLIC_KEY`, `LANGFUSE_PROD_SECRET_KEY`, `LANGFUSE_STAGING_PUBLIC_KEY` e
     `LANGFUSE_STAGING_SECRET_KEY`. Opcional: variável `LANGFUSE_BASE_URL` (padrão
     `https://cloud.langfuse.com`). O job usa o mesmo `GRAFANA_OTLP_*` do item 5.
+12. **Vercel (job `vercel-usage`, F7):** segredo `VERCEL_USAGE_TOKEN` (Vercel → Account Settings →
+    Tokens, escopo **só o time Hobby** dos projetos `tekoia` e `tekoia-staging`, validade de 90
+    dias, a data em `TOKEN_EXPIRY_DATES`) e variável `VERCEL_ORG_ID` (o ID do time, `team_...`, em
+    Team Settings → General). O token lê o uso da conta e, na guarda, grava `LLM_KILL_SWITCH`,
+    redeploya, promove e muda a regra 1 do WAF; a Vercel não tem token com escopo menor que o
+    time. Sem ele, o job avisa e termina verde. Runbook:
+    [budget-kill-switch.md](../../docs/runbooks/budget-kill-switch.md).
+13. O job `weekly-maintenance` (F7) usa o environment `maintenance` que já existe
+    (`NEON_PROD_APP_URL` e `NEON_STAGING_APP_URL`, role `teko_app`); o sucesso dele é registrado
+    pelo `weekly-maintenance-metrics`, no `ops`, com o mesmo `GRAFANA_OTLP_*` do item 5.
 
-Depois, rode o `ops.yml` com `dry_run` e confira o plano; em seguida sem `dry_run`.
+Depois, rode o `ops.yml` com `dry_run` e confira o plano; em seguida sem `dry_run`. Inputs do
+dispatch: `job` (`all` = os diários, ou um job só, inclusive o `weekly-maintenance`),
+`maintenance_target` (`staging`, `production` ou `both`), `kill_switch` (`none`, `0.85`, `0.95` ou
+`release`) e `kill_switch_target` (`staging` ou `production`).

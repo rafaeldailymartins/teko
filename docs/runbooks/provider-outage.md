@@ -29,7 +29,7 @@ Workers AI ([ADR 0008](../adr/0008-bge-m3-e-halfvec.md), [ADR 0027](../adr/0027-
    - **Provedor de LLM** (503 `upstream_unavailable` só nas perguntas): seção abaixo.
    - **Deploy recente** (o pico começa no horário do `promote`): volte para a deployment anterior
      pelo runbook `release-rollback.md` (F7).
-   - **Vercel** (503 no `/healthz` também): runbook `vercel-paused.md` (F7).
+   - **Vercel** (503 no `/healthz` também): runbook [vercel-paused.md](vercel-paused.md).
 
 ## Provedor de LLM fora do ar
 

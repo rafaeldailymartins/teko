@@ -4,7 +4,7 @@ Cobre os alertas `teko-quota-used`, `teko-llm-429` e `teko-langfuse-units`
 (`infra/grafana/alerts.json`). Todas as contas são free tier que **param** ao atingir a cota
 ([contas e cotas](../architecture/contas-e-cotas.md)): estourar não gera cobrança, mas tira a
 funcionalidade do ar até o ciclo virar. Neon e Vercel têm runbooks próprios
-([neon-suspended.md](neon-suspended.md), `budget-kill-switch.md` na F7).
+([neon-suspended.md](neon-suspended.md), [budget-kill-switch.md](budget-kill-switch.md)).
 
 ## Qual cota estourou
 
