@@ -70,8 +70,9 @@ test('cadastra a passkey, exporta e entra só com ela em outro navegador', async
   await expect(page.getByText(ptBR.settings.passkeys.empty)).toBeVisible()
   await page.getByLabel(ptBR.settings.passkeys.nameLabel).fill('system test (CI)')
   await page.getByRole('button', { name: ptBR.settings.passkeys.add }).click()
-  await expect(page.getByText(ptBR.settings.passkeys.added)).toBeVisible()
-  await expect(page.getByText('system test (CI)')).toBeVisible()
+  // Texto exato: "Passkey cadastrada." também é trecho de "Nenhuma passkey cadastrada.".
+  await expect(page.getByText(ptBR.settings.passkeys.added, { exact: true })).toBeVisible()
+  await expect(page.getByText('system test (CI)', { exact: true })).toBeVisible()
 
   const passkey = await exportPasskey(authenticator, RP_ID)
   expect(passkey.rpId).toBe(RP_ID)
