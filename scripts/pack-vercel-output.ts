@@ -43,17 +43,21 @@ import {
   existsSync,
   lstatSync,
   mkdirSync,
+  mkdtempSync,
   readdirSync,
   readFileSync,
   readlinkSync,
+  rmSync,
   writeFileSync,
 } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path'
 import process, { env } from 'node:process'
 import { parseArgs } from 'node:util'
 import { gzipSync } from 'node:zlib'
 import { compareCodeUnits, findOnSafePath, resolveInsideRoot } from './lib/cli-guards.ts'
 import { envAssignmentPattern } from './lib/env-assignment.ts'
+import { parseGitleaksReport, summarizeGitleaks } from './lib/gitleaks-report.ts'
 
 const REPO_ROOT = resolve(import.meta.dirname, '..')
 /** Onde o `vercel build` grava o `.vercel/` (raiz do repositório ou Root Directory `apps/api`). */
@@ -219,8 +223,32 @@ function run(executable: string, args: readonly string[]): Buffer {
 }
 
 function runGitleaks(outputDir: string): void {
-  // --redact: o log do Actions nunca mostra o valor encontrado.
-  run(findOnSafePath('gitleaks'), ['dir', outputDir, '--no-banner', '--redact', '--exit-code', '1'])
+  // --redact: nem o log do Actions nem o relatório trazem o valor encontrado. O relatório JSON fica
+  // num diretório temporário próprio e só vira um resumo (regra, arquivo e linha) se houver achado.
+  const reportDir = mkdtempSync(join(tmpdir(), 'teko-gitleaks-'))
+  const report = join(reportDir, 'report.json')
+  try {
+    run(findOnSafePath('gitleaks'), [
+      'dir',
+      outputDir,
+      '--no-banner',
+      '--redact',
+      '--exit-code',
+      '1',
+      '--report-format',
+      'json',
+      '--report-path',
+      report,
+    ])
+  } catch (error) {
+    if (error instanceof PackError && existsSync(report)) {
+      const findings = parseGitleaksReport(readFileSync(report, 'utf8'), outputDir)
+      throw new PackError(`gitleaks achou segredos no output: ${summarizeGitleaks(findings)}`)
+    }
+    throw error
+  } finally {
+    rmSync(reportDir, { recursive: true, force: true })
+  }
 }
 
 /** `SOURCE_DATE_EPOCH` (segundos), só dígitos; ausente ou vazia vale 0. */
