@@ -42,6 +42,14 @@
  * falha de montagem, com 1. Não usa dependências: só o Node 24 (type stripping) e a política do site
  * estático da API (`apps/api/src/adapters/in/http/static-site/policy.ts`, sem imports), a mesma que o
  * Plano B (Render) usa.
+ *
+ * Identidade do commit (F7): com `GIT_SHA` (ou `GITHUB_SHA`, no Actions) no ambiente, o
+ * `.vc-config.json` ganha `environment: { GIT_SHA, APP_VERSION }` (campo `environment` do Build
+ * Output API v3: env vars da Function somadas às do projeto). Assim o tarball atestado carrega o
+ * commit que o `/healthz` devolve e que o smoke confere, sem env var no projeto (o
+ * `scripts/vercel-env-sync.ts` recusa `GIT_SHA` e `APP_VERSION` lá). O SHA precisa ter 40 hex e,
+ * com ele, `APP_VERSION` (SemVer, sem `v`) é obrigatória; sem SHA nenhum (build local), a Function
+ * sai sem `environment` e responde `gitSha: unknown`.
  */
 import {
   copyFileSync,
@@ -103,6 +111,59 @@ export const VC_CONFIG = {
   // dispararam aos 14,7 s (ADR 0003).
   supportsCancellation: true,
 } as const
+
+/** Commit e versão gravados na Function (lidos pela API em `GIT_SHA` e `APP_VERSION`). */
+export interface BuildIdentity {
+  /** SHA completo do commit (40 hex minúsculos). */
+  readonly gitSha: string
+  /** Versão SemVer sem `v` (`0.1.0`, `0.1.0-rc.1`, `0.0.0-abc1234`). */
+  readonly version: string
+}
+
+const FULL_GIT_SHA = /^[0-9a-f]{40}$/
+/** SemVer 2.0 sem `v` (o mesmo `releaseVersionSchema` de `apps/api/src/domain/shared/build-info.ts`). */
+const SEMVER =
+  /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/
+
+/**
+ * Identidade do build a partir do ambiente: `GIT_SHA` (ou `GITHUB_SHA`) e `APP_VERSION`. Sem SHA,
+ * `undefined` (build local); SHA ou versão fora do formato, ou versão ausente com SHA, lançam.
+ */
+export function buildIdentityFromEnv(
+  env: Readonly<Record<string, string | undefined>>,
+): BuildIdentity | undefined {
+  const pick = (name: string): string | undefined => {
+    const value = env[name]?.trim()
+    return value === undefined || value === '' ? undefined : value
+  }
+  const gitSha = pick('GIT_SHA') ?? pick('GITHUB_SHA')
+  const version = pick('APP_VERSION')
+  if (gitSha === undefined) {
+    if (version !== undefined) {
+      throw new BuildOutputError('APP_VERSION sem GIT_SHA (nem GITHUB_SHA)')
+    }
+    return undefined
+  }
+  if (!FULL_GIT_SHA.test(gitSha)) {
+    throw new BuildOutputError('GIT_SHA (ou GITHUB_SHA) precisa ter 40 caracteres hex minúsculos')
+  }
+  if (version === undefined || !SEMVER.test(version)) {
+    throw new BuildOutputError(
+      'APP_VERSION precisa ser SemVer sem "v" (ex.: 0.1.0-rc.1) com GIT_SHA',
+    )
+  }
+  return { gitSha, version }
+}
+
+/** `.vc-config.json` da Function, com a identidade do commit em `environment` quando há uma. */
+export function vcConfig(identity?: BuildIdentity) {
+  return identity === undefined
+    ? VC_CONFIG
+    : {
+        ...VC_CONFIG,
+        environment: { GIT_SHA: identity.gitSha, APP_VERSION: identity.version },
+      }
+}
 
 /**
  * Domínios antigos (`teko-api*.vercel.app`, de antes da renomeação dos projetos) → domínio canônico
@@ -243,8 +304,19 @@ export interface BuildPaths {
   readonly outputDir: string
 }
 
+/**
+ * Documentação Markdown das dependências (`README.md`, `CHANGELOG.md`, `docs/*.mdx`): não roda, e os
+ * exemplos `NOME=valor` dela derrubam a checagem de env var do `pack-vercel-output.ts`. Licenças e
+ * avisos ficam.
+ */
+const DEPENDENCY_DOC = /\.(?:md|mdx|markdown)$/i
+const LICENSE_FILE = /^(?:licen[cs]e|notice|copying)/i
+
 function skipped(name: string, topLevel: boolean): boolean {
   if (name === '.bin') {
+    return true
+  }
+  if (!topLevel && DEPENDENCY_DOC.test(name) && !LICENSE_FILE.test(name)) {
     return true
   }
   return topLevel && (SKIPPED_TOP_LEVEL.has(name) || PNPM_STATE_FILE.test(name))
@@ -406,8 +478,11 @@ function assertDocumentsCovered(documents: DocumentHeaders, copied: readonly str
   }
 }
 
-/** Recria `outputDir` com o `config.json`, o `static/` e a Function `index.func`. */
-export function buildVercelOutput(paths: BuildPaths): BuildResult {
+/**
+ * Recria `outputDir` com o `config.json`, o `static/` e a Function `index.func` (com a identidade
+ * do commit no `.vc-config.json`, se houver).
+ */
+export function buildVercelOutput(paths: BuildPaths, identity?: BuildIdentity): BuildResult {
   const handler = join(paths.bundleDir, HANDLER)
   assertInputs(paths, handler)
   const documents = readDocumentHeaders(paths.staticDir)
@@ -417,7 +492,7 @@ export function buildVercelOutput(paths: BuildPaths): BuildResult {
   const functionDir = join(paths.outputDir, 'functions', `${FUNCTION_NAME}.func`)
   mkdirSync(functionDir, { recursive: true })
   writeJson(join(paths.outputDir, 'config.json'), config)
-  writeJson(join(functionDir, '.vc-config.json'), VC_CONFIG)
+  writeJson(join(functionDir, '.vc-config.json'), vcConfig(identity))
   for (const file of bundleClosure(paths.bundleDir, HANDLER)) {
     copyFileSync(join(paths.bundleDir, file), join(functionDir, file))
     const sourceMap = join(paths.bundleDir, `${file}.map`)
@@ -441,17 +516,23 @@ function main(): void {
   // Defesa em profundidade: nenhum link simbólico leva leitura ou escrita para fora do repositório.
   const inside = (...segments: string[]) =>
     resolveInsideRoot(REPO_ROOT, join(REPO_ROOT, ...segments), REPO_ROOT)
-  const result = buildVercelOutput({
-    bundleDir: inside('apps', 'api', 'dist'),
-    nodeModulesDir: inside('dist', 'vercel', 'api-prod', 'node_modules'),
-    staticDir: inside('apps', 'web', 'out'),
-    outputDir: inside('.vercel', 'output'),
-  })
+  const identity = buildIdentityFromEnv(process.env)
+  const result = buildVercelOutput(
+    {
+      bundleDir: inside('apps', 'api', 'dist'),
+      nodeModulesDir: inside('dist', 'vercel', 'api-prod', 'node_modules'),
+      staticDir: inside('apps', 'web', 'out'),
+      outputDir: inside('.vercel', 'output'),
+    },
+    identity,
+  )
   console.log(
     JSON.stringify({
       function: `functions/${FUNCTION_NAME}.func`,
       runtime: VC_CONFIG.runtime,
       maxDuration: VC_CONFIG.maxDuration,
+      gitSha: identity?.gitSha ?? 'unknown',
+      version: identity?.version ?? null,
       dependencyFiles: result.dependencyFiles,
       staticFiles: result.staticFiles,
     }),

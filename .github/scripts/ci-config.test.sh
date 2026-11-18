@@ -392,6 +392,73 @@ check "ops: weekly-maintenance no maintenance (URLs do teko_app) e o sucesso pel
 check "ops: nenhum run lê secrets direto (segredo só pelo env do passo)" \
   bash -c "! yq -r '.jobs[].steps[].run // \"\"' '$ops' | grep -q 'secrets[.]'"
 
+# --- F7: deploy.yml, release.yml e neon-rehearsal.yml (add-deploy-pipelines) ----------------------
+deploy=.github/workflows/deploy.yml
+release=.github/workflows/release.yml
+rehearsal=.github/workflows/neon-rehearsal.yml
+
+for wf in "$deploy" "$release" "$rehearsal"; do
+  name="$(basename "$wf")"
+  check "${name}: permissions {} no topo" yq_true '(.permissions | length) == 0' "$wf"
+  check "${name}: harden-runner em block com allowed-endpoints, como primeiro step, em todo job com steps" \
+    yq_true '[.jobs[] | select(has("steps")) | .steps[0] | ((.uses | test("^step-security/harden-runner@")) and (.with."egress-policy" == "block") and (((.with."allowed-endpoints" // "") | length) > 0))] | all' "$wf"
+  check "${name}: timeout-minutes em todo job com steps" \
+    yq_true '[.jobs[] | select(has("steps")) | has("timeout-minutes")] | all' "$wf"
+  check "${name}: checkout sem credenciais persistidas" \
+    yq_true '[.jobs[] | select(has("steps")) | .steps[] | select(.uses // "" | test("^actions/checkout@")) | .with."persist-credentials" == false] | all' "$wf"
+  check "${name}: actions de terceiros fixadas por SHA" \
+    yq_true '[.jobs[] | select(has("steps")) | .steps[] | select(.uses // "" | test("^[^.]")) | .uses | test("@[0-9a-f]{40}$")] | all' "$wf"
+done
+
+check "deploy: push em main e em tags v*, dispatch com phase deploy ou redeploy" \
+  yq_true '((.on.push.branches | join(",")) == "main") and ((.on.push.tags | join(",")) == "v*") and ((.on.workflow_dispatch.inputs.phase.options | join(",")) == "deploy,redeploy")' "$deploy"
+check "deploy: concurrency por ambiente, sem cancelamento" \
+  yq_true '(.concurrency.group | (test("production") and test("staging"))) and (.concurrency."cancel-in-progress" == false)' "$deploy"
+check "deploy: build sem nenhum segredo, no environment sem deployment e com as atestações" \
+  bash -c "! yq -o=json '.jobs.build' '$deploy' | grep -q 'secrets\\.' && yq -e '.jobs.build.environment.deployment == false and .jobs.build.permissions.\"id-token\" == \"write\" and .jobs.build.permissions.attestations == \"write\"' '$deploy' >/dev/null"
+check "deploy: só os jobs build e deploy usam o environment do ambiente" \
+  yq_true '([.jobs | to_entries[] | select(.value | has("environment")) | .key] | sort | join(",")) == "build,deploy"' "$deploy"
+check "deploy: VERCEL_TOKEN, URL de migração e chave do PostHog só no job deploy" \
+  bash -c "[[ \"\$(yq -o=json '.jobs | with_entries(select(.key != \"deploy\"))' '$deploy' | grep -cE 'VERCEL_TOKEN|MIGRATE_URL|POSTHOG_CLI_API_KEY' || true)\" == 0 ]]"
+check "deploy: Vercel, Neon e PostHog só no egress do job deploy" \
+  yq_true '([.jobs | to_entries[] | select(.value.steps[0].with."allowed-endpoints" // "" | test("vercel|neon\\.tech|posthog")) | .key] | join(",")) == "deploy"' "$deploy"
+check "deploy: build com GIT_SHA e APP_VERSION no build-vercel-output e o pack do ambiente" \
+  bash -c "yq -e '.jobs.build.steps[] | select(.run // \"\" | test(\"build-vercel-output\\\\.ts\")) | ((.env.GIT_SHA == \"\${{ github.sha }}\") and (.env.APP_VERSION | test(\"needs\\\\.plan\\\\.outputs\\\\.version\")))' '$deploy' >/dev/null && grep -q 'pack-vercel-output.ts --env \"\$DEPLOY_ENV\"' <<<\"\$(yq -r '.jobs.build.steps[].run // \"\"' '$deploy')\""
+check "deploy: SBOM, Grype e as atestações de proveniência e de SBOM no build" \
+  yq_true '([.jobs.build.steps[].uses // "" | select(test("^(anchore/sbom-action|anchore/scan-action|actions/attest)@"))] | length) == 4 and ([.jobs.build.steps[] | select(.uses // "" | test("^actions/attest@")) | .with."sbom-path" // ""] | map(select(. != "")) | length) == 1' "$deploy"
+check "deploy: inject do PostHog no build e upload no deploy" \
+  yq_true '([.jobs.build.steps[] | select(.uses == "./.github/actions/posthog-sourcemaps") | .with.mode] | join(",")) == "inject" and ([.jobs.deploy.steps[] | select(.uses == "./.github/actions/posthog-sourcemaps") | .with.mode] | join(",")) == "upload"' "$deploy"
+check "deploy: gh attestation verify, migrate com checagem de extensões, env sync e WAF antes do deploy" \
+  bash -c "runs=\"\$(yq -r '.jobs.deploy.steps[].run // \"\"' '$deploy')\"; for p in 'gh attestation verify' 'drizzle-kit migrate' 'neon-extensions-check.sh' 'vercel-env-sync.ts --env' 'vercel-firewall.ts --env' 'vercel deploy --prebuilt --prod --skip-domain --archive=tgz' 'artifactSha256=' 'gitSha=' 'vercel promote' 'vercel rollback'; do grep -Fq -- \"\$p\" <<<\"\$runs\" || { echo \"     falta: \$p\"; exit 1; }; done"
+check "deploy: ordem verify → migrate → env sync → firewall → deploy → smoke → promote → smoke canônico" \
+  bash -c "yq -r '.jobs.deploy.steps[].run // \"\"' '$deploy' | grep -noE 'gh attestation verify|drizzle-kit migrate|vercel-env-sync|vercel-firewall|vercel deploy --prebuilt|deploy-smoke.sh \"\\\$DEPLOY_ENV\" deployment|vercel promote|deploy-smoke.sh \"\\\$DEPLOY_ENV\" canonical' | cut -d: -f2 | awk '!seen[\$0]++' | tr '\n' '|' | grep -qx 'gh attestation verify|drizzle-kit migrate|vercel-env-sync|vercel-firewall|vercel deploy --prebuilt|deploy-smoke.sh \"\$DEPLOY_ENV\" deployment|vercel promote|deploy-smoke.sh \"\$DEPLOY_ENV\" canonical|'"
+check "deploy: rollback só em falha depois do promote" \
+  yq_true '.jobs.deploy.steps[] | select(.run // "" | test("vercel rollback")) | .if == "failure() && steps.promote.outcome == '"'"'success'"'"'"' "$deploy"
+check "deploy: o firewall do deploy roda sem --lockdown (não desfaz um lockdown ativo)" \
+  bash -c "! grep -q -- '--lockdown' <<<\"\$(yq -r '.jobs.deploy.steps[].run // \"\"' '$deploy')\""
+check "deploy: neon-rehearsal só na produção, antes do deploy" \
+  yq_true '.jobs."neon-rehearsal".uses == "./.github/workflows/neon-rehearsal.yml" and (.jobs."neon-rehearsal".if | test("production")) and (.jobs.deploy.needs | contains(["neon-rehearsal"]))' "$deploy"
+check "deploy: produção exige o staging verde para o mesmo SHA (plan)" \
+  bash -c "yq -r '.jobs.plan.steps[].run // \"\"' '$deploy' | grep -q 'staging-verified.sh'"
+check "deploy: audit.yml antes do build" \
+  yq_true '.jobs.audit.uses == "./.github/workflows/audit.yml" and (.jobs.build.needs | contains(["audit"]))' "$deploy"
+check "deploy: comentário de onde entra o system test, depois do promote" \
+  bash -c "grep -q '# System test (mudança add-smoke-tests, system-test.yml)' '$deploy'"
+
+check "release: só dispatch com a versão, só em main" \
+  yq_true '((.on | keys | join(",")) == "workflow_dispatch") and (.on.workflow_dispatch.inputs.version.required == true) and (.jobs.tag.if == "github.ref == '"'"'refs/heads/main'"'"'")' "$release"
+check "release: staging verde antes da tag, criada com o token da App teko-release-bot" \
+  bash -c "yq -r '.jobs.tag.steps[].run // \"\"' '$release' | grep -q 'staging-verified.sh' && yq -e '[.jobs.tag.steps[] | select(.uses // \"\" | test(\"^actions/create-github-app-token@\"))] | (length == 1 and .[0].with.\"client-id\" == \"\${{ vars.RELEASE_APP_CLIENT_ID }}\")' '$release' >/dev/null && yq -e '[.jobs.tag.steps[] | select(.run // \"\" | test(\"git/refs\"))] | (length == 1 and .[0].env.GH_TOKEN == \"\${{ steps.app-token.outputs.token }}\")' '$release' >/dev/null"
+check "release: valida SemVer com pré-release" \
+  bash -c "grep -Fq '(-[0-9A-Za-z-]+(\\.[0-9A-Za-z-]+)*)?\$' '$release'"
+
+check "neon-rehearsal: workflow_call e dispatch, no environment release-rehearsal" \
+  yq_true '((.on | keys | sort | join(",")) == "workflow_call,workflow_dispatch") and (.jobs.rehearsal.environment.name == "release-rehearsal")' "$rehearsal"
+check "neon-rehearsal: sem a API key, ::warning e verde" \
+  bash -c "yq -r '.jobs.rehearsal.steps[] | select(.id == \"secrets\") | .run' '$rehearsal' | grep -q '::warning' && ! yq -r '.jobs.rehearsal.steps[] | select(.id == \"secrets\") | .run' '$rehearsal' | grep -A2 'NEON_API_KEY_PROD\" ||' | grep -q 'exit 1'"
+check "neon-rehearsal: migrate e checagem de extensões no branch efêmero, apagado sempre" \
+  bash -c "yq -r '.jobs.rehearsal.steps[].run // \"\"' '$rehearsal' | grep -q 'drizzle-kit migrate' && yq -r '.jobs.rehearsal.steps[].run // \"\"' '$rehearsal' | grep -q 'neon-extensions-check.sh' && yq -e '.jobs.rehearsal.steps[] | select(.run // \"\" | test(\"-X DELETE\")) | .if | test(\"always\\\\(\\\\)\")' '$rehearsal' >/dev/null"
+
 # --- F7: smoke.yml e system-test.yml (add-smoke-tests) -------------------------------------------
 smoke=.github/workflows/smoke.yml
 system=.github/workflows/system-test.yml

@@ -1,0 +1,98 @@
+# Release mínimo da F7 (ADR 0038; mudança OpenSpec add-deploy-pipelines): cria a tag v<versão> no
+# SHA atual de main, com o token da App teko-release-bot (a única que pode criar tags v*, ruleset
+# release-tags), só se o último deploy de staging desse SHA terminou verde
+# (.github/scripts/staging-verified.sh). O push da tag dispara o deploy.yml de produção, que pede o
+# revisor do environment production.
+#
+# A F9 acrescenta o fluxo completo da ADR 0033 (docs/architecture/ci-cd-e-ambientes.md,
+# "Releases"): versão calculada pelo git-cliff, PR de release com o CHANGELOG.md e as versões dos
+# package.json, o job release-gate (neon-rehearsal, evals completas, e2e, perf, ZAP e
+# staging-verified) e o release imutável com o tarball, o SBOM e as atestações.
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Versão SemVer sem o v, com pré-release opcional (ex. 0.1.0-rc.1)
+        type: string
+        required: true
+
+permissions: {}
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  tag:
+    name: tag
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read # staging-verified lê os runs do deploy.yml
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          egress-policy: block
+          allowed-endpoints: >
+            github.com:443
+            api.github.com:443
+            codeload.github.com:443
+            results-receiver.actions.githubusercontent.com:443
+            *.actions.githubusercontent.com:443
+
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Conferir a versão e a tag
+        id: version
+        env:
+          VERSION: ${{ inputs.version }}
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          if [[ ! "$VERSION" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$ ]]; then
+            echo "::error title=release::'${VERSION}' não é SemVer sem v (ex.: 0.1.0 ou 0.1.0-rc.1)."
+            exit 1
+          fi
+          if gh api "repos/${REPO}/git/ref/tags/v${VERSION}" >/dev/null 2>&1; then
+            echo "::error title=release::a tag v${VERSION} já existe; tags de release são imutáveis."
+            exit 1
+          fi
+          echo "tag=v${VERSION}" >>"$GITHUB_OUTPUT"
+
+      - name: Staging verde para o SHA de main
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+        run: bash .github/scripts/staging-verified.sh "$SHA"
+
+      - name: Token da App teko-release-bot
+        id: app-token
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          client-id: ${{ vars.RELEASE_APP_CLIENT_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+          permission-contents: write
+
+      - name: Criar a tag (dispara o deploy.yml de produção)
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          gh api -X POST "repos/${REPO}/git/refs" -f "ref=refs/tags/${TAG}" -f "sha=${SHA}" >/dev/null
+          {
+            echo "## Release ${TAG}"
+            echo
+            echo "- tag \`${TAG}\` criada em \`${SHA}\` pela App teko-release-bot"
+            echo "- o deploy de produção roda no deploy.yml e espera o revisor do environment production"
+          } >>"$GITHUB_STEP_SUMMARY"

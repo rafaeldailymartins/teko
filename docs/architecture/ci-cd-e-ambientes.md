@@ -60,6 +60,12 @@ Versão única do produto, SemVer `vX.Y.Z`, sincronizada nos `package.json` e no
 4. **Hotfix** é um release patch a partir de `main`. O `prod-vuln-scan` diário (high/critical)
    dispara o mesmo fluxo.
 
+**Até a F9** ([ADR 0038](../adr/0038-release-minimo-da-f7.md)): o `release.yml` mínimo só recebe a
+versão (SemVer, pré-release aceita), confere o último deploy de staging do SHA de `main`
+(`.github/scripts/staging-verified.sh`) e cria a tag pela App; o push da tag dispara o `deploy.yml`
+de produção, que repete a checagem, roda o `neon-rehearsal.yml` e pede o revisor no `build` e no
+`deploy`.
+
 ## Dependabot
 
 - `target-branch` = branch padrão, semanal (segunda, 06:00 America/Sao_Paulo), `cooldown` de 7 dias
@@ -76,25 +82,26 @@ Comum a todos: `permissions: {}` no topo, harden-runner como primeiro passo, che
 sem cancelamento em deploy, setup em `.github/actions/setup` (pnpm, Node 24, `--frozen-lockfile`),
 cache do Turbo salvo só em push no tronco.
 
-| Workflow           | Gatilho                                            | Conteúdo                                                                                                                         |
-| ------------------ | -------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| `pr-gate.yml`      | PR                                                 | `affected` → `ci.yml`, `security.yml`, `perf.yml` (perfil `pr`), `e2e.yml` (F4), `evals.yml` (perfil `pr`, F8) → `ci-gate`       |
-| `ci.yml`           | `workflow_call`; push no tronco                    | camada rápida, integração, build e guards, `migration-guard`, Python, retrieval evals (se `rag`/`ingest`), Sonar informativo     |
-| `codeql.yml`       | PR, push no tronco, semanal                        | `Analyze (*)`                                                                                                                    |
-| `pr-hygiene.yml`   | PR                                                 | `pr-title`, `dco`, labeler (o `gitflow-guard` saiu com o trunk-based)                                                            |
-| `security.yml`     | `workflow_call`; push; agendado                    | Semgrep, gitleaks, zizmor, dependency-review (PR); `pnpm audit` e osv-scanner no `audit.yml`, fora do PR                         |
-| `scorecard.yml`    | push no tronco, semanal                            | `publish_results: true`                                                                                                          |
-| `mutation.yml`     | nightly                                            | Stryker em `apps/api` e `packages/shared`, só se houver commit novo desde o último run verde                                     |
-| `perf.yml`         | `workflow_call` (perfil `pr`); pré-release         | `sql-perf` (gate), bench e autocannon (informativos), k6 `smoke` (PR) e `load` (pré-release)                                     |
-| `e2e.yml`          | `workflow_call` (PR, se web ou api); nightly       | stack de CI (`infra/ci/up.sh`), Playwright Chromium + mobile (F4); axe e jornadas de interface (F5)                              |
-| `evals.yml`        | `workflow_call`; nightly; semanal                  | `generation` e `redteam` (environment `evals`, F8)                                                                               |
-| `ingest.yml`       | dispatch; `workflow_call` do `source-watch`        | discover → extract → load → corpus-eval → lock-pr; modo `eval-only` ([ingestão](ingestao-e-avaliacao.md#ingestyml))              |
-| `source-watch.yml` | cron diário                                        | `detect` (environment `staging`) e `mark-coverage` (environment `corpus-watch`)                                                  |
-| deploy (F7)        | push no tronco → staging; `release.yml` → produção | um só `.vercel/output` (estático + Function) por ambiente: build, tarball, scan, attest, migrate, env sync, deploy, smoke        |
-| `smoke.yml`        | `workflow_call`; dispatch                          | smoke canônico (`scripts/smoke.ts`), inputs `environment` e `expected-sha`, sem environment; o rollback fica no deploy           |
-| `system-test.yml`  | `workflow_call`; dispatch; só `main`               | system test do staging (Playwright, `apps/web/system/`), environment `staging`, segredo `SYSTEM_TEST_PASSKEY`                    |
-| `release.yml`      | dispatch; push de tag `v*`                         | PR de release; `release-gate` e jobs de produção (F9)                                                                            |
-| `ops.yml`          | cron diário e semanal (environment `ops`)          | cotas e CU-h, expiração de tokens, Grafana e modelos do Langfuse as code, `vercel-usage`, `prod-vuln-scan`, `weekly-maintenance` |
+| Workflow             | Gatilho                                        | Conteúdo                                                                                                                         |
+| -------------------- | ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `pr-gate.yml`        | PR                                             | `affected` → `ci.yml`, `security.yml`, `perf.yml` (perfil `pr`), `e2e.yml` (F4), `evals.yml` (perfil `pr`, F8) → `ci-gate`       |
+| `ci.yml`             | `workflow_call`; push no tronco                | camada rápida, integração, build e guards, `migration-guard`, Python, retrieval evals (se `rag`/`ingest`), Sonar informativo     |
+| `codeql.yml`         | PR, push no tronco, semanal                    | `Analyze (*)`                                                                                                                    |
+| `pr-hygiene.yml`     | PR                                             | `pr-title`, `dco`, labeler (o `gitflow-guard` saiu com o trunk-based)                                                            |
+| `security.yml`       | `workflow_call`; push; agendado                | Semgrep, gitleaks, zizmor, dependency-review (PR); `pnpm audit` e osv-scanner no `audit.yml`, fora do PR                         |
+| `scorecard.yml`      | push no tronco, semanal                        | `publish_results: true`                                                                                                          |
+| `mutation.yml`       | nightly                                        | Stryker em `apps/api` e `packages/shared`, só se houver commit novo desde o último run verde                                     |
+| `perf.yml`           | `workflow_call` (perfil `pr`); pré-release     | `sql-perf` (gate), bench e autocannon (informativos), k6 `smoke` (PR) e `load` (pré-release)                                     |
+| `e2e.yml`            | `workflow_call` (PR, se web ou api); nightly   | stack de CI (`infra/ci/up.sh`), Playwright Chromium + mobile (F4); axe e jornadas de interface (F5)                              |
+| `evals.yml`          | `workflow_call`; nightly; semanal              | `generation` e `redteam` (environment `evals`, F8)                                                                               |
+| `ingest.yml`         | dispatch; `workflow_call` do `source-watch`    | discover → extract → load → corpus-eval → lock-pr; modo `eval-only` ([ingestão](ingestao-e-avaliacao.md#ingestyml))              |
+| `source-watch.yml`   | cron diário                                    | `detect` (environment `staging`) e `mark-coverage` (environment `corpus-watch`)                                                  |
+| `deploy.yml`         | push no tronco → staging; tag `v*` → produção  | um só `.vercel/output` (estático + Function) por ambiente: build, tarball, scan, attest, migrate, env sync, WAF, deploy, smoke   |
+| `neon-rehearsal.yml` | `workflow_call` (deploy de produção); dispatch | branch efêmero do `teko-prod`, `drizzle-kit migrate`, extensões e exclusão do branch (environment `release-rehearsal`)           |
+| `smoke.yml`          | `workflow_call`; dispatch                      | smoke canônico (`scripts/smoke.ts`), inputs `environment` e `expected-sha`, sem environment; o rollback fica no deploy           |
+| `system-test.yml`    | `workflow_call`; dispatch; só `main`           | system test do staging (Playwright, `apps/web/system/`), environment `staging`, segredo `SYSTEM_TEST_PASSKEY`                    |
+| `release.yml`        | dispatch                                       | F7: tag `v*` pela App se o staging do SHA está verde (ADR 0038); F9: PR de release, `release-gate` e release imutável            |
+| `ops.yml`            | cron diário e semanal (environment `ops`)      | cotas e CU-h, expiração de tokens, Grafana e modelos do Langfuse as code, `vercel-usage`, `prod-vuln-scan`, `weekly-maintenance` |
 
 Os workflows `spike-*.yml` da F1 saem (ADR 0032).
 
@@ -124,7 +131,9 @@ Os workflows `spike-*.yml` da F1 saem (ADR 0032).
 
 ## Deploy e rollback
 
-Um deploy publica, de uma vez, o estático e a Function do mesmo commit (ADR 0029):
+Um deploy publica, de uma vez, o estático e a Function do mesmo commit (ADR 0029), pelo
+`deploy.yml` (jobs `plan` → `audit` → `build` → `neon-rehearsal` na produção → `deploy`; o `build`
+não recebe nenhum segredo; [runbook](../runbooks/deploy.md)):
 
 1. `pnpm install --frozen-lockfile`, `pnpm audit --prod` e osv-scanner no commit exato;
 2. build da API (tsdown) e do web (export, com `NEXT_PUBLIC_POSTHOG_ERRORS_KEY` e
@@ -138,14 +147,22 @@ Um deploy publica, de uma vez, o estático e a Function do mesmo commit (ADR 002
    `project.json`, gitleaks nele e sha256;
 4. SBOM (syft) e Grype; `actions/attest` (provenance e SBOM); o tarball sobe como artifact
    (staging) ou asset do release (produção);
-5. `drizzle-kit migrate` na URL direta, conferindo `extversion` e `pg_settings`;
-6. sync da Config de `infra/vercel/env.<ambiente>.json` (falha se faltar Sensitive);
-7. `gh attestation verify` do tarball e `vercel deploy --prebuilt --prod --skip-domain
-   --archive=tgz --meta artifactSha256=<sha256> --meta gitSha=<sha>`;
+5. no job `deploy`: sha256 e `gh attestation verify` do tarball antes de qualquer escrita, depois
+   `drizzle-kit migrate` na URL direta, conferindo `extversion` e `pg_settings`
+   (`.github/scripts/neon-extensions-check.sh`);
+6. sync da Config de `infra/vercel/env.<ambiente>.json` (`scripts/vercel-env-sync.ts`, falha se
+   faltar Sensitive) e das regras do WAF (`scripts/vercel-firewall.ts`, que mantém um lockdown
+   ativo);
+7. `vercel deploy --prebuilt --prod --skip-domain --archive=tgz --meta artifactSha256=<sha256>
+   --meta gitSha=<sha>`; o commit e a versão vão no `environment` do `.vc-config.json` do tarball;
 8. smoke da URL única: `node scripts/smoke.ts --mode deployment`, com o bypass de automação
    (`VERCEL_AUTOMATION_BYPASS_SECRET`) no header `x-vercel-protection-bypass`;
-9. `vercel promote`, e o smoke canônico (`smoke.yml`, `--mode canonical`) no domínio do ambiente;
-   no staging, depois dele, o system test (`system-test.yml`).
+9. `vercel promote`, e o smoke canônico (`scripts/smoke.ts --mode canonical`) no domínio do
+   ambiente (no staging, depois o system test, `system-test.yml`);
+   falha depois do promote → `vercel rollback` no mesmo job ([runbook](../runbooks/rollback.md)).
+
+`phase: redeploy` (dispatch) faz `vercel redeploy` da deployment de produção atual, para rotação de
+Sensitive, com env sync, smoke, promote e rollback.
 
 **O que garante que produção roda o código do CI:** o `--prebuilt` envia exatamente o output
 atestado, com a atestação verificada antes, a `meta.artifactSha256` na deployment e o
