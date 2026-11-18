@@ -37,6 +37,7 @@ o roteiro, em [`docs/roadmap.md`](../roadmap.md).
 | [0037](0037-erros-no-posthog-error-tracking.md)      | Erros no PostHog Error Tracking, com source maps e relatório de CSP                  | accepted |
 | [0038](0038-release-minimo-da-f7.md)                 | Produção na F7 por um `release.yml` mínimo, antes do fluxo completo da F9            | accepted |
 | [0039](0039-sem-plano-b-no-render.md)                | Sem Plano B no Render                                                                | accepted |
+| [0040](0040-roles-do-neon-por-sql.md)                | Roles de login do Neon criados por SQL pelo owner                                    | accepted |
 
 As ADRs 0029 a 0032 chegam pelos PRs da revisão de 2026-11-12 ([status](../status.md)), um por
 pacote; o link entra quando o arquivo estiver em `main`.

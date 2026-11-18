@@ -311,6 +311,9 @@ importers:
       '@types/node':
         specifier: 'catalog:'
         version: 24.19.2
+      '@types/pg':
+        specifier: 'catalog:'
+        version: 8.23.1
       '@typescript/native':
         specifier: 'catalog:'
         version: typescript@7.0.2
@@ -326,6 +329,9 @@ importers:
       lefthook:
         specifier: 'catalog:'
         version: 2.2.1
+      pg:
+        specifier: 'catalog:'
+        version: 8.23.1
       sherif:
         specifier: 'catalog:'
         version: 1.13.0
