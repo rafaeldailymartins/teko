@@ -9,7 +9,7 @@ import type { HttpTelemetry } from './plugins/telemetry.ts'
 export interface HttpOptions {
   /**
    * Proxies confiáveis para `X-Forwarded-*`, por plataforma: 1 salto na Vercel; a rede do Caddy
-   * (`172.30.0.0/24`) no CI e local; o valor medido no ensaio no Render.
+   * (`172.30.0.0/24`) no CI e local.
    */
   readonly trustProxy: boolean | number | readonly string[]
   /**
@@ -28,11 +28,6 @@ export interface HttpOptions {
   readonly webOrigin: string
   /** Rotas `/api/v1/_eval/*` (só com `APP_ENV=ci`; o `buildApp` recusa fora do CI). */
   readonly evalRoutes: boolean
-  /**
-   * Export estático do web servido na mesma origem (só no Plano B, Render; ADR 0029). Ausente = a
-   * plataforma serve o estático (CDN da Vercel) ou não há web (CI, dev com `next dev`).
-   */
-  readonly staticSite?: { readonly root: string }
   /**
    * Rate limit de aplicação com store compartilhado (Postgres). Ausente = não registrado (sem
    * banco): memória local não limita nada com várias instâncias.

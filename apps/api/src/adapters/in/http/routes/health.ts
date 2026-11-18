@@ -2,8 +2,8 @@ import { HealthStatus, healthResponseSchema } from '@teko/shared/contracts'
 import type { FastifyPluginAsyncZod } from 'fastify-type-provider-zod'
 
 /**
- * Liveness: `GET /healthz` (smoke do deploy, monitor externo, healthcheck da stack de CI e do
- * Render) e `GET /api/healthz` (o mesmo, sob o prefixo da API que a web usa). Só reflete o estado
+ * Liveness: `GET /healthz` (smoke do deploy, monitor externo, healthcheck da stack de CI) e
+ * `GET /api/healthz` (o mesmo, sob o prefixo da API que a web usa). Só reflete o estado
  * do processo e **nunca** toca o banco, para que pings externos nunca acordem o Neon. Fora da
  * Vercel, em drenagem (SIGTERM), responde 503 com `status: 'draining'`.
  *

@@ -17,11 +17,6 @@ import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { afterEach, beforeEach, describe, it } from 'node:test'
 import {
-  HEADERS_MANIFEST_FILE,
-  parseHeadersManifest,
-  STATIC_HEADERS,
-} from '../apps/api/src/adapters/in/http/static-site/policy.ts'
-import {
   BuildOutputError,
   buildVercelOutput,
   bundleClosure,
@@ -31,6 +26,11 @@ import {
   outputConfig,
   REQUIRED_STATIC_FILES,
 } from './build-vercel-output.ts'
+import {
+  HEADERS_MANIFEST_FILE,
+  parseHeadersManifest,
+  STATIC_HEADERS,
+} from './lib/static-site-policy.ts'
 
 /**
  * Forma do `.vercel/output` (Build Output API v3) que `build-vercel-output.ts` gera a partir do

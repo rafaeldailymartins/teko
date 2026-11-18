@@ -1,8 +1,8 @@
 # Backend (`apps/api`)
 
 Fastify 5 em Node 24, hexagonal, publicado como uma única Vercel Function (Fluid compute, `gru1`)
-no mesmo projeto que serve o estático da web (ADR 0029). O mesmo `server.ts` roda no Plano B
-(Render), na stack de CI, no Docker local e no `pnpm dev`.
+no mesmo projeto que serve o estático da web (ADR 0029). O mesmo `server.ts` roda na stack de CI,
+no Docker local e no `pnpm dev`. Não há plataforma reserva (ADR 0038).
 
 ## Stack
 
@@ -72,7 +72,7 @@ API usa; escrita do corpus fica no container da CLI.
   telemetria.
 - `cli.ts`: subcomandos `ingest`, `sources-watch`, `seed-fixtures`, `eval-fixture`, `coverage-mark`
   e `maintenance`. Roda só no Actions e localmente, nunca na Vercel (AUP).
-- `config/platform.ts` lê `RUNTIME_TARGET` (`vercel | render | node`) e escolhe `BackgroundTasks`,
+- `config/platform.ts` lê `RUNTIME_TARGET` (`vercel | node`) e escolhe `BackgroundTasks`,
   `attachDatabasePool` (só Vercel), `trustProxy`, `ClientIp` e `GeoResolver`.
 
 **Asserções de boot** (`config/env.ts`, Zod, falha imediata):
@@ -83,15 +83,15 @@ API usa; escrita do corpus fica no container da CLI.
 - hosts exatos dos provedores (`generativelanguage.googleapis.com`, `api.groq.com`,
   `api.cloudflare.com`); qualquer `*_BASE_URL`/`*_API_BASE` de provedor derruba o boot, e a
   asserção é feita sobre o `baseURL` efetivo do cliente;
-- com `RUNTIME_TARGET=vercel` em staging e produção: `process.version` `v24.*` e `VERCEL_REGION`
-  `gru1` em runtime.
+- staging e produção exigem `RUNTIME_TARGET=vercel` explícito (o padrão `node` só vale em
+  development e ci), com `process.version` `v24.*` e `VERCEL_REGION` `gru1` em runtime.
 
 ## Pipeline HTTP
 
 1. Fastify com pino (`redact` de `authorization`, `cookie`, `set-cookie`, `*.question`),
    `bodyLimit` de 32 KB, `genReqId` pelo `x-vercel-id` na Vercel (senão um UUID) e `trustProxy`
-   por plataforma: na Vercel, 1 salto (a Vercel sobrescreve `x-forwarded-for` e `x-real-ip`); no
-   Render, o valor medido no ensaio; local e CI, só a rede da stack.
+   por plataforma: na Vercel, 1 salto (a Vercel sobrescreve `x-forwarded-for` e `x-real-ip`); local
+   e CI, só a rede da stack.
 2. Compilers Zod e telemetria: `@fastify/otel` (span `request` filho do `traceparent`),
    `x-trace-id` em toda resposta, `http.server.request.duration` e, no fim de cada requisição de
    `/api`, o flush em `BackgroundTasks` (teto de 500 ms).
@@ -433,20 +433,3 @@ Sensitive + redeploy.
 5. Cobertura e `corpus_version` em memória por instância, relidas no máximo a cada 10 min.
 6. Autoscaling 0,25 CU (ou 0,25–0,5), scale-to-zero em 5 min.
 7. Consumo medido pelo `ops.yml`; Neon suspenso → [runbook](../runbooks/neon-suspended.md).
-
-## Plano B (Render Free)
-
-- **Quando:** pausa de 30 dias do Hobby, conta Vercel encerrada ou termos que inviabilizem o
-  projeto.
-- **Serviço:** um web service Node do Render Free (`teko-api-planb`, Virginia), descrito em
-  `infra/planb-render/render.yaml`, com auto-deploy desligado. **O mesmo serviço serve o `out/`
-  estático e a API, na mesma origem**, com o mesmo `server.ts` (`RUNTIME_TARGET=render`); as rotas
-  do Build Output (redirect por idioma, headers, 404 por locale) são reproduzidas no servidor.
-- **Diferenças:** sem WAF, o rate limit do stream passa ao `@fastify/rate-limit` em Postgres (10
-  req/60 s por IP do `ClientIp` medido no ensaio); política regional só pelo país declarado.
-- **Corte:** os usuários passam a usar o host do Render (`WEB_ORIGIN` = host do Render, OAuth
-  callbacks e `rpID` do passkey acompanham, então passkeys precisam ser registradas de novo). Só a
-  produção tem Plano B. Sem forma de pagamento, o Render suspende em vez de cobrar.
-- **Proveniência:** o Render constrói a partir da tag do release; exceção aceita só durante o
-  corte.
-- **Ensaio:** a cada release minor, registrado no runbook `vercel-paused.md` (a escrever na F7).

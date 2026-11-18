@@ -7,7 +7,7 @@ const REPORT_ENDPOINT = 'https://eu.i.posthog.com/report/?token=phc_teko_ci_e2e_
 
 /**
  * Rotas de plataforma e segurança do estático na stack de CI (Caddy com os snippets de
- * `scripts/caddy-static-site.ts`, a mesma semântica das rotas da Vercel e do Plano B): 404 por
+ * `scripts/caddy-static-site.ts`, a mesma semântica das rotas da Vercel): 404 por
  * locale, redirect da raiz, `/_next/static/*` imutável, headers de segurança e a CSP por documento,
  * com os hashes do HTML exportado. A CSP não pode barrar nada do próprio export.
  */

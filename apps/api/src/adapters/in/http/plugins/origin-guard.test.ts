@@ -123,7 +123,7 @@ describe('registerOriginGuard', () => {
     expect(own.statusCode).toBe(200)
   })
 
-  it('fora de /api (estático do Plano B) não age', async () => {
+  it('fora de /api não age', async () => {
     const app = await build()
     app.post('/healthz-like', async () => ({ ok: true }))
     expect((await app.inject({ method: 'POST', url: '/healthz-like' })).statusCode).toBe(200)

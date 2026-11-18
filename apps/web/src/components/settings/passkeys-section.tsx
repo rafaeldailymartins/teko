@@ -13,7 +13,7 @@ import { SectionError, SectionStatus, SettingsSection } from './settings-section
 
 /**
  * Passkeys da conta: lista, cadastro (com nome opcional) e remoção, pelas rotas do plugin de
- * passkey do Better Auth. Passkey vale por host (`rpID`): no Plano B é preciso cadastrar de novo.
+ * passkey do Better Auth. Passkey vale por host (`rpID`).
  */
 export function PasskeysSection() {
   const t = useTranslations('settings.passkeys')

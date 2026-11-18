@@ -1,4 +1,3 @@
-import { resolve as resolvePath } from 'node:path'
 import { AppEnv, PROVISION_SEARCH_LIMIT } from '@teko/shared/contracts'
 import type { FastifyBaseLogger, FastifyInstance } from 'fastify'
 import {
@@ -940,10 +939,6 @@ export function createHttpOptions(
     webOrigin: env.WEB_ORIGIN,
     // Rotas `/api/v1/_eval/*`: só na stack descartável de CI.
     evalRoutes: env.APP_ENV === AppEnv.Ci,
-    // Plano B (Render): o export do web na mesma origem; relativo ao diretório de trabalho.
-    ...(env.WEB_STATIC_DIR === undefined
-      ? {}
-      : { staticSite: { root: resolvePath(env.WEB_STATIC_DIR) } }),
     ...(rateLimitStore === null
       ? {}
       : {

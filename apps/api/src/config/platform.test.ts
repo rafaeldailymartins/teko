@@ -48,31 +48,11 @@ describe('perfil de plataforma', () => {
     expect(platformNetwork(dev).trustProxy).toEqual([DEFAULT_TRUST_PROXY])
     // Env montado à mão: parseEnv já barra isto, mas o perfil não pode cair no padrão do CI.
     for (const appEnv of ['staging', 'production'] as const) {
-      for (const target of ['node', 'render'] as const) {
-        const env: Env = { ...parseEnv(BASE), APP_ENV: appEnv, RUNTIME_TARGET: target }
-        expect(() => platformNetwork(env)).toThrow(
-          `TRUST_PROXY ausente com APP_ENV=${appEnv}: o padrão (rede do Caddy) só vale em development e ci`,
-        )
-      }
+      const env: Env = { ...parseEnv(BASE), APP_ENV: appEnv, RUNTIME_TARGET: 'node' }
+      expect(() => platformNetwork(env)).toThrow(
+        `RUNTIME_TARGET=node com APP_ENV=${appEnv}: a rede do Caddy só vale em development e ci`,
+      )
     }
-    const measured: Env = {
-      ...parseEnv(BASE),
-      APP_ENV: 'production',
-      RUNTIME_TARGET: 'render',
-      TRUST_PROXY: 2,
-    }
-    expect(platformNetwork(measured).trustProxy).toBe(2)
-  })
-
-  it('render: trustProxy medido no ensaio, sem request id externo, adapters de Node', () => {
-    const env = parseEnv({ ...BASE, RUNTIME_TARGET: 'render', TRUST_PROXY: '1' })
-    expect(platformNetwork(env)).toEqual({
-      trustProxy: 1,
-      requestIdHeader: null,
-      eventLoopDelayGuard: true,
-    })
-    expect(platformShutdown(env).backgroundDrainMs).toBe(NODE_BACKGROUND_DRAIN_MS)
-    expect(createPlatformAdapters(env, noop).clientIp.resolve(DIRECT).source).toBe('trusted_proxy')
   })
 
   it('vercel: 1 salto, x-vercel-id, 500 ms no SIGTERM e prazo pelo maxDuration', () => {

@@ -292,17 +292,17 @@ Grafana e do Synthetic Monitoring por `scripts/grafana-apply.ts`, no job `grafan
 
 ## Runbooks (`docs/runbooks/`)
 
-| Runbook                 | Situação | Conteúdo                                                                                                                                                   |
-| ----------------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `neon-roles.md`         | existe   | criação dos roles `teko_app` e `teko_watch` e das URLs por environment                                                                                     |
-| `rollback-corpus.md`    | ADR 0031 | repromover um snapshot antigo como `corpus_version` nova                                                                                                   |
-| `provider-outage.md`    | existe   | breaker e fallback; `LLM_KILL_SWITCH`; troca de modelos por env; 5xx, latência e embeddings fora do ar                                                     |
-| `quota-exhausted.md`    | existe   | qual cota estourou; reduzir tetos e amostragens por env                                                                                                    |
-| `neon-suspended.md`     | existe   | `LLM_KILL_SWITCH`; esperar o ciclo do Neon; contingência opcional com projeto novo e o corpus pelo snapshot                                                |
-| `ops-alerts.md`         | existe   | cobertura sem verificação, jobs do `ops.yml` sem sucesso, achado do `prod-vuln-scan`, check sintético falhando, recusa fora do normal                      |
-| `vercel-paused.md`      | F7       | diagnóstico; esperar os 30 dias e **retomar à mão** (`vercel project resume` ou a API `unpause`); corte para o Plano B Render; nunca Pro nem segunda conta |
-| `vercel-deploy.md`      | F7       | fluxo do deploy `--prebuilt`, WAF, Deployment Protection, opt-out de Model Training                                                                        |
-| `budget-kill-switch.md` | F7       | limiares 50/75/85/95%; `LLM_KILL_SWITCH` com redeploy; regra 1 do WAF                                                                                      |
-| `release-rollback.md`   | F7       | `vercel rollback` + `promote`; redeploy do tarball do release com `gh attestation verify`                                                                  |
-| `secret-rotation.md`    | F7       | tokens da Vercel (90 dias) e bypass; Sensitive + redeploy; chaves de LLM                                                                                   |
-| `quotas.md`             | existe   | RPD reais lidos no AI Studio e no Groq                                                                                                                     |
+| Runbook                 | Situação | Conteúdo                                                                                                                              |
+| ----------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `neon-roles.md`         | existe   | criação dos roles `teko_app` e `teko_watch` e das URLs por environment                                                                |
+| `rollback-corpus.md`    | ADR 0031 | repromover um snapshot antigo como `corpus_version` nova                                                                              |
+| `provider-outage.md`    | existe   | breaker e fallback; `LLM_KILL_SWITCH`; troca de modelos por env; 5xx, latência e embeddings fora do ar                                |
+| `quota-exhausted.md`    | existe   | qual cota estourou; reduzir tetos e amostragens por env                                                                               |
+| `neon-suspended.md`     | existe   | `LLM_KILL_SWITCH`; esperar o ciclo do Neon; contingência opcional com projeto novo e o corpus pelo snapshot                           |
+| `ops-alerts.md`         | existe   | cobertura sem verificação, jobs do `ops.yml` sem sucesso, achado do `prod-vuln-scan`, check sintético falhando, recusa fora do normal |
+| `vercel-paused.md`      | F7       | diagnóstico; esperar os 30 dias e **retomar à mão** (`vercel project resume` ou a API `unpause`); nunca Pro nem segunda conta         |
+| `vercel-deploy.md`      | F7       | fluxo do deploy `--prebuilt`, WAF, Deployment Protection, opt-out de Model Training                                                   |
+| `budget-kill-switch.md` | F7       | limiares 50/75/85/95%; `LLM_KILL_SWITCH` com redeploy; regra 1 do WAF                                                                 |
+| `release-rollback.md`   | F7       | `vercel rollback` + `promote`; redeploy do tarball do release com `gh attestation verify`                                             |
+| `secret-rotation.md`    | F7       | tokens da Vercel (90 dias) e bypass; Sensitive + redeploy; chaves de LLM                                                              |
+| `quotas.md`             | existe   | RPD reais lidos no AI Studio e no Groq                                                                                                |

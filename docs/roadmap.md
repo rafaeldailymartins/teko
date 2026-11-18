@@ -146,8 +146,8 @@ seguimento que troca `develop` por `main` no código.
   `add-usage-guard`.
 - **Entregas:** WAF aplicado (`infra/vercel/firewall-rules.json`), sync de env, deploy único do
   `.vercel/output` (estático + Function) com tarball atestado, smoke e system test; `vercel-usage`
-  e `weekly-maintenance` no `ops.yml`; job `neon-rehearsal` reutilizável; Plano B no Render servindo
-  estático e API e o primeiro ensaio de corte; runbooks de deploy, pausa, kill switch e rollback.
+  e `weekly-maintenance` no `ops.yml`; job `neon-rehearsal` reutilizável; runbooks de deploy, pausa,
+  kill switch e rollback.
 - **DoD:**
   - stream de 90 s no domínio de produção sem corte, inclusive com deploy e `promote` no meio;
   - `teko-api*.vercel.app` → 308 para o canônico; cookie e passkey funcionando só no canônico;
@@ -158,7 +158,6 @@ seguimento que troca `develop` por `main` no código.
   - kill switch exercitado no staging (85% liga `LLM_KILL_SWITCH`; 95% troca a regra 1 do WAF);
   - cold start p95 + resume do Neon abaixo de 10 s;
   - purge semanal comprovado contra o staging;
-  - ensaio do Plano B: smoke verde contra o host do Render e volta ao estado parado;
   - system test verde no staging, entrando com a passkey do usuário de teste;
   - check `teko-landing-production` do Synthetic Monitoring ligado (`enabled: true`) no primeiro
     deploy do web de produção, com execuções verdes;
@@ -219,7 +218,7 @@ Decididos na revisão de 2026-11-12.
   gate);
 - e2e em 4 shards, Firefox, WebKit e regressão visual (fica Chromium + viewport mobile);
 - Checkly, UptimeRobot e Codecov; git-flow-next local; `pages-fallback.yml` e o runbook
-  `netlify-paused.md` (saem com a Netlify; o Plano B serve o estático).
+  `netlify-paused.md` (saem com a Netlify).
 
 **Adiados para depois da v0.1.0:**
 
@@ -233,14 +232,14 @@ severidades entram no próximo release.
 
 ## Riscos principais
 
-| Risco                                                            | Mitigação                                                                                                                                    |
-| ---------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| Uma cota do Hobby estoura e a Vercel pausa web e API por 30 dias | tetos na aplicação, WAF, `vercel-usage` com kill switch, nenhuma carga contra a Vercel, Plano B ensaiado (que agora serve também o estático) |
-| CU-h ou espaço do Neon esgotam                                   | `/healthz` sem DB, cache da cobertura, guardas de 800 MB, índices parciais e poda de vetores                                                 |
-| Gemini muda cotas ou modelos                                     | IDs em env, breaker, Groq, cache, kill switch                                                                                                |
-| Vigência errada no parser                                        | golden cp1252, propriedades, `review_queue` fora da produção, disjuntor de churn, gate de saúde                                              |
-| Corpus ruim chega à produção                                     | `corpus-eval` bloqueando o lock, `holdout`, linhagem e rollback do corpus                                                                    |
-| LGPD (treino no Gemini; Termos do Hobby)                         | redação, aviso, 18+, EEE/UK/CH só no Groq, DSR com erasure, opt-out de Model Training                                                        |
-| Cadeia de suprimentos                                            | pin por SHA, harden-runner, `minimumReleaseAge`, `trustPolicy`, osv, Grype, atestação antes do deploy                                        |
-| `VERCEL_TOKEN` estático vaza                                     | token por environment, revisor em produção, 90 dias, alerta 30 dias antes                                                                    |
-| Comportamentos não documentados da Vercel                        | heartbeat, rollback ancorado no tarball do release, Build Output pelo tsdown (ADR 0017)                                                      |
+| Risco                                                            | Mitigação                                                                                                                 |
+| ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| Uma cota do Hobby estoura e a Vercel pausa web e API por 30 dias | tetos na aplicação, WAF, `vercel-usage` com kill switch, nenhuma carga contra a Vercel; sem plataforma reserva (ADR 0038) |
+| CU-h ou espaço do Neon esgotam                                   | `/healthz` sem DB, cache da cobertura, guardas de 800 MB, índices parciais e poda de vetores                              |
+| Gemini muda cotas ou modelos                                     | IDs em env, breaker, Groq, cache, kill switch                                                                             |
+| Vigência errada no parser                                        | golden cp1252, propriedades, `review_queue` fora da produção, disjuntor de churn, gate de saúde                           |
+| Corpus ruim chega à produção                                     | `corpus-eval` bloqueando o lock, `holdout`, linhagem e rollback do corpus                                                 |
+| LGPD (treino no Gemini; Termos do Hobby)                         | redação, aviso, 18+, EEE/UK/CH só no Groq, DSR com erasure, opt-out de Model Training                                     |
+| Cadeia de suprimentos                                            | pin por SHA, harden-runner, `minimumReleaseAge`, `trustPolicy`, osv, Grype, atestação antes do deploy                     |
+| `VERCEL_TOKEN` estático vaza                                     | token por environment, revisor em produção, 90 dias, alerta 30 dias antes                                                 |
+| Comportamentos não documentados da Vercel                        | heartbeat, rollback ancorado no tarball do release, Build Output pelo tsdown (ADR 0017)                                   |

@@ -205,3 +205,10 @@ Também descartada: uma segunda conta Vercel para somar cotas, que viola a polí
 - WAF: a regra 2 (`x-nf-sign`) vira "o estático só aceita GET e HEAD"; a regra 1 deixa o estático
   passar e nega `/api/*` desconhecido; a regra 3 (rate limit do stream) continua.
 - Plano B: o serviço do Render serve também o export (`WEB_STATIC_DIR`), na mesma origem.
+
+## Revisão (2026-11-18): sem Plano B ([ADR 0038](0038-sem-plano-b-no-render.md))
+
+A seção "Plano B: Render Free" está superada: o mantenedor decidiu não ter Plano B. Saem o
+`RUNTIME_TARGET=render`, o `infra/planb-render/` e o ensaio da F7. Se a Vercel pausar o projeto ou
+encerrar a conta, o Tekó fica fora do ar até o ciclo virar ou até migrar; a prevenção fica nos
+tetos da aplicação, no WAF e no `vercel-usage` com kill switch.

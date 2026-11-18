@@ -22,12 +22,6 @@ function sendProblem(reply: FastifyReply, problem: ProblemDetails): FastifyReply
 }
 
 /**
- * Alternativa ao problem+json no 404 (o site estático do Plano B, ADR 0029): devolve a resposta,
- * ou `null` para seguir com o problem+json.
- */
-export type NotFoundFallback = (request: FastifyRequest, reply: FastifyReply) => FastifyReply | null
-
-/**
  * Chamado para cada erro inesperado (`internal`, 500), depois do log: o destino de erros
  * (`report-error.ts`). Os 4xx esperados (validação, sessão, cota) e os 503 deliberados
  * (`service_paused` do kill switch ou do `under-pressure`, `upstream_unavailable`, que já têm
@@ -37,7 +31,6 @@ export type UnexpectedErrorHook = (error: unknown, request: FastifyRequest, stat
 
 export function registerProblemHandlers(
   app: FastifyInstance,
-  notFoundFallback: NotFoundFallback = () => null,
   onUnexpectedError: UnexpectedErrorHook = () => {},
 ): void {
   app.setErrorHandler((error, request, reply) => {
@@ -57,9 +50,7 @@ export function registerProblemHandlers(
     return sendProblem(reply, problem)
   })
 
-  app.setNotFoundHandler(
-    (request, reply) =>
-      notFoundFallback(request, reply) ??
-      sendProblem(reply, notFoundProblem(request.method, contextOf(request))),
+  app.setNotFoundHandler((request, reply) =>
+    sendProblem(reply, notFoundProblem(request.method, contextOf(request))),
   )
 }

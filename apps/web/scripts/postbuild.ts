@@ -8,8 +8,8 @@
  *
  * Grava `out/.teko-headers.json`, o manifesto com a CSP (hashes dos `<script>` e `<style>` inline), o
  * Trusted Types report-only e, com `NEXT_PUBLIC_POSTHOG_ERRORS_KEY`, o `report-to` e o
- * `Reporting-Endpoints` do PostHog de cada HTML, que a Vercel, o Plano B e o Caddy da stack de CI
- * aplicam por caminho. Sem argumentos; idempotente (o CI roda de novo depois de um cache hit do
+ * `Reporting-Endpoints` do PostHog de cada HTML, que a Vercel e o Caddy da stack de CI aplicam
+ * por caminho. Sem argumentos; idempotente (o CI roda de novo depois de um cache hit do
  * turbo). Uso: `node scripts/postbuild.ts`, em `apps/web`.
  */
 import { writeFileSync } from 'node:fs'

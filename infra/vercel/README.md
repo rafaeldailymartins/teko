@@ -4,9 +4,8 @@ Web e API ficam na **mesma origem**, num projeto Vercel por ambiente (ADR 0029):
 do Next vai para o `static/` do `.vercel/output`, servido pela CDN sem invocar nada, e só `/api/*`
 e `/healthz` chegam a **uma única Function Fastify** em Fluid compute, na região `gru1`
 (São Paulo, AWS sa-east-1, a mesma dos projetos Neon). O código não tem entrypoint específico de
-plataforma: o mesmo `apps/api/src/server.ts` roda na Vercel, no Render (Plano B,
-`infra/planb-render`), na stack de CI e no `pnpm dev`; `RUNTIME_TARGET` escolhe os adapters
-(`apps/api/src/config/platform.ts`).
+plataforma: o mesmo `apps/api/src/server.ts` roda na Vercel, na stack de CI e no `pnpm dev`;
+`RUNTIME_TARGET` escolhe os adapters (`apps/api/src/config/platform.ts`).
 
 Este diretório guarda o que é versionável da configuração:
 
@@ -135,7 +134,7 @@ sem nenhuma API key e nenhum cartão em Billing Information.
 - [x] AI Gateway, integrações do marketplace e Vercel Cron desligados (todo agendamento fica no
   Actions).
 - [x] Nenhum cartão cadastrado. Estourar uma cota do Hobby bloqueia o recurso por cerca de 30 dias
-  (503 `DEPLOYMENT_PAUSED`); o Plano B é o Render (`infra/planb-render`).
+  (503 `DEPLOYMENT_PAUSED`); não há plataforma reserva (ADR 0038).
 
 ## Variáveis de ambiente
 

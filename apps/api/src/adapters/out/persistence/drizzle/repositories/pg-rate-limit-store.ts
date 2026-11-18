@@ -3,7 +3,7 @@ import type { RateLimitStore } from '#app/ports/rate-limit-store.ts'
 
 /**
  * `RateLimitStore` em Postgres (`app.rate_limits`): janela fixa calculada pelo relógio do banco,
- * para que todas as instâncias da Fluid compute (e o Plano B) contem na mesma janela. Uma ida ao
+ * para que todas as instâncias da Fluid compute contem na mesma janela. Uma ida ao
  * banco por requisição limitada, sem transação explícita: o `INSERT … ON CONFLICT DO UPDATE` é
  * atômico. As janelas vencidas saem na manutenção semanal (`expires_at`).
  *
