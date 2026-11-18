@@ -438,6 +438,10 @@ check "deploy: o firewall do deploy roda sem --lockdown (não desfaz um lockdown
   bash -c "! grep -q -- '--lockdown' <<<\"\$(yq -r '.jobs.deploy.steps[].run // \"\"' '$deploy')\""
 check "deploy: neon-rehearsal só na produção, antes do deploy" \
   yq_true '.jobs."neon-rehearsal".uses == "./.github/workflows/neon-rehearsal.yml" and (.jobs."neon-rehearsal".if | test("production")) and (.jobs.deploy.needs | contains(["neon-rehearsal"]))' "$deploy"
+# Segredo de environment num workflow reutilizável só chega se o chamador o repassar pelo nome;
+# sem isso vira string vazia e o job chamado pula como se faltasse (run 44382608395, system test).
+check "deploy: repassa ao neon-rehearsal só o NEON_API_KEY_PROD" \
+  yq_true '((.jobs."neon-rehearsal".secrets | keys | join(",")) == "NEON_API_KEY_PROD") and (.jobs."neon-rehearsal".secrets.NEON_API_KEY_PROD == "${{ secrets.NEON_API_KEY_PROD }}")' "$deploy"
 check "deploy: produção exige o staging verde para o mesmo SHA (plan)" \
   bash -c "yq -r '.jobs.plan.steps[].run // \"\"' '$deploy' | grep -q 'staging-verified.sh'"
 check "deploy: audit.yml antes do build" \
@@ -445,7 +449,7 @@ check "deploy: audit.yml antes do build" \
 # O !cancelled() é necessário: sem ele, o neon-rehearsal pulado no staging (só roda na produção)
 # pula também o system-test, mesmo com o deploy verde (run 44353931758).
 check "deploy: system-test.yml depois do deploy verde, só no deploy do staging, com o SHA do run" \
-  yq_true '.jobs."system-test".uses == "./.github/workflows/system-test.yml" and ((.jobs."system-test".needs | sort | join(",")) == "deploy,plan") and (.jobs."system-test".if == "${{ !cancelled() && needs.deploy.result == '"'"'success'"'"' && needs.plan.outputs.env == '"'"'staging'"'"' && needs.plan.outputs.phase == '"'"'deploy'"'"' }}") and (.jobs."system-test".with."expected-sha" == "${{ github.sha }}") and (.jobs."system-test" | has("secrets") | not)' "$deploy"
+  yq_true '.jobs."system-test".uses == "./.github/workflows/system-test.yml" and ((.jobs."system-test".needs | sort | join(",")) == "deploy,plan") and (.jobs."system-test".if == "${{ !cancelled() && needs.deploy.result == '"'"'success'"'"' && needs.plan.outputs.env == '"'"'staging'"'"' && needs.plan.outputs.phase == '"'"'deploy'"'"' }}") and (.jobs."system-test".with."expected-sha" == "${{ github.sha }}") and ((.jobs."system-test".secrets | keys | join(",")) == "SYSTEM_TEST_PASSKEY") and (.jobs."system-test".secrets.SYSTEM_TEST_PASSKEY == "${{ secrets.SYSTEM_TEST_PASSKEY }}")' "$deploy"
 check "deploy: relatórios do smoke dentro do repositório (reports/), como o smoke.ts exige" \
   bash -c "[[ \"\$(yq -r '.jobs.deploy.steps[].run // \"\"' '$deploy' | grep -c 'reports/smoke-\\(deployment\\|canonical\\)\\.json')\" == 2 ]]"
 
@@ -458,6 +462,8 @@ check "release: valida SemVer com pré-release" \
 
 check "neon-rehearsal: workflow_call e dispatch, no environment release-rehearsal" \
   yq_true '((.on | keys | sort | join(",")) == "workflow_call,workflow_dispatch") and (.jobs.rehearsal.environment.name == "release-rehearsal")' "$rehearsal"
+check "neon-rehearsal: o workflow_call declara o segredo que o deploy repassa" \
+  yq_true '((.on.workflow_call.secrets | keys | join(",")) == "NEON_API_KEY_PROD") and (.on.workflow_call.secrets.NEON_API_KEY_PROD.required == false)' "$rehearsal"
 check "neon-rehearsal: sem a API key, ::warning e verde" \
   bash -c "yq -r '.jobs.rehearsal.steps[] | select(.id == \"secrets\") | .run' '$rehearsal' | grep -q '::warning' && ! yq -r '.jobs.rehearsal.steps[] | select(.id == \"secrets\") | .run' '$rehearsal' | grep -A2 'NEON_API_KEY_PROD\" ||' | grep -q 'exit 1'"
 check "neon-rehearsal: migrate e checagem de extensões no branch efêmero, apagado sempre" \
@@ -482,6 +488,8 @@ check "smoke: egress só para os domínios canônicos e antigos dos dois projeto
   bash -c "[[ \"\$(tr ' ' '\n' <<<\"\$(yq -r '.jobs.smoke.steps[0].with.\"allowed-endpoints\"' '$smoke')\" | grep -F 'vercel.app' | sort | tr '\n' ' ')\" == 'teko-api-staging.vercel.app:443 teko-api.vercel.app:443 tekoia-staging.vercel.app:443 tekoia.vercel.app:443 ' ]]"
 check "system-test: só em main, no environment staging, com workflow_call e workflow_dispatch" \
   yq_true '(.on | keys | sort | join(",")) == "workflow_call,workflow_dispatch" and .jobs."system-test".if == "github.ref == '"'"'refs/heads/main'"'"'" and .jobs."system-test".environment == "staging" and (.on.workflow_call.inputs | has("expected-sha"))' "$system"
+check "system-test: o workflow_call declara o segredo que o deploy repassa" \
+  yq_true '((.on.workflow_call.secrets | keys | join(",")) == "SYSTEM_TEST_PASSKEY") and (.on.workflow_call.secrets.SYSTEM_TEST_PASSKEY.required == false)' "$system"
 check "system-test: sem SYSTEM_TEST_PASSKEY avisa e pula o resto do job" \
   bash -c "yq -r '.jobs.\"system-test\".steps[] | select(.id == \"secrets\") | .run' '$system' | grep -q '::warning' && yq -e '[.jobs.\"system-test\".steps[2:][] | .if // \"\" | test(\"steps\\\\.secrets\\\\.outputs\\\\.ready == .true.\")] | (length >= 5 and all)' '$system' >/dev/null"
 system_test_only_passkey() {

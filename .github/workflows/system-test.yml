@@ -20,6 +20,11 @@ on:
         type: string
         required: false
         default: ""
+    # Segredo do environment staging: no workflow_call ele só chega se o chamador repassar
+    # (sem isso vira string vazia, sem erro, e o job pula o teste achando que falta o segredo).
+    secrets:
+      SYSTEM_TEST_PASSKEY:
+        required: false
   workflow_dispatch:
     inputs:
       expected-sha:

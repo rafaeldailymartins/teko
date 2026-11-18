@@ -343,6 +343,9 @@ jobs:
     permissions:
       contents: read
     uses: ./.github/workflows/neon-rehearsal.yml
+    # Segredo de environment num workflow reutilizável: o chamador precisa repassar pelo nome.
+    secrets:
+      NEON_API_KEY_PROD: ${{ secrets.NEON_API_KEY_PROD }}
 
   deploy:
     name: deploy
@@ -663,3 +666,6 @@ jobs:
     uses: ./.github/workflows/system-test.yml
     with:
       expected-sha: ${{ github.sha }}
+    # Segredo de environment num workflow reutilizável: o chamador precisa repassar pelo nome.
+    secrets:
+      SYSTEM_TEST_PASSKEY: ${{ secrets.SYSTEM_TEST_PASSKEY }}
