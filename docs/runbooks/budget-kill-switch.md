@@ -18,13 +18,13 @@ que o job `vercel-usage` do `ops.yml` faz sozinho em 85% e 95%. A conta Hobby so
 
 ## Limiares
 
-| Uso (qualquer recurso) | O que acontece                                                                         | Quem age                             |
-| ---------------------- | -------------------------------------------------------------------------------------- | ------------------------------------ |
-| 50%                    | e-mail (`teko-vercel-usage-50`)                                                        | mantenedor: investigar               |
-| 75%                    | e-mail (`teko-vercel-usage-75`)                                                        | mantenedor: cortar consumo           |
-| **85%**                | `LLM_KILL_SWITCH=true` nos dois projetos + redeploy da deployment de produção atual    | `vercel-usage`, sozinho              |
-| **95%**                | além disso, lockdown: a regra 1 do WAF nega tudo exceto `/healthz` e a página de aviso | `vercel-usage`, sozinho              |
-| 100%                   | a Vercel pausa os projetos (503 `DEPLOYMENT_PAUSED`)                                   | [vercel-paused.md](vercel-paused.md) |
+| Uso (qualquer recurso) | O que acontece                                                                      | Quem age                             |
+| ---------------------- | ----------------------------------------------------------------------------------- | ------------------------------------ |
+| 50%                    | e-mail (`teko-vercel-usage-50`)                                                     | mantenedor: investigar               |
+| 75%                    | e-mail (`teko-vercel-usage-75`)                                                     | mantenedor: cortar consumo           |
+| **85%**                | `LLM_KILL_SWITCH=true` nos dois projetos + redeploy da deployment de produção atual | `vercel-usage`, sozinho              |
+| **95%**                | além disso, lockdown: a regra 1 do WAF manda tudo (menos `/healthz`) para `/aviso/` | `vercel-usage`, sozinho              |
+| 100%                   | a Vercel pausa os projetos (503 `DEPLOYMENT_PAUSED`)                                | [vercel-paused.md](vercel-paused.md) |
 
 O job **nunca desliga** o kill switch nem o lockdown: a volta é sempre manual (abaixo). Ele é
 idempotente: com o kill switch já ligado e a deployment de produção mais nova que a variável, não
@@ -77,12 +77,22 @@ deployment nova do tarball atestado, que lê as env vars do projeto) e confira d
 ## 95%: lockdown (automático)
 
 Antes do kill switch, o job chama `node scripts/vercel-firewall.ts --env <env> --lockdown on` nos
-dois projetos: a regra 1 do WAF (`infra/vercel/firewall-rules.json`) passa a negar tudo exceto
-`/healthz` e o estático da página de aviso. Tráfego negado pelo WAF não conta CDN Requests nem
-Fast Data Transfer e não invoca a Function.
+dois projetos: a regra 1 do WAF (`infra/vercel/firewall-rules.json`) passa a redirecionar (307,
+temporário) para a página de aviso `/aviso/` tudo exceto `/healthz`, `/api/healthz`, a própria
+página, `/_next/static/*` (CSS, fontes e JS dela) e `/favicon.ico`. O redirect sai da borda, sem
+invocar a Function; a página é estática, nos dois idiomas, e diz que o Tekó está pausado até a cota
+se renovar. É temporário para que o navegador não o guarde depois do `--lockdown off`.
 
-Conferir: `curl -sS -o /dev/null -w '%{http_code}\n' https://tekoia.vercel.app/healthz` → 200;
-`curl -sS -o /dev/null -w '%{http_code}\n' https://tekoia.vercel.app/api/v1/coverage` → 403.
+Conferir (o `-w` mostra o código e o destino do redirect):
+
+```bash
+for path in /healthz /aviso/ /pt-BR/ /api/v1/coverage; do
+  curl -sS -o /dev/null -w "$path %{http_code} %{redirect_url}\n" "https://tekoia.vercel.app$path"
+done
+```
+
+Esperado: `/healthz` e `/aviso/` com 200; `/pt-BR/` e `/api/v1/coverage` com 307 para
+`https://tekoia.vercel.app/aviso/`.
 
 <a id="ligar-a-mao"></a>
 
@@ -112,7 +122,8 @@ Só depois que `teko_vercel_usage_ratio` de todos os recursos ficar **abaixo de 
    `kill_switch_target: staging`, `dry_run: false`. Repita com `production`.
 2. O job grava `LLM_KILL_SWITCH=false`, redeploya a deployment de produção atual e chama
    `vercel-firewall.ts --lockdown off` (a regra 1 volta ao normal: nega só `/api/*` desconhecido).
-3. Confira: uma pergunta nova responde; `/api/v1/coverage` responde 200.
+3. Confira: uma pergunta nova responde; `/pt-BR/` e `/api/v1/coverage` respondem 200, sem o 307
+   para `/aviso/`.
 
 Sem o Actions (token vencido, por exemplo), pela CLI com o seu login: `printf 'false' | vercel env
 add LLM_KILL_SWITCH production --force` no projeto linkado, `vercel redeploy <url de produção>
@@ -127,12 +138,16 @@ add LLM_KILL_SWITCH production --force` no projeto linkado, `vercel redeploy <ur
    resumo mostra "gravar LLM_KILL_SWITCH=true" e "redeploy da deployment de produção ...".
 2. O mesmo com `dry_run: false`. Conferir a pergunta nova com 503 `service_paused` em
    `https://tekoia-staging.vercel.app`.
-3. `kill_switch: 0.95`, `dry_run: false`. Conferir `/healthz` 200 e `/api/v1/coverage` 403.
-4. `kill_switch: release`, `dry_run: false`. Conferir que perguntas e `/api/v1/coverage` voltaram.
+3. `kill_switch: 0.95`, `dry_run: false`. Conferir em `https://tekoia-staging.vercel.app`, com o
+   laço de `curl` da seção 95% no host do staging: `/healthz` 200, `/aviso/` 200, `/pt-BR/` e
+   `/api/v1/coverage` com 307 para `/aviso/`. No navegador, `/pt-BR/` leva à página de aviso,
+   legível e nos dois idiomas.
+4. `kill_switch: release`, `dry_run: false`. Conferir que perguntas, `/pt-BR/` e `/api/v1/coverage`
+   voltaram, sem o 307.
 
-| Data | Run do 0.85 | 503 `service_paused` | Run do 0.95 | `/healthz` 200 e `/api` 403 | Run do release | Observações |
-| ---- | ----------- | -------------------- | ----------- | --------------------------- | -------------- | ----------- |
-|      |             |                      |             |                             |                |             |
+| Data | Run do 0.85 | 503 `service_paused` | Run do 0.95 | `/healthz` e `/aviso/` 200, `/pt-BR/` e `/api` 307 | Run do release | Observações |
+| ---- | ----------- | -------------------- | ----------- | -------------------------------------------------- | -------------- | ----------- |
+|      |             |                      |             |                                                    |                |             |
 
 ## O que nunca fazer
 

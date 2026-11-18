@@ -262,6 +262,11 @@
     "backHome": "Back to the home page",
     "coverage": "See the coverage"
   },
+  "lockdown": {
+    "title": "Tekó is paused",
+    "reason": "This month’s usage came close to the hosting’s free quota, so Tekó was paused to stay within it.",
+    "comeback": "It comes back when the quota renews. There is nothing you need to do."
+  },
   "auth": {
     "signIn": {
       "lead": "Ask about Brazilian tax law and get the answer in the wording that was in force on the right date.",

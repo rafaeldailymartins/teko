@@ -29,6 +29,12 @@ o cliente do Better Auth, PostHog depois do consentimento e orçamento total) es
   `redirects()` só de desenvolvimento aplica a mesma regra da raiz (`src/lib/i18n/root-locale.ts`,
   presa ao `static-site-policy.ts` por `scripts/root-locale.test.ts`); a página estática de `/` é uma tela neutra
   com a logo que vai na hora para o idioma do navegador (`public/root-locale.js`).
+- **Página de aviso do lockdown (`/aviso/`):** fora de locale, como a entrada `/` e o 404 global
+  (`BareDocument` de `src/components/locale-gateway`), com os dois idiomas lado a lado. É o destino
+  do redirect 307 do lockdown do WAF (guarda de uso a 95% de uma cota; `infra/vercel/README.md`):
+  sem sessão, sem chamada à API, sem script próprio além do bootstrap de tema, `noindex`, e legível
+  só com o que o lockdown deixa passar (`/_next/static/*`). O `build-vercel-output.ts` falha sem
+  `aviso/index.html`.
 - **Dev local:** `pnpm dev` sobe web (`:3000`) e API (`:4000`); em desenvolvimento, `rewrites()` do
   Next manda `/api/*` para a API, e o navegador vê uma origem só. Não há proxy assinado nem segredo
   de dev para o caminho web → API. O login local usa `pnpm --filter @teko/api seed:dev-session`.
@@ -44,6 +50,8 @@ apps/web/
   src/app/[locale]/(app)/layout.tsx                  # app shell (cabeçalho, paleta, aviso discreto)
   src/app/[locale]/(app)/{chat,provision,compare,history,settings}/page.tsx
   src/app/[locale]/{sign-in,coverage,about,privacy,terms,[...rest]}/page.tsx
+  src/app/{page,not-found}.tsx                       # fora de locale: entrada `/` e 404 global, bilíngues
+  src/app/aviso/page.tsx                             # aviso do lockdown (`/aviso/`), bilíngue, sem API
   src/components/              # ui/ (shadcn), brand/ (logo), app-shell/, pages/, providers.tsx e componentes de tela
   public/                      # ícones e Open Graph gerados da logo, script da entrada `/`
   src/lib/                     # site, i18n/, theme, density, contrast, utils, navigation, hotkeys, api/, auth/; depois validity/, analytics/

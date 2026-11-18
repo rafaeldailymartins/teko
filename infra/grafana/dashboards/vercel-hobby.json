@@ -10,7 +10,7 @@
       "type": "text",
       "w": 24,
       "h": 3,
-      "content": "`teko_vercel_usage_ratio{resource}` vem do job `vercel-usage` do `ops.yml` (F7): `vercel billing usage --since 30d` comparado com as cotas fixadas no script. **50% e 75%**: e-mail. **85%**: kill switch de geração. **95%**: a regra 1 do WAF nega tudo exceto `/healthz` e a página de aviso. Runbooks `budget-kill-switch.md` e `vercel-paused.md`."
+      "content": "`teko_vercel_usage_ratio{resource}` vem do job `vercel-usage` do `ops.yml` (F7): `vercel billing usage --since 30d` comparado com as cotas fixadas no script. **50% e 75%**: e-mail. **85%**: kill switch de geração. **95%**: a regra 1 do WAF redireciona (307) tudo, menos `/healthz`, para a página de aviso `/aviso/`. Runbooks `budget-kill-switch.md` e `vercel-paused.md`."
     },
     {
       "title": "Uso da cota por recurso (30 dias)",

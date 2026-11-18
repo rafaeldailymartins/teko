@@ -262,6 +262,11 @@
     "backHome": "Voltar para a página inicial",
     "coverage": "Ver a cobertura"
   },
+  "lockdown": {
+    "title": "O Tekó está pausado",
+    "reason": "O uso deste mês chegou perto da cota gratuita da hospedagem, e o Tekó foi pausado para não passar dela.",
+    "comeback": "Ele volta quando a cota se renovar. Você não precisa fazer nada."
+  },
   "auth": {
     "signIn": {
       "lead": "Pergunte sobre a legislação fiscal brasileira e receba a resposta na redação que valia na data certa.",

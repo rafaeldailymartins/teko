@@ -379,6 +379,8 @@ describe('buildVercelOutput', () => {
       'static/_next/static/chunks',
       'static/_next/static/chunks/app.js',
       'static/_next/static/css',
+      'static/aviso',
+      'static/aviso/index.html',
       'static/en',
       'static/en/404',
       'static/en/404/index.html',
@@ -390,7 +392,7 @@ describe('buildVercelOutput', () => {
       'static/pt-BR/index.html',
       'static/pt-BR/index.txt',
     ])
-    assert.equal(result.staticFiles, 8)
+    assert.equal(result.staticFiles, 9)
   })
 
   it('os source maps do export não vão para o static/ (nunca são servidos)', () => {
@@ -453,6 +455,11 @@ describe('buildVercelOutput', () => {
   it('falha sem o export estático (ou sem as páginas de 404 por locale)', () => {
     rmSync(join(paths.staticDir, 'en', '404'), { recursive: true })
     assert.throws(() => buildVercelOutput(paths), /en\/404\/index\.html/)
+  })
+
+  it('falha sem a página de aviso (o destino do redirect do lockdown)', () => {
+    rmSync(join(paths.staticDir, 'aviso'), { recursive: true })
+    assert.throws(() => buildVercelOutput(paths), /não tem aviso\/index\.html/)
   })
 
   it('recusa arquivos de configuração da Netlify no export', () => {
@@ -539,6 +546,7 @@ describe('rotas do config.json', () => {
       ['/pt-BR/index.html', 'pt-BR/index.html', 'pt-BR/index.html'],
       ['/en/', 'en/index.html', 'en/index.html'],
       ['/en/404/', 'en/404/index.html', 'en/404/index.html'],
+      ['/aviso/', 'aviso/index.html', 'aviso/index.html'],
       ['/404.html', '404.html', '404.html'],
       ['/index.html', 'index.html', 'index.html'],
       ['/pt-BR/index.txt', 'pt-BR/index.txt', null],
@@ -581,6 +589,8 @@ describe('rotas do config.json', () => {
       outcome.headers['Strict-Transport-Security'],
       STATIC_HEADERS['Strict-Transport-Security'],
     )
+    const notice = route(staticDir(), { path: '/aviso' })
+    assert.equal(notice.kind === 'redirect' && notice.location, '/aviso/')
     const withExtension = route(staticDir(), { path: '/404.html' })
     assert.equal(withExtension.kind, 'static')
   })
@@ -642,9 +652,12 @@ describe('rotas do config.json', () => {
     assert.equal(existsSync(join(staticDir(), HEADERS_MANIFEST_FILE)), false)
     // Conferência independente do htmlparser2: o hash de cada `<script>` inline sem atributos,
     // tirado do HTML por regex, está na CSP que a rota entrega.
+    const notice = route(staticDir(), { path: '/aviso/' })
+    assert.equal(notice.kind === 'static' && notice.status, 200)
     for (const [path, file] of [
       ['/pt-BR/', 'pt-BR/index.html'],
       ['/en/xyz/', 'en/404/index.html'],
+      ['/aviso/', 'aviso/index.html'],
     ] as const) {
       const csp = route(staticDir(), { path }).headers['Content-Security-Policy'] ?? ''
       assert.match(csp, /^default-src 'self'; script-src 'self' 'sha256-/)

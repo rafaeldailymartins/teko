@@ -281,10 +281,15 @@ export function outputConfig(documents: DocumentHeaders) {
   } as const
 }
 
-/** Arquivos que o export precisa ter (a raiz de entrada e as páginas de 404). */
+/**
+ * Arquivos que o export precisa ter: a raiz de entrada, as páginas de 404 e a página de aviso, o
+ * destino do redirect do lockdown do WAF (`infra/vercel/firewall-rules.json`). Sem ela, o lockdown
+ * levaria o visitante a um 404.
+ */
 export const REQUIRED_STATIC_FILES = [
   'index.html',
   '404.html',
+  'aviso/index.html',
   ...LOCALES.flatMap((locale) => [`${locale}/index.html`, `${locale}/404/index.html`]),
 ] as const
 

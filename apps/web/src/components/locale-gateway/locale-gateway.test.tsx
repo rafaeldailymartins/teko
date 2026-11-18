@@ -4,6 +4,7 @@ import { THEME_BOOTSTRAP_SCRIPT } from '@/lib/theme'
 import { BareDocument } from './bare-document.tsx'
 import { GatewayPage, gatewayMetadata, ROOT_LOCALE_SCRIPT } from './gateway-page.tsx'
 import { generateGlobalNotFoundMetadata } from './global-not-found-page.tsx'
+import { generateLockdownNoticeMetadata, LockdownNoticePage } from './lockdown-notice-page.tsx'
 
 // `next/font` só existe no build do Next (transformação SWC); aqui basta a variável CSS.
 vi.mock('next/font/google', () => import('../../../test/next-font-google.ts'))
@@ -59,5 +60,35 @@ describe('generateGlobalNotFoundMetadata', () => {
   it('dá título nos dois idiomas ao 404 global (WCAG 2.4.2)', async () => {
     const metadata = await generateGlobalNotFoundMetadata()
     expect(metadata.title).toBe('Página não encontrada / Page not found · Tekó')
+  })
+})
+
+describe('LockdownNoticePage', () => {
+  const page = async () => renderToStaticMarkup(await LockdownNoticePage())
+
+  it('mostra o aviso nos dois idiomas, cada trecho com o próprio lang', async () => {
+    const html = await page()
+    expect(html).toContain(
+      '<span lang="pt-BR">O Tekó está pausado</span> / <span lang="en">Tekó is paused</span>',
+    )
+    expect(html).toMatch(/<div lang="pt-BR"[^>]*><p>O uso deste mês chegou perto da cota gratuita/)
+    expect(html).toMatch(/<div lang="en"[^>]*><p>This month’s usage came close to the hosting’s/)
+    expect(html).toContain('Você não precisa fazer nada.')
+    expect(html).toContain('There is nothing you need to do.')
+  })
+
+  it('não tem link, script externo nem chamada à API: só o bootstrap de tema', async () => {
+    const html = await page()
+    expect(html).not.toContain('href=')
+    expect(html).not.toContain('src=')
+    expect(html).not.toContain('/api/')
+    expect([...html.matchAll(/<script/g)]).toHaveLength(1)
+    expect(html).toContain(`<body><script>${THEME_BOOTSTRAP_SCRIPT}</script>`)
+  })
+
+  it('dá título nos dois idiomas (WCAG 2.4.2) e fica fora dos buscadores', async () => {
+    const metadata = await generateLockdownNoticeMetadata()
+    expect(metadata.title).toBe('O Tekó está pausado / Tekó is paused')
+    expect(metadata.robots).toEqual({ index: false, follow: false })
   })
 })
