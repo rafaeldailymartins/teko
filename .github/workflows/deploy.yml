@@ -1,0 +1,650 @@
+# Deploy do Tekó na Vercel (F7, mudança OpenSpec add-deploy-pipelines; docs/runbooks/deploy.md,
+# docs/architecture/ci-cd-e-ambientes.md "Deploy e rollback", ADRs 0017, 0029, 0033 e 0038).
+#
+#   push em main        → staging   (projeto tekoia-staging, environment staging)
+#   push de tag v*      → produção  (projeto tekoia, environment production, revisor obrigatório)
+#   workflow_dispatch   → o ambiente do ref (main ou tag v*), phase deploy ou redeploy
+#
+# Um deploy publica, de uma vez, o estático e a Function do mesmo commit (um só .vercel/output):
+#
+#   plan → audit (audit.yml) → build → [neon-rehearsal, só produção] → deploy
+#
+# - plan (sem segredos): ambiente, versão e release do PostHog a partir do ref; na produção, exige
+#   o staging verde para o mesmo SHA (.github/scripts/staging-verified.sh).
+# - build (environment do ambiente, `deployment: false`, só variáveis públicas NEXT_PUBLIC_*, nenhum
+#   segredo): build da API e do web, chunk ids do PostHog (inject) e o pós-build de novo,
+#   `pnpm deploy --prod`, scripts/build-vercel-output.ts (com GIT_SHA e APP_VERSION no
+#   .vc-config.json), scripts/pack-vercel-output.ts (gitleaks e sha256), SBOM (syft), Grype,
+#   atestações de proveniência e de SBOM do tarball e os artifacts (tarball e source maps).
+# - deploy (environment do ambiente): gh attestation verify do tarball, drizzle-kit migrate na URL
+#   direta com a checagem de extensões, scripts/vercel-env-sync.ts, scripts/vercel-firewall.ts,
+#   upload dos source maps, vercel deploy --prebuilt --prod --skip-domain --archive=tgz, smoke da
+#   URL única, vercel promote, smoke do domínio canônico; falha depois do promote → vercel rollback.
+# - phase redeploy (rotação de Sensitive): só o deploy, com `vercel redeploy` da deployment de
+#   produção atual (o mesmo output prebuilt atestado), env sync, smoke, promote e rollback.
+#
+# Na produção, só dois jobs usam o environment production (build e deploy), e cada um pede a
+# aprovação do revisor; o build não recebe nenhum segredo. A F9 troca o gatilho de produção pelo
+# release.yml completo (release-gate, release imutável com o tarball e o SBOM, promote-corpus).
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      phase:
+        description: deploy (build, migrate e deploy do ref) ou redeploy (só a deployment de produção atual, para rotação de Sensitive)
+        type: choice
+        options: [deploy, redeploy]
+        default: deploy
+
+permissions: {}
+
+concurrency:
+  # Um deploy por ambiente, nunca cancelado no meio.
+  group: deploy-${{ startsWith(github.ref, 'refs/tags/v') && 'production' || 'staging' }}
+  cancel-in-progress: false
+
+env:
+  TURBO_TELEMETRY_DISABLED: "1"
+  NEXT_TELEMETRY_DISABLED: "1"
+  VERCEL_TELEMETRY_DISABLED: "1"
+
+jobs:
+  plan:
+    name: plan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read # staging-verified lê os runs do deploy.yml
+    outputs:
+      env: ${{ steps.plan.outputs.env }}
+      phase: ${{ steps.plan.outputs.phase }}
+      origin: ${{ steps.plan.outputs.origin }}
+      version: ${{ steps.plan.outputs.version }}
+      release: ${{ steps.plan.outputs.release }}
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          egress-policy: block
+          allowed-endpoints: >
+            github.com:443
+            api.github.com:443
+            codeload.github.com:443
+            results-receiver.actions.githubusercontent.com:443
+            *.actions.githubusercontent.com:443
+
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Ambiente, versão e release
+        id: plan
+        env:
+          REF: ${{ github.ref }}
+          SHA: ${{ github.sha }}
+          PHASE: ${{ inputs.phase || 'deploy' }}
+        run: |
+          case "$PHASE" in deploy | redeploy) ;; *)
+            echo "::error title=deploy::phase '${PHASE}' desconhecida (deploy ou redeploy)."
+            exit 1 ;;
+          esac
+          short="${SHA:0:7}"
+          case "$REF" in
+            refs/heads/main)
+              env=staging
+              origin=https://tekoia-staging.vercel.app
+              # Staging: um deploy por commit do tronco; a versão leva o SHA curto e o release do
+              # PostHog é o SHA curto (errorTrackingRelease da API).
+              version="$(jq -r .version package.json)-${short}"
+              release="$short"
+              ;;
+            refs/tags/v*)
+              env=production
+              origin=https://tekoia.vercel.app
+              version="${REF#refs/tags/v}"
+              if [[ ! "$version" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$ ]]; then
+                echo "::error title=deploy::a tag ${REF#refs/tags/} não é SemVer (vX.Y.Z ou vX.Y.Z-pre)."
+                exit 1
+              fi
+              release="$version"
+              ;;
+            *)
+              echo "::error title=deploy::ref ${REF} não implanta: só main (staging) e tags v* (produção)."
+              exit 1 ;;
+          esac
+          {
+            echo "env=${env}"
+            echo "phase=${PHASE}"
+            echo "origin=${origin}"
+            echo "version=${version}"
+            echo "release=${release}"
+          } >>"$GITHUB_OUTPUT"
+          {
+            echo "## Deploy ${env} (${PHASE})"
+            echo
+            echo "- commit: \`${SHA}\`"
+            echo "- versão: \`${version}\`, release do PostHog \`teko@${release}\`"
+            echo "- domínio: ${origin}"
+          } >>"$GITHUB_STEP_SUMMARY"
+
+      - name: Staging verde para o mesmo SHA (só produção)
+        if: steps.plan.outputs.env == 'production' && steps.plan.outputs.phase == 'deploy'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+        run: bash .github/scripts/staging-verified.sh "$SHA"
+
+  audit:
+    name: audit
+    needs: plan
+    if: needs.plan.outputs.phase == 'deploy'
+    permissions:
+      contents: read
+    uses: ./.github/workflows/audit.yml
+
+  build:
+    name: build
+    needs: [plan, audit]
+    if: needs.plan.outputs.phase == 'deploy'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    # Só as variáveis NEXT_PUBLIC_* do environment (públicas por definição); nenhum segredo.
+    environment:
+      name: ${{ needs.plan.outputs.env }}
+      deployment: false
+    permissions:
+      contents: read
+      id-token: write # assinatura Sigstore das atestações
+      attestations: write # grava as atestações do tarball no repositório
+    outputs:
+      sha256: ${{ steps.pack.outputs.sha256 }}
+    env:
+      DEPLOY_ENV: ${{ needs.plan.outputs.env }}
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          # GitHub (checkout, setup, artifacts, gitleaks, posthog-cli, syft e grype), npm, Node, as
+          # fontes do next/font, o banco de vulnerabilidades do Grype e o Sigstore das atestações.
+          egress-policy: block
+          allowed-endpoints: >
+            github.com:443
+            api.github.com:443
+            codeload.github.com:443
+            objects.githubusercontent.com:443
+            raw.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+            results-receiver.actions.githubusercontent.com:443
+            *.actions.githubusercontent.com:443
+            *.blob.core.windows.net:443
+            registry.npmjs.org:443
+            nodejs.org:443
+            fonts.googleapis.com:443
+            fonts.gstatic.com:443
+            grype.anchore.io:443
+            fulcio.sigstore.dev:443
+            rekor.sigstore.dev:443
+            tuf-repo-cdn.sigstore.dev:443
+
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      - name: Conferir as variáveis públicas do web
+        env:
+          NEXT_PUBLIC_POSTHOG_ERRORS_KEY: ${{ vars.NEXT_PUBLIC_POSTHOG_ERRORS_KEY }}
+          NEXT_PUBLIC_POSTHOG_KEY: ${{ vars.NEXT_PUBLIC_POSTHOG_KEY }}
+        run: |
+          missing=()
+          [[ -n "$NEXT_PUBLIC_POSTHOG_ERRORS_KEY" ]] || missing+=("NEXT_PUBLIC_POSTHOG_ERRORS_KEY")
+          if [[ "$DEPLOY_ENV" == production && -z "$NEXT_PUBLIC_POSTHOG_KEY" ]]; then
+            missing+=("NEXT_PUBLIC_POSTHOG_KEY")
+          fi
+          if ((${#missing[@]} > 0)); then
+            echo "::error title=deploy::Faltam as variáveis ${missing[*]} no environment '${DEPLOY_ENV}'."
+            exit 1
+          fi
+
+      - name: Build da API (tsdown)
+        run: pnpm --filter @teko/api build
+
+      - name: Build do web (export estático)
+        env:
+          NEXT_PUBLIC_POSTHOG_ERRORS_KEY: ${{ vars.NEXT_PUBLIC_POSTHOG_ERRORS_KEY }}
+          # Analytics de produto só na produção (o staging não mede uso).
+          NEXT_PUBLIC_POSTHOG_KEY: ${{ needs.plan.outputs.env == 'production' && vars.NEXT_PUBLIC_POSTHOG_KEY || '' }}
+          NEXT_PUBLIC_TEKO_RELEASE: teko@${{ needs.plan.outputs.release }}
+        run: pnpm --filter @teko/web build
+
+      - name: Chunk ids do PostHog (inject, offline)
+        uses: ./.github/actions/posthog-sourcemaps
+        with:
+          mode: inject
+
+      - name: Pós-build do web de novo (orçamento sobre os chunks injetados)
+        working-directory: apps/web
+        env:
+          NEXT_PUBLIC_POSTHOG_ERRORS_KEY: ${{ vars.NEXT_PUBLIC_POSTHOG_ERRORS_KEY }}
+          NEXT_PUBLIC_POSTHOG_KEY: ${{ needs.plan.outputs.env == 'production' && vars.NEXT_PUBLIC_POSTHOG_KEY || '' }}
+          NEXT_PUBLIC_TEKO_RELEASE: teko@${{ needs.plan.outputs.release }}
+        run: node scripts/postbuild.ts
+
+      - name: Dependências de produção da API (pnpm deploy, linker hoisted)
+        run: >-
+          pnpm --filter @teko/api --prod deploy --ignore-scripts
+          --config.node-linker=hoisted dist/vercel/api-prod
+
+      - name: Montar o .vercel/output (Build Output API v3, com GIT_SHA e APP_VERSION)
+        env:
+          GIT_SHA: ${{ github.sha }}
+          APP_VERSION: ${{ needs.plan.outputs.version }}
+        run: node scripts/build-vercel-output.ts
+
+      - name: Instalar gitleaks (binário verificado por SHA-256)
+        env:
+          GITLEAKS_VERSION: 8.30.1
+          GITLEAKS_SHA256: 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb
+        run: |
+          archive="gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          curl -fsSL --retry 3 -o "${RUNNER_TEMP}/${archive}" \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/${archive}"
+          echo "${GITLEAKS_SHA256}  ${RUNNER_TEMP}/${archive}" | sha256sum --check --strict -
+          bin="${RUNNER_TEMP}/gitleaks-bin"
+          install -d -m 755 "$bin"
+          tar -xzf "${RUNNER_TEMP}/${archive}" -C "$bin" gitleaks
+          chmod 755 "${bin}/gitleaks"
+          echo "$bin" >>"$GITHUB_PATH"
+
+      - name: Empacotar o .vercel/output (tarball determinístico, gitleaks e sha256)
+        id: pack
+        run: |
+          SOURCE_DATE_EPOCH="$(git log -1 --format=%ct)"
+          export SOURCE_DATE_EPOCH
+          node scripts/pack-vercel-output.ts --env "$DEPLOY_ENV"
+
+      - name: SBOM do .vercel/output (syft, SPDX)
+        uses: anchore/sbom-action@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
+        with:
+          path: .vercel/output
+          format: spdx-json
+          output-file: dist/vercel/${{ needs.plan.outputs.env }}/sbom.spdx.json
+          upload-artifact: false
+          upload-release-assets: false
+          dependency-snapshot: false
+
+      - name: Vulnerabilidades no SBOM (Grype, high ou acima com correção)
+        uses: anchore/scan-action@27805bf3b4e84b4a5c980df22ed233c00390a439 # v7.4.2
+        with:
+          sbom: dist/vercel/${{ needs.plan.outputs.env }}/sbom.spdx.json
+          fail-build: true
+          severity-cutoff: high
+          only-fixed: true
+          output-format: table
+
+      - name: Atestar o tarball (provenance)
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: ${{ steps.pack.outputs.tarball }}
+
+      - name: Atestar o SBOM do tarball
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: ${{ steps.pack.outputs.tarball }}
+          sbom-path: dist/vercel/${{ needs.plan.outputs.env }}/sbom.spdx.json
+
+      - name: Resumo do build
+        env:
+          SHA256: ${{ steps.pack.outputs.sha256 }}
+          BYTES: ${{ steps.pack.outputs.bytes }}
+        run: |
+          {
+            echo "### build"
+            echo
+            echo "- tarball: \`dist/vercel/${DEPLOY_ENV}/output.tgz\` (${BYTES} bytes), sha256 \`${SHA256}\`"
+            echo "- Function: \`$(jq -c '{runtime, maxDuration, environment}' .vercel/output/functions/index.func/.vc-config.json)\`"
+          } >>"$GITHUB_STEP_SUMMARY"
+
+      - name: Artifact do tarball atestado (tarball, sha256 e SBOM)
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: vercel-output-${{ needs.plan.outputs.env }}
+          path: |
+            dist/vercel/${{ needs.plan.outputs.env }}/output.tgz
+            dist/vercel/${{ needs.plan.outputs.env }}/output.tgz.sha256
+            dist/vercel/${{ needs.plan.outputs.env }}/sbom.spdx.json
+          if-no-files-found: error
+          retention-days: ${{ needs.plan.outputs.env == 'production' && 90 || 30 }}
+
+      - name: Artifact dos source maps (upload ao PostHog no job deploy)
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: sourcemaps-${{ needs.plan.outputs.env }}
+          path: |
+            apps/web/out/_next/static
+            apps/api/dist
+          if-no-files-found: error
+          retention-days: 1
+
+  neon-rehearsal:
+    name: neon-rehearsal
+    needs: plan
+    if: needs.plan.outputs.env == 'production' && needs.plan.outputs.phase == 'deploy'
+    permissions:
+      contents: read
+    uses: ./.github/workflows/neon-rehearsal.yml
+
+  deploy:
+    name: deploy
+    needs: [plan, build, neon-rehearsal]
+    if: >-
+      ${{ !cancelled() && needs.plan.result == 'success'
+      && (needs.build.result == 'success' || (needs.plan.outputs.phase == 'redeploy' && needs.build.result == 'skipped'))
+      && (needs.neon-rehearsal.result == 'success' || needs.neon-rehearsal.result == 'skipped') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    environment:
+      name: ${{ needs.plan.outputs.env }}
+      url: ${{ needs.plan.outputs.origin }}
+    permissions:
+      contents: read
+      attestations: read # gh attestation verify
+    env:
+      DEPLOY_ENV: ${{ needs.plan.outputs.env }}
+      PHASE: ${{ needs.plan.outputs.phase }}
+      ORIGIN: ${{ needs.plan.outputs.origin }}
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          # GitHub (checkout, setup, artifacts e atestações), npm e Node, o TUF do Sigstore (gh
+          # attestation verify), a API e o CLI da Vercel, as URLs *.vercel.app (smoke), o Neon (só
+          # a porta do Postgres, para o migrate) e o app do PostHog na UE (source maps).
+          egress-policy: block
+          allowed-endpoints: >
+            github.com:443
+            api.github.com:443
+            codeload.github.com:443
+            objects.githubusercontent.com:443
+            raw.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+            results-receiver.actions.githubusercontent.com:443
+            *.actions.githubusercontent.com:443
+            *.blob.core.windows.net:443
+            registry.npmjs.org:443
+            nodejs.org:443
+            tuf-repo-cdn.sigstore.dev:443
+            api.vercel.com:443
+            vercel.com:443
+            *.vercel.app:443
+            *.neon.tech:5432
+            eu.posthog.com:443
+
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Conferir segredos e variáveis do environment
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+          MIGRATE_URL: ${{ needs.plan.outputs.env == 'production' && secrets.NEON_PROD_MIGRATE_URL || secrets.NEON_STAGING_MIGRATE_URL }}
+          POSTHOG_CLI_API_KEY: ${{ secrets.POSTHOG_CLI_API_KEY }}
+          POSTHOG_CLI_PROJECT_ID: ${{ vars.POSTHOG_CLI_PROJECT_ID }}
+        run: |
+          missing=()
+          [[ -n "$VERCEL_TOKEN" ]] || missing+=("segredo VERCEL_TOKEN")
+          [[ -n "$VERCEL_AUTOMATION_BYPASS_SECRET" ]] || missing+=("segredo VERCEL_AUTOMATION_BYPASS_SECRET")
+          [[ -n "$VERCEL_ORG_ID" ]] || missing+=("variável VERCEL_ORG_ID")
+          [[ -n "$VERCEL_PROJECT_ID" ]] || missing+=("variável VERCEL_PROJECT_ID")
+          if [[ "$PHASE" == deploy ]]; then
+            [[ -n "$MIGRATE_URL" ]] || missing+=("segredo NEON_*_MIGRATE_URL")
+            [[ -n "$POSTHOG_CLI_API_KEY" ]] || missing+=("segredo POSTHOG_CLI_API_KEY")
+            [[ -n "$POSTHOG_CLI_PROJECT_ID" ]] || missing+=("variável POSTHOG_CLI_PROJECT_ID")
+          fi
+          if ((${#missing[@]} > 0)); then
+            printf -v list '%s, ' "${missing[@]}"
+            echo "::error title=deploy::Faltam no environment '${DEPLOY_ENV}': ${list%, }. Nada foi publicado."
+            exit 1
+          fi
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      - name: Instalar o Vercel CLI (tools/vercel-cli, lockfile congelado)
+        run: |
+          pnpm --dir tools/vercel-cli install --frozen-lockfile
+          echo "${GITHUB_WORKSPACE}/tools/vercel-cli/node_modules/.bin" >>"$GITHUB_PATH"
+
+      # --- phase deploy: o tarball atestado do build ---------------------------------------------
+
+      - name: Baixar o tarball atestado
+        if: env.PHASE == 'deploy'
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: vercel-output-${{ needs.plan.outputs.env }}
+          path: ${{ runner.temp }}/artifact
+
+      - name: Conferir o sha256 e a atestação do tarball (gh attestation verify)
+        id: tarball
+        if: env.PHASE == 'deploy'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+          EXPECTED_SHA256: ${{ needs.build.outputs.sha256 }}
+        run: |
+          dir="${RUNNER_TEMP}/artifact"
+          tarball="${dir}/output.tgz"
+          (cd "$dir" && sha256sum --check --strict output.tgz.sha256)
+          actual="$(sha256sum "$tarball" | cut -d' ' -f1)"
+          if [[ "$actual" != "$EXPECTED_SHA256" ]]; then
+            echo "::error title=deploy::sha256 do tarball (${actual}) diferente do build (${EXPECTED_SHA256})."
+            exit 1
+          fi
+          signer="${REPO}/.github/workflows/deploy.yml"
+          gh attestation verify "$tarball" --repo "$REPO" --signer-workflow "$signer" --source-digest "$SHA"
+          gh attestation verify "$tarball" --repo "$REPO" --signer-workflow "$signer" --source-digest "$SHA" \
+            --predicate-type https://spdx.dev/Document/v2.3
+          {
+            echo "tarball=${tarball}"
+            echo "sha256=${actual}"
+          } >>"$GITHUB_OUTPUT"
+          echo "- atestações (provenance e SBOM) verificadas: sha256 \`${actual}\`" >>"$GITHUB_STEP_SUMMARY"
+
+      - name: Migrações (drizzle-kit migrate na URL direta do owner)
+        if: env.PHASE == 'deploy'
+        env:
+          DATABASE_MIGRATE_URL: ${{ needs.plan.outputs.env == 'production' && secrets.NEON_PROD_MIGRATE_URL || secrets.NEON_STAGING_MIGRATE_URL }}
+        run: |
+          pnpm --filter @teko/api exec drizzle-kit migrate
+          bash .github/scripts/neon-extensions-check.sh
+          echo "- migrações aplicadas; extensões e pg_settings conferidos" >>"$GITHUB_STEP_SUMMARY"
+
+      # --- phase redeploy: a deployment de produção atual -----------------------------------------
+
+      - name: Deployment de produção atual (redeploy)
+        id: current
+        if: env.PHASE == 'redeploy'
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
+        run: |
+          vercel api "/v9/projects/${VERCEL_PROJECT_ID}" >"${RUNNER_TEMP}/project.json"
+          id="$(jq -r '.targets.production.id // empty' "${RUNNER_TEMP}/project.json")"
+          if [[ ! "$id" =~ ^dpl_[A-Za-z0-9]+$ ]]; then
+            echo "::error title=deploy::o projeto não tem deployment de produção para o redeploy."
+            exit 1
+          fi
+          vercel api "/v13/deployments/${id}" >"${RUNNER_TEMP}/deployment.json"
+          url="$(jq -r '.url // empty' "${RUNNER_TEMP}/deployment.json")"
+          sha="$(jq -r '.meta.gitSha // empty' "${RUNNER_TEMP}/deployment.json")"
+          if [[ ! "$url" =~ ^[a-z0-9.-]+\.vercel\.app$ || ! "$sha" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error title=deploy::a deployment ${id} não tem URL ou meta.gitSha válidos."
+            exit 1
+          fi
+          {
+            echo "url=https://${url}"
+            echo "sha=${sha}"
+          } >>"$GITHUB_OUTPUT"
+          echo "- redeploy de ${id} (\`${sha}\`)" >>"$GITHUB_STEP_SUMMARY"
+
+      # --- os dois: configuração do projeto ------------------------------------------------------
+
+      - name: Env vars do projeto (scripts/vercel-env-sync.ts)
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
+        run: node scripts/vercel-env-sync.ts --env "$DEPLOY_ENV"
+
+      - name: WAF do projeto (scripts/vercel-firewall.ts, mantém um lockdown ativo)
+        if: env.PHASE == 'deploy'
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
+        run: node scripts/vercel-firewall.ts --env "$DEPLOY_ENV"
+
+      - name: Baixar os source maps
+        if: env.PHASE == 'deploy'
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: sourcemaps-${{ needs.plan.outputs.env }}
+          path: apps
+
+      - name: Enviar os source maps ao PostHog (teko@<release>)
+        if: env.PHASE == 'deploy'
+        uses: ./.github/actions/posthog-sourcemaps
+        with:
+          mode: upload
+          release-version: ${{ needs.plan.outputs.release }}
+          api-key: ${{ secrets.POSTHOG_CLI_API_KEY }}
+          project-id: ${{ vars.POSTHOG_CLI_PROJECT_ID }}
+
+      # --- publicação ----------------------------------------------------------------------------
+
+      - name: vercel deploy --prebuilt --prod --skip-domain
+        id: deploy
+        if: env.PHASE == 'deploy'
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
+          TARBALL: ${{ steps.tarball.outputs.tarball }}
+          ARTIFACT_SHA256: ${{ steps.tarball.outputs.sha256 }}
+          GIT_SHA: ${{ github.sha }}
+        run: |
+          # O output é exatamente o do tarball atestado e verificado acima.
+          rm -rf .vercel
+          mkdir -p .vercel
+          tar -xzf "$TARBALL" -C .vercel
+          url="$(vercel deploy --prebuilt --prod --skip-domain --archive=tgz \
+            --meta "artifactSha256=${ARTIFACT_SHA256}" --meta "gitSha=${GIT_SHA}" \
+            --token "${VERCEL_TOKEN}")"
+          if [[ ! "$url" =~ ^https://[a-z0-9.-]+\.vercel\.app$ ]]; then
+            echo "::error title=deploy::Saída inesperada do vercel deploy: ${url}"
+            exit 1
+          fi
+          {
+            echo "url=${url}"
+            echo "sha=${GIT_SHA}"
+          } >>"$GITHUB_OUTPUT"
+          echo "- deployment: ${url} (meta artifactSha256=${ARTIFACT_SHA256}, gitSha=${GIT_SHA})" >>"$GITHUB_STEP_SUMMARY"
+
+      - name: vercel redeploy (rotação de Sensitive)
+        id: redeploy
+        if: env.PHASE == 'redeploy'
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
+          CURRENT_URL: ${{ steps.current.outputs.url }}
+          CURRENT_SHA: ${{ steps.current.outputs.sha }}
+        run: |
+          url="$(vercel redeploy "$CURRENT_URL" --token "${VERCEL_TOKEN}")"
+          if [[ ! "$url" =~ ^https://[a-z0-9.-]+\.vercel\.app$ ]]; then
+            echo "::error title=deploy::Saída inesperada do vercel redeploy: ${url}"
+            exit 1
+          fi
+          {
+            echo "url=${url}"
+            echo "sha=${CURRENT_SHA}"
+          } >>"$GITHUB_OUTPUT"
+          echo "- redeploy: ${url}" >>"$GITHUB_STEP_SUMMARY"
+
+      - name: Smoke da URL única (protegida, com o bypass de automação)
+        id: smoke-deployment
+        env:
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+          URL: ${{ steps.deploy.outputs.url || steps.redeploy.outputs.url }}
+          EXPECTED_SHA: ${{ steps.deploy.outputs.sha || steps.redeploy.outputs.sha }}
+        run: |
+          bash .github/scripts/deploy-smoke.sh "$DEPLOY_ENV" deployment "$URL" "$EXPECTED_SHA" \
+            "${RUNNER_TEMP}/smoke-deployment.json"
+
+      - name: vercel promote
+        id: promote
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
+          URL: ${{ steps.deploy.outputs.url || steps.redeploy.outputs.url }}
+        run: |
+          vercel promote "$URL" --timeout=5m --token "${VERCEL_TOKEN}"
+          echo "- promovida: ${URL} → ${ORIGIN}" >>"$GITHUB_STEP_SUMMARY"
+
+      - name: Smoke do domínio canônico
+        env:
+          EXPECTED_SHA: ${{ steps.deploy.outputs.sha || steps.redeploy.outputs.sha }}
+        run: |
+          bash .github/scripts/deploy-smoke.sh "$DEPLOY_ENV" canonical "$ORIGIN" "$EXPECTED_SHA" \
+            "${RUNNER_TEMP}/smoke-canonical.json"
+          echo "- smoke verde em ${ORIGIN}" >>"$GITHUB_STEP_SUMMARY"
+
+      # System test (mudança add-smoke-tests, system-test.yml): entra aqui, só no staging, depois do
+      # promote e do smoke canônico (login por passkey, 1 pergunta, cache hit, recusa e locale).
+      # Falha dele também cai no rollback abaixo.
+
+      - name: Rollback (falha depois do promote)
+        if: failure() && steps.promote.outcome == 'success'
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
+        run: |
+          echo "::error title=deploy::Falha depois do promote: vercel rollback para a deployment de produção anterior."
+          vercel rollback --timeout=5m --token "${VERCEL_TOKEN}"
+          {
+            echo
+            echo "### ROLLBACK"
+            echo
+            echo "- Falha depois do promote: o domínio ${ORIGIN} voltou à deployment anterior (vercel rollback)."
+            echo "- A atribuição automática do domínio ficou desligada até o próximo \`vercel promote\` (o próximo deploy promove explicitamente)."
+            echo "- Env vars e migrações não voltam (docs/runbooks/rollback.md)."
+          } >>"$GITHUB_STEP_SUMMARY"
+
+      - name: Diagnóstico da deployment (só em falha)
+        if: failure() && (steps.deploy.outputs.url != '' || steps.redeploy.outputs.url != '')
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
+          URL: ${{ steps.deploy.outputs.url || steps.redeploy.outputs.url }}
+        # Só os metadados (região, Functions, estado); os logs de runtime podem ter dados de uso e
+        # ficam no dashboard.
+        run: vercel inspect "$URL" --token "${VERCEL_TOKEN}" || echo "::warning::vercel inspect falhou"

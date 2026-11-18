@@ -14,7 +14,7 @@ direto para os GitHub Environments. Nenhuma senha passa por arquivo, terminal, c
 
 O bloco de grants da migração só age sobre roles que já existem. Em cada projeto Neon
 (`teko-staging`, `teko-prod`), **crie os roles antes da primeira migração** (o primeiro
-`drizzle-kit migrate` é do `deploy-api.yml`, na F7). Se um role nascer depois, a migração não o
+`drizzle-kit migrate` é do `deploy.yml`, na F7). Se um role nascer depois, a migração não o
 configura: rode de novo o bloco `DO $$ ... $$` da migração `*_constraints-grants` como owner (ele é
 idempotente) ou crie uma migração nova com o mesmo bloco.
 
