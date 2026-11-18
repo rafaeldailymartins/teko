@@ -278,3 +278,20 @@ for (const locale of ['en', 'pt-BR'] as const) {
     })
   }
 }
+
+// A página de aviso do lockdown fica fora de locale (os dois idiomas lado a lado): só o tema muda.
+for (const theme of THEMES) {
+  test.describe(`axe aviso do lockdown ${theme}`, () => {
+    test.use({ colorScheme: theme })
+
+    test('aviso', async ({ page }, testInfo) => {
+      await page.addInitScript((value) => {
+        localStorage.setItem('teko-theme', value)
+      }, theme)
+      await page.goto('/aviso/')
+      await expect(page.locator('html')).toHaveAttribute('data-theme', theme)
+      await settled(page)
+      await expectNoViolations(page, testInfo)
+    })
+  })
+}

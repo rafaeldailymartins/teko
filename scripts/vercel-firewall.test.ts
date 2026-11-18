@@ -7,6 +7,7 @@ import { VERCEL_PROJECTS } from './lib/vercel-api.ts'
 import {
   canonicalRule,
   isLockdown,
+  LOCKDOWN_LOCATION,
   LOCKDOWN_RULE,
   type ProjectRules,
   parseActiveConfig,
@@ -57,33 +58,72 @@ describe('firewall-rules.json', () => {
     })
   }
 
-  it('o lockdown só deixa passar /healthz, /api/healthz, a página de aviso e /_next/static/*', () => {
-    const condition = (
-      wanted().lockdown['conditionGroup'] as { conditions: { value: string; neg: boolean }[] }[]
-    )[0]?.conditions[0]
-    assert.ok(condition?.neg)
-    const allowed = new RegExp(condition.value)
-    for (const path of [
-      '/healthz',
-      '/api/healthz',
-      '/aviso/',
-      '/pt-BR/aviso/',
-      '/en/aviso/index.txt',
-      '/_next/static/chunks/a.js',
-      '/favicon.ico',
-    ]) {
-      assert.ok(allowed.test(path), path)
+  for (const project of Object.values(VERCEL_PROJECTS)) {
+    it(`${project.name}: o lockdown redireciona (307) para /aviso/ tudo exceto /healthz, /api/healthz, o aviso e o estático dele`, () => {
+      const lockdown = parseProjectRules(rawRules(), project.name).lockdown
+      assert.deepEqual(lockdown['action'], {
+        mitigate: {
+          action: 'redirect',
+          rateLimit: null,
+          redirect: { location: LOCKDOWN_LOCATION, permanent: false },
+          actionDuration: null,
+        },
+      })
+      const conditions = (
+        lockdown['conditionGroup'] as { conditions: { value: string; neg: boolean }[] }[]
+      ).flatMap((group) => group.conditions)
+      const condition = conditions[0]
+      assert.equal(conditions.length, 1)
+      assert.ok(condition?.neg)
+      const allowed = new RegExp(condition.value)
+      // O destino do redirect fica de fora da regra: sem isso, o redirect entraria em laço.
+      assert.ok(allowed.test(LOCKDOWN_LOCATION))
+      for (const path of [
+        '/healthz',
+        '/api/healthz',
+        '/aviso',
+        '/aviso/',
+        '/aviso/index.txt',
+        '/_next/static/chunks/a.js',
+        '/_next/static/media/geist.woff2',
+        '/favicon.ico',
+      ]) {
+        assert.ok(allowed.test(path), path)
+      }
+      for (const path of [
+        '/',
+        '/pt-BR/',
+        '/pt-BR/aviso/',
+        '/en/aviso/',
+        '/api/v1/coverage',
+        '/api/v1/questions',
+        '/api/auth/session',
+        '/healthz/x',
+        '/avisos',
+        '/icon.svg',
+      ]) {
+        assert.ok(!allowed.test(path), path)
+      }
+    })
+  }
+
+  it('recusa lockdown que nega em vez de redirecionar, ou com redirect permanente', () => {
+    const raw = rawRules() as {
+      projects: Record<string, { lockdown: { action: { mitigate: Record<string, unknown> } } }>
     }
-    for (const path of [
-      '/',
-      '/pt-BR/',
-      '/api/v1/questions',
-      '/api/auth/session',
-      '/healthz/x',
-      '/avisos',
-    ]) {
-      assert.ok(!allowed.test(path), path)
+    const deny = structuredClone(raw)
+    const denyTarget = deny.projects[STAGING.name]
+    assert.ok(denyTarget)
+    denyTarget.lockdown.action.mitigate = { action: 'deny', redirect: null }
+    assert.throws(() => parseProjectRules(deny, STAGING.name), /redirecionar para \/aviso\//)
+    const permanent = structuredClone(raw)
+    const permanentTarget = permanent.projects[STAGING.name]
+    assert.ok(permanentTarget)
+    permanentTarget.lockdown.action.mitigate = {
+      action: 'redirect',
+      redirect: { location: LOCKDOWN_LOCATION, permanent: true },
     }
+    assert.throws(() => parseProjectRules(permanent, STAGING.name), /permanent: false/)
   })
 
   it('recusa regra com challenge e lockdown de outra regra', () => {
@@ -164,6 +204,39 @@ describe('planFirewall', () => {
     assert.deepEqual(
       plan.actions.map((action) => action.value.name),
       ['rate-limit-stream'],
+    )
+  })
+
+  it('--lockdown on sobre um lockdown antigo (deny) grava o redirect: a comparação enxerga o campo redirect', () => {
+    const rules = wanted()
+    const current = inSync(rules)
+    const old = stored(rules.lockdown, 'rule_0')
+    old['action'] = {
+      mitigate: { action: 'deny', rateLimit: null, redirect: null, actionDuration: null },
+    }
+    current[0] = old
+    const plan = planFirewall({ firewallEnabled: true, rules: current }, rules, 'on')
+    assert.deepEqual(
+      plan.actions.map((action) => [action.action, action.id]),
+      [['rules.update', 'rule_0']],
+    )
+    assert.equal(plan.actions[0]?.value, rules.lockdown)
+    const otherTarget = stored(rules.lockdown, 'rule_0')
+    otherTarget['action'] = {
+      mitigate: {
+        action: 'redirect',
+        redirect: { location: '/outro/', permanent: false },
+      },
+    }
+    current[0] = otherTarget
+    assert.equal(
+      planFirewall({ firewallEnabled: true, rules: current }, rules, 'on').actions.length,
+      1,
+    )
+    current[0] = stored(rules.lockdown, 'rule_0')
+    assert.deepEqual(
+      planFirewall({ firewallEnabled: true, rules: current }, rules, 'on').actions,
+      [],
     )
   })
 
@@ -273,6 +346,26 @@ describe('run', () => {
     assert.equal(result.code, 0)
     assert.deepEqual(fake.patches, [])
     assert.equal(result.lockdown, 'on')
+  })
+
+  it('lockdown sem o redirect temporário no JSON: falha antes de chamar a API', async () => {
+    const raw = rawRules() as {
+      projects: Record<string, { lockdown: { action: { mitigate: Record<string, unknown> } } }>
+    }
+    const target = raw.projects[STAGING.name]
+    assert.ok(target)
+    target.lockdown.action.mitigate = { action: 'deny', redirect: null }
+    let calls = 0
+    const doFetch = (async () => {
+      calls += 1
+      return new Response('{}')
+    }) as typeof fetch
+    const result = await run(
+      { env: ENV, fetch: doFetch, log: () => undefined, readRules: () => raw },
+      { env: 'staging', lockdown: 'on', dryRun: false },
+    )
+    assert.equal(result.code, 1)
+    assert.equal(calls, 0)
   })
 
   it('firewall desligado no projeto: falha sem escrever', async () => {

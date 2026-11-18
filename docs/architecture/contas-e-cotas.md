@@ -68,8 +68,10 @@ stream em média, cerca de 30k chamadas curtas e 150k requests de estático por 
 - 50% e 75%: alerta por e-mail. **85%:** kill switch de geração (`LLM_KILL_SWITCH=true` nos dois
   projetos + redeploy da deployment de produção atual; fica fora do `env.*.json` para um deploy
   seguinte não o desligar). **95%:** além disso, `scripts/vercel-firewall.ts --lockdown on`: a regra
-  1 do WAF passa a negar tudo exceto `/healthz` e o estático da página de aviso. O job nunca desliga
-  nada sozinho e não repete o redeploy se o kill switch já estiver aplicado.
+  1 do WAF passa a redirecionar (307, na borda) para a página de aviso `/aviso/` tudo exceto
+  `/healthz`, `/api/healthz`, a própria página e o estático dela; a página, bilíngue, diz que o Tekó
+  está pausado até a cota se renovar. O job nunca desliga nada sozinho e não repete o redeploy se o
+  kill switch já estiver aplicado.
 - Exercício e volta pelo `workflow_dispatch` do `ops.yml`: `job: vercel-usage`, `kill_switch`
   (`0.85`, `0.95` ou `release`), `kill_switch_target` (`staging` ou `production`) e `dry_run`
   (runbook [budget-kill-switch.md](../runbooks/budget-kill-switch.md)).

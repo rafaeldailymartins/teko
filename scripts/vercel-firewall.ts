@@ -7,7 +7,8 @@
  * `neg: false`), e só escreve o que difere. Regra do projeto fora do JSON fica como está (aviso).
  *
  * **Lockdown.** O JSON traz, por projeto, o payload `lockdown`: a regra 1 (`deny-unknown-api`)
- * passa a negar tudo exceto `/healthz`, `/api/healthz`, a página de aviso e `/_next/static/*`.
+ * passa a redirecionar (307, `permanent: false`) para a página de aviso `/aviso/` tudo exceto
+ * `/healthz`, `/api/healthz`, a própria página, `/_next/static/*` e `/favicon.ico`.
  *
  * - `--lockdown on`: grava o payload de lockdown no lugar da regra 1 (o guarda de uso, a 95% de
  *   uma cota, ou o mantenedor pelo runbook);
@@ -51,6 +52,8 @@ const REPO_ROOT = resolve(import.meta.dirname, '..')
 export const LOCKDOWN_RULE = 'deny-unknown-api'
 /** Prefixo da descrição do payload de lockdown (também reconhece um lockdown gravado à mão). */
 export const LOCKDOWN_PREFIX = 'LOCKDOWN'
+/** Destino do redirect do lockdown: a página de aviso do export do web (`apps/web/src/app/aviso`). */
+export const LOCKDOWN_LOCATION = '/aviso/'
 
 const USAGE = `uso: node scripts/vercel-firewall.ts --env ${DEPLOY_ENVS.join('|')} [--lockdown on|off] [--dry-run]`
 
@@ -80,6 +83,23 @@ function asRule(item: unknown, where: string): Rule {
   return item as Rule
 }
 
+/**
+ * O lockdown leva à página de aviso por redirect temporário (307): permanente, o navegador o
+ * guardaria e continuaria indo para o aviso depois do `--lockdown off`.
+ */
+function redirectsToNotice(lockdown: Rule): boolean {
+  const action = lockdown['action']
+  const mitigate = isObject(action) ? action['mitigate'] : undefined
+  const redirect = isObject(mitigate) ? mitigate['redirect'] : undefined
+  return (
+    isObject(mitigate) &&
+    mitigate['action'] === 'redirect' &&
+    isObject(redirect) &&
+    redirect['location'] === LOCKDOWN_LOCATION &&
+    redirect['permanent'] === false
+  )
+}
+
 /** Valida e lê as regras de um projeto de `firewall-rules.json`. */
 export function parseProjectRules(raw: unknown, projectName: string): ProjectRules {
   const projects = isObject(raw) ? raw['projects'] : undefined
@@ -107,6 +127,11 @@ export function parseProjectRules(raw: unknown, projectName: string): ProjectRul
   if (!String(lockdown['description'] ?? '').startsWith(LOCKDOWN_PREFIX)) {
     throw new RulesFileError(
       `${projectName}: a descrição do lockdown precisa começar com ${LOCKDOWN_PREFIX}`,
+    )
+  }
+  if (!redirectsToNotice(lockdown)) {
+    throw new RulesFileError(
+      `${projectName}: o lockdown precisa redirecionar para ${LOCKDOWN_LOCATION} com permanent: false`,
     )
   }
   if (JSON.stringify(entry).includes('"challenge"')) {

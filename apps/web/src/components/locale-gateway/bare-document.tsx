@@ -10,8 +10,8 @@ interface BareDocumentProps {
 }
 
 /**
- * Documento mínimo das páginas fora de locale (entrada `/` e 404 global). O texto aparece nos
- * dois idiomas, cada trecho com o próprio `lang`; o documento usa o locale padrão. Fontes e tema
+ * Documento mínimo das páginas fora de locale (entrada `/`, 404 global e aviso do lockdown). O
+ * texto aparece nos dois idiomas, cada trecho com o próprio `lang`; o documento usa o locale padrão. Fontes e tema
  * seguem o layout de locale: as variáveis das fontes no `<html>` e o bootstrap de tema como
  * primeiro filho do `<body>`. Cada página traz o próprio `<main>`.
  */

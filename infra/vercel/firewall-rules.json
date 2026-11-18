@@ -11,9 +11,11 @@
     "os prefixos conhecidos (no staging, também /api/docs). Regra 2: o estático só aceita GET e HEAD.",
     "Regra 3: a única de rate limit do Hobby, no stream; as demais rotas usam o rate limit da aplicação.",
     "'lockdown': o payload que substitui a regra de mesmo nome (a 1) com `vercel-firewall.ts --lockdown",
-    "on` (guarda de uso a 95% de uma cota, ou o mantenedor): nega tudo exceto /healthz, /api/healthz, a",
-    "página de aviso (/aviso/ e /<locale>/aviso/) e /_next/static/*. O sync do deploy não desfaz um",
-    "lockdown ativo; só `--lockdown off` volta à regra normal."
+    "on` (guarda de uso a 95% de uma cota, ou o mantenedor): redireciona (307, `permanent: false`) para",
+    "a página de aviso /aviso/ tudo exceto /healthz, /api/healthz, a própria página (/aviso/*, inclusive",
+    "o index.txt do Next), /_next/static/* (CSS, fontes e JS dela) e /favicon.ico. O redirect sai na",
+    "borda, sem invocar a Function. O sync do deploy não desfaz um lockdown ativo; só `--lockdown off`",
+    "volta à regra normal."
   ],
   "projects": {
     "tekoia": {
@@ -117,7 +119,7 @@
       ],
       "lockdown": {
         "name": "deny-unknown-api",
-        "description": "LOCKDOWN (cota a 95%): nega tudo exceto /healthz, /api/healthz, a página de aviso e /_next/static/*. Sai com vercel-firewall.ts --lockdown off.",
+        "description": "LOCKDOWN (cota a 95%): redireciona (307) para /aviso/ tudo exceto /healthz, /api/healthz, a página de aviso, /_next/static/* e /favicon.ico. Sai com vercel-firewall.ts --lockdown off.",
         "active": true,
         "conditionGroup": [
           {
@@ -125,7 +127,7 @@
               {
                 "type": "path",
                 "op": "re",
-                "value": "^/(?:healthz|api/healthz|(?:pt-BR/|en/)?aviso(?:/.*)?|_next/static/.*|favicon\\.ico)$",
+                "value": "^/(?:healthz|api/healthz|aviso(?:/.*)?|_next/static/.*|favicon\\.ico)$",
                 "neg": true
               }
             ]
@@ -133,9 +135,12 @@
         ],
         "action": {
           "mitigate": {
-            "action": "deny",
+            "action": "redirect",
             "rateLimit": null,
-            "redirect": null,
+            "redirect": {
+              "location": "/aviso/",
+              "permanent": false
+            },
             "actionDuration": null
           }
         }
@@ -242,7 +247,7 @@
       ],
       "lockdown": {
         "name": "deny-unknown-api",
-        "description": "LOCKDOWN (cota a 95%): nega tudo exceto /healthz, /api/healthz, a página de aviso e /_next/static/*. Sai com vercel-firewall.ts --lockdown off.",
+        "description": "LOCKDOWN (cota a 95%): redireciona (307) para /aviso/ tudo exceto /healthz, /api/healthz, a página de aviso, /_next/static/* e /favicon.ico. Sai com vercel-firewall.ts --lockdown off.",
         "active": true,
         "conditionGroup": [
           {
@@ -250,7 +255,7 @@
               {
                 "type": "path",
                 "op": "re",
-                "value": "^/(?:healthz|api/healthz|(?:pt-BR/|en/)?aviso(?:/.*)?|_next/static/.*|favicon\\.ico)$",
+                "value": "^/(?:healthz|api/healthz|aviso(?:/.*)?|_next/static/.*|favicon\\.ico)$",
                 "neg": true
               }
             ]
@@ -258,9 +263,12 @@
         ],
         "action": {
           "mitigate": {
-            "action": "deny",
+            "action": "redirect",
             "rateLimit": null,
-            "redirect": null,
+            "redirect": {
+              "location": "/aviso/",
+              "permanent": false
+            },
             "actionDuration": null
           }
         }

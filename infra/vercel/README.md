@@ -127,11 +127,14 @@ sem nenhuma API key e nenhum cartão em Billing Information.
   pela API REST de firewall, comparando por nome e escrevendo só o que difere; o smoke confere o
   efeito (`GET /api/qualquer-coisa` → 403).
 - [x] **Lockdown** (payload `lockdown` do JSON): `node scripts/vercel-firewall.ts --env <ambiente>
-  --lockdown on|off [--dry-run]` troca a regra 1 por uma que nega tudo exceto `/healthz`,
-  `/api/healthz`, a página de aviso (`/aviso/`, `/<locale>/aviso/`) e `/_next/static/*`. Quem liga é
-  o guarda de uso (95% de uma cota) ou o mantenedor; o sync do deploy mantém um lockdown ativo, e só
-  `--lockdown off` volta ao normal. Com `GITHUB_OUTPUT`, o script grava `lockdown=on|off` e
-  `changes=<n>`.
+  --lockdown on|off [--dry-run]` troca a regra 1 por uma que redireciona (307, `permanent: false`)
+  para a página de aviso `/aviso/` tudo exceto `/healthz`, `/api/healthz`, a própria página
+  (`/aviso/*`), `/_next/static/*` e `/favicon.ico`. A página é do export do web
+  (`apps/web/src/app/aviso`), bilíngue e sem chamada à API, e o `build-vercel-output.ts` falha sem
+  ela; o script recusa um lockdown que negue, leve a outro destino ou use redirect permanente. Quem
+  liga é o guarda de uso (95% de uma cota) ou o mantenedor; o sync do deploy mantém um lockdown
+  ativo, e só `--lockdown off` volta ao normal. Com `GITHUB_OUTPUT`, o script grava
+  `lockdown=on|off` e `changes=<n>`.
 
 **Time e conta**
 
