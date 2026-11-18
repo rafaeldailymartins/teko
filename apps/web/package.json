@@ -12,6 +12,7 @@
     "test:unit": "vitest run --coverage",
     "type-coverage": "type-coverage --at-least 99 --strict --ignore-catch",
     "test:e2e": "playwright test",
+    "test:system": "playwright test --config playwright.system.config.ts",
     "api:generate": "pnpm --filter @teko/api openapi:export && openapi-ts",
     "brand:assets": "node scripts/brand-assets.ts"
   },

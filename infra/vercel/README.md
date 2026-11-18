@@ -111,9 +111,9 @@ sem nenhuma API key e nenhum cartão em Billing Information.
   os deployments antigos exigem login na Vercel.
 - [x] **Nunca "All Deployments"**: bloquearia o navegador no domínio de produção.
 - [x] **Protection Bypass for Automation:** um segredo por projeto, guardado no environment do
-  GitHub como `VERCEL_AUTOMATION_BYPASS_SECRET` e usado só pelo smoke (`vercel curl
-      --protection-bypass`) contra a URL única, antes do `promote`. O smoke nunca cria um bypass
-  novo.
+  GitHub como `VERCEL_AUTOMATION_BYPASS_SECRET` e usado só pelo smoke da URL única, antes do
+  `promote` (`scripts/smoke.ts --mode deployment`, header `x-vercel-protection-bypass`). O smoke
+  nunca cria um bypass novo e só manda o segredo para uma URL única do projeto do ambiente.
 - [x] Password Protection e Trusted IPs: indisponíveis no Hobby; não usar.
 
 **Firewall** (`firewall-rules.json`)

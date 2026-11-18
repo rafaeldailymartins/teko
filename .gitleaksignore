@@ -4,3 +4,6 @@
 e8f905625cee57dc4110dbdb93a7b6aa1ed9e9ef:apps/api/src/adapters/in/cli/dev-session/dev-session.test.ts:generic-api-key:7
 e8f905625cee57dc4110dbdb93a7b6aa1ed9e9ef:apps/api/src/adapters/out/auth/better-auth.test.ts:generic-api-key:7
 e8f905625cee57dc4110dbdb93a7b6aa1ed9e9ef:apps/api/test/integration/http/auth.test.ts:generic-api-key:23
+# Chave privada de exemplo (não é credencial) no teste do system test, no primeiro commit do #137;
+# trocada por um valor neutro no 710330a.
+87286c4587e1a65b1215cd6f9c7fbd8ad543e6f1:apps/web/test/system-support.test.ts:generic-api-key:30

@@ -20,3 +20,4 @@ rules:
       - pr-gate.yml
       - sonar.yml
       - source-watch.yml
+      - system-test.yml

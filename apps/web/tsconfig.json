@@ -29,7 +29,9 @@
     "test/**/*.tsx",
     "scripts/**/*.ts",
     "e2e/**/*.ts",
+    "system/**/*.ts",
     "playwright.config.ts",
+    "playwright.system.config.ts",
     "next.config.ts",
     "openapi-ts.config.ts",
     "vitest.config.ts"
