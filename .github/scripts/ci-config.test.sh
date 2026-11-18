@@ -442,8 +442,10 @@ check "deploy: produção exige o staging verde para o mesmo SHA (plan)" \
   bash -c "yq -r '.jobs.plan.steps[].run // \"\"' '$deploy' | grep -q 'staging-verified.sh'"
 check "deploy: audit.yml antes do build" \
   yq_true '.jobs.audit.uses == "./.github/workflows/audit.yml" and (.jobs.build.needs | contains(["audit"]))' "$deploy"
-check "deploy: system-test.yml depois do deploy, só no deploy do staging, com o SHA do run" \
-  yq_true '.jobs."system-test".uses == "./.github/workflows/system-test.yml" and ((.jobs."system-test".needs | sort | join(",")) == "deploy,plan") and (.jobs."system-test".if == "needs.plan.outputs.env == '"'"'staging'"'"' && needs.plan.outputs.phase == '"'"'deploy'"'"'") and (.jobs."system-test".with."expected-sha" == "${{ github.sha }}") and (.jobs."system-test" | has("secrets") | not)' "$deploy"
+# O !cancelled() é necessário: sem ele, o neon-rehearsal pulado no staging (só roda na produção)
+# pula também o system-test, mesmo com o deploy verde (run 44353931758).
+check "deploy: system-test.yml depois do deploy verde, só no deploy do staging, com o SHA do run" \
+  yq_true '.jobs."system-test".uses == "./.github/workflows/system-test.yml" and ((.jobs."system-test".needs | sort | join(",")) == "deploy,plan") and (.jobs."system-test".if == "${{ !cancelled() && needs.deploy.result == '"'"'success'"'"' && needs.plan.outputs.env == '"'"'staging'"'"' && needs.plan.outputs.phase == '"'"'deploy'"'"' }}") and (.jobs."system-test".with."expected-sha" == "${{ github.sha }}") and (.jobs."system-test" | has("secrets") | not)' "$deploy"
 check "deploy: relatórios do smoke dentro do repositório (reports/), como o smoke.ts exige" \
   bash -c "[[ \"\$(yq -r '.jobs.deploy.steps[].run // \"\"' '$deploy' | grep -c 'reports/smoke-\\(deployment\\|canonical\\)\\.json')\" == 2 ]]"
 
