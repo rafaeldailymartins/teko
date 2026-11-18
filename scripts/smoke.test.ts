@@ -420,6 +420,40 @@ describe('runSmoke: cada checagem reprova o que deve', () => {
     assert.deepEqual(await failuresWith({ env: 'production' }), ['healthz', 'api-healthz'])
   })
 
+  it('redirect inesperado mostra o destino sem a query (login da Vercel ou rota da raiz)', async () => {
+    const server = createServer((request, response) => {
+      const location =
+        request.url === '/healthz'
+          ? 'https://vercel.com/sso-api?url=x&nonce=NAO-PODE-APARECER'
+          : '/en/'
+      response.writeHead(302, { location }).end()
+    })
+    await new Promise<void>((done) => server.listen(0, '127.0.0.1', done))
+    const url = `http://127.0.0.1:${(server.address() as AddressInfo).port}`
+    try {
+      const report = await runSmoke(
+        {
+          env: 'staging',
+          mode: 'canonical',
+          baseUrl: url,
+          canonicalOrigin: url,
+          legacyOrigin: url,
+          expectedSha: SHA,
+        },
+        { fetch, sleep: noSleep },
+      )
+      const detail = (name: string) => report.checks.find((check) => check.name === name)?.detail
+      assert.match(
+        detail('healthz') ?? '',
+        /status 302, esperado 200 \(para https:\/\/vercel\.com\/sso-api\)/,
+      )
+      assert.match(detail('coverage') ?? '', /status 302, esperado 200 \(para \/en\/\)/)
+      assert.ok(!JSON.stringify(report).includes('NAO-PODE-APARECER'))
+    } finally {
+      await new Promise<void>((done) => server.close(() => done()))
+    }
+  })
+
   it('request que não chega: falha com o motivo, sem lançar', async () => {
     const report = await runSmoke(
       {

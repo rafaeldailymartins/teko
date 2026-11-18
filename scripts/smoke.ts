@@ -162,7 +162,34 @@ function problems(...items: (string | false | null | undefined)[]): string | nul
 }
 
 function expectStatus(probe: Probe, status: number): string | null {
-  return probe.status === status ? null : `status ${probe.status}, esperado ${status}`
+  if (probe.status === status) {
+    return null
+  }
+  const target = redirectTarget(probe)
+  return `status ${probe.status}, esperado ${status}${target === '' ? '' : ` (para ${target})`}`
+}
+
+/**
+ * Destino de um redirect inesperado, sem a query (o login da Vercel leva tokens nela): diz se o 3xx
+ * veio da proteção da deployment (outro host) ou de uma rota do `config.json` (mesmo host).
+ */
+function redirectTarget(probe: Probe): string {
+  const location = header(probe, 'location')
+  if (probe.status < 300 || probe.status >= 400 || location === '') {
+    return ''
+  }
+  try {
+    const url = new URL(location, 'http://relativo.invalid')
+    return url.host === 'relativo.invalid' ? url.pathname : `${url.origin}${url.pathname}`
+  } catch {
+    return '(location inválido)'
+  }
+}
+
+/** Location sem query nem fragmento: o login da Vercel leva tokens na query, e o log é público. */
+function withoutQuery(location: string): string {
+  const cut = location.search(/[?#]/)
+  return cut === -1 ? location : location.slice(0, cut)
 }
 
 function header(probe: Probe, name: string): string {
@@ -205,7 +232,7 @@ function verifyRootRedirect(location: string) {
     problems(
       expectStatus(probe, 302),
       header(probe, 'location') !== location &&
-        `location ${JSON.stringify(header(probe, 'location'))}, esperado ${location}`,
+        `location ${JSON.stringify(withoutQuery(header(probe, 'location')))}, esperado ${location}`,
       header(probe, 'cache-control') !== ROOT_REDIRECT_HEADERS['Cache-Control'] &&
         `cache-control ${JSON.stringify(header(probe, 'cache-control'))}`,
       !/accept-language/i.test(header(probe, 'vary')) && 'vary sem Accept-Language',
@@ -264,7 +291,7 @@ function verifyLegacyRedirect(targets: SmokeTargets, path: string) {
     problems(
       expectStatus(probe, 308),
       header(probe, 'location') !== location &&
-        `location ${JSON.stringify(header(probe, 'location'))}, esperado ${location}`,
+        `location ${JSON.stringify(withoutQuery(header(probe, 'location')))}, esperado ${location}`,
     )
 }
 

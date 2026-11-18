@@ -22,6 +22,7 @@ import {
   buildVercelOutput,
   bundleClosure,
   FUNCTION_NAME,
+  FUNCTION_ROUTE,
   HANDLER,
   MAX_DURATION_S,
   outputConfig,
@@ -244,13 +245,23 @@ function routesNextTo(staticDir: string): readonly RouteLike[] {
   return Reflect.get(Object(readJson(join(dirname(staticDir), 'config.json'))), 'routes')
 }
 
+/**
+ * Simula o roteamento da Vercel. Um transform `request.path` não encerra o roteamento (doc da
+ * Vercel): as rotas seguintes casam o caminho do `dest`, e o filesystem acha a Function por ele. Foi
+ * assim que o `dest: '/'` antigo caiu no redirect da raiz no primeiro deploy da F7.
+ */
 function route(staticDir: string, request: Request): Outcome {
   const routes = routesNextTo(staticDir)
   const headers: Record<string, string> = {}
   const filesystemAt = routes.findIndex((r) => r.handle === 'filesystem')
+  let path = request.path
+  let functionPath: string | undefined
   for (const [index, current] of routes.entries()) {
     if (index === filesystemAt) {
-      const file = fileFor(staticDir, request.path)
+      if (functionPath !== undefined && path === FUNCTION_ROUTE) {
+        return { kind: 'function', path: functionPath, headers }
+      }
+      const file = fileFor(staticDir, path)
       if (file !== null) {
         return { kind: 'static', status: 200, file, headers }
       }
@@ -259,13 +270,16 @@ function route(staticDir: string, request: Request): Outcome {
     if (current.src === undefined) {
       continue
     }
-    const match = new RegExp(current.src, current.caseSensitive === true ? '' : 'i').exec(
-      request.path,
-    )
+    const match = new RegExp(current.src, current.caseSensitive === true ? '' : 'i').exec(path)
     if (match === null || !hasMatches(current, request)) {
       continue
     }
     mergeHeaders(headers, current.headers ?? {}, request.path)
+    if (current.transforms !== undefined) {
+      functionPath = substitute(current.transforms[0]?.args ?? '', match)
+      path = substitute(current.dest ?? path, match)
+      continue
+    }
     if (current.continue === true) {
       continue
     }
@@ -277,10 +291,6 @@ function route(staticDir: string, request: Request): Outcome {
         location: substitute(location, match),
         headers,
       }
-    }
-    if (current.transforms !== undefined) {
-      const args = current.transforms[0]?.args ?? ''
-      return { kind: 'function', path: substitute(args, match), headers }
     }
     if (current.dest !== undefined) {
       return {

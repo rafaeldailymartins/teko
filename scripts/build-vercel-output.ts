@@ -178,6 +178,14 @@ export const LEGACY_HOST_REDIRECTS = [
 
 /** Caminhos da API (Function `index`); tudo o mais é estático. */
 export const API_PATH_PATTERN = '^/(api(?:/.*)?|healthz)$'
+/**
+ * Caminho da Function `functions/index.func` no filesystem do Build Output. A rota da API reescreve
+ * para ele (nunca para `/`, que é a página de entrada e o redirect por idioma), e as rotas do
+ * estático o deixam de fora: o transform `request.path` não encerra o roteamento, então as rotas
+ * seguintes ainda casam o caminho reescrito (com `dest: '/'`, o primeiro deploy da F7 devolvia o 302
+ * da raiz em `/healthz` e `/api/*`).
+ */
+export const FUNCTION_ROUTE = '/index'
 
 /** Locales do export; o primeiro é o padrão (fonte: a política do site estático da API). */
 const LOCALES = STATIC_LOCALES
@@ -186,8 +194,9 @@ const LOCALES = STATIC_LOCALES
  * Rotas do `config.json`, na ordem em que a Vercel as avalia:
  *
  * 1. domínios antigos → canônico (308, antes de tudo, inclusive da API);
- * 2. `/api/*` e `/healthz` → Function `index`, com o caminho original restaurado (o mesmo que o
- *    zero-config do Fastify emitia); a rota não continua, então nada abaixo vale para a API;
+ * 2. `/api/*` e `/healthz` → Function `index` (`FUNCTION_ROUTE`), com o caminho original restaurado
+ *    pelo transform `request.path`; o transform não encerra o roteamento, então as rotas abaixo
+ *    deixam `/index` de fora e ele chega ao filesystem, onde está a Function;
  * 3. headers de segurança em todo o estático, a CSP de cada documento no caminho exato que o serve
  *    (sensível à caixa) e `/_next/static/*` imutável (`continue`);
  * 4. `/` → `/en/` ou `/pt-BR/` pelo `Accept-Language` (302; o `index.html` da raiz fica como página
@@ -221,10 +230,10 @@ export function outputConfig(documents: DocumentHeaders) {
       })),
       {
         src: API_PATH_PATTERN,
-        dest: '/',
+        dest: FUNCTION_ROUTE,
         transforms: [{ type: 'request.path', op: 'set', args: '/$1' }],
       },
-      { src: '^/(.*)$', headers: STATIC_HEADERS, continue: true },
+      { src: '^/(?!index$)(.*)$', headers: STATIC_HEADERS, continue: true },
       ...Object.keys(documents)
         .sort(compareCodeUnits)
         .map((file) => ({
@@ -256,7 +265,7 @@ export function outputConfig(documents: DocumentHeaders) {
         headers: { Location: '/pt-BR$1' },
       },
       {
-        src: '^/((?!\\.well-known/)(?:[^/]+/)*[^/.]+)$',
+        src: '^/((?!\\.well-known/|index$)(?:[^/]+/)*[^/.]+)$',
         status: 308,
         headers: { Location: '/$1/' },
       },
