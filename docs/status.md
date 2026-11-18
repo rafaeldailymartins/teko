@@ -77,7 +77,10 @@ junto com Testcontainers, `yaml` e os overrides de `glob`/`basic-ftp` da árvore
 - Roles do Neon criados em 2026-11-11 com `scripts/neon-roles.ts` (`teko_watch` no staging;
   `teko_app` e `teko_watch` na produção), com as URLs `-pooler` em `maintenance` e `corpus-watch`
   ([runbook](runbooks/neon-roles.md)). Nenhuma migração rodou ainda na produção (a primeira é do
-  deploy da F7).
+  deploy da F7). Em 2026-11-18 o ensaio do primeiro release de produção mostrou que os roles
+  criados pela API ficam no `neon_superuser` e fora do `ADMIN` do owner; o script passou a criá-los
+  por SQL ([ADR 0040](adr/0040-roles-do-neon-por-sql.md)), e os três roles da API precisam ser
+  recriados com ele antes do release seguinte.
 
 ## F3: ingestão C1 e C2, embeddings e watch
 

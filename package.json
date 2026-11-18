@@ -43,11 +43,13 @@
     "@biomejs/biome": "catalog:",
     "@fission-ai/openspec": "catalog:",
     "@types/node": "catalog:",
+    "@types/pg": "catalog:",
     "@typescript/native": "catalog:",
     "git-cliff": "catalog:",
     "jscpd": "catalog:",
     "knip": "catalog:",
     "lefthook": "catalog:",
+    "pg": "catalog:",
     "sherif": "catalog:",
     "turbo": "catalog:",
     "typescript": "catalog:"
