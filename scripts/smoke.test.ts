@@ -7,7 +7,7 @@ import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import process from 'node:process'
 import { after, before, describe, it } from 'node:test'
-import { STATIC_HEADERS } from '../apps/api/src/adapters/in/http/static-site/policy.ts'
+import { STATIC_HEADERS } from './lib/static-site-policy.ts'
 import {
   BYPASS_ENV,
   BYPASS_HEADER,

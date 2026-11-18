@@ -28,19 +28,16 @@
  * Com `GITHUB_STEP_SUMMARY`, uma tabela vai para o resumo do job.
  *
  * Sem dependências: só o Node 24 (type stripping) e as constantes do site estático e das rotas da
- * Vercel (`apps/api/src/adapters/in/http/static-site/policy.ts` e `scripts/build-vercel-output.ts`),
+ * Vercel (`scripts/lib/static-site-policy.ts` e `scripts/build-vercel-output.ts`),
  * as mesmas que geram o `config.json`. Testes em `scripts/smoke.test.ts`, com servidor HTTP local.
  */
 import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import process from 'node:process'
 import { parseArgs } from 'node:util'
-import {
-  ROOT_REDIRECT_HEADERS,
-  STATIC_HEADERS,
-} from '../apps/api/src/adapters/in/http/static-site/policy.ts'
 import { LEGACY_HOST_REDIRECTS } from './build-vercel-output.ts'
 import { CliGuardError, resolveInsideRoot } from './lib/cli-guards.ts'
+import { ROOT_REDIRECT_HEADERS, STATIC_HEADERS } from './lib/static-site-policy.ts'
 
 const REPO_ROOT = resolve(import.meta.dirname, '..')
 
