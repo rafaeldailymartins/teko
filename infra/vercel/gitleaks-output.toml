@@ -1,0 +1,13 @@
+# Configuração do gitleaks do scripts/pack-vercel-output.ts (varredura do .vercel/output antes do
+# tarball). Estende as regras padrão e só abre exceção para a chave de projeto do PostHog (`phc_`):
+# ela é pública por definição (vai no JS do navegador e no `token=` do report-uri da CSP em cada
+# página, ADR 0037). Chaves pessoais (`phx_`) e qualquer outro achado continuam reprovando.
+title = "teko: .vercel/output"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Chave de projeto do PostHog (pública): token do report-uri e Reporting-Endpoints"
+regexTarget = "secret"
+regexes = ['''^phc_[A-Za-z0-9]{20,64}$''']
