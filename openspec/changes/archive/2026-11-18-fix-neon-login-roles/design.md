@@ -34,7 +34,7 @@ existentes e gravar todos os destinos da URL.
 - **URL a partir da do owner.** A `-pooler` do owner, com usuário e senha trocados, mantém host,
   banco e parâmetros (`sslmode`, `channel_binding`).
 - **`DATABASE_URL` da Vercel pelo mesmo script.** A Sensitive é gravada pelo stdin do Vercel CLI
-  isolado (`vercel env add DATABASE_URL production --sensitive --force --project --scope`), com os
+  isolado (`vercel env add DATABASE_URL --environment production --sensitive --force --project --scope`), com os
   IDs das variáveis do environment do GitHub e o login do mantenedor. Antes ela era copiada à mão.
 - **Migração de regrant.** O bloco de grants das migrações só age sobre roles que existem; um role
   recriado depois perde o que a migração deu. A `*_regrant-login-roles` repete o bloco (com o

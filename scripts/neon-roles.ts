@@ -391,6 +391,7 @@ function setVercelDatabaseUrl(gh: string, target: Target, value: string): void {
       'env',
       'add',
       'DATABASE_URL',
+      '--environment',
       'production',
       '--sensitive',
       '--force',
