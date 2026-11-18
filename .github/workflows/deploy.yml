@@ -651,12 +651,13 @@ jobs:
   # System test do staging (mudança add-smoke-tests, system-test.yml): login por passkey, 1 pergunta,
   # cache hit, recusa e locale, contra o domínio já promovido e com o SHA deste run. Só no staging e
   # só no deploy (o redeploy não muda o código). Um job à parte, porque o system-test.yml tem o
-  # environment e o segredo próprios; a falha dele não desfaz o promote sozinha: o runbook
+  # environment e o segredo próprios; `!cancelled()` porque o neon-rehearsal pulado no staging
+  # pularia este job também. A falha dele não desfaz o promote sozinha: o runbook
   # docs/runbooks/rollback.md diz como voltar.
   system-test:
     name: system-test
     needs: [plan, deploy]
-    if: needs.plan.outputs.env == 'staging' && needs.plan.outputs.phase == 'deploy'
+    if: ${{ !cancelled() && needs.deploy.result == 'success' && needs.plan.outputs.env == 'staging' && needs.plan.outputs.phase == 'deploy' }}
     permissions:
       contents: read
     uses: ./.github/workflows/system-test.yml
