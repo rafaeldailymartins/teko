@@ -120,3 +120,70 @@ export async function pushMetrics(
     throw new Error(`OTLP respondeu ${String(response.status)}: ${detail}`)
   }
 }
+
+export interface PublishDeps {
+  readonly env: Readonly<Record<string, string | undefined>>
+  readonly now: Date
+  readonly fetch: typeof fetch
+  readonly log: (line: string) => void
+}
+
+/** Valor não vazio de uma variável de ambiente (`undefined` se ausente ou em branco). */
+export function envValue(env: PublishDeps['env'], name: string): string | undefined {
+  const raw = env[name]?.trim()
+  return raw === undefined || raw === '' ? undefined : raw
+}
+
+function describePoint(point: GaugePoint): string {
+  const labels = Object.entries({
+    ...(point.environment === undefined ? {} : { env: point.environment }),
+    ...point.labels,
+  })
+    .map(([key, labelValue]) => `${key}=${labelValue}`)
+    .join(', ')
+  return `| ${point.name} | ${labels} | ${String(Math.round(point.value * 1000) / 1000)} |`
+}
+
+/**
+ * Tabela do resumo e envio dos pontos de um job do `ops.yml`, com a credencial OTLP do
+ * environment `ops` (`GRAFANA_OTLP_ENDPOINT`, `GRAFANA_OTLP_INSTANCE_ID`, `GRAFANA_OTLP_TOKEN`).
+ * Dry-run imprime o payload; sem a credencial, avisa e não envia (não é falha). `ok` só é falso
+ * quando o envio falhou.
+ */
+export async function publishPoints(
+  points: readonly GaugePoint[],
+  deps: PublishDeps,
+  options: { readonly dryRun: boolean; readonly serviceName: string; readonly title: string },
+): Promise<{ ok: boolean; summary: string[] }> {
+  const summary = ['| Métrica | Labels | Valor |', '|---|---|---|', ...points.map(describePoint)]
+  const endpoint = envValue(deps.env, 'GRAFANA_OTLP_ENDPOINT')
+  const instanceId = envValue(deps.env, 'GRAFANA_OTLP_INSTANCE_ID')
+  const token = envValue(deps.env, 'GRAFANA_OTLP_TOKEN')
+  const payload = buildMetricsPayload(points, { serviceName: options.serviceName, now: deps.now })
+  if (options.dryRun) {
+    deps.log(JSON.stringify(payload, null, 2))
+    summary.push('', 'Dry-run: nada foi enviado.')
+  } else if (endpoint === undefined || instanceId === undefined || token === undefined) {
+    deps.log(
+      `::warning title=${options.title}::sem GRAFANA_OTLP_ENDPOINT, GRAFANA_OTLP_INSTANCE_ID ou ` +
+        'GRAFANA_OTLP_TOKEN no environment ops: métricas calculadas e não enviadas',
+    )
+    summary.push('', 'Sem credencial OTLP: nada foi enviado.')
+  } else if (points.length > 0) {
+    try {
+      await pushMetrics({ endpoint, instanceId, token }, payload, deps.fetch)
+      summary.push('', `${String(points.length)} ponto(s) enviados ao Grafana Cloud.`)
+    } catch (error) {
+      deps.log(
+        `::error title=${options.title}::${error instanceof Error ? error.message : String(error)}`,
+      )
+      return { ok: false, summary }
+    }
+  }
+  return { ok: true, summary }
+}
+
+/** Uma linha por chamada: quebra de linha vinda de erro ou resposta não forja comando do Actions. */
+export function logLine(line: string): void {
+  console.log(line.replaceAll(/[\r\n]/gu, ' '))
+}

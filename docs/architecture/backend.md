@@ -421,7 +421,10 @@ Sensitive + redeploy.
 
 **Manutenção semanal** (`weekly-maintenance` do `ops.yml`, domingo 06:00 UTC, environment
 `maintenance`, role `teko_app`, pelo `cli maintenance purge`): `PurgeExpiredData` (conversas > 90 dias, `pending` > 1 dia →
-`expired`, cache e janelas de rate limit vencidos). Acorda cada Neon uma vez por semana.
+`expired`, cache e janelas de rate limit vencidos). Acorda cada Neon uma vez por semana. Na
+produção, o job passa `--allow-missing-schema`: antes da primeira migração (primeiro deploy da F7),
+banco sem schema é aviso, não falha. O sucesso vai ao Grafana pelo `weekly-maintenance-metrics`
+(environment `ops`), e o `workflow_dispatch` roda o purge num banco só (`maintenance_target`).
 
 ## Regras de CU-h no Neon
 
