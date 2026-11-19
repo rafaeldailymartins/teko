@@ -45,7 +45,7 @@
       "frequency": 900000,
       "timeout": 10000,
       "probes": ["SaoPaulo"],
-      "enabled": false,
+      "enabled": true,
       "basicMetricsOnly": true,
       "alertSensitivity": "none",
       "labels": [{ "name": "env", "value": "production" }],

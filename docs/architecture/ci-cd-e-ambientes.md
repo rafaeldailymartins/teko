@@ -167,7 +167,9 @@ não recebe nenhum segredo; [runbook](../runbooks/deploy.md)):
    (`VERCEL_AUTOMATION_BYPASS_SECRET`) no header `x-vercel-protection-bypass`;
 9. `vercel promote`, e o smoke canônico (`scripts/smoke.ts --mode canonical`) no domínio do
    ambiente (no staging, depois o system test, `system-test.yml`);
-   falha depois do promote → `vercel rollback` no mesmo job ([runbook](../runbooks/rollback.md)).
+   falha depois do promote → `vercel promote` da deployment que estava no domínio (lida antes do
+   promote), com o `gitSha` conferido no `/healthz`, no mesmo job ([runbook](../runbooks/rollback.md));
+   o dispatch com `simulate_failure` (só staging) exercita esse caminho.
 
 `phase: redeploy` (dispatch) faz `vercel redeploy` da deployment de produção atual, para rotação de
 Sensitive, com env sync, smoke, promote e rollback.
@@ -177,9 +179,9 @@ atestado, com a atestação verificada antes, a `meta.artifactSha256` na deploym
 `VERCEL_TOKEN` restrito aos environments (a Vercel não tem OIDC para deploy nem expõe digest dos
 arquivos).
 
-**Rollback.** `vercel rollback` (no Hobby, só a deployment imediatamente anterior; depois, a
-atribuição automática do domínio fica desligada até um `vercel promote` explícito) ou `vercel
-promote` de uma deployment de produção mais antiga. A âncora de longo prazo é o tarball atestado
+**Rollback.** `vercel promote` da deployment certa (a que estava no ar ou uma mais antiga). O
+`vercel rollback` escolhe a deployment de produção criada antes da atual, mesmo uma que nunca foi
+promovida, e por isso só entra quando não há deployment anterior conhecida. A âncora de longo prazo é o tarball atestado
 do release (`gh attestation verify` + `vercel deploy --prebuilt`). Env vars não voltam junto. O
 corpus tem rollback próprio ([ingestão](ingestao-e-avaliacao.md#snapshot-promoção-e-rollback)).
 

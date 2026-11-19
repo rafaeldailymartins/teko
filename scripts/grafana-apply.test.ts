@@ -62,21 +62,21 @@ describe('infra/grafana (validação offline, a mesma do --validate)', () => {
       [
         ['https://tekoia.vercel.app/healthz', true],
         ['https://tekoia-staging.vercel.app/healthz', true],
-        // Desligado até o primeiro deploy do web de produção (F7): até lá só responde 404.
-        ['https://tekoia.vercel.app/pt-BR/', false],
+        // Ligado no primeiro deploy do web de produção (F7, 2026-11-18).
+        ['https://tekoia.vercel.app/pt-BR/', true],
       ],
     )
     const total = code.checks.checks.reduce((sum, check) => sum + monthlyExecutions(check), 0)
-    // 2 x (1 sonda x 43.200 / 5 min) = 8.640 + 8.640; a landing desligada não roda e conta 0.
-    assert.equal(total, 17_280)
+    // 2 x (1 sonda x 43.200 / 5 min) = 8.640 + 8.640, mais a landing (43.200 / 15 min) = 2.880.
+    assert.equal(total, 20_160)
     assert.ok(total <= SM_MONTHLY_EXECUTION_BUDGET)
   })
 
   it('check desligado conta 0 execuções; ligado, sondas x 43.200 / frequência em minutos', () => {
     const landing = code.checks.checks.find((check) => check.job === 'teko-landing-production')
     assert.ok(landing)
-    assert.equal(monthlyExecutions(landing), 0)
-    assert.equal(monthlyExecutions({ ...landing, enabled: true }), 2880)
+    assert.equal(monthlyExecutions({ ...landing, enabled: false }), 0)
+    assert.equal(monthlyExecutions(landing), 2880)
   })
 
   it('alerta de check falho: todos os checks teko-* sem sucesso em 20 min', () => {
@@ -361,7 +361,7 @@ describe('applyGrafana', () => {
     )
     assert.deepEqual(
       plan.filter((item) => item.kind === 'check').map((item) => item.note),
-      ['8640 execuções/mês', '8640 execuções/mês', 'desligado, 0 execuções/mês'],
+      ['8640 execuções/mês', '8640 execuções/mês', '2880 execuções/mês'],
     )
   })
 
@@ -395,11 +395,11 @@ describe('applyGrafana', () => {
       | { id: number; tenantId: number; probes: number[] }
       | undefined
     assert.deepEqual([update?.id, update?.tenantId, update?.probes], [11, 3, [7]])
-    // O check desligado é criado assim mesmo, com enabled false: ligar na F7 é só trocar o valor.
+    // A landing de produção vai ligada desde o primeiro deploy do web de produção (F7).
     const landing = writes
       .map((call) => call.body as { job?: string; enabled?: boolean } | undefined)
       .find((body) => body?.job === 'teko-landing-production')
-    assert.equal(landing?.enabled, false)
+    assert.equal(landing?.enabled, true)
     const dashboard = writes.find((call) => call.url.endsWith('/api/dashboards/db'))?.body as
       | { folderUid: string; overwrite: boolean }
       | undefined

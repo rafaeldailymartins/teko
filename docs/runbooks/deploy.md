@@ -36,8 +36,8 @@ Jobs: `plan` → `audit` → `build` → `neon-rehearsal` (só produção) → `
    a produção já nele ou à frente dele, nada muda), `vercel-env-sync.ts`, `vercel-firewall.ts` (mantém um lockdown ativo), upload dos
    source maps, `vercel deploy --prebuilt --prod --skip-domain --archive=tgz --meta
    artifactSha256=… --meta gitSha=…`, smoke da URL única (bypass de automação), `vercel promote`,
-   smoke do domínio canônico. Falha depois do promote: `vercel rollback` automático, com o aviso no
-   resumo do run.
+   smoke do domínio canônico. Falha depois do promote: o job promove de novo a deployment que estava
+   no domínio e confere o `gitSha` dela, com a seção ROLLBACK no resumo do run.
 
 O system test do staging entra depois do smoke canônico (ponto marcado no `deploy.yml`).
 
@@ -96,16 +96,16 @@ schema (expand/contract) antes.
 
 ## Quando o deploy falha
 
-| Onde                      | O que fazer                                                                                                    |
-| ------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| `plan` (staging-verified) | o commit não passou pelo staging: espere o deploy de staging ou corrija em `main` e faça outro release         |
-| `audit` ou Grype          | advisory novo: override no `pnpm-workspace.yaml` ou subida da dependência, num PR                              |
-| `build` (pack)            | gitleaks ou env var com valor no output: nada foi publicado; ache a origem no build                            |
-| `deploy` (verificação)    | atestação ou sha256 diferente: não publique; investigue o artifact                                             |
-| `deploy` (migrate)        | migração quebrada: corrija com uma migração nova (expand/contract); nada foi publicado                         |
-| `promote-corpus` (recusa) | migração ou sha256 diferente do lock, ou snapshot ausente: reexporte no staging e faça o merge do PR do lock   |
-| `promote-corpus` (aviso)  | produção à frente do lock após um [rollback de corpus](rollback-corpus.md): nada promovido, o deploy segue     |
-| `deploy` (env sync)       | falta Sensitive: o mantenedor grava e roda de novo (re-run do job)                                             |
-| `deploy` (firewall)       | firewall desligado ou regra repetida no projeto: corrija no dashboard e rode de novo                           |
-| smoke da URL única        | a deployment ficou sem domínio; nada a desfazer. Veja o `vercel inspect` no log e os logs no dashboard         |
-| depois do promote         | o job já fez `vercel rollback`; siga o [runbook de rollback](rollback.md) para religar a atribuição do domínio |
+| Onde                      | O que fazer                                                                                                  |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `plan` (staging-verified) | o commit não passou pelo staging: espere o deploy de staging ou corrija em `main` e faça outro release       |
+| `audit` ou Grype          | advisory novo: override no `pnpm-workspace.yaml` ou subida da dependência, num PR                            |
+| `build` (pack)            | gitleaks ou env var com valor no output: nada foi publicado; ache a origem no build                          |
+| `deploy` (verificação)    | atestação ou sha256 diferente: não publique; investigue o artifact                                           |
+| `deploy` (migrate)        | migração quebrada: corrija com uma migração nova (expand/contract); nada foi publicado                       |
+| `promote-corpus` (recusa) | migração ou sha256 diferente do lock, ou snapshot ausente: reexporte no staging e faça o merge do PR do lock |
+| `promote-corpus` (aviso)  | produção à frente do lock após um [rollback de corpus](rollback-corpus.md): nada promovido, o deploy segue   |
+| `deploy` (env sync)       | falta Sensitive: o mantenedor grava e roda de novo (re-run do job)                                           |
+| `deploy` (firewall)       | firewall desligado ou regra repetida no projeto: corrija no dashboard e rode de novo                         |
+| smoke da URL única        | a deployment ficou sem domínio; nada a desfazer. Veja o `vercel inspect` no log e os logs no dashboard       |
+| depois do promote         | o job já devolveu o domínio à deployment anterior; confira a seção ROLLBACK e o [runbook](rollback.md)       |

@@ -271,8 +271,7 @@ Grafana e do Synthetic Monitoring por `scripts/grafana-apply.ts`, no job `grafan
 - **Synthetic Monitoring** substitui UptimeRobot e Checkly: `/healthz` de `tekoia.vercel.app` e
   `tekoia-staging.vercel.app` a cada 5 min (sem DB) e a landing de produção (`/pt-BR/`) a cada
   15 min, da sonda de São Paulo: 20.160 das 100 mil execuções mensais do Free. O check da landing
-  fica desligado (`enabled: false`, 0 execução) até o primeiro deploy do web de produção na F7;
-  até lá são 17.280.
+  foi ligado no primeiro deploy do web de produção (F7, 2026-11-18).
 - **Métricas do `ops.yml`** (job `quotas`, uma vez por dia, OTLP/HTTP com `service.name=teko-ops`):
   `teko_neon_compute_hours` e `teko_neon_cu_hours_ratio` por `project`,
   `teko_coverage_verified_age_days` por `family`, `teko_token_expiry_days` por `token` e
