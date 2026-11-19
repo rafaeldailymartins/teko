@@ -47,9 +47,10 @@ Opção escolhida: **`release.yml` mínimo**.
 - A versão de produção vem da tag (`APP_VERSION` no `.vc-config.json` e o release `teko@X.Y.Z` do
   PostHog), sem o PR que sincroniza os `package.json`; até a F9 eles continuam em `0.0.0`.
 - O tarball de produção fica como artifact de 90 dias (o asset do release imutável chega na F9).
+- O deploy de produção promove o corpus do `corpus/corpus.lock.json` do commit (`promote-corpus`,
+  [revisão de 2026-11-18](#revisão-2026-11-18-promote-corpus-antecipado-para-a-f7)).
 - A F9 acrescenta, sem desfazer nada daqui: o git-cliff e o PR de release, o `release-gate` como job
-  (que reaproveita o `neon-rehearsal.yml` e o `staging-verified.sh`), o release imutável e o
-  `promote-corpus`.
+  (que reaproveita o `neon-rehearsal.yml` e o `staging-verified.sh`) e o release imutável.
 
 ### Consequências
 
@@ -89,3 +90,28 @@ Opção escolhida: **`release.yml` mínimo**.
 - Fontes Context7 consultadas em 2026-11-18: `/websites/github_en_actions` (environment com
   `deployment: false` ainda pede o revisor; atestações de SBOM com `actions/attest`) e
   `/actions/create-github-app-token` (registrado na mudança `add-docling-pdf-extraction`).
+
+## Revisão (2026-11-18): `promote-corpus` antecipado para a F7
+
+O primeiro deploy de produção (tag `v0.1.0-rc.2`, run 44422494861) passou no `neon-rehearsal` e nas
+migrações, mas o smoke da URL da deployment reprovou: o `GET /api/v1/coverage` respondeu 200 sem
+`corpusVersion` nem famílias, porque o banco de produção não tinha corpus. Pelo desenho
+([ADR 0025](0025-reconciliacao-incremental-e-snapshot.md)), a produção só recebe o corpus pelo
+snapshot promovido, e esta ADR tinha deixado o `promote-corpus` para a F9. O mantenedor decidiu
+antecipá-lo para a F7 (mudança OpenSpec `add-promote-corpus-deploy`):
+
+- **Um passo do job `deploy`**, só na produção e só na `phase: deploy`, depois das migrações (a
+  promoção exige a mesma migração do snapshot) e antes do env sync e do `vercel deploy`. Um job
+  próprio com o environment `production` pediria uma terceira aprovação do revisor.
+- `cli snapshot promote --lock corpus/corpus.lock.json`: confere o sha256 do `manifest.json` do
+  store `corpus-snapshots` contra o `manifestSha256` do lock e a versão contra a do lock, e promove
+  com as checagens de sempre (migração igual, sha256 de cada arquivo).
+- **Idempotente e sem rollback automático:** com a produção na versão do lock, nada muda; à frente
+  dela (depois de um rollback de corpus), nada muda e o run avisa. Recusa (migração incompatível,
+  manifesto ou arquivo ausente, sha256 diferente) é `::error` e para o deploy antes da Vercel.
+- O passo só lê o banco e o store: a CLI do snapshot usa `loadSnapshotEnv` (`DATABASE_URL` e o
+  store), sem as credenciais do Workers AI, que o environment `production` não tem.
+- O staging continua com o corpus da ingestão; nada muda nele.
+
+Consequência: um release cujo lock foi exportado antes de uma migração nova falha no
+`promote-corpus` até o staging reexportar o snapshot com a migração atual e o PR do lock entrar.

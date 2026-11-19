@@ -401,6 +401,19 @@ o plugin `static-site` com a `WEB_STATIC_DIR`, o `@fastify/static` e a configura
 `infra/`; o ensaio de corte saiu do DoD da F7. Se a Vercel pausar o projeto ou encerrar a conta, o
 Tekó fica fora do ar até o ciclo virar ou até migrar.
 
+## Corpus na produção (2026-11-18)
+
+O primeiro deploy de produção (tag `v0.1.0-rc.2`, run 44422494861) reprovou no smoke da URL da
+deployment: o banco de produção não tinha corpus, e o `promote-corpus` estava na F9. O mantenedor o
+antecipou para a F7 (mudança `add-promote-corpus-deploy`, revisão da
+[ADR 0038](adr/0038-release-minimo-da-f7.md)): um passo do job `deploy`, só na produção, depois das
+migrações, que promove o snapshot do `corpus/corpus.lock.json` conferido pelo sha256 do manifesto,
+não faz nada com a produção já nele ou à frente dele e para o deploy antes da Vercel numa recusa.
+
+Pendência (mantenedor): o lock de `main` (versão 14) foi exportado antes das migrações novas, e o
+`promote-corpus` o recusaria. Antes do próximo release, rodar a ingestão completa no staging para
+reexportar o snapshot com a migração atual e fazer o merge do PR do lock.
+
 ## Revisão antes da F4 (2026-11-12)
 
 O mantenedor aprovou as recomendações da revisão de arquitetura; os pacotes estão no

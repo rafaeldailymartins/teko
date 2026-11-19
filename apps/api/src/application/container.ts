@@ -22,7 +22,7 @@ import type { IngestDocumentVersion } from './use-cases/ingest-document-version.
 import type { FinishIngestionRun, StartIngestionRun } from './use-cases/ingestion-run.ts'
 import type { InspectCorpus } from './use-cases/inspect-corpus.ts'
 import type { PrivacyUseCases } from './use-cases/privacy.ts'
-import type { PromoteSnapshot } from './use-cases/promote-snapshot.ts'
+import type { PromoteLockedSnapshot, PromoteSnapshot } from './use-cases/promote-snapshot.ts'
 import type { ProvisionUseCases } from './use-cases/provisions.ts'
 import type { PruneEmbeddingCache } from './use-cases/prune-embedding-cache.ts'
 import type { QuestionHistory } from './use-cases/question-history.ts'
@@ -87,6 +87,23 @@ interface IngestionUseCases {
   readonly pruneEmbeddingCache: PruneEmbeddingCache
   /** Seed da fixture única pelo mesmo caminho da ingestão (só desenvolvimento, CI e testes). */
   readonly seedFixtureCorpus: SeedFixtureCorpus
+}
+
+/**
+ * Casos de uso do snapshot (CLI `snapshot`): só o banco (URL do owner) e o store de blobs, sem
+ * embeddings. A promoção do deploy de produção roda com o environment `production`, que não tem as
+ * credenciais da ingestão. Montados por `createSnapshotContainer` em `composition-root.ts`.
+ */
+interface SnapshotUseCases {
+  readonly exportSnapshot: ExportSnapshot
+  readonly promoteSnapshot: PromoteSnapshot
+  readonly promoteLockedSnapshot: PromoteLockedSnapshot
+}
+
+export interface SnapshotContainer {
+  readonly useCases: SnapshotUseCases
+  /** Fecha o pool do Postgres. */
+  close(): Promise<void>
 }
 
 export interface IngestionContainer {

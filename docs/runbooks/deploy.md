@@ -31,7 +31,9 @@ Jobs: `plan` → `audit` → `build` → `neon-rehearsal` (só produção) → `
    apagado sempre; sem a API key no environment `release-rehearsal`, avisa e passa.
 5. **deploy** (revisor na produção): `gh attestation verify` do tarball (proveniência e SBOM, pelo
    `deploy.yml` e pelo SHA), `drizzle-kit migrate` na URL direta do owner com a checagem de
-   extensões, `vercel-env-sync.ts`, `vercel-firewall.ts` (mantém um lockdown ativo), upload dos
+   extensões, na produção o `promote-corpus` (`cli snapshot promote --lock
+   corpus/corpus.lock.json`: o snapshot do lock do commit, conferido pelo sha256 do manifesto; com
+   a produção já nele ou à frente dele, nada muda), `vercel-env-sync.ts`, `vercel-firewall.ts` (mantém um lockdown ativo), upload dos
    source maps, `vercel deploy --prebuilt --prod --skip-domain --archive=tgz --meta
    artifactSha256=… --meta gitSha=…`, smoke da URL única (bypass de automação), `vercel promote`,
    smoke do domínio canônico. Falha depois do promote: `vercel rollback` automático, com o aviso no
@@ -46,8 +48,13 @@ O system test do staging entra depois do smoke canônico (ponto marcado no `depl
    workflow valida o SemVer, recusa tag existente, confere o staging e cria a tag pela App.
 3. O push da tag dispara o **Deploy** de produção: aprove o `build` e depois o `deploy` no
    environment `production`.
-4. Confira o resumo: atestações verificadas, migrações, env sync, WAF, URL da deployment e os dois
-   smokes.
+4. Confira o resumo: atestações verificadas, migrações, corpus (promovido, já na versão do lock ou
+   à frente dela), env sync, WAF, URL da deployment e os dois smokes.
+
+Antes do release, confira que o `corpus/corpus.lock.json` de `main` foi exportado com a última
+migração (`snapshot.migration` igual ao hash da migração mais nova): se uma migração entrou depois
+do último PR do lock, rode a ingestão completa no staging e faça o merge do PR do lock antes, ou o
+`promote-corpus` recusa o snapshot.
 
 ## Rotação de Sensitive (redeploy)
 
@@ -96,6 +103,8 @@ schema (expand/contract) antes.
 | `build` (pack)            | gitleaks ou env var com valor no output: nada foi publicado; ache a origem no build                            |
 | `deploy` (verificação)    | atestação ou sha256 diferente: não publique; investigue o artifact                                             |
 | `deploy` (migrate)        | migração quebrada: corrija com uma migração nova (expand/contract); nada foi publicado                         |
+| `promote-corpus` (recusa) | migração ou sha256 diferente do lock, ou snapshot ausente: reexporte no staging e faça o merge do PR do lock   |
+| `promote-corpus` (aviso)  | produção à frente do lock após um [rollback de corpus](rollback-corpus.md): nada promovido, o deploy segue     |
 | `deploy` (env sync)       | falta Sensitive: o mantenedor grava e roda de novo (re-run do job)                                             |
 | `deploy` (firewall)       | firewall desligado ou regra repetida no projeto: corrija no dashboard e rode de novo                           |
 | smoke da URL única        | a deployment ficou sem domínio; nada a desfazer. Veja o `vercel inspect` no log e os logs no dashboard         |

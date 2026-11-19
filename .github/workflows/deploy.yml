@@ -17,7 +17,8 @@
 #   .vc-config.json), scripts/pack-vercel-output.ts (gitleaks e sha256), SBOM (syft), Grype,
 #   atestações de proveniência e de SBOM do tarball e os artifacts (tarball e source maps).
 # - deploy (environment do ambiente): gh attestation verify do tarball, drizzle-kit migrate na URL
-#   direta com a checagem de extensões, scripts/vercel-env-sync.ts, scripts/vercel-firewall.ts,
+#   direta com a checagem de extensões, na produção o promote-corpus (`cli snapshot promote --lock`
+#   do corpus/corpus.lock.json), scripts/vercel-env-sync.ts, scripts/vercel-firewall.ts,
 #   upload dos source maps, vercel deploy --prebuilt --prod --skip-domain --archive=tgz, smoke da
 #   URL única, vercel promote, smoke do domínio canônico; falha depois do promote → vercel rollback.
 # - phase redeploy (rotação de Sensitive): só o deploy, com `vercel redeploy` da deployment de
@@ -25,7 +26,8 @@
 #
 # Na produção, só dois jobs usam o environment production (build e deploy), e cada um pede a
 # aprovação do revisor; o build não recebe nenhum segredo. A F9 troca o gatilho de produção pelo
-# release.yml completo (release-gate, release imutável com o tarball e o SBOM, promote-corpus).
+# release.yml completo (release-gate, release imutável com o tarball e o SBOM); o promote-corpus
+# já roda aqui desde a F7.
 name: Deploy
 
 on:
@@ -372,7 +374,8 @@ jobs:
         with:
           # GitHub (checkout, setup, artifacts e atestações), npm e Node, o TUF do Sigstore (gh
           # attestation verify), a API e o CLI da Vercel, as URLs *.vercel.app (smoke), o Neon (só
-          # a porta do Postgres, para o migrate) e o app do PostHog na UE (source maps): o upload
+          # a porta do Postgres, para o migrate e o promote-corpus; os snapshots vêm dos releases
+          # pelos hosts do GitHub acima) e o app do PostHog na UE (source maps): o upload
           # dos .map vai por URL pré-assinada direto ao bucket S3 de assets do PostHog EU (run
           # 44338601361). A telemetria do posthog-cli (us.i.posthog.com) fica bloqueada de propósito.
           egress-policy: block
@@ -479,6 +482,51 @@ jobs:
           pnpm --filter @teko/api exec drizzle-kit migrate
           bash .github/scripts/neon-extensions-check.sh
           echo "- migrações aplicadas; extensões e pg_settings conferidos" >>"$GITHUB_STEP_SUMMARY"
+
+      # Corpus da produção (ADR 0025; antecipado da F9 para a F7, ADR 0038): o snapshot do
+      # corpus/corpus.lock.json deste commit, depois das migrações (a promoção exige a mesma migração
+      # do snapshot) e antes de qualquer publicação. Um passo deste job, e não um job próprio, para
+      # não pedir mais uma aprovação do environment production. Idempotente e sem rollback
+      # automático: com a produção na versão do lock ou à frente dela, nada muda. O staging recebe o
+      # corpus da ingestão e não passa por aqui.
+      - name: promote-corpus (cli snapshot promote --lock, só produção)
+        id: promote-corpus
+        if: env.PHASE == 'deploy' && env.DEPLOY_ENV == 'production'
+        env:
+          DATABASE_URL: ${{ secrets.NEON_PROD_MIGRATE_URL }}
+          BLOB_STORE: github-releases
+          # Leitura dos releases corpus-v<N> (store corpus-snapshots); o job só tem contents: read.
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          # O dist/ da CLI sai no fim: o upload dos source maps lê o apps/api/dist do artifact do build.
+          trap 'rm -rf apps/api/dist' EXIT
+          pnpm --filter @teko/api build
+          out="${RUNNER_TEMP}/promote-corpus.json"
+          set +e
+          node apps/api/dist/cli.mjs snapshot promote --lock corpus/corpus.lock.json >"$out"
+          code=$?
+          set -e
+          if ((code != 0)); then
+            echo "::error title=deploy::promote-corpus recusou o snapshot do corpus/corpus.lock.json (código ${code}; motivo no log acima: migração incompatível, manifesto ou arquivo ausente, sha256 diferente do lock). Nada foi publicado na Vercel."
+            exit "$code"
+          fi
+          status="$(jq -r '.status' "$out")"
+          version="$(jq -r '.corpusVersion' "$out")"
+          target="$(jq -r '.targetVersion // empty' "$out")"
+          manifest="$(jq -r '.manifestKey' "$out")"
+          case "$status" in
+            promoted)
+              line="- corpus: snapshot ${version} promovido (\`${manifest}\`, linhas $(jq -c '.rows' "$out"))" ;;
+            up-to-date)
+              line="- corpus: a produção já está na versão ${version} do lock; nada promovido" ;;
+            target-newer)
+              echo "::warning title=deploy::A produção está na versão ${target} do corpus, mais nova que a ${version} do lock (rollback de corpus?): nada promovido; o rollback nunca é automático (docs/runbooks/rollback-corpus.md)."
+              line="- corpus: produção na versão ${target}, à frente da ${version} do lock; nada promovido" ;;
+            *)
+              echo "::error title=deploy::Saída inesperada do cli snapshot promote: $(cat "$out")"
+              exit 1 ;;
+          esac
+          echo "$line" >>"$GITHUB_STEP_SUMMARY"
 
       # --- phase redeploy: a deployment de produção atual -----------------------------------------
 

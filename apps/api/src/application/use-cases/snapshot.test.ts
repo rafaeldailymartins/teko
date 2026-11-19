@@ -59,7 +59,7 @@ import {
   snapshotManifestKey,
   snapshotTableKey,
 } from './export-snapshot.ts'
-import { createPromoteSnapshot } from './promote-snapshot.ts'
+import { createPromoteLockedSnapshot, createPromoteSnapshot } from './promote-snapshot.ts'
 
 const MIGRATION: MigrationRef = { hash: 'm1', name: '0004_ingestion-pipeline' }
 const NOW = new Date('2026-11-10T15:00:00.000Z')
@@ -295,5 +295,68 @@ describe('validações da promoção', () => {
     await expect(promote({ manifestKey })).rejects.toThrow(/sha256/)
     await blobs.delete(BlobStoreName.CorpusSnapshots, chunks)
     await expect(promote({ manifestKey })).rejects.toThrow(/ausente/)
+  })
+})
+
+describe('PromoteLockedSnapshot (deploy de produção)', () => {
+  async function locked() {
+    const blobs = createInMemoryBlobStore()
+    const { manifestKey } = await createExportSnapshot(
+      deps(repository({ rows: ROWS, version: 5 }).repo, blobs),
+    )({})
+    const raw = (await blobs.get(BlobStoreName.CorpusSnapshots, manifestKey)) ?? new Uint8Array()
+    const lock = { manifestKey, corpusVersion: 5, manifestSha256: snapshotCodec.sha256(raw) }
+    const run = (options: Parameters<typeof repository>[0], snapshot = lock) => {
+      const target = repository(options)
+      return {
+        target,
+        result: createPromoteLockedSnapshot(deps(target.repo, blobs))(snapshot),
+      }
+    }
+    return { lock, run }
+  }
+
+  it('promove o snapshot do lock num destino mais antigo ou vazio', async () => {
+    const { run } = await locked()
+    const empty = run({})
+    expect(await empty.result).toMatchObject({ status: 'promoted', corpusVersion: 5 })
+    expect(empty.target.promoted[0]?.rows['documents']).toEqual(ROWS.documents)
+    expect(empty.target.promoted[0]?.record.rollbackNotes).toBeUndefined()
+    const older = run({ targetVersion: 4 })
+    expect(await older.result).toMatchObject({ status: 'promoted', rows: { documents: 2 } })
+  })
+
+  it('não escreve nada com o destino na versão do lock ou à frente dela (nunca rollback)', async () => {
+    const { run } = await locked()
+    const same = run({ targetVersion: 5, targetMigration: { hash: 'outra', name: '0009' } })
+    expect(await same.result).toEqual({ status: 'up-to-date', corpusVersion: 5, targetVersion: 5 })
+    expect(same.target.promoted).toEqual([])
+    const newer = run({ targetVersion: 7 })
+    expect(await newer.result).toEqual({
+      status: 'target-newer',
+      corpusVersion: 5,
+      targetVersion: 7,
+    })
+    expect(newer.target.promoted).toEqual([])
+  })
+
+  it('confere o sha256 do manifesto e a versão contra o lock antes de olhar o destino', async () => {
+    const { lock, run } = await locked()
+    const tampered = run({}, { ...lock, manifestSha256: 'f'.repeat(64) })
+    await expect(tampered.result).rejects.toThrow(/sha256 do manifesto .* difere do lock/)
+    expect(tampered.target.promoted).toEqual([])
+    await expect(run({}, { ...lock, corpusVersion: 6 }).result).rejects.toThrow(
+      /versão 5, e o lock diz 6/,
+    )
+    await expect(
+      run({}, { ...lock, manifestKey: 'snapshots/9/manifest.json' }).result,
+    ).rejects.toThrow(/não existe/)
+  })
+
+  it('recusa com a migração do destino diferente da do snapshot', async () => {
+    const { run } = await locked()
+    const stale = run({ targetVersion: 4, targetMigration: { hash: 'm0', name: '0003' } })
+    await expect(stale.result).rejects.toThrow(/incompatível/)
+    expect(stale.target.promoted).toEqual([])
   })
 })

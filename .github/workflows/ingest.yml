@@ -1009,7 +1009,7 @@ jobs:
             if [[ -n "$SOURCE_RUN" ]]; then
               echo "- Modo eval-only: o lock vem do run que exportou o snapshot (${SERVER_URL}/${REPO}/actions/runs/${SOURCE_RUN}); o corpus-eval deste run o aprovou, sem reingerir."
             fi
-            echo "- A promoção para produção acontece no release (job \`promote-corpus\`), nunca aqui."
+            echo "- A promoção para produção acontece no deploy do próximo release (passo \`promote-corpus\` do \`deploy.yml\`), nunca aqui."
             echo
             cat "$EVAL_BODY"
           } >"${RUNNER_TEMP}/pr-body.md"
