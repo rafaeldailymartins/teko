@@ -37,7 +37,10 @@
   { "family": "rcte", "question": "Como o RCTE trata o crédito do ICMS na entrada de mercadoria?" },
   { "family": "rcte", "question": "Quais livros fiscais o RCTE exige do contribuinte?" },
   { "family": "cte", "question": "Quais tributos o Código Tributário de Goiás institui?" },
-  { "family": "cte", "question": "Qual a base de cálculo do ICMS no Código Tributário de Goiás?" },
+  {
+    "family": "rcte",
+    "question": "Quando o desembaraço aduaneiro ocorre em outro estado, o que deve ser observado na importação para Goiás?"
+  },
   { "family": "cte", "question": "O que o Código Tributário de Goiás diz sobre o IPVA?" },
   { "family": "efd-go", "question": "Quem está obrigado a entregar a EFD em Goiás?" },
   { "family": "efd-go", "question": "Qual o prazo de entrega da EFD para contribuintes de Goiás?" },
