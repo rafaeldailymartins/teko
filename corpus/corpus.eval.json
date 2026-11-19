@@ -1,9 +1,9 @@
 {
   "format": 1,
   "corpusVersion": 14,
-  "evaluatedAt": "2026-11-13T20:08:44.457Z",
-  "gitSha": "f8e4619e0c2f706c4605d3096e25793455493144",
-  "runUrl": "https://github.com/rafaeldailymartins/teko/actions/runs/43497466026",
+  "evaluatedAt": "2026-11-19T00:31:29.897Z",
+  "gitSha": "d013e18314533896865002ba5f4e923cd0b9e485",
+  "runUrl": "https://github.com/rafaeldailymartins/teko/actions/runs/44428694544",
   "retrieval": {
     "embeddings": "workers-ai",
     "reranker": "workers-ai"
@@ -27,10 +27,10 @@
           "pass": true
         },
         "mrr": {
-          "mean": 0.6831547619047619,
+          "mean": 0.7141666666666666,
           "ci": {
-            "low": 0.5661049376341777,
-            "high": 0.8002045861753461
+            "low": 0.5992890140921656,
+            "high": 0.8290443192411676
           },
           "cases": 40,
           "threshold": 0.65,
@@ -89,10 +89,10 @@
       "errors": 0,
       "metrics": {
         "recall@10": {
-          "mean": 0.7222222222222222,
+          "mean": 0.9547619047619048,
           "ci": {
-            "low": 0.5726107145386911,
-            "high": 0.834589822316015
+            "low": 0.845437801521715,
+            "high": 0.9878690113988084
           },
           "cases": 42,
           "threshold": null,
@@ -100,10 +100,10 @@
           "pass": true
         },
         "mrr": {
-          "mean": 0.47486772486772494,
+          "mean": 0.7835317460317461,
           "ci": {
-            "low": 0.35197271572769573,
-            "high": 0.5977627340077541
+            "low": 0.6863200170708982,
+            "high": 0.8807434749925941
           },
           "cases": 42,
           "threshold": null,
@@ -161,6 +161,57 @@
             "high": 0.9999999999999999
           },
           "cases": 4,
+          "threshold": 1,
+          "target": null,
+          "pass": true
+        }
+      }
+    },
+    "ajuste": {
+      "thresholds": "retrieval-ajuste",
+      "pass": true,
+      "errors": 0,
+      "metrics": {
+        "recall@10": {
+          "mean": 0.3641025641025641,
+          "ci": {
+            "low": 0.1632118004436382,
+            "high": 0.6269884810024406
+          },
+          "cases": 13,
+          "threshold": null,
+          "target": null,
+          "pass": true
+        },
+        "mrr": {
+          "mean": 0.30769230769230765,
+          "ci": {
+            "low": 0.07716437502271065,
+            "high": 0.5382202403619046
+          },
+          "cases": 13,
+          "threshold": null,
+          "target": null,
+          "pass": true
+        },
+        "vigencia": {
+          "mean": 1,
+          "ci": {
+            "low": 0.7719046248681998,
+            "high": 1
+          },
+          "cases": 13,
+          "threshold": 1,
+          "target": null,
+          "pass": true
+        },
+        "data_referencia": {
+          "mean": 1,
+          "ci": {
+            "low": 0.7719046248681998,
+            "high": 1
+          },
+          "cases": 13,
           "threshold": 1,
           "target": null,
           "pass": true
