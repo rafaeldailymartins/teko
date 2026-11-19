@@ -375,6 +375,7 @@ export function createIngestionContainer(
       }),
       exportSnapshot: createExportSnapshot(snapshotDeps),
       promoteSnapshot: createPromoteSnapshot(snapshotDeps),
+      currentMigration: () => snapshotDeps.snapshots.latestMigration(),
       seedFixtureCorpus: createSeedFixtureCorpus({
         startIngestionRun,
         ingestDocumentVersion,
