@@ -56,12 +56,12 @@ apagado à mão.
 
 ## Synthetic Monitoring e a cota
 
-| Check                     | Alvo                                        | Frequência | Sondas     | Ligado        | Execuções/mês       |
-| ------------------------- | ------------------------------------------- | ---------- | ---------- | ------------- | ------------------- |
-| `teko-healthz-production` | `https://tekoia.vercel.app/healthz`         | 5 min      | `SaoPaulo` | sim           | 8.640               |
-| `teko-healthz-staging`    | `https://tekoia-staging.vercel.app/healthz` | 5 min      | `SaoPaulo` | sim           | 8.640               |
-| `teko-landing-production` | `https://tekoia.vercel.app/pt-BR/`          | 15 min     | `SaoPaulo` | não, até a F7 | 0 (2.880 ligado)    |
-| **total**                 |                                             |            |            |               | **17.280** (20.160) |
+| Check                     | Alvo                                        | Frequência | Sondas     | Ligado | Execuções/mês |
+| ------------------------- | ------------------------------------------- | ---------- | ---------- | ------ | ------------- |
+| `teko-healthz-production` | `https://tekoia.vercel.app/healthz`         | 5 min      | `SaoPaulo` | sim    | 8.640         |
+| `teko-healthz-staging`    | `https://tekoia-staging.vercel.app/healthz` | 5 min      | `SaoPaulo` | sim    | 8.640         |
+| `teko-landing-production` | `https://tekoia.vercel.app/pt-BR/`          | 15 min     | `SaoPaulo` | sim    | 2.880         |
+| **total**                 |                                             |            |            |        | **20.160**    |
 
 Conta do Grafana (`sondas × checks × duração em minutos × 43.200 / frequência`): cada check HTTP
 dura menos de 1 min, então `1 × 43.200 / 5 = 8.640` e `43.200 / 15 = 2.880`. O Synthetic
@@ -70,11 +70,9 @@ no resumo do apply. O Free inclui 100 mil execuções de API test por mês; a va
 de 50 mil, para sobrar espaço. Os checks usam `basicMetricsOnly` (menos séries ativas dos 10 mil do
 Free), que mantém `probe_success`, `probe_http_status_code` e `probe_duration_seconds`.
 
-**`teko-landing-production` desligado:** o web de produção só existe depois do primeiro deploy da
-F7, e até lá `https://tekoia.vercel.app/pt-BR/` responde 404 (medido em 2026-11-17); o check só
-falharia, dispararia o `teko-synthetic-failed` e gastaria execuções. Ele fica no arquivo com
-`enabled: false`, e o apply o cria desligado; o deploy do web de produção da F7 troca para `true`
-(pendência no `docs/status.md`).
+**`teko-landing-production`:** ficou desligado até o primeiro deploy do web de produção, porque
+antes disso `https://tekoia.vercel.app/pt-BR/` respondia 404 e o check só falharia. Foi ligado em
+2026-11-18, depois do deploy do `v0.1.0-rc.3` (`/pt-BR/` com 200).
 
 - **`/healthz` não toca o banco** (`apps/api/src/application/use-cases/get-health.ts` e
   `routes/health.ts`: só o estado do processo, sem rate limit, que usa o Postgres). O teste de

@@ -441,6 +441,22 @@ check "deploy: promote-corpus usa o corpus/corpus.lock.json, sem --rollback, com
   bash -c "run=\"\$(yq -r '.jobs.deploy.steps[] | select(.run // \"\" | test(\"snapshot promote\")) | .run' '$deploy')\"; grep -Fq 'snapshot promote --lock corpus/corpus.lock.json' <<<\"\$run\" && ! grep -Fq -- '--rollback' <<<\"\$run\" && grep -Fq '::error title=deploy::promote-corpus' <<<\"\$run\" && grep -Fq 'target-newer)' <<<\"\$run\""
 check "deploy: promote-corpus com a URL do owner da produção e o store só no env do passo" \
   yq_true '.jobs.deploy.steps[] | select(.run // "" | test("snapshot promote")) | [(.env | keys | sort | join(",")) == "BLOB_STORE,DATABASE_URL,GITHUB_TOKEN", .env.DATABASE_URL == "${{ secrets.NEON_PROD_MIGRATE_URL }}", .env.BLOB_STORE == "github-releases", .env.GITHUB_TOKEN == "${{ github.token }}"] | all' "$deploy"
+# O `vercel rollback` escolhe pela ordem de criação e pode cair numa deployment que nunca foi ao ar
+# (exercício da F7, 2026-11-18): o rollback promove a que estava no domínio antes do promote.
+rollback_promotes_previous() {
+  local names before promote run
+  names="$(yq -r '.jobs.deploy.steps[].name' "$deploy")"
+  before="$(grep -nx 'Deployment no domínio antes do promote' <<<"$names" | cut -d: -f1)"
+  promote="$(grep -nx 'vercel promote' <<<"$names" | cut -d: -f1)"
+  [[ -n "$before" && -n "$promote" ]] && ((before < promote)) || return 1
+  run="$(yq -r '.jobs.deploy.steps[] | select(.run // "" | test("vercel rollback")) | .run' "$deploy")"
+  grep -Fq 'vercel promote "$PREVIOUS_URL"' <<<"$run" &&
+    yq_true '.jobs.deploy.steps[] | select(.run // "" | test("vercel rollback")) | .env.PREVIOUS_URL == "${{ steps.previous.outputs.url }}"' "$deploy"
+}
+check "deploy: rollback promove a deployment que estava no domínio, lida antes do promote" \
+  rollback_promotes_previous
+check "deploy: falha simulada (exercício do rollback) só no staging e depois do smoke canônico" \
+  bash -c "yq -r '.jobs.plan.steps[] | select(.id == \"plan\") | .run' '$deploy' | grep -Fq 'simulate_failure só vale no staging' && yq -e '.on.workflow_dispatch.inputs.simulate_failure.default == false and (.jobs.deploy.steps[] | select(.name == \"Falha simulada (exercício do rollback, só staging)\") | .if == \"env.SIMULATE_FAILURE == '\"'\"'true'\"'\"'\")' '$deploy' >/dev/null"
 check "deploy: rollback só em falha depois do promote" \
   yq_true '.jobs.deploy.steps[] | select(.run // "" | test("vercel rollback")) | .if == "failure() && steps.promote.outcome == '"'"'success'"'"'"' "$deploy"
 check "deploy: o firewall do deploy roda sem --lockdown (não desfaz um lockdown ativo)" \

@@ -6,28 +6,41 @@ corpus tem rollback próprio ([rollback do corpus](rollback-corpus.md)); migraç
 
 ## Automático
 
-O `deploy.yml` faz `vercel rollback` sozinho quando algo falha **depois** do `vercel promote`
-(smoke do domínio canônico ou, no staging, o system test). O resumo do run mostra a seção
-**ROLLBACK**. Falha antes do promote não precisa de rollback: a deployment nova nunca recebeu o
-domínio (`--skip-domain`).
+O `deploy.yml` volta o domínio sozinho quando algo falha **depois** do `vercel promote` (smoke do
+domínio canônico): antes do promote ele lê a deployment que está no domínio
+(`targets.production`) e, na falha, a promove de novo e confere o `gitSha` do `/healthz`. Só sem
+deployment anterior conhecida ele cai no `vercel rollback`. O resumo do run mostra a seção
+**ROLLBACK**, com o tempo da volta. Falha antes do promote não precisa de rollback: a deployment
+nova nunca recebeu o domínio (`--skip-domain`). A falha do system test do staging não volta o
+domínio (ele roda em outro job).
+
+**Exercício:** Actions → **Deploy** → Run workflow em `main` com `simulate_failure: true` (só
+staging; a produção recusa). O deploy segue até o smoke canônico verde, falha de propósito e o
+rollback precisa devolver o domínio à deployment anterior.
 
 ## Manual
 
-Na máquina do mantenedor, com o Vercel CLI de `tools/vercel-cli` e o escopo do projeto
-(`VERCEL_ORG_ID` e `VERCEL_PROJECT_ID` do ambiente). Publica de verdade.
+Na máquina do mantenedor, com o Vercel CLI de `tools/vercel-cli` e o escopo do projeto nas
+variáveis `VERCEL_ORG_ID` e `VERCEL_PROJECT_ID` do ambiente (o `vercel rollback` não aceita
+`--project`). Publica de verdade.
 
-1. **Para a deployment imediatamente anterior** (o único alvo do `vercel rollback` no Hobby):
+**Prefira o `vercel promote` da deployment certa.** O `vercel rollback` escolhe a deployment de
+produção criada antes da atual, não a que estava no ar: no exercício da F7 (2026-11-18), com a
+deployment do `rc.2` promovida à mão, ele "voltou" para ela mesma, e uma deployment que parou no
+smoke (criada com `--prod --skip-domain`) também conta como de produção.
 
-   ```bash
-   vercel rollback --timeout=5m; echo "exit=$?"
-   ```
-
-2. **Para uma deployment de produção mais antiga** (o Hobby não faz rollback além da anterior):
-   ache a URL em `vercel list --prod` (ou pelo `meta.gitSha`: `vercel list --meta gitSha=<sha>`) e
-   promova:
+1. **Para uma deployment de produção específica** (a anterior ou uma mais antiga): ache a URL em
+   `vercel list --prod` (ou pelo `meta.gitSha`: `vercel list --meta gitSha=<sha>`) e promova
+   (cerca de 2 s no exercício):
 
    ```bash
    vercel promote https://<deployment>.vercel.app --timeout=5m; echo "exit=$?"
+   ```
+
+2. **`vercel rollback`** só quando a anterior na ordem de criação é a certa:
+
+   ```bash
+   vercel rollback --timeout=5m; echo "exit=$?"
    ```
 
 3. **Tarball de um release** (deployment antiga já removida): [redeploy do tarball](deploy.md#redeploy-do-tarball-de-um-release)

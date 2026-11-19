@@ -41,6 +41,10 @@ on:
         type: choice
         options: [deploy, redeploy]
         default: deploy
+      simulate_failure:
+        description: Exercício do rollback (só staging) - força uma falha depois do promote e do smoke canônico
+        type: boolean
+        default: false
 
 permissions: {}
 
@@ -68,6 +72,7 @@ jobs:
       origin: ${{ steps.plan.outputs.origin }}
       version: ${{ steps.plan.outputs.version }}
       release: ${{ steps.plan.outputs.release }}
+      simulate: ${{ steps.plan.outputs.simulate }}
     steps:
       - name: Harden runner
         uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
@@ -91,6 +96,7 @@ jobs:
           REF: ${{ github.ref }}
           SHA: ${{ github.sha }}
           PHASE: ${{ inputs.phase || 'deploy' }}
+          SIMULATE: ${{ inputs.simulate_failure == true }}
         run: |
           case "$PHASE" in deploy | redeploy) ;; *)
             echo "::error title=deploy::phase '${PHASE}' desconhecida (deploy ou redeploy)."
@@ -120,9 +126,15 @@ jobs:
               echo "::error title=deploy::ref ${REF} não implanta: só main (staging) e tags v* (produção)."
               exit 1 ;;
           esac
+          # O exercício do rollback derruba o domínio por alguns segundos: só no staging.
+          if [[ "$SIMULATE" == true && "$env" != staging ]]; then
+            echo "::error title=deploy::simulate_failure só vale no staging (main)."
+            exit 1
+          fi
           {
             echo "env=${env}"
             echo "phase=${PHASE}"
+            echo "simulate=${SIMULATE}"
             echo "origin=${origin}"
             echo "version=${version}"
             echo "release=${release}"
@@ -368,6 +380,7 @@ jobs:
       DEPLOY_ENV: ${{ needs.plan.outputs.env }}
       PHASE: ${{ needs.plan.outputs.phase }}
       ORIGIN: ${{ needs.plan.outputs.origin }}
+      SIMULATE_FAILURE: ${{ needs.plan.outputs.simulate }}
     steps:
       - name: Harden runner
         uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
@@ -651,6 +664,33 @@ jobs:
           bash .github/scripts/deploy-smoke.sh "$DEPLOY_ENV" deployment "$URL" "$EXPECTED_SHA" \
             reports/smoke-deployment.json
 
+      # O alvo do rollback é a deployment que está no domínio agora, não a criada antes da nova: o
+      # `vercel rollback` escolhe pela ordem de criação e pode cair numa deployment que nunca foi ao
+      # ar (exercício da F7 em 2026-11-18, com a do rc.2, que parou no smoke).
+      - name: Deployment no domínio antes do promote
+        id: previous
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
+        run: |
+          vercel api "/v9/projects/${VERCEL_PROJECT_ID}" >"${RUNNER_TEMP}/project-before.json"
+          id="$(jq -r '.targets.production.id // empty' "${RUNNER_TEMP}/project-before.json")"
+          if [[ ! "$id" =~ ^dpl_[A-Za-z0-9]+$ ]]; then
+            echo "- antes do promote: nenhuma deployment no domínio" >>"$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          vercel api "/v13/deployments/${id}" >"${RUNNER_TEMP}/previous.json"
+          url="$(jq -r '.url // empty' "${RUNNER_TEMP}/previous.json")"
+          sha="$(jq -r '.meta.gitSha // empty' "${RUNNER_TEMP}/previous.json")"
+          if [[ "$url" =~ ^[a-z0-9.-]+\.vercel\.app$ ]]; then
+            {
+              echo "url=https://${url}"
+              echo "sha=${sha}"
+            } >>"$GITHUB_OUTPUT"
+            echo "- antes do promote: ${id} (${sha:-sem gitSha})" >>"$GITHUB_STEP_SUMMARY"
+          fi
+
       - name: vercel promote
         id: promote
         env:
@@ -670,23 +710,54 @@ jobs:
             reports/smoke-canonical.json
           echo "- smoke verde em ${ORIGIN}" >>"$GITHUB_STEP_SUMMARY"
 
+      - name: Falha simulada (exercício do rollback, só staging)
+        if: env.SIMULATE_FAILURE == 'true'
+        run: |
+          echo "::error title=deploy::falha simulada depois do promote (simulate_failure): o rollback precisa devolver o domínio à deployment anterior."
+          exit 1
+
       - name: Rollback (falha depois do promote)
         if: failure() && steps.promote.outcome == 'success'
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
+          PREVIOUS_URL: ${{ steps.previous.outputs.url }}
+          PREVIOUS_SHA: ${{ steps.previous.outputs.sha }}
+          URL: ${{ steps.deploy.outputs.url || steps.redeploy.outputs.url }}
         run: |
-          echo "::error title=deploy::Falha depois do promote: vercel rollback para a deployment de produção anterior."
-          vercel rollback --timeout=5m --token "${VERCEL_TOKEN}"
+          started=$SECONDS
+          if [[ -n "$PREVIOUS_URL" && "$PREVIOUS_URL" != "$URL" ]]; then
+            echo "::error title=deploy::Falha depois do promote: o domínio volta para ${PREVIOUS_URL}."
+            vercel promote "$PREVIOUS_URL" --timeout=5m --token "${VERCEL_TOKEN}"
+            how="promote da deployment anterior (${PREVIOUS_URL})"
+          else
+            echo "::error title=deploy::Falha depois do promote, sem deployment anterior conhecida: vercel rollback."
+            vercel rollback --timeout=5m --token "${VERCEL_TOKEN}"
+            how="vercel rollback"
+          fi
+          served=""
+          if [[ "$PREVIOUS_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+            for _ in $(seq 1 30); do
+              served="$(curl -sS --max-time 10 "${ORIGIN}/healthz" | jq -r '.gitSha // empty' || true)"
+              [[ "$served" == "$PREVIOUS_SHA" ]] && break
+              sleep 2
+            done
+          fi
           {
             echo
             echo "### ROLLBACK"
             echo
-            echo "- Falha depois do promote: o domínio ${ORIGIN} voltou à deployment anterior (vercel rollback)."
-            echo "- A atribuição automática do domínio ficou desligada até o próximo \`vercel promote\` (o próximo deploy promove explicitamente)."
+            echo "- Falha depois do promote: o domínio ${ORIGIN} voltou à deployment anterior por ${how}, em $((SECONDS - started)) s."
+            if [[ -n "$PREVIOUS_SHA" ]]; then
+              echo "- O /healthz do domínio serve ${served:-?} (esperado ${PREVIOUS_SHA})."
+            fi
             echo "- Env vars e migrações não voltam (docs/runbooks/rollback.md)."
           } >>"$GITHUB_STEP_SUMMARY"
+          if [[ -n "$PREVIOUS_SHA" && "$served" != "$PREVIOUS_SHA" ]]; then
+            echo "::error title=deploy::o domínio não voltou ao gitSha ${PREVIOUS_SHA} (serve ${served:-nada})."
+            exit 1
+          fi
 
       - name: Diagnóstico da deployment (só em falha)
         if: failure() && (steps.deploy.outputs.url != '' || steps.redeploy.outputs.url != '')
