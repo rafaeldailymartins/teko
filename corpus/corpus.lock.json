@@ -4,11 +4,11 @@
   "snapshot": {
     "manifestKey": "snapshots/14/manifest.json",
     "corpusVersion": 14,
-    "createdAt": "2026-11-13T20:06:08.282Z",
-    "migration": "113d9d706398c5dc31cf9c2dc389bdd6d6c08224f9321ae60028b114283649b4",
-    "manifestSha256": "a449f85fe32660b28242465325ac32c1779404384e1e6d20c6cface672ba10ff"
+    "createdAt": "2026-11-19T00:28:59.044Z",
+    "migration": "1d624ec6e1058528ab9886c81622c94aaedafdbcc4819f76cb5bfb5cc68fd7f7",
+    "manifestSha256": "4cce5565e1aad789b4950fc1ddf721742c9bf2ce04abf97d0c912de5b9d01988"
   },
-  "updatedAt": "2026-11-13",
+  "updatedAt": "2026-11-18",
   "sources": {
     "cte/consolidado": {
       "sha256": "7045318c7c2f8502b01cf15a077487e7a62858f51c11fcbdeb5b6ec788c2df31",
