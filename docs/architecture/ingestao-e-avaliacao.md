@@ -170,11 +170,19 @@ A porta `BlobStore` tem o adapter de GitHub Releases (ADR 0030), escolhido por `
    corpus muda **ou** quando a migração do snapshot do lock ficou para trás da do banco (uma
    migração nova sem mudança de fonte): o `promote` exige a mesma migração, então a versão é
    reexportada com a migração atual e o lock muda.
-2. No release, o `promote-corpus` (environment `production`) confere os sha256 e o hash de
-   migração, faz upsert por chave natural sem recalcular embeddings, fecha o `knowledge` do que
-   saiu e grava `corpus_versions` por último. Na cobertura, a produção mantém o `verified_at` maior
-   e só mantém uma lacuna detectada **depois** da data de referência do snapshot. 0 neurons, sem ler
-   o banco do staging.
+2. No deploy de produção (tag `v*`), o `promote-corpus`, um passo do job `deploy` do `deploy.yml`
+   depois das migrações (environment `production`, desde a F7; revisão de 2026-11-18 da ADR 0038),
+   roda `cli snapshot promote --lock corpus/corpus.lock.json`: confere o sha256 do `manifest.json`
+   contra o `manifestSha256` do lock, a versão, o sha256 de cada arquivo e o hash de migração. Com
+   a produção já na versão do lock, ou à frente dela depois de um rollback, não escreve nada (nunca
+   faz rollback sozinho); fora isso, faz upsert por chave natural sem recalcular embeddings, fecha
+   o `knowledge` do que saiu e grava `corpus_versions` por último. Na cobertura, a produção mantém o
+   `verified_at` maior e só mantém uma lacuna detectada **depois** da data de referência do
+   snapshot. 0 neurons, sem ler o banco do staging, só com a URL do owner e o store (sem as
+   credenciais do Workers AI). Recusa (migração incompatível, snapshot ausente, sha256 diferente)
+   para o deploy antes da Vercel: um lock exportado antes de uma migração nova só é promovível
+   depois que o staging reexporta o snapshot e o PR do lock entra. A reexportação da mesma versão
+   com a migração atual não muda nada numa produção que já está nela.
 3. **Rollback:** `promote --rollback` repromove um snapshot antigo como `corpus_version` nova. A
    retenção nunca apaga um snapshot referenciado pelo lock vigente. Runbook em
    `docs/runbooks/rollback-corpus.md`.

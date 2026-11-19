@@ -64,7 +64,8 @@ Versão única do produto, SemVer `vX.Y.Z`, sincronizada nos `package.json` e no
 versão (SemVer, pré-release aceita), confere o último deploy de staging do SHA de `main`
 (`.github/scripts/staging-verified.sh`) e cria a tag pela App; o push da tag dispara o `deploy.yml`
 de produção, que repete a checagem, roda o `neon-rehearsal.yml` e pede o revisor no `build` e no
-`deploy`.
+`deploy`. O `promote-corpus` já roda desde a F7, como passo do job `deploy` (revisão de 2026-11-18
+da ADR 0038; [Deploy e rollback](#deploy-e-rollback)).
 
 ## Dependabot
 
@@ -149,7 +150,14 @@ não recebe nenhum segredo; [runbook](../runbooks/deploy.md)):
    (staging) ou asset do release (produção);
 5. no job `deploy`: sha256 e `gh attestation verify` do tarball antes de qualquer escrita, depois
    `drizzle-kit migrate` na URL direta, conferindo `extversion` e `pg_settings`
-   (`.github/scripts/neon-extensions-check.sh`);
+   (`.github/scripts/neon-extensions-check.sh`); na produção, o `promote-corpus` (`cli snapshot
+   promote --lock corpus/corpus.lock.json`, mesma URL do owner): confere o sha256 do manifesto
+   contra o lock e promove o snapshot dele
+   ([ingestão](ingestao-e-avaliacao.md#snapshot-promoção-e-rollback)). Com a produção já na versão
+   do lock, ou à frente dela depois de um rollback de corpus, não muda nada; recusa (migração
+   incompatível, snapshot ausente, sha256 diferente) para o deploy antes da Vercel. É um passo do
+   job `deploy`, para não pedir mais uma aprovação do environment `production`; o staging recebe o
+   corpus da ingestão;
 6. sync da Config de `infra/vercel/env.<ambiente>.json` (`scripts/vercel-env-sync.ts`, falha se
    faltar Sensitive) e das regras do WAF (`scripts/vercel-firewall.ts`, que mantém um lockdown
    ativo);

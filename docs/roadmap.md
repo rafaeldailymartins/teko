@@ -145,7 +145,8 @@ seguimento que troca `develop` por `main` no código.
 - **Mudanças previstas:** `add-vercel-deployment`, `add-deploy-pipelines`, `add-smoke-tests`,
   `add-usage-guard`.
 - **Entregas:** WAF aplicado (`infra/vercel/firewall-rules.json`), sync de env, deploy único do
-  `.vercel/output` (estático + Function) com tarball atestado, smoke e system test; `vercel-usage`
+  `.vercel/output` (estático + Function) com tarball atestado, smoke e system test; `promote-corpus`
+  no deploy de produção (antecipado da F9, revisão de 2026-11-18 da ADR 0038); `vercel-usage`
   e `weekly-maintenance` no `ops.yml`; job `neon-rehearsal` reutilizável; runbooks de deploy, pausa,
   kill switch e rollback.
 - **DoD:**

@@ -75,6 +75,7 @@ import type {
   IngestionContainer,
   QuestionUseCases,
   RetrievalUseCases,
+  SnapshotContainer,
 } from '#app/container.ts'
 import type { AuthGateway } from '#app/ports/auth-gateway.ts'
 import type { BackgroundTaskFailure, BackgroundTasks } from '#app/ports/background-tasks.ts'
@@ -117,7 +118,7 @@ import {
 } from '#app/use-cases/check-coverage.ts'
 import { createEmbedPending } from '#app/use-cases/embed-pending.ts'
 import { createEvalAnswer } from '#app/use-cases/eval-answer.ts'
-import { createExportSnapshot } from '#app/use-cases/export-snapshot.ts'
+import { createExportSnapshot, type SnapshotDeps } from '#app/use-cases/export-snapshot.ts'
 import { createFindPeriodVersions } from '#app/use-cases/find-period-versions.ts'
 import { createGetHealth } from '#app/use-cases/get-health.ts'
 import { createHybridSearch } from '#app/use-cases/hybrid-search.ts'
@@ -134,7 +135,10 @@ import {
   type PrivacyUseCases,
   type PurgeExpiredData,
 } from '#app/use-cases/privacy.ts'
-import { createPromoteSnapshot } from '#app/use-cases/promote-snapshot.ts'
+import {
+  createPromoteLockedSnapshot,
+  createPromoteSnapshot,
+} from '#app/use-cases/promote-snapshot.ts'
 import { createProvisionUseCases } from '#app/use-cases/provisions.ts'
 import { createPruneEmbeddingCache } from '#app/use-cases/prune-embedding-cache.ts'
 import { createQuestionHistory } from '#app/use-cases/question-history.ts'
@@ -343,6 +347,7 @@ export function createIngestionContainer(
     blobs: deps.blobStore,
     clock,
   }
+  const snapshots = createSnapshotUseCases(snapshotDeps)
   const startIngestionRun = createStartIngestionRun(runDeps)
   const finishIngestionRun = createFinishIngestionRun(runDeps)
   const ingestDocumentVersion = createIngestDocumentVersion({
@@ -373,8 +378,8 @@ export function createIngestionContainer(
         hasher: sha256ContentHasher,
         embeddingModel: embeddings.model,
       }),
-      exportSnapshot: createExportSnapshot(snapshotDeps),
-      promoteSnapshot: createPromoteSnapshot(snapshotDeps),
+      exportSnapshot: snapshots.exportSnapshot,
+      promoteSnapshot: snapshots.promoteSnapshot,
       currentMigration: () => snapshotDeps.snapshots.latestMigration(),
       seedFixtureCorpus: createSeedFixtureCorpus({
         startIngestionRun,
@@ -384,6 +389,39 @@ export function createIngestionContainer(
         store: createPgFixtureCorpusStore(database.db),
       }),
     },
+    close: () => database.close(),
+  }
+}
+
+function createSnapshotUseCases(deps: SnapshotDeps): SnapshotContainer['useCases'] {
+  return {
+    exportSnapshot: createExportSnapshot(deps),
+    promoteSnapshot: createPromoteSnapshot(deps),
+    promoteLockedSnapshot: createPromoteLockedSnapshot(deps),
+  }
+}
+
+/**
+ * CLI `snapshot export|promote`: só o banco (URL do owner) e o store `corpus-snapshots`, sem
+ * embeddings nem orçamento de neurons. A promoção do deploy de produção roda aqui, com o environment
+ * `production`, que não tem as credenciais do Workers AI.
+ */
+export function createSnapshotContainer(
+  databaseUrl: string,
+  deps: { readonly blobStore: BlobStore; readonly clock?: Clock },
+): SnapshotContainer {
+  const database = createDatabase({
+    url: databaseUrl,
+    applicationName: 'teko-snapshot',
+    maxConnections: 2,
+  })
+  return {
+    useCases: createSnapshotUseCases({
+      snapshots: createPgSnapshotRepository(database.pool),
+      codec: snapshotCodec,
+      blobs: deps.blobStore,
+      clock: deps.clock ?? systemClock,
+    }),
     close: () => database.close(),
   }
 }
@@ -477,7 +515,7 @@ export interface IngestionIo {
  * Sem token (só possível sem `BLOB_STORE`; o `parseEnv` exige o token com ele), o store em
  * memória (execução local).
  */
-export function createBlobStore(env: Env): BlobStore {
+export function createBlobStore(env: Pick<Env, 'GITHUB_TOKEN' | 'GITHUB_REPOSITORY'>): BlobStore {
   return env.GITHUB_TOKEN === undefined || env.GITHUB_REPOSITORY === undefined
     ? createInMemoryBlobStore()
     : createGithubReleasesBlobStore({ repository: env.GITHUB_REPOSITORY, token: env.GITHUB_TOKEN })

@@ -1,23 +1,33 @@
 import { parseArgs } from 'node:util'
-import { type ExportSnapshot, snapshotManifestKey } from '#app/use-cases/export-snapshot.ts'
-import type { PromoteSnapshot } from '#app/use-cases/promote-snapshot.ts'
+import {
+  type ExportSnapshot,
+  SnapshotError,
+  snapshotManifestKey,
+} from '#app/use-cases/export-snapshot.ts'
+import type { PromoteLockedSnapshot, PromoteSnapshot } from '#app/use-cases/promote-snapshot.ts'
+import type { CorpusLock } from '../ingest/corpus-lock.ts'
 
 /**
  * Subcomandos `cli snapshot export` e `cli snapshot promote` (despachados pelo `src/cli.ts`). As
- * dependências chegam prontas (o container de ingestão, com o banco do alvo e o Blobs), então os
- * handlers só leem os argumentos, chamam o caso de uso e imprimem uma linha JSON por resultado, que
- * o workflow lê.
+ * dependências chegam prontas (o container do snapshot, com o banco do alvo e o store de blobs),
+ * então os handlers só leem os argumentos, chamam o caso de uso e imprimem uma linha JSON por
+ * resultado, que o workflow lê.
  *
  * - `snapshot export [--corpus-version <n>]`: staging, depois do `RefreshCoverage`.
- * - `snapshot promote (--manifest <chave> | --corpus-version <n>) [--rollback]`: produção (job
- *   `promote-corpus`), depois da fase `migrate` do deploy. `--rollback` repromove explicitamente um
- *   snapshot mais antigo que o destino, como uma versão nova do corpus
- *   (`docs/runbooks/rollback-corpus.md`).
+ * - `snapshot promote --lock <corpus.lock.json>`: produção (passo `promote-corpus` do job `deploy`),
+ *   depois das migrações. Promove o snapshot do lock, conferido pelo `manifestSha256`; com a
+ *   produção já nele ou à frente dele, não faz nada (`status` `up-to-date` ou `target-newer`).
+ * - `snapshot promote (--manifest <chave> | --corpus-version <n>) [--rollback]`: promoção manual.
+ *   `--rollback` repromove explicitamente um snapshot mais antigo que o destino, como uma versão
+ *   nova do corpus (`docs/runbooks/rollback-corpus.md`).
  */
 
 export interface SnapshotCliDeps {
   readonly exportSnapshot: ExportSnapshot
   readonly promoteSnapshot: PromoteSnapshot
+  readonly promoteLockedSnapshot: PromoteLockedSnapshot
+  /** Lê e valida o `corpus.lock.json` (o `cli.ts` passa `readCorpusLock`). */
+  readonly readLock: (file: string) => Pick<CorpusLock, 'snapshot'>
   /** Saída de uma linha (o `cli.ts` passa `console.log`). */
   readonly print: (line: string) => void
 }
@@ -27,6 +37,7 @@ export const EXIT_USAGE = 64
 
 const SNAPSHOT_USAGE = [
   'uso: cli snapshot export [--corpus-version <n>]',
+  '     cli snapshot promote --lock <corpus.lock.json>',
   '     cli snapshot promote (--manifest <chave> | --corpus-version <n>) [--rollback]',
 ].join('\n')
 
@@ -49,15 +60,16 @@ function parseVersion(value: string | undefined): number | undefined {
   return Number(value)
 }
 
-function parse(args: readonly string[], options: { readonly manifest: boolean }) {
+function parse(args: readonly string[], options: { readonly promote: boolean }) {
   try {
     return parseArgs({
       args: [...args],
       options: {
         'corpus-version': { type: 'string' },
-        ...(options.manifest
+        ...(options.promote
           ? {
               manifest: { type: 'string' as const },
+              lock: { type: 'string' as const },
               rollback: { type: 'boolean' as const, default: false },
             }
           : {}),
@@ -71,10 +83,10 @@ function parse(args: readonly string[], options: { readonly manifest: boolean })
 }
 
 export async function runSnapshotExport(
-  deps: SnapshotCliDeps,
+  deps: Pick<SnapshotCliDeps, 'exportSnapshot' | 'print'>,
   args: readonly string[],
 ): Promise<void> {
-  const values = parse(args, { manifest: false })
+  const values = parse(args, { promote: false })
   const corpusVersion = parseVersion(values['corpus-version'])
   const result = await deps.exportSnapshot(corpusVersion === undefined ? {} : { corpusVersion })
   deps.print(
@@ -87,18 +99,44 @@ export async function runSnapshotExport(
   )
 }
 
+async function promoteFromLock(
+  deps: Pick<SnapshotCliDeps, 'promoteLockedSnapshot' | 'readLock' | 'print'>,
+  file: string,
+): Promise<void> {
+  const { snapshot } = deps.readLock(file)
+  if (snapshot === null) {
+    throw new SnapshotError(`${file} não tem snapshot: nada a promover`)
+  }
+  const result = await deps.promoteLockedSnapshot({
+    manifestKey: snapshot.manifestKey,
+    corpusVersion: snapshot.corpusVersion,
+    manifestSha256: snapshot.manifestSha256,
+  })
+  deps.print(JSON.stringify({ manifestKey: snapshot.manifestKey, ...result }))
+}
+
 export async function runSnapshotPromote(
-  deps: SnapshotCliDeps,
+  deps: Omit<SnapshotCliDeps, 'exportSnapshot'>,
   args: readonly string[],
 ): Promise<void> {
-  const values = parse(args, { manifest: true })
+  const values = parse(args, { promote: true })
   const manifest = typeof values.manifest === 'string' ? values.manifest : undefined
+  const lock = typeof values.lock === 'string' ? values.lock : undefined
   const corpusVersion = parseVersion(values['corpus-version'])
+  const rollback = values.rollback === true
+  if (lock !== undefined) {
+    if (manifest !== undefined || corpusVersion !== undefined || rollback) {
+      throw new SnapshotUsageError(
+        '--lock não se combina com --manifest, --corpus-version nem --rollback',
+      )
+    }
+    await promoteFromLock(deps, lock)
+    return
+  }
   if ((manifest === undefined) === (corpusVersion === undefined)) {
-    throw new SnapshotUsageError('informe --manifest ou --corpus-version (um dos dois)')
+    throw new SnapshotUsageError('informe --lock, --manifest ou --corpus-version (um dos três)')
   }
   const manifestKey = manifest ?? snapshotManifestKey(corpusVersion ?? 0)
-  const rollback = values.rollback === true
   const result = await deps.promoteSnapshot(rollback ? { manifestKey, rollback } : { manifestKey })
   deps.print(
     JSON.stringify({

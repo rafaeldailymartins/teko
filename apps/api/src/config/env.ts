@@ -181,6 +181,38 @@ const otlpHeadersSchema = z
     return headers
   })
 
+/** Store dos artefatos da ingestão (ADR 0030): do schema da CLI e do `loadSnapshotEnv`. */
+const blobStoreFields = {
+  /**
+   * Onde ficam os artefatos da ingestão (ADR 0030). Com `github-releases` (o que os workflows
+   * declaram), o `GITHUB_TOKEN` é obrigatório: um run no Actions nunca cai, sem aviso, no store
+   * em memória. Sem valor, o GitHub Releases quando há token, e a memória quando não há (local).
+   */
+  BLOB_STORE: z.enum(BlobStoreBackend).optional(),
+  /** Token do job (`github.token`), com `contents: write` só nos jobs que gravam artefatos. */
+  GITHUB_TOKEN: z.string().trim().min(20).optional(),
+  /** `owner/repo` dos releases (variável padrão do Actions). */
+  GITHUB_REPOSITORY: z
+    .string()
+    .trim()
+    .regex(/^[A-Za-z0-9-]+\/[A-Za-z0-9._-]+$/, { error: 'deve ser owner/repo' })
+    .optional(),
+}
+
+type BlobStoreSettings = z.output<z.ZodObject<typeof blobStoreFields>>
+
+function blobStoreIssues(
+  env: BlobStoreSettings,
+  issue: (path: string, message: string) => void,
+): void {
+  if (env.BLOB_STORE === BlobStoreBackend.GithubReleases && env.GITHUB_TOKEN === undefined) {
+    issue('GITHUB_TOKEN', 'obrigatória com BLOB_STORE=github-releases')
+  }
+  if (env.GITHUB_TOKEN !== undefined && env.GITHUB_REPOSITORY === undefined) {
+    issue('GITHUB_REPOSITORY', 'obrigatória com GITHUB_TOKEN (owner/repo dos releases)')
+  }
+}
+
 const envSchema = z
   .object({
     NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
@@ -344,20 +376,7 @@ const envSchema = z
     LANGFUSE_SAMPLE_RATE_OVER_BUDGET: z.coerce.number().min(0).max(1).default(0.2),
     LANGFUSE_MONTHLY_UNITS_CUTOFF: z.coerce.number().int().min(0).default(35_000),
     // --- Ingestão (CLI `ingest`, `snapshot`, `eval-fixture`; só no Actions e localmente) -------
-    /**
-     * Onde ficam os artefatos da ingestão (ADR 0030). Com `github-releases` (o que os workflows
-     * declaram), o `GITHUB_TOKEN` é obrigatório: um run no Actions nunca cai, sem aviso, no store
-     * em memória. Sem valor, o GitHub Releases quando há token, e a memória quando não há (local).
-     */
-    BLOB_STORE: z.enum(BlobStoreBackend).optional(),
-    /** Token do job (`github.token`), com `contents: write` só nos jobs que gravam artefatos. */
-    GITHUB_TOKEN: z.string().trim().min(20).optional(),
-    /** `owner/repo` dos releases (variável padrão do Actions). */
-    GITHUB_REPOSITORY: z
-      .string()
-      .trim()
-      .regex(/^[A-Za-z0-9-]+\/[A-Za-z0-9._-]+$/, { error: 'deve ser owner/repo' })
-      .optional(),
+    ...blobStoreFields,
     /** Orçamento diário de neurons da ingestão (Workers AI Free: 10.000/dia na conta; plano: 8.000). */
     EMBED_NEURON_BUDGET: z.coerce.number().int().min(0).max(10_000).default(8000),
     /** Guarda de tamanho da ingestão, em bytes (padrão 800 MB; o Neon Free tem 1 GB). */
@@ -449,12 +468,7 @@ const envSchema = z
         'LANGFUSE_PUBLIC_KEY e LANGFUSE_SECRET_KEY vêm juntas',
       )
     }
-    if (env.BLOB_STORE === BlobStoreBackend.GithubReleases && env.GITHUB_TOKEN === undefined) {
-      issue('GITHUB_TOKEN', 'obrigatória com BLOB_STORE=github-releases')
-    }
-    if (env.GITHUB_TOKEN !== undefined && env.GITHUB_REPOSITORY === undefined) {
-      issue('GITHUB_REPOSITORY', 'obrigatória com GITHUB_TOKEN (owner/repo dos releases)')
-    }
+    blobStoreIssues(env, issue)
     for (const [id, secret] of [
       ['GITHUB_CLIENT_ID', 'GITHUB_CLIENT_SECRET'],
       ['GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET'],
@@ -671,6 +685,42 @@ export function loadMaintenanceEnv(
 ): Readonly<Record<'DATABASE_URL', string | undefined>> {
   const url = source['DATABASE_URL']
   return { DATABASE_URL: url === '' ? undefined : url }
+}
+
+const snapshotEnvSchema = z
+  .object({ DATABASE_URL: postgresUrlSchema, ...blobStoreFields })
+  .superRefine((env, ctx) => {
+    blobStoreIssues(env, (path, message) => {
+      ctx.addIssue({ code: 'custom', path: [path], message })
+    })
+  })
+
+export type SnapshotEnv = z.output<typeof snapshotEnvSchema>
+
+/**
+ * Ambiente do `cli snapshot export|promote`: a `DATABASE_URL` do owner e o store dos artefatos, sem
+ * passar pelo schema da CLI, que exige o resto da configuração da API (por exemplo
+ * `EMBEDDINGS_PROVIDER` e as credenciais do Workers AI com `DATABASE_URL`). O snapshot não calcula
+ * embeddings, e o environment `production` do deploy não tem essas credenciais. Vazio conta como
+ * ausente, como no Actions com um segredo que falta.
+ */
+export function loadSnapshotEnv(
+  source: Readonly<Record<string, string | undefined>> = process.env,
+): SnapshotEnv {
+  const present = Object.fromEntries(
+    (['DATABASE_URL', 'BLOB_STORE', 'GITHUB_TOKEN', 'GITHUB_REPOSITORY'] as const).flatMap(
+      (name) => (source[name] === undefined || source[name] === '' ? [] : [[name, source[name]]]),
+    ),
+  )
+  const result = snapshotEnvSchema.safeParse(present)
+  if (!result.success) {
+    throw new EnvValidationError(
+      result.error.issues.map(
+        (issue) => `${issue.path.map(String).join('.') || '(env)'}: ${issue.message}`,
+      ),
+    )
+  }
+  return result.data
 }
 
 /**

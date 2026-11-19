@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto'
 import { readdirSync, readFileSync } from 'node:fs'
 import pg from 'pg'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
@@ -7,6 +8,7 @@ import { BlobStoreName } from '#app/ports/blob-store.ts'
 import type { SnapshotManifest } from '#app/ports/snapshot-repository.ts'
 import { FAMILIES } from '#domain/corpus/family.ts'
 import { loadGolden } from '../../../evals/datasets/load-golden.ts'
+import { createSnapshotContainer } from '../../../src/composition-root.ts'
 import { FIXTURE_DIR, seedFixtureCorpus, testContainer } from '../../setup/corpus.ts'
 import { createTestDatabase, type TestDatabase } from '../../setup/database.ts'
 import { createIngestionTestContext, type IngestionTestContext } from '../../setup/ingestion.ts'
@@ -181,6 +183,30 @@ describe('promoção num banco vazio', () => {
       'SELECT count(*)::int AS n FROM corpus.provision_versions WHERE NOT upper_inf(knowledge)',
     )
     expect(open.rows[0]?.n).toBe(stagingClosed.rows[0]?.n)
+  })
+
+  it('o promote-corpus do deploy (--lock), só com o banco e o store, não escreve na mesma versão', async () => {
+    const raw = (await blobs.get(BlobStoreName.CorpusSnapshots, manifestKey)) ?? new Uint8Array()
+    const snapshot = createSnapshotContainer(production.ownerUrl, { blobStore: blobs })
+    try {
+      const before = await tableCounts(productionOwner)
+      const locked = {
+        manifestKey,
+        corpusVersion: manifest.corpusVersion,
+        manifestSha256: createHash('sha256').update(raw).digest('hex'),
+      }
+      expect(await snapshot.useCases.promoteLockedSnapshot(locked)).toEqual({
+        status: 'up-to-date',
+        corpusVersion: 1,
+        targetVersion: 1,
+      })
+      expect(await tableCounts(productionOwner)).toEqual(before)
+      await expect(
+        snapshot.useCases.promoteLockedSnapshot({ ...locked, manifestSha256: '0'.repeat(64) }),
+      ).rejects.toThrow(/difere do lock/)
+    } finally {
+      await snapshot.close()
+    }
   })
 
   it('mantém o verified_at mais recente da produção e decide a lacuna pela detecção (A1)', async () => {

@@ -9,6 +9,7 @@ import {
   langfuseSettings,
   loadCliEnv,
   loadMaintenanceEnv,
+  loadSnapshotEnv,
   loadWatchEnv,
   parseEnv as parseProcessEnv,
   type RuntimeFacts,
@@ -795,6 +796,42 @@ describe('loadMaintenanceEnv', () => {
   it('trata a URL vazia (segredo ausente no Actions) como ausente', () => {
     expect(loadMaintenanceEnv({ DATABASE_URL: '' })).toEqual({ DATABASE_URL: undefined })
     expect(loadMaintenanceEnv({})).toEqual({ DATABASE_URL: undefined })
+  })
+})
+
+describe('loadSnapshotEnv', () => {
+  const token = 'ghs_'.padEnd(40, 'x')
+
+  it('lê a DATABASE_URL e o store, sem exigir embeddings nem o resto da API', () => {
+    expect(
+      loadSnapshotEnv({
+        DATABASE_URL: 'postgresql://owner@host/db',
+        BLOB_STORE: 'github-releases',
+        GITHUB_TOKEN: token,
+        GITHUB_REPOSITORY: 'owner/teko',
+        APP_ENV: 'production',
+        EMBEDDINGS_PROVIDER: '',
+      }),
+    ).toEqual({
+      DATABASE_URL: 'postgresql://owner@host/db',
+      BLOB_STORE: 'github-releases',
+      GITHUB_TOKEN: token,
+      GITHUB_REPOSITORY: 'owner/teko',
+    })
+    expect(loadSnapshotEnv({ DATABASE_URL: 'postgres://local/db' })).toEqual({
+      DATABASE_URL: 'postgres://local/db',
+    })
+  })
+
+  it('exige a DATABASE_URL (vazia conta como ausente) e o token com o github-releases', () => {
+    expect(() => loadSnapshotEnv({ DATABASE_URL: '' })).toThrow(/DATABASE_URL/)
+    expect(() => loadSnapshotEnv({ DATABASE_URL: 'mysql://x' })).toThrow(/postgresql/)
+    expect(() =>
+      loadSnapshotEnv({ DATABASE_URL: 'postgresql://h/db', BLOB_STORE: 'github-releases' }),
+    ).toThrow(/GITHUB_TOKEN: obrigatória com BLOB_STORE=github-releases/)
+    expect(() =>
+      loadSnapshotEnv({ DATABASE_URL: 'postgresql://h/db', GITHUB_TOKEN: token }),
+    ).toThrow(EnvValidationError)
   })
 })
 

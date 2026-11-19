@@ -1,7 +1,9 @@
 # Runbook: rollback do corpus da produção
 
-A produção só recebe o corpus pelo snapshot que o staging exporta (`cli snapshot promote`, job
-`promote-corpus`; [ADR 0025](../adr/0025-reconciliacao-incremental-e-snapshot.md)). Quando um
+A produção só recebe o corpus pelo snapshot que o staging exporta (`cli snapshot promote --lock`,
+passo `promote-corpus` do deploy de produção;
+[ADR 0025](../adr/0025-reconciliacao-incremental-e-snapshot.md)). O deploy nunca volta o corpus
+sozinho: com a produção à frente do lock, ele só avisa. Quando um
 snapshot promovido se mostra ruim (parser quebrado que passou pelos gates, regressão no
 `corpus-eval` depois do merge do lock), a saída é **repromover um snapshot anterior como uma
 versão nova do corpus**. Não se apaga nada da produção nem se volta a numeração: o histórico
@@ -26,7 +28,8 @@ rollback.
 ## Rollback
 
 Com a URL do owner da produção (`NEON_PROD_MIGRATE_URL`, environment `production`) no
-`DATABASE_URL` e o backend do store configurado como no `promote-corpus`:
+`DATABASE_URL` e o backend do store configurado como no `promote-corpus` (`BLOB_STORE=github-releases`,
+`GITHUB_TOKEN` e `GITHUB_REPOSITORY`; o snapshot não pede as credenciais do Workers AI):
 
 ```bash
 pnpm --filter @teko/api cli snapshot promote --corpus-version <N> --rollback
@@ -56,4 +59,5 @@ Sem `--rollback`, a promoção de um snapshot mais antigo que a produção é re
    recusa snapshot mais antigo que o destino). Se for preciso, um run do staging sem mudança não
    gera versão: a correção é que gera.
 3. O PR do lock seguinte leva o snapshot novo; não edite o `corpus.lock.json` à mão para apontar
-   para o snapshot do rollback.
+   para o snapshot do rollback. Até lá, cada deploy de produção deixa o corpus como está e avisa
+   (`::warning`: produção à frente do lock).

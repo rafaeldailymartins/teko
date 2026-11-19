@@ -10,6 +10,7 @@ import {
 } from '#adapters/in/cli/eval-fixture/eval-fixture.ts'
 import { EXTRACTOR_DOCLING_VERSION, EXTRACTOR_REVISION } from '#adapters/in/cli/ingest/blob-keys.ts'
 import { EXIT_FAILURE, EXIT_USAGE } from '#adapters/in/cli/ingest/cli-common.ts'
+import { readCorpusLock } from '#adapters/in/cli/ingest/corpus-lock.ts'
 import { runIngestDiscover } from '#adapters/in/cli/ingest/discover.ts'
 import { runIngestLoad } from '#adapters/in/cli/ingest/load.ts'
 import { loadOverrides } from '#adapters/in/cli/ingest/overrides-loader.ts'
@@ -29,6 +30,7 @@ import type { IngestionContainer } from '#app/container.ts'
 import type { BlobStore } from '#app/ports/blob-store.ts'
 import { compareCodeUnits } from '#domain/shared/compare-code-units.ts'
 import {
+  createBlobStore,
   createCoverageAgeTargets,
   createCoverageMarkTargets,
   createDevSessionSeeder,
@@ -37,6 +39,7 @@ import {
   createIngestionContainer,
   createIngestionIo,
   createMaintenance,
+  createSnapshotContainer,
   exportWebOpenApi,
   migrateDatabase,
 } from './composition-root.ts'
@@ -45,6 +48,7 @@ import {
   EnvValidationError,
   loadCliEnv,
   loadMaintenanceEnv,
+  loadSnapshotEnv,
   loadWatchEnv,
 } from './config/env.ts'
 
@@ -55,7 +59,9 @@ import {
  * - `seed-fixtures [--dir test/fixtures/corpus] [--migrate] [--replace]`: grava a fixture única
  *   no banco de `DATABASE_URL` (URL do owner);
  * - `ingest discover …` e `ingest load …` (F3): ver `adapters/in/cli/ingest/{discover,load}.ts`;
- * - `snapshot export|promote …` (F3): ver `adapters/in/cli/snapshot/snapshot.ts`;
+ * - `snapshot export|promote …` (F3; `promote --lock` na F7, no deploy de produção): ver
+ *   `adapters/in/cli/snapshot/snapshot.ts`. Só lê `DATABASE_URL` e o store (`loadSnapshotEnv`);
+
  * - `eval-fixture export --from staging --out <dir>` (F3): regenera a fixture a partir do staging;
  * - `sources-watch [--config <watch.yaml>] [--out <dir>] [--dry-run]` (F3, job `detect`): GETs
  *   condicionais e `discovered.json`, sem banco;
@@ -94,7 +100,7 @@ const USAGE = [
   'uso: cli seed-fixtures [--dir <dir>] [--migrate] [--replace]',
   '     cli ingest discover --target staging|production --out <dir> [--family <f>]',
   '     cli ingest load --target staging|production --plan <plan.json> --docling-dir <dir> [--bulk] [--migrate] [--report <arquivo>]',
-  '     cli snapshot export [--corpus-version <n>] | snapshot promote (--manifest <chave> | --corpus-version <n>)',
+  '     cli snapshot export [--corpus-version <n>] | snapshot promote (--lock <arquivo> | --manifest <chave> | --corpus-version <n>)',
   '     cli eval-fixture export --from staging --out <dir> [--fixture <dir>]',
   '     cli coverage-age --out <arquivo.json>',
   '     cli seed-dev-session [--email <e-mail>] [--name <nome>] [--country <ISO>]',
@@ -215,11 +221,12 @@ async function runSnapshot(args: readonly string[]): Promise<number> {
     console.error(USAGE)
     return EXIT_USAGE
   }
-  const env = loadCliEnv()
-  const io = createIngestionIo(env, [])
-  const container = ingestionContainer(env, io.blobs, `snapshot ${subcommand}`)
+  // Só o banco e o store: o snapshot não calcula embeddings (o deploy de produção não tem o
+  // Workers AI no environment).
+  const env = loadSnapshotEnv()
+  const container = createSnapshotContainer(env.DATABASE_URL, { blobStore: createBlobStore(env) })
   try {
-    const deps = { ...container.useCases, print }
+    const deps = { ...container.useCases, readLock: readCorpusLock, print }
     await (subcommand === 'export' ? runSnapshotExport(deps, rest) : runSnapshotPromote(deps, rest))
     return 0
   } finally {
