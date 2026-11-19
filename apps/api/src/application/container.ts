@@ -6,6 +6,7 @@ import type { ClientIp } from './ports/client-ip.ts'
 import type { ErrorReporterPort } from './ports/error-reporter.ts'
 import type { GeoResolver } from './ports/geo-resolver.ts'
 import type { RateLimitStore } from './ports/rate-limit-store.ts'
+import type { MigrationRef } from './ports/snapshot-repository.ts'
 import type { Telemetry } from './ports/telemetry.ts'
 import type { Lifecycle } from './services/lifecycle.ts'
 import type { NeuronBudget } from './services/neuron-budget.ts'
@@ -80,6 +81,8 @@ interface IngestionUseCases {
   readonly refreshCoverage: RefreshCoverage
   readonly exportSnapshot: ExportSnapshot
   readonly promoteSnapshot: PromoteSnapshot
+  /** Última migração aplicada no banco (o `load` reexporta o snapshot se a do lock ficou para trás). */
+  readonly currentMigration: () => Promise<MigrationRef | null>
   readonly inspectCorpus: InspectCorpus
   readonly pruneEmbeddingCache: PruneEmbeddingCache
   /** Seed da fixture única pelo mesmo caminho da ingestão (só desenvolvimento, CI e testes). */

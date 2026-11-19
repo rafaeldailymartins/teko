@@ -166,7 +166,10 @@ A porta `BlobStore` tem o adapter de GitHub Releases (ADR 0030), escolhido por `
    ordem de FK, sem `embedding_cache`, `ingestion_runs`, `review_queue` nem linhas `pending` ou
    `rejected`) com o `manifest.json` (contagens, sha256 de cada arquivo, hash da última migração e
    a linhagem) e abre o PR do `corpus.lock.json`, **só depois do `corpus-eval` verde** e com as
-   métricas no corpo. A branch do PR leva o `run_id`.
+   métricas no corpo. A branch do PR leva o `run_id`. A exportação acontece quando a versão do
+   corpus muda **ou** quando a migração do snapshot do lock ficou para trás da do banco (uma
+   migração nova sem mudança de fonte): o `promote` exige a mesma migração, então a versão é
+   reexportada com a migração atual e o lock muda.
 2. No release, o `promote-corpus` (environment `production`) confere os sha256 e o hash de
    migração, faz upsert por chave natural sem recalcular embeddings, fecha o `knowledge` do que
    saiu e grava `corpus_versions` por último. Na cobertura, a produção mantém o `verified_at` maior

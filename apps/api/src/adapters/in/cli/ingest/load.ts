@@ -6,7 +6,7 @@ import { type BlobStore, BlobStoreName } from '#app/ports/blob-store.ts'
 import type { ContentHasher } from '#app/ports/content-hasher.ts'
 import type { ReviewQueueCount } from '#app/ports/corpus-ingestion-repository.ts'
 import { DatabaseSizeLimitError } from '#app/ports/database-usage.ts'
-import type { SnapshotLineage } from '#app/ports/snapshot-repository.ts'
+import type { MigrationRef, SnapshotLineage } from '#app/ports/snapshot-repository.ts'
 import type { ChurnMetrics } from '#app/services/churn.ts'
 import { ChurnLimitError } from '#app/services/churn.ts'
 import { evaluateHealth, HEALTH_LIMITS, type HealthReport } from '#app/services/corpus-health.ts'
@@ -60,7 +60,8 @@ import { readZip } from './zip.ts'
  *    que já publicou, fecha o run como `budget_exhausted` e sai com 75 (o próximo run retoma pelo
  *    `embedding_cache`);
  * 5. gate de saúde (`evaluateHealth`): o estado publicado por documento contra o `health` do lock;
- * 6. no fim, `refreshCoverage`; se a versão do corpus mudou, `exportSnapshot` e atualização do
+ * 6. no fim, `refreshCoverage`; se a versão do corpus mudou, ou se a migração do snapshot do lock
+ *    ficou para trás da do banco (o `promote` exige a mesma migração), `exportSnapshot` e atualização do
  *    `corpus/corpus.lock.json` (com o `health` novo); fecha o run com o relatório (também gravado
  *    em `--report`), com a fila de revisão aberta por família e motivo.
  *
@@ -83,6 +84,7 @@ export interface LoadUseCases {
   readonly ingestDocumentVersion: IngestDocumentVersion
   readonly refreshCoverage: RefreshCoverage
   readonly exportSnapshot: ExportSnapshot
+  readonly currentMigration: () => Promise<MigrationRef | null>
   readonly inspectCorpus: InspectCorpus
   readonly pruneEmbeddingCache: PruneEmbeddingCache
 }
@@ -585,7 +587,12 @@ export async function runIngestLoad(
     }
     const lineage: SnapshotLineage = { gitSha: deps.gitSha, ...deps.lineage }
     let snapshot = null
-    if (lock.snapshot?.corpusVersion !== corpusVersion) {
+    // Snapshot da mesma versão, mas de antes de uma migração nova: a produção já migrada não o
+    // aceita (o promote exige a mesma migração), então ele é reexportado com a migração atual.
+    const migration = await deps.useCases.currentMigration()
+    const staleMigration =
+      lock.snapshot !== null && migration !== null && lock.snapshot.migration !== migration.hash
+    if (lock.snapshot?.corpusVersion !== corpusVersion || staleMigration) {
       const exported = await deps.useCases.exportSnapshot({
         corpusVersion,
         lineage,

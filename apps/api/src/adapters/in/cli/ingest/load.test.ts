@@ -167,6 +167,8 @@ function useCases(
       index: number,
     ) => Awaited<ReturnType<LoadUseCases['ingestDocumentVersion']>>
     health?: DocumentHealth[]
+    /** Hash da última migração do banco (o manifesto exportado leva o mesmo). */
+    migrationHash?: string
   } = {},
 ): { useCases: LoadUseCases; recorder: Recorder } {
   const recorder: Recorder = {
@@ -179,6 +181,7 @@ function useCases(
     pruned: 0,
   }
   const corpusVersion = options.corpusVersion ?? 7
+  const migrationHash = options.migrationHash ?? 'mig-hash'
   return {
     recorder,
     useCases: {
@@ -226,6 +229,7 @@ function useCases(
         recorder.coverageCalls += 1
         return Promise.resolve({ corpusVersion })
       },
+      currentMigration: () => Promise.resolve({ hash: migrationHash, name: null }),
       exportSnapshot: async (command) => {
         recorder.exports.push(command.corpusVersion ?? 0)
         recorder.exportCommands.push(command)
@@ -237,7 +241,7 @@ function useCases(
             format: 1,
             corpusVersion,
             createdAt: '2026-11-11T12:00:00.000Z',
-            migration: { hash: 'mig-hash', name: null },
+            migration: { hash: migrationHash, name: null },
             tables: [],
           },
         }
@@ -510,6 +514,29 @@ describe('ingest load', () => {
     // O snapshot do lock vigente (7) fica protegido da retenção (rollback).
     expect(third.recorder.exportCommands[0]?.protect).toEqual([7])
     expect(third.recorder.finished[0]?.report).toMatchObject({ acceptChurn: true })
+  })
+
+  it('reexporta a mesma versão quando a migração do snapshot do lock ficou para trás', async () => {
+    const first = useCases()
+    expect(await load(deps(first.useCases).value)).toBe(0)
+    expect(first.recorder.exports).toEqual([7])
+
+    // Mesma versão e mesma migração: nada a exportar.
+    const same = useCases()
+    expect(await load(deps(same.useCases).value)).toBe(0)
+    expect(same.recorder.exports).toEqual([])
+    expect(readCorpusLock(lockFile).snapshot?.migration).toBe('mig-hash')
+
+    // Mesma versão, migração nova no banco: o promote da produção recusaria o snapshot antigo.
+    const migrated = useCases({ migrationHash: 'mig-nova' })
+    expect(await load(deps(migrated.useCases).value)).toBe(0)
+    expect(migrated.recorder.exports).toEqual([7])
+    expect(migrated.recorder.exportCommands[0]?.protect).toEqual([7])
+    expect(readCorpusLock(lockFile).snapshot).toMatchObject({
+      corpusVersion: 7,
+      migration: 'mig-nova',
+    })
+    expect(migrated.recorder.finished[0]?.report).toMatchObject({ lockChanged: true })
   })
 
   it('A5: sha256 novo com o mesmo conteúdo não grava raw nem entra no lock', async () => {
