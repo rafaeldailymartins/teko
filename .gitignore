@@ -43,6 +43,8 @@ htmlcov/
 
 # Vercel (vercel pull/build)
 .vercel/
+# Estado da guarda de uso (scripts/vercel-usage.ts; no CI, fica no cache do Actions)
+/.vercel-usage/
 
 # Binário do posthog-cli (tools/posthog-cli/install-binary.mjs, sha256 conferido)
 /tools/posthog-cli/bin/

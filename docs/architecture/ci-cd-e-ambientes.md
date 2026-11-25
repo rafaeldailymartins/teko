@@ -83,26 +83,26 @@ Comum a todos: `permissions: {}` no topo, harden-runner como primeiro passo, che
 sem cancelamento em deploy, setup em `.github/actions/setup` (pnpm, Node 24, `--frozen-lockfile`),
 cache do Turbo salvo só em push no tronco.
 
-| Workflow             | Gatilho                                        | Conteúdo                                                                                                                         |
-| -------------------- | ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| `pr-gate.yml`        | PR                                             | `affected` → `ci.yml`, `security.yml`, `perf.yml` (perfil `pr`), `e2e.yml` (F4), `evals.yml` (perfil `pr`, F8) → `ci-gate`       |
-| `ci.yml`             | `workflow_call`; push no tronco                | camada rápida, integração, build e guards, `migration-guard`, Python, retrieval evals (se `rag`/`ingest`), Sonar informativo     |
-| `codeql.yml`         | PR, push no tronco, semanal                    | `Analyze (*)`                                                                                                                    |
-| `pr-hygiene.yml`     | PR                                             | `pr-title`, `dco`, labeler (o `gitflow-guard` saiu com o trunk-based)                                                            |
-| `security.yml`       | `workflow_call`; push; agendado                | Semgrep, gitleaks, zizmor, dependency-review (PR); `pnpm audit` e osv-scanner no `audit.yml`, fora do PR                         |
-| `scorecard.yml`      | push no tronco, semanal                        | `publish_results: true`                                                                                                          |
-| `mutation.yml`       | nightly                                        | Stryker em `apps/api` e `packages/shared`, só se houver commit novo desde o último run verde                                     |
-| `perf.yml`           | `workflow_call` (perfil `pr`); pré-release     | `sql-perf` (gate), bench e autocannon (informativos), k6 `smoke` (PR) e `load` (pré-release)                                     |
-| `e2e.yml`            | `workflow_call` (PR, se web ou api); nightly   | stack de CI (`infra/ci/up.sh`), Playwright Chromium + mobile (F4); axe e jornadas de interface (F5)                              |
-| `evals.yml`          | `workflow_call`; nightly; semanal              | `generation` e `redteam` (environment `evals`, F8)                                                                               |
-| `ingest.yml`         | dispatch; `workflow_call` do `source-watch`    | discover → extract → load → corpus-eval → lock-pr; modo `eval-only` ([ingestão](ingestao-e-avaliacao.md#ingestyml))              |
-| `source-watch.yml`   | cron diário                                    | `detect` (environment `staging`) e `mark-coverage` (environment `corpus-watch`)                                                  |
-| `deploy.yml`         | push no tronco → staging; tag `v*` → produção  | um só `.vercel/output` (estático + Function) por ambiente: build, tarball, scan, attest, migrate, env sync, WAF, deploy, smoke   |
-| `neon-rehearsal.yml` | `workflow_call` (deploy de produção); dispatch | branch efêmero do `teko-prod`, `drizzle-kit migrate`, extensões e exclusão do branch (environment `release-rehearsal`)           |
-| `smoke.yml`          | `workflow_call`; dispatch                      | smoke canônico (`scripts/smoke.ts`), inputs `environment` e `expected-sha`, sem environment; o rollback fica no deploy           |
-| `system-test.yml`    | `workflow_call`; dispatch; só `main`           | system test do staging (Playwright, `apps/web/system/`), environment `staging`, segredo `SYSTEM_TEST_PASSKEY`                    |
-| `release.yml`        | dispatch                                       | F7: tag `v*` pela App se o staging do SHA está verde (ADR 0038); F9: PR de release, `release-gate` e release imutável            |
-| `ops.yml`            | cron diário e semanal (environment `ops`)      | cotas e CU-h, expiração de tokens, Grafana e modelos do Langfuse as code, `vercel-usage`, `prod-vuln-scan`, `weekly-maintenance` |
+| Workflow             | Gatilho                                              | Conteúdo                                                                                                                         |
+| -------------------- | ---------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `pr-gate.yml`        | PR                                                   | `affected` → `ci.yml`, `security.yml`, `perf.yml` (perfil `pr`), `e2e.yml` (F4), `evals.yml` (perfil `pr`, F8) → `ci-gate`       |
+| `ci.yml`             | `workflow_call`; push no tronco                      | camada rápida, integração, build e guards, `migration-guard`, Python, retrieval evals (se `rag`/`ingest`), Sonar informativo     |
+| `codeql.yml`         | PR, push no tronco, semanal                          | `Analyze (*)`                                                                                                                    |
+| `pr-hygiene.yml`     | PR                                                   | `pr-title`, `dco`, labeler (o `gitflow-guard` saiu com o trunk-based)                                                            |
+| `security.yml`       | `workflow_call`; push; agendado                      | Semgrep, gitleaks, zizmor, dependency-review (PR); `pnpm audit` e osv-scanner no `audit.yml`, fora do PR                         |
+| `scorecard.yml`      | push no tronco, semanal                              | `publish_results: true`                                                                                                          |
+| `mutation.yml`       | nightly                                              | Stryker em `apps/api` e `packages/shared`, só se houver commit novo desde o último run verde                                     |
+| `perf.yml`           | `workflow_call` (perfil `pr`); pré-release           | `sql-perf` (gate), bench e autocannon (informativos), k6 `smoke` (PR) e `load` (pré-release)                                     |
+| `e2e.yml`            | `workflow_call` (PR, se web ou api); nightly         | stack de CI (`infra/ci/up.sh`), Playwright Chromium + mobile (F4); axe e jornadas de interface (F5)                              |
+| `evals.yml`          | `workflow_call`; nightly; semanal                    | `generation` e `redteam` (environment `evals`, F8)                                                                               |
+| `ingest.yml`         | dispatch; `workflow_call` do `source-watch`          | discover → extract → load → corpus-eval → lock-pr; modo `eval-only` ([ingestão](ingestao-e-avaliacao.md#ingestyml))              |
+| `source-watch.yml`   | cron diário                                          | `detect` (environment `staging`) e `mark-coverage` (environment `corpus-watch`)                                                  |
+| `deploy.yml`         | push no tronco → staging; tag `v*` → produção        | um só `.vercel/output` (estático + Function) por ambiente: build, tarball, scan, attest, migrate, env sync, WAF, deploy, smoke   |
+| `neon-rehearsal.yml` | `workflow_call` (deploy de produção); dispatch       | branch efêmero do `teko-prod`, `drizzle-kit migrate`, extensões e exclusão do branch (environment `release-rehearsal`)           |
+| `smoke.yml`          | `workflow_call`; dispatch                            | smoke canônico (`scripts/smoke.ts`), inputs `environment` e `expected-sha`, sem environment; o rollback fica no deploy           |
+| `system-test.yml`    | `workflow_call`; dispatch; só `main`                 | system test do staging (Playwright, `apps/web/system/`), environment `staging`, segredo `SYSTEM_TEST_PASSKEY`                    |
+| `release.yml`        | dispatch                                             | F7: tag `v*` pela App se o staging do SHA está verde (ADR 0038); F9: PR de release, `release-gate` e release imutável            |
+| `ops.yml`            | cron diário, semanal e de 10 min (environment `ops`) | cotas e CU-h, expiração de tokens, Grafana e modelos do Langfuse as code, `vercel-usage`, `prod-vuln-scan`, `weekly-maintenance` |
 
 Os workflows `spike-*.yml` da F1 saem (ADR 0032).
 

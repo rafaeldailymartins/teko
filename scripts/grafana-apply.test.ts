@@ -113,12 +113,12 @@ describe('infra/grafana (validação offline, a mesma do --validate)', () => {
     assert.deepEqual(runsInWindow, [1, 4])
   })
 
-  it('alerta de pausa: 503 em qualquer check teko-*, com a mesma janela de 65 min', () => {
+  it('alerta de pausa: 503 ou 402 em qualquer check teko-*, com a mesma janela de 65 min', () => {
     const rule = code.alerts.rules.find((item) => item.uid === 'teko-deployment-paused')
     assert.ok(rule)
     assert.equal(
       rule.expr,
-      'max by (job, instance) (max_over_time(probe_http_status_code{job=~"teko-.+"}[65m]) == 503)',
+      'max by (job, instance) ((max_over_time(probe_http_status_code{job=~"teko-.+"}[65m]) == 503) or (max_over_time(probe_http_status_code{job=~"teko-.+"}[65m]) == 402))',
     )
     assert.equal(rule.rangeSeconds, 3900)
   })

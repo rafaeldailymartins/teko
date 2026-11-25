@@ -61,8 +61,8 @@ de timer de exportação: a instância da Vercel pausa entre requisições.
   aceite delta.
 - **Tracing da Vercel:** os spans de fetch da Vercel param quando o pacote lista
   `@opentelemetry/api` ou `@opentelemetry/sdk-trace-node`, e os de framework e custom só existem com
-  `@vercel/otel`, que o Tekó não usa; sobram os de infraestrutura da própria Vercel, que o
-  `vercel-usage` mede contra a cota de 1M (`tracing_spans`, quando o relatório de uso os traz).
+  `@vercel/otel`, que o Tekó não usa; sobram os de infraestrutura da própria Vercel, cuja cota de
+  1M (`tracing_spans`) não tem fonte por API no Hobby: só a Vercel → Usage, à mão.
 - **Dev local:** profile `otel` em `infra/local/compose.yaml` (`grafana/otel-lgtm`, Grafana em
   `http://localhost:3300`, OTLP/HTTP em `127.0.0.1:4318`); na API,
   `OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318`.
@@ -280,8 +280,10 @@ Grafana e do Synthetic Monitoring por `scripts/grafana-apply.ts`, no job `grafan
   `teko_neon_compute_hours`, `teko_neon_cu_hours_ratio` e `teko_neon_data_transfer_ratio` por `project`,
   `teko_coverage_verified_age_days` por `family`, `teko_token_expiry_days` por `token` e
   `teko_ops_job_last_success_timestamp_seconds` por `ops_job`. O job `langfuse` (uma vez por dia)
-  emite `teko_langfuse_units_projected` e o próprio sucesso. O `vercel-usage` (F7, uma vez por dia)
-  emite `teko_vercel_usage_ratio{resource}` e o próprio sucesso; o `weekly-maintenance` (domingo)
+  emite `teko_langfuse_units_projected` e o próprio sucesso. O `vercel-usage` (F7, a cada 10 min,
+  janelas do `vercel metrics` acumuladas no cache do Actions) emite
+  `teko_vercel_usage_ratio{resource}` (estimativa de 30 dias dos recursos de função) e o próprio
+  sucesso; o `weekly-maintenance` (domingo)
   registra o sucesso pelo `weekly-maintenance-metrics`. Contrato da fonte que chega depois:
   `teko_prod_vuln_findings{severity}` (`prod-vuln-scan`, F7).
 - **Alertas por e-mail:** 5xx > 2% em 10 min; p95 de `POST /api/v1/questions` ou TTFT p95 > 3 s;
@@ -289,12 +291,12 @@ Grafana e do Synthetic Monitoring por `scripts/grafana-apply.ts`, no job `grafan
   `teko_neon_data_transfer_ratio` > 0,5 e > 0,8 (transferência pública do Neon; a guarda do
   `ingest.yml` para em 0,8); Langfuse
   projetado > 35k; `teko_vercel_usage_ratio` > 0,5 e > 0,75 (o kill switch entra em 0,85); 503
-  `DEPLOYMENT_PAUSED` visto pelo Synthetic Monitoring; check do Synthetic Monitoring falhando em
-  todas as execuções de 65 min (timeout, erro de rede ou status fora de 200, inclusive o 500; a
-  janela passa da frequência do check mais lento);
+  `DEPLOYMENT_PAUSED` ou 402 `DEPLOYMENT_DISABLED` visto pelo Synthetic Monitoring; check do Synthetic
+  Monitoring falhando em todas as execuções de 65 min (timeout, erro de rede ou status fora de 200,
+  inclusive o 500; a janela passa da frequência do check mais lento);
   `teko_coverage_verified_age_days > 3`;
   achado do `prod-vuln-scan`; tokens da Vercel vencendo em até 30 dias; falha do
-  `weekly-maintenance` ou do `vercel-usage`; taxa de recusa ou de `lexical_only` fora do normal.
+  `weekly-maintenance` (8 dias) ou do `vercel-usage` (6 h, ou nenhum sucesso em 10 dias); taxa de recusa ou de `lexical_only` fora do normal.
 
 ## Runbooks (`docs/runbooks/`)
 

@@ -172,7 +172,8 @@ export const REQUIRED_ALERTS: Readonly<Record<string, string>> = {
   'teko-langfuse-units': 'Langfuse projetado > 35k',
   'teko-vercel-usage-50': 'teko_vercel_usage_ratio > 0,5',
   'teko-vercel-usage-75': 'teko_vercel_usage_ratio > 0,75',
-  'teko-deployment-paused': '503 DEPLOYMENT_PAUSED visto pelo Synthetic Monitoring',
+  'teko-deployment-paused':
+    '503 DEPLOYMENT_PAUSED ou 402 DEPLOYMENT_DISABLED visto pelo Synthetic Monitoring',
   'teko-coverage-stale': 'teko_coverage_verified_age_days > 3',
   'teko-prod-vuln-scan': 'achado do prod-vuln-scan',
   'teko-token-expiry': 'tokens da Vercel vencendo em até 30 dias',
@@ -419,7 +420,8 @@ function validateSyntheticWindows(alerts: AlertsSpec, checks: ChecksSpec): strin
       }
     }
   }
-  return errors
+  // Uma expressão com a mesma janela em dois termos (503 ou 402) daria o mesmo erro duas vezes.
+  return [...new Set(errors)]
 }
 
 /**

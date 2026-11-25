@@ -333,20 +333,24 @@ check "ops: harden-runner em block com allowed-endpoints, como primeiro step, em
   yq_true '[.jobs[] | .steps[0] | ((.uses | test("^step-security/harden-runner@")) and (.with."egress-policy" == "block") and (((.with."allowed-endpoints" // "") | length) > 0))] | all' "$ops"
 check "ops: permissions {} no topo e nenhum job com escrita" \
   yq_true '((.permissions | length) == 0) and (([.jobs[].permissions // {} | to_entries[] | select(.value == "write")] | length) == 0)' "$ops"
-check "ops: cron diário e semanal, push só de infra/grafana e dispatch com dry_run (padrão true)" \
-  yq_true '(([.on.schedule[].cron] | join(",")) == "40 9 * * *,0 6 * * 0") and ((.on.push.branches | join(",")) == "main") and (.on.push.paths | contains(["infra/grafana/**"])) and (.on.workflow_dispatch.inputs.dry_run.type == "boolean") and (.on.workflow_dispatch.inputs.dry_run.default == true)' "$ops"
+check "ops: cron diário, semanal e de 10 min, push só de infra/grafana e dispatch com dry_run (padrão true)" \
+  yq_true '(([.on.schedule[].cron] | join(",")) == "40 9 * * *,0 6 * * 0,3-59/10 * * * *") and ((.on.push.branches | join(",")) == "main") and (.on.push.paths | contains(["infra/grafana/**"])) and (.on.workflow_dispatch.inputs.dry_run.type == "boolean") and (.on.workflow_dispatch.inputs.dry_run.default == true)' "$ops"
 check "ops: grafana só em main, no environment ops, e a validação offline roda sempre" \
   yq_true '(.jobs.grafana.if | test("^github\\.ref == '"'"'refs/heads/main'"'"' && \\(")) and (.jobs.grafana.environment == "ops") and ([.jobs.grafana.steps[] | select(.run // "" | test("grafana-apply\\.ts --validate$")) | has("if") | not] | ((length == 1) and all))' "$ops"
 # Cada job escolhe o cron pelo github.event.schedule: o semanal só roda o weekly-maintenance (e o
-# job de métrica dele, que depende do output), e nenhum job diário roda no semanal.
+# job de métrica dele, que depende do output), o de 10 min só o vercel-usage, e nenhum job diário
+# roda nos outros.
 ops_jobs_pick_their_cron() {
-  local daily weekly
+  local daily weekly frequent
   daily="$(yq -r '[.jobs | to_entries[] | select(.value.if // "" | test("github\\.event\\.schedule == '"'"'40 9 \\* \\* \\*'"'"'")) | .key] | sort | join(",")' "$ops")"
   weekly="$(yq -r '[.jobs | to_entries[] | select(.value.if // "" | test("github\\.event\\.schedule == '"'"'0 6 \\* \\* 0'"'"'")) | .key] | sort | join(",")' "$ops")"
-  [[ "$daily" == "coverage-age,grafana,langfuse,quotas,vercel-usage" && "$weekly" == "weekly-maintenance" ]] &&
+  frequent="$(yq -r '[.jobs | to_entries[] | select(.value.if // "" | test("github\\.event\\.schedule == '"'"'3-59/10 \\* \\* \\* \\*'"'"'")) | .key] | sort | join(",")' "$ops")"
+  [[ "$daily" == "coverage-age,grafana,langfuse,quotas" && "$weekly" == "weekly-maintenance" && "$frequent" == "vercel-usage" ]] &&
     yq_true '(.jobs."weekly-maintenance-metrics".needs == "weekly-maintenance") and (.jobs."weekly-maintenance-metrics".if == "needs.weekly-maintenance.outputs.ok == '"'"'true'"'"'")' "$ops"
 }
-check "ops: o cron diário e o semanal escolhem jobs disjuntos (github.event.schedule)" ops_jobs_pick_their_cron
+check "ops: os três crons escolhem jobs disjuntos (github.event.schedule)" ops_jobs_pick_their_cron
+check "ops: o cron de 10 min tem grupo de concorrência próprio (não cancela o diário pendente)" \
+  yq_true '(.concurrency.group | test("3-59/10")) and (.concurrency.group | test("ops-usage-")) and (.concurrency."cancel-in-progress" == false)' "$ops"
 check "ops: o apply do grafana pula com aviso sem o segredo (passo de conferência antes)" \
   bash -c "yq -r '.jobs.grafana.steps[] | select(.id == \"secrets\") | .run' '$ops' | grep -q '::warning' && yq -e '[.jobs.grafana.steps[] | select(.run // \"\" | test(\"grafana-apply[.]ts --dry-run\"))] | ((length == 1) and (.[0].if == \"steps.secrets.outputs.ready == '\"'\"'true'\"'\"'\"))' '$ops' >/dev/null"
 check "ops: coverage-age no corpus-watch só com as URLs do teko_watch" \
@@ -380,9 +384,10 @@ ops_vercel_usage_contract() {
     yq_true '(.jobs."vercel-usage".environment == "ops") and (.jobs."vercel-usage".env == null) and (([.jobs | to_entries[] | select(.value.steps[0].with."allowed-endpoints" | test("vercel\\.com")) | .key] | join(",")) == "vercel-usage") and (.jobs."vercel-usage".steps[0].with."allowed-endpoints" | test("(^|\\s)api\\.vercel\\.com:443(\\s|$)"))' "$ops" &&
     grep -q '::warning' <<<"$(yq -r '.jobs."vercel-usage".steps[] | select(.id == "secrets") | .run' "$ops")" &&
     yq_true '[.jobs."vercel-usage".steps[] | select(.run // "" | test("scripts/vercel-usage\\.ts"))] | ((length == 1) and (.[0].if == "steps.secrets.outputs.ready == '"'"'true'"'"'"))' "$ops" &&
-    grep -q 'pnpm --dir tools/vercel-cli install --frozen-lockfile' <<<"$(yq -r '.jobs."vercel-usage".steps[].run // ""' "$ops")"
+    grep -q 'pnpm --dir tools/vercel-cli install --frozen-lockfile' <<<"$(yq -r '.jobs."vercel-usage".steps[].run // ""' "$ops")" &&
+    yq_true '(.jobs."vercel-usage".concurrency.group == "ops-vercel-usage") and (([.jobs."vercel-usage".steps[] | select(.uses // "" | test("^actions/cache/(restore|save)@")) | .with.path] | join(",")) == ".vercel-usage,.vercel-usage") and (([.jobs."vercel-usage".steps[] | select(.uses // "" | test("^actions/cache/save@")) | select(.if | test("DRY_RUN != .true."))] | length) == 1)' "$ops"
 }
-check "ops: vercel-usage no ops, só com VERCEL_USAGE_TOKEN e o token OTLP, api.vercel.com só nele, sem token avisa" \
+check "ops: vercel-usage no ops, só com VERCEL_USAGE_TOKEN e o token OTLP, api.vercel.com só nele, sem token avisa, estado no cache sem dry-run" \
   ops_vercel_usage_contract
 check "ops: dispatch exercita o kill switch (0.85, 0.95, release) num projeto, padrão none/staging" \
   yq_true '(.on.workflow_dispatch.inputs.kill_switch.default == "none") and ((.on.workflow_dispatch.inputs.kill_switch.options | join(",")) == "none,0.85,0.95,release") and (.on.workflow_dispatch.inputs.kill_switch_target.default == "staging") and (.on.workflow_dispatch.inputs.maintenance_target.default == "staging") and (.on.workflow_dispatch.inputs.job.options | contains(["all", "vercel-usage", "weekly-maintenance"]))' "$ops"

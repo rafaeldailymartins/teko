@@ -1,5 +1,5 @@
 {
-  "$comment": "Alertas por e-mail (docs/architecture/observabilidade.md, seção 'Alertas por e-mail'), um por item; o grafana-apply.ts expande cada regra na consulta A (instantânea) e no threshold B, com noDataState OK e notificação ao contact point teko-email. Métricas empurradas uma vez por dia pelo ops.yml usam last_over_time(...[2d]). source: api (OTel da API), ops (ops.yml), synthetic (Synthetic Monitoring: 503 num check e check falhando em 65 min; a janela cobre a frequência do check mais lento, o /healthz de produção de hora em hora), langfuse (add-llm-tracing-langfuse) e f7 (vercel-usage, weekly-maintenance, prod-vuln-scan): sem a fonte, a regra fica em Normal.",
+  "$comment": "Alertas por e-mail (docs/architecture/observabilidade.md, seção 'Alertas por e-mail'), um por item; o grafana-apply.ts expande cada regra na consulta A (instantânea) e no threshold B, com noDataState OK e notificação ao contact point teko-email. Métricas empurradas uma vez por dia pelo ops.yml usam last_over_time(...[2d]). source: api (OTel da API), ops (ops.yml), synthetic (Synthetic Monitoring: 503 ou 402 num check e check falhando em 65 min; a janela cobre a frequência do check mais lento, o /healthz de produção de hora em hora), langfuse (add-llm-tracing-langfuse) e f7 (vercel-usage, weekly-maintenance, prod-vuln-scan): sem a fonte, a regra fica em Normal.",
   "groups": [
     { "name": "teko-api", "interval": "1m" },
     { "name": "teko-synthetic", "interval": "1m" },
@@ -108,16 +108,16 @@
     },
     {
       "uid": "teko-deployment-paused",
-      "title": "Vercel: 503 (DEPLOYMENT_PAUSED) num check sintético",
+      "title": "Vercel: 503 (DEPLOYMENT_PAUSED) ou 402 (DEPLOYMENT_DISABLED) num check sintético",
       "group": "teko-synthetic",
-      "expr": "max by (job, instance) (max_over_time(probe_http_status_code{job=~\"teko-.+\"}[65m]) == 503)",
+      "expr": "max by (job, instance) ((max_over_time(probe_http_status_code{job=~\"teko-.+\"}[65m]) == 503) or (max_over_time(probe_http_status_code{job=~\"teko-.+\"}[65m]) == 402))",
       "op": "gt",
       "threshold": 0,
       "for": "0s",
       "severity": "critical",
       "runbook": "vercel-paused.md",
-      "summary": "{{ $labels.instance }} respondeu 503 ao Synthetic Monitoring",
-      "description": "Na Vercel o /healthz e a landing só devolvem 503 quando o projeto está pausado (DEPLOYMENT_PAUSED, cota do Hobby estourada; a pausa vale para a deployment inteira, estático inclusive) ou numa queda da plataforma; a drenagem por SIGTERM só existe fora dela. A landing (15 min) costuma ver a pausa antes do /healthz (1 h). A janela de 65 min cobre uma execução do check mais lento: o alerta fica firme durante a pausa e volta a Normal até 65 min depois da última execução com 503.",
+      "summary": "{{ $labels.instance }} respondeu {{ $value }} ao Synthetic Monitoring",
+      "description": "Na Vercel o /healthz e a landing só devolvem 503 quando o projeto está pausado (DEPLOYMENT_PAUSED, cota do Hobby estourada; a pausa vale para a deployment inteira, estático inclusive) ou numa queda da plataforma, e 402 quando a conta Hobby passou da cota e a Vercel desativou as deployments (DEPLOYMENT_DISABLED, como em 2026-11-25); a drenagem por SIGTERM só existe fora dela. A landing (15 min) costuma ver a pausa antes do /healthz (1 h). A janela de 65 min cobre uma execução do check mais lento: o alerta fica firme durante a pausa e volta a Normal até 65 min depois da última execução com 503 ou 402.",
       "source": "synthetic",
       "rangeSeconds": 3900
     },
@@ -275,14 +275,14 @@
       "uid": "teko-ops-job-stale",
       "title": "ops.yml: weekly-maintenance ou vercel-usage sem sucesso",
       "group": "teko-capacity",
-      "expr": "(time() - max by (ops_job) (last_over_time(teko_ops_job_last_success_timestamp_seconds{ops_job=\"vercel-usage\"}[10d]))) > 30 * 3600 or (time() - max by (ops_job) (last_over_time(teko_ops_job_last_success_timestamp_seconds{ops_job=\"weekly-maintenance\"}[10d]))) > 8 * 86400",
+      "expr": "(time() - max by (ops_job) (last_over_time(teko_ops_job_last_success_timestamp_seconds{ops_job=\"vercel-usage\"}[10d]))) > 6 * 3600 or absent_over_time(teko_ops_job_last_success_timestamp_seconds{ops_job=\"vercel-usage\"}[10d]) * 864000 or (time() - max by (ops_job) (last_over_time(teko_ops_job_last_success_timestamp_seconds{ops_job=\"weekly-maintenance\"}[10d]))) > 8 * 86400",
       "op": "gt",
       "threshold": 0,
       "for": "0s",
       "severity": "warning",
       "runbook": "ops-alerts.md#job-sem-sucesso",
       "summary": "{{ $labels.ops_job }} sem sucesso há {{ humanizeDuration $value }}",
-      "description": "O job diário (vercel-usage, 30 h) ou semanal (weekly-maintenance, 8 dias) não registrou sucesso. Fonte: jobs do ops.yml da F7.",
+      "description": "A guarda de uso (vercel-usage, a cada 10 min: 6 h sem sucesso, ou nenhum sucesso em 10 dias) ou o job semanal (weekly-maintenance, 8 dias) não registrou sucesso. Fonte: jobs do ops.yml da F7.",
       "source": "f7",
       "rangeSeconds": 864000
     }
