@@ -141,6 +141,25 @@ module.exports = {
       to: { path: npm('posthog-node') },
     },
     {
+      name: 'cold-start-sdks-only-by-dynamic-import',
+      comment:
+        'O cold start da Function não carrega o que o /healthz não usa (mudança reduce-api-cold-start): Better Auth, AI SDK, migrator do Drizzle, posthog-node e a documentação OpenAPI só entram por import() dinâmico (ou import type).',
+      severity: 'error',
+      from: { pathNot: TEST_FILE },
+      to: {
+        path: [
+          '^src/adapters/out/auth/better-auth\\.ts$',
+          '^src/adapters/out/llm/ai-sdk-llm\\.ts$',
+          '^src/adapters/out/persistence/drizzle/migrate\\.ts$',
+          npm('posthog-node'),
+          npm('@fastify/swagger'),
+          npm('@scalar/fastify-api-reference'),
+        ],
+        dynamic: false,
+        dependencyTypesNot: ['type-only'],
+      },
+    },
+    {
       name: 'no-circular',
       severity: 'error',
       from: {},

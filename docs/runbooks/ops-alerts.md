@@ -64,10 +64,11 @@ O job diário (F7) roda o `pnpm audit --prod` e o osv-scanner no commit da produ
 
 <a id="check-sintetico-falhando"></a>
 
-## Check sintético falhando há 20 min
+## Check sintético falhando há 65 min
 
 `probe_success` (0 ou 1 por execução) ficou em 0 em todas as execuções de um check `teko-*` nos
-últimos 20 min: 4 seguidas dos `/healthz` (5 min) e ao menos 1 da landing (15 min). O rótulo `job`
+últimos 65 min: ao menos 1 do `/healthz` de produção (de hora em hora) e 4 seguidas da landing
+(15 min). O `/healthz` de staging fica desligado; para conferir o staging, rode o smoke ou um `curl`. O rótulo `job`
 diz o check e `instance`, o alvo. O alerta volta a Normal na primeira execução com sucesso.
 
 1. **O que a sonda viu:** Testing & synthetics → Synthetics → Checks → o check → logs das últimas
@@ -87,8 +88,8 @@ diz o check e `instance`, o alvo. O alerta volta a Normal na primeira execução
    [vercel-status.com](https://www.vercel-status.com/). Não há o que fazer além de acompanhar; se
    passar de horas, siga o `vercel-paused.md` (F7).
    - **503 no `/healthz`** é `DEPLOYMENT_PAUSED` (ou queda da plataforma): o
-     `teko-deployment-paused` dispara já na primeira execução com 503, e este alerta vem uns 20 min
-     depois, porque o check só aceita 200. Siga o [vercel-paused.md](vercel-paused.md); este alerta é
+     `teko-deployment-paused` dispara já na primeira execução com 503 (a landing costuma vê-la
+     primeiro), e este alerta vem até 65 min depois, porque o check só aceita 200. Siga o [vercel-paused.md](vercel-paused.md); este alerta é
      consequência.
 5. **Problema da sonda** (todos os checks falham juntos com timeout ou erro de conexão, status 0,
    enquanto o `curl` de fora e o tráfego real vão bem): Synthetics → Probes → `SaoPaulo` (online ou

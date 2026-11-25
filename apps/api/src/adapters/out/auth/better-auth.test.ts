@@ -1,8 +1,8 @@
 import { APIError } from 'better-auth/api'
 import { describe, expect, it } from 'vitest'
 import type { DrizzleDb } from '../persistence/drizzle/client.ts'
+import { authMethodsOf } from './auth-config.ts'
 import {
-  authMethodsOf,
   createBetterAuthOptions,
   DISABLED_AUTH_PATHS,
   EMAIL_RATE_LIMITS,

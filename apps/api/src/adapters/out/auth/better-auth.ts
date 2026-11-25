@@ -1,7 +1,6 @@
 import { drizzleAdapter } from '@better-auth/drizzle-adapter/relations-v2'
 import { passkey } from '@better-auth/passkey'
 import {
-  AuthMethod,
   type EmailSignUpRequest,
   emailSignUpRequestSchema,
   PASSWORD_MAX_LENGTH,
@@ -12,6 +11,7 @@ import { APIError, createAuthMiddleware } from 'better-auth/api'
 import { type AuthGateway, type AuthSession, CLIENT_IP_HEADER } from '#app/ports/auth-gateway.ts'
 import type { DrizzleDb } from '../persistence/drizzle/client.ts'
 import { authSchema } from '../persistence/drizzle/schema/auth.ts'
+import { authMethodsOf, type BetterAuthConfig, clearCookieHeaders } from './auth-config.ts'
 
 /**
  * Better Auth (`docs/architecture/backend.md`, "Autenticação"): OAuth GitHub e Google, passkey
@@ -28,23 +28,10 @@ import { authSchema } from '../persistence/drizzle/schema/auth.ts'
  *   OAuth a um usuário com o e-mail verificado: um GitHub ou Google com o mesmo e-mail não entra na
  *   conta de senha (e o cadastro por senha de um e-mail que já existe não cria credencial nele);
  * - as rotas de confirmação, troca de e-mail e recuperação de senha ficam desligadas (404).
+ *
+ * Este módulo carrega o SDK inteiro (com a passkey e o adapter do Drizzle): a raiz de composição o
+ * alcança só por `lazy-better-auth.ts`, na primeira requisição de autenticação.
  */
-
-interface OAuthApp {
-  readonly clientId: string
-  readonly clientSecret: string
-}
-
-export interface BetterAuthConfig {
-  /** `BETTER_AUTH_SECRET` (assina cookies e tokens). */
-  readonly secret: string
-  /** Origem exata do ambiente (`WEB_ORIGIN`): base URL, origem confiável e `rpID` da passkey. */
-  readonly webOrigin: string
-  /** Prefixo dos cookies: `teko` em produção, `teko-stg` fora dela. */
-  readonly cookiePrefix: string
-  readonly github: OAuthApp | null
-  readonly google: OAuthApp | null
-}
 
 /** Sessão de 7 dias, renovada a cada dia de uso; `cookieCache` de 5 min (janela documentada no DSR). */
 const SESSION_EXPIRES_IN_S = 604_800
@@ -109,16 +96,6 @@ const validateSignUp = createAuthMiddleware(async (ctx) => {
   }
   return { context: { body: parseSignUpBody(ctx.body) } }
 })
-
-/** Métodos de entrada ativos, na ordem da tela. */
-export function authMethodsOf(config: Pick<BetterAuthConfig, 'github' | 'google'>): AuthMethod[] {
-  return [
-    ...(config.github === null ? [] : [AuthMethod.GitHub]),
-    ...(config.google === null ? [] : [AuthMethod.Google]),
-    AuthMethod.Passkey,
-    AuthMethod.Email,
-  ]
-}
 
 export function createBetterAuthOptions(db: DrizzleDb, config: BetterAuthConfig) {
   const secure = config.webOrigin.startsWith('https://')
@@ -217,19 +194,6 @@ function toSession(result: {
       countryOfResidence: text(user['countryOfResidence']),
     },
   }
-}
-
-/** Cookies que o Better Auth grava para a sessão (com o prefixo e, em https, `__Secure-`). */
-const SESSION_COOKIES = ['session_token', 'session_data', 'dont_remember'] as const
-
-function clearCookieHeaders(
-  config: Pick<BetterAuthConfig, 'cookiePrefix' | 'webOrigin'>,
-): string[] {
-  const secure = config.webOrigin.startsWith('https://')
-  return SESSION_COOKIES.map(
-    (name) =>
-      `${secure ? '__Secure-' : ''}${config.cookiePrefix}.${name}=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax${secure ? '; Secure' : ''}`,
-  )
 }
 
 export function createBetterAuthGateway(db: DrizzleDb, config: BetterAuthConfig): AuthGateway {

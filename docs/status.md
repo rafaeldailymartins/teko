@@ -435,6 +435,20 @@ acima de 80% sem o input `allow_high_transfer`
 Pendência (mantenedor): quando o ciclo virar, conferir no painel de cotas a transferência do
 staging depois da primeira ingestão completa (a estimativa é de ~130 MB por exportação).
 
+## Cold start e checks sintéticos (2026-11-25)
+
+A Vercel desativou a conta Hobby por passar das 4 h de Active CPU, sem usuários reais: os dois
+`/healthz` do Synthetic Monitoring a cada 5 min (576 cold starts por dia) bastavam. Mudança
+`reduce-api-cold-start`: o boot da Function carrega sob demanda o que o `/healthz` não usa (Better
+Auth, AI SDK, PostHog, migrator, documentação OpenAPI, Ajv), e o cold start medido com
+`scripts/measure-cold-start.ts` caiu de 5,2 s para 2,6 s de CPU; o `/healthz` de produção passou a
+rodar de hora em hora e o de staging ficou desligado. Conta no pior caso: de cerca de 25 h para
+0,5 h de Active CPU por mês só com os checks. O Langfuse e os exporters OTLP continuam no boot
+(cerca de 0,6 s; motivo no `design.md` da mudança).
+
+Pendência (mantenedor): reativar a conta na Vercel; o apply dos checks e alertas sai no próximo run
+do job `grafana` do `ops.yml` depois do merge.
+
 ## Revisão antes da F4 (2026-11-12)
 
 O mantenedor aprovou as recomendações da revisão de arquitetura; os pacotes estão no
