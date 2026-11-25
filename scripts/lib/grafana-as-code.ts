@@ -401,9 +401,9 @@ function validateAlerts(alerts: AlertsSpec, runbooks: RunbookIndex): string[] {
  * da frequência do check ligado mais lento, e o `rangeSeconds` da consulta precisa cobri-la.
  */
 function validateSyntheticWindows(alerts: AlertsSpec, checks: ChecksSpec): string[] {
-  const enabled = checks.checks.filter((check) => check.enabled)
-  if (enabled.length === 0) return []
-  const slowest = enabled.reduce((a, b) => (b.frequency > a.frequency ? b : a))
+  const [first, ...others] = checks.checks.filter((check) => check.enabled)
+  if (first === undefined) return []
+  const slowest = others.reduce((a, b) => (b.frequency > a.frequency ? b : a), first)
   const errors: string[] = []
   for (const rule of alerts.rules.filter((item) => item.source === 'synthetic')) {
     const where = `alerta ${rule.uid}`
