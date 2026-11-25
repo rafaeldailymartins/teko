@@ -268,10 +268,14 @@ Grafana e do Synthetic Monitoring por `scripts/grafana-apply.ts`, no job `grafan
 - **Dashboards:** API RED; LLM (TTFT, tokens, custo-sombra, fallback, 429); cotas (Gemini, Groq,
   neurons, Langfuse units, CU-h, transferência do Neon, idade da cobertura, expiração de tokens); Vercel Hobby
   (`teko_vercel_usage_ratio` por recurso); sinais de RAG por ambiente e `corpus_version`.
-- **Synthetic Monitoring** substitui UptimeRobot e Checkly: `/healthz` de `tekoia.vercel.app` e
-  `tekoia-staging.vercel.app` a cada 5 min (sem DB) e a landing de produção (`/pt-BR/`) a cada
-  15 min, da sonda de São Paulo: 20.160 das 100 mil execuções mensais do Free. O check da landing
-  foi ligado no primeiro deploy do web de produção (F7, 2026-11-18).
+- **Synthetic Monitoring** substitui UptimeRobot e Checkly: `/healthz` de `tekoia.vercel.app` de
+  hora em hora (sem DB; prova a Function viva) e a landing de produção (`/pt-BR/`) a cada 15 min
+  (estática: disponibilidade da borda e o 503 de pausa, sem invocar a Function), da sonda de São
+  Paulo: 3.600 das 100 mil execuções mensais do Free. O `/healthz` de `tekoia-staging.vercel.app`
+  fica desligado: o smoke de cada deploy o confere. Cada execução de `/healthz` paga um cold start
+  em Active CPU da Vercel; com os dois a cada 5 min, a conta Hobby foi desativada em 2026-11-25
+  (mudança `reduce-api-cold-start`). O check da landing foi ligado no primeiro deploy do web de
+  produção (F7, 2026-11-18).
 - **Métricas do `ops.yml`** (job `quotas`, uma vez por dia, OTLP/HTTP com `service.name=teko-ops`):
   `teko_neon_compute_hours`, `teko_neon_cu_hours_ratio` e `teko_neon_data_transfer_ratio` por `project`,
   `teko_coverage_verified_age_days` por `family`, `teko_token_expiry_days` por `token` e
@@ -287,8 +291,9 @@ Grafana e do Synthetic Monitoring por `scripts/grafana-apply.ts`, no job `grafan
   `teko_neon_data_transfer_ratio` > 0,5 e > 0,8 (transferência pública do Neon; a guarda do
   `ingest.yml` para em 0,8); Langfuse
   projetado > 35k; `teko_vercel_usage_ratio` > 0,5 e > 0,75 (o kill switch entra em 0,85); 503
-  `DEPLOYMENT_PAUSED` ou 402 `DEPLOYMENT_DISABLED` visto pelo Synthetic Monitoring; check do Synthetic Monitoring falhando em
-  todas as execuções de 20 min (timeout, erro de rede ou status fora de 200, inclusive o 500);
+  `DEPLOYMENT_PAUSED` ou 402 `DEPLOYMENT_DISABLED` visto pelo Synthetic Monitoring; check do Synthetic
+  Monitoring falhando em todas as execuções de 65 min (timeout, erro de rede ou status fora de 200,
+  inclusive o 500; a janela passa da frequência do check mais lento);
   `teko_coverage_verified_age_days > 3`;
   achado do `prod-vuln-scan`; tokens da Vercel vencendo em até 30 dias; falha do
   `weekly-maintenance` (8 dias) ou do `vercel-usage` (6 h, ou nenhum sucesso em 10 dias); taxa de recusa ou de `lexical_only` fora do normal.

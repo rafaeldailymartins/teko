@@ -58,17 +58,28 @@ apagado à mão.
 
 | Check                     | Alvo                                        | Frequência | Sondas     | Ligado | Execuções/mês |
 | ------------------------- | ------------------------------------------- | ---------- | ---------- | ------ | ------------- |
-| `teko-healthz-production` | `https://tekoia.vercel.app/healthz`         | 5 min      | `SaoPaulo` | sim    | 8.640         |
-| `teko-healthz-staging`    | `https://tekoia-staging.vercel.app/healthz` | 5 min      | `SaoPaulo` | sim    | 8.640         |
+| `teko-healthz-production` | `https://tekoia.vercel.app/healthz`         | 60 min     | `SaoPaulo` | sim    | 720           |
+| `teko-healthz-staging`    | `https://tekoia-staging.vercel.app/healthz` | 60 min     | `SaoPaulo` | não    | 0             |
 | `teko-landing-production` | `https://tekoia.vercel.app/pt-BR/`          | 15 min     | `SaoPaulo` | sim    | 2.880         |
-| **total**                 |                                             |            |            |        | **20.160**    |
+| **total**                 |                                             |            |            |        | **3.600**     |
 
 Conta do Grafana (`sondas × checks × duração em minutos × 43.200 / frequência`): cada check HTTP
-dura menos de 1 min, então `1 × 43.200 / 5 = 8.640` e `43.200 / 15 = 2.880`. O Synthetic
+dura menos de 1 min, então `1 × 43.200 / 60 = 720` e `43.200 / 15 = 2.880`. O Synthetic
 Monitoring cobra cada execução feita; check com `enabled: false` não roda e conta 0, na validação e
 no resumo do apply. O Free inclui 100 mil execuções de API test por mês; a validação reprova acima
 de 50 mil, para sobrar espaço. Os checks usam `basicMetricsOnly` (menos séries ativas dos 10 mil do
 Free), que mantém `probe_success`, `probe_http_status_code` e `probe_duration_seconds`.
+
+**Frequência e Active CPU da Vercel:** cada execução de `/healthz` invoca a Function, e com uma
+hora entre uma e outra a instância já esfriou: cada uma paga um cold start inteiro em "Fluid Active
+CPU", cuja cota do Hobby é de 4 h por mês. Com os dois `/healthz` a cada 5 min (576 invocações por
+dia), a conta foi desativada em 2026-11-25 sem usuários reais (mudança `reduce-api-cold-start`, com
+a conta em `design.md`). Por isso o `/healthz` de produção roda de hora em hora, só para provar
+que a Function sobe e responde, e o de staging fica desligado: o smoke de cada deploy o confere, e a
+pausa por cota é da conta inteira, que a produção já mostra. A disponibilidade da borda (e o 503 de
+pausa, que vale também para o estático) vem da landing, a cada 15 min, que não invoca a Function.
+Antes de encurtar um intervalo ou ligar um check que invoca a Function, refaça a conta com o
+`scripts/measure-cold-start.ts`.
 
 **`teko-landing-production`:** ficou desligado até o primeiro deploy do web de produção, porque
 antes disso `https://tekoia.vercel.app/pt-BR/` respondia 404 e o check só falharia. Foi ligado em
@@ -78,17 +89,20 @@ antes disso `https://tekoia.vercel.app/pt-BR/` respondia 404 e o check só falha
   `routes/health.ts`: só o estado do processo, sem rate limit, que usa o Postgres). O teste de
   integração "GET /healthz sem banco" (`apps/api/test/integration/http/foundation.test.ts`) sobe a
   app inteira com `DATABASE_URL` e confere que nenhuma sessão é aberta; por isso o check não acorda
-  o Neon nem gasta CU-h. As 17.280 invocações por mês dos dois `/healthz` estão na premissa de
-  "pings de 5 min" das cotas da Vercel; a landing é estática (CDN, sem Function).
+  o Neon nem gasta CU-h. As 720 invocações por mês do `/healthz` de produção estão na premissa de
+  "pings de hora em hora" das cotas da Vercel; a landing é estática (CDN, sem Function).
 - **Deployment Protection:** o domínio de produção dos dois projetos Vercel é público (Standard
   Protection, `infra/vercel/README.md`), inclusive o `tekoia-staging.vercel.app`; os checks não
   precisam do bypass de automação, que continua só no smoke contra a URL única.
-- **503 no `/healthz`** = `DEPLOYMENT_PAUSED` (a drenagem por SIGTERM só existe fora da Vercel);
-  **402** = `DEPLOYMENT_DISABLED` (conta Hobby acima da cota, como em 2026-11-25): alerta
-  `teko-deployment-paused`.
+- **503 em qualquer check** = `DEPLOYMENT_PAUSED` (a drenagem por SIGTERM só existe fora da
+  Vercel, e a pausa vale para a deployment inteira, estático inclusive); **402** =
+  `DEPLOYMENT_DISABLED` (conta Hobby acima da cota, como em 2026-11-25): alerta
+  `teko-deployment-paused`. A landing costuma vê-los primeiro (15 min).
 - **Qualquer outra falha** (timeout, erro de rede, TLS, 500, corpo sem o texto esperado) em todas
-  as execuções de 20 min de um check: alerta `teko-synthetic-failed`, sobre `probe_success`. Os
-  dois disparam juntos num 503 que dura mais de 20 min.
+  as execuções de 65 min de um check: alerta `teko-synthetic-failed`, sobre `probe_success`. Os
+  dois disparam juntos num 503 que dura mais de 65 min. A janela de 65 min dos dois alertas passa da
+  frequência do check ligado mais lento (o `/healthz` de produção, 60 min), para a série nunca ficar
+  sem amostra entre duas execuções; a validação reprova janela menor.
 
 ## Alertas
 
@@ -105,8 +119,8 @@ runbook apontam para `main` no GitHub.
 | `teko-quota-used`          | `teko_quota_used_ratio` > 0,7                                                              | API                              | `quota-exhausted.md#cotas-da-aplicacao`   |
 | `teko-rag-refusal-anomaly` | recusa em 1 h > 2× a de 7 dias, > 25% e ≥ 20 respostas                                     | API                              | `ops-alerts.md#recusa-...`                |
 | `teko-rag-lexical-only`    | `lexical_only` > 10% em 30 min, ≥ 5 respostas                                              | API                              | `provider-outage.md#embeddings`           |
-| `teko-deployment-paused`   | `/healthz` respondeu 503 ou 402 ao Synthetic Monitoring                                    | Synthetic Monitoring             | `vercel-paused.md`                        |
-| `teko-synthetic-failed`    | check `teko-*` sem nenhum sucesso em 20 min (`probe_success` < 1)                          | Synthetic Monitoring             | `ops-alerts.md#check-sintetico-...`       |
+| `teko-deployment-paused`   | um check `teko-*` respondeu 503 ou 402 nos últimos 65 min                                  | Synthetic Monitoring             | `vercel-paused.md`                        |
+| `teko-synthetic-failed`    | check `teko-*` sem nenhum sucesso em 65 min (`probe_success` < 1)                          | Synthetic Monitoring             | `ops-alerts.md#check-sintetico-...`       |
 | `teko-neon-cu-hours`       | `teko_neon_cu_hours_ratio` > 0,7                                                           | `ops.yml` (`quotas`)             | `neon-suspended.md#cu-h-...`              |
 | `teko-neon-transfer-50`    | `teko_neon_data_transfer_ratio` > 0,5                                                      | `ops.yml` (`quotas`)             | `neon-suspended.md#transferencia-...`     |
 | `teko-neon-transfer-80`    | `teko_neon_data_transfer_ratio` > 0,8 (crítico)                                            | `ops.yml` (`quotas`)             | `neon-suspended.md#transferencia-...`     |

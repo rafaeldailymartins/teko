@@ -1,5 +1,3 @@
-import swagger from '@fastify/swagger'
-import scalar from '@scalar/fastify-api-reference'
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
 import { jsonSchemaTransform } from 'fastify-type-provider-zod'
 
@@ -8,7 +6,9 @@ import { jsonSchemaTransform } from 'fastify-type-provider-zod'
  * referência Scalar em `/api/docs`, com o documento em `/api/docs/json` (fonte do codegen da web
  * e do scan de API do ZAP). Só é registrado fora de produção.
  *
- * Precisa ser registrado antes das rotas: o swagger coleta as rotas pelo hook `onRoute`.
+ * Precisa ser registrado antes das rotas: o swagger coleta as rotas pelo hook `onRoute`. Os dois
+ * plugins entram por import dinâmico: em produção a documentação não existe, e o cold start da
+ * Function não os carrega.
  */
 export const DOCS_PREFIX = '/api/docs'
 export const DOCS_JSON_PATH = `${DOCS_PREFIX}/json`
@@ -39,10 +39,24 @@ async function relaxDocsCsp(_request: FastifyRequest, reply: FastifyReply): Prom
   reply.header('content-security-policy', DOCS_CONTENT_SECURITY_POLICY)
 }
 
+function loadPlugins() {
+  return Promise.all([import('@fastify/swagger'), import('@scalar/fastify-api-reference')])
+}
+
+/**
+ * Carrega os dois plugins antes da instância do Fastify existir: a carga dentro do registro, com o
+ * `under-pressure` já medindo o event loop, atrasaria o loop e viraria 503 nas primeiras
+ * requisições (o cache de módulos faz o `registerOpenApi` não carregar de novo).
+ */
+export async function preloadOpenApi(): Promise<void> {
+  await loadPlugins()
+}
+
 export async function registerOpenApi(
   app: FastifyInstance,
   options: OpenApiOptions,
 ): Promise<void> {
+  const [{ default: swagger }, { default: scalar }] = await loadPlugins()
   await app.register(swagger, {
     openapi: {
       openapi: '3.1.0',

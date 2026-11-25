@@ -56,20 +56,34 @@ describe('infra/grafana (validação offline, a mesma do --validate)', () => {
     )
   })
 
-  it('checks: /healthz dos dois projetos e a landing de produção, dentro da cota', () => {
+  it('checks: /healthz de produção de hora em hora, o de staging desligado e a landing a cada 15 min', () => {
     assert.deepEqual(
-      code.checks.checks.map((check) => [check.target, check.enabled]),
+      code.checks.checks.map((check) => [check.target, check.enabled, check.frequency / 60_000]),
       [
-        ['https://tekoia.vercel.app/healthz', true],
-        ['https://tekoia-staging.vercel.app/healthz', true],
-        // Ligado no primeiro deploy do web de produção (F7, 2026-11-18).
-        ['https://tekoia.vercel.app/pt-BR/', true],
+        // Cada execução invoca a Function e paga um cold start em Fluid Active CPU (incidente de
+        // 2026-11-25, mudança reduce-api-cold-start): só o bastante para provar a Function viva.
+        ['https://tekoia.vercel.app/healthz', true, 60],
+        // O smoke de cada deploy confere o staging; a pausa é da conta e a produção a vê.
+        ['https://tekoia-staging.vercel.app/healthz', false, 60],
+        // Estática (CDN, sem Function): disponibilidade da borda e 503 de pausa.
+        ['https://tekoia.vercel.app/pt-BR/', true, 15],
       ],
     )
     const total = code.checks.checks.reduce((sum, check) => sum + monthlyExecutions(check), 0)
-    // 2 x (1 sonda x 43.200 / 5 min) = 8.640 + 8.640, mais a landing (43.200 / 15 min) = 2.880.
-    assert.equal(total, 20_160)
+    // 1 sonda x 43.200 / 60 min = 720, mais a landing (43.200 / 15 min) = 2.880.
+    assert.equal(total, 3600)
     assert.ok(total <= SM_MONTHLY_EXECUTION_BUDGET)
+  })
+
+  it('invocações da Function pelos checks: 24 por dia, todas do /healthz de produção', () => {
+    const functionChecks = code.checks.checks.filter(
+      (check) => check.enabled && new URL(check.target).pathname === '/healthz',
+    )
+    const perDay = functionChecks.reduce(
+      (sum, check) => sum + check.probes.length * (1440 / (check.frequency / 60_000)),
+      0,
+    )
+    assert.equal(perDay, 24)
   })
 
   it('check desligado conta 0 execuções; ligado, sondas x 43.200 / frequência em minutos', () => {
@@ -79,23 +93,34 @@ describe('infra/grafana (validação offline, a mesma do --validate)', () => {
     assert.equal(monthlyExecutions(landing), 2880)
   })
 
-  it('alerta de check falho: todos os checks teko-* sem sucesso em 20 min', () => {
+  it('alerta de check falho: todos os checks teko-* sem sucesso em 65 min', () => {
     const rule = code.alerts.rules.find((item) => item.uid === 'teko-synthetic-failed')
     assert.ok(rule)
     assert.equal(
       rule.expr,
-      'max by (job, instance) (max_over_time(probe_success{job=~"teko-.+"}[20m]))',
+      'max by (job, instance) (max_over_time(probe_success{job=~"teko-.+"}[65m]))',
     )
     assert.deepEqual(
       [rule.group, rule.source, rule.severity, rule.op, rule.threshold, rule.for],
       ['teko-synthetic', 'synthetic', 'critical', 'lt', 1, '0s'],
     )
-    assert.equal(rule.rangeSeconds, 1200)
-    // A janela de 20 min cobre 4 execuções dos checks de 5 min e ao menos 1 do de 15 min.
-    const runsInWindow = code.checks.checks.map((check) =>
-      Math.floor(20 / (check.frequency / 60_000)),
+    assert.equal(rule.rangeSeconds, 3900)
+    // A janela de 65 min cobre ao menos 1 execução de cada check ligado (o /healthz de hora em
+    // hora) e 4 da landing; o de staging, desligado, não gera amostra.
+    const runsInWindow = code.checks.checks
+      .filter((check) => check.enabled)
+      .map((check) => Math.floor(65 / (check.frequency / 60_000)))
+    assert.deepEqual(runsInWindow, [1, 4])
+  })
+
+  it('alerta de pausa: 503 ou 402 em qualquer check teko-*, com a mesma janela de 65 min', () => {
+    const rule = code.alerts.rules.find((item) => item.uid === 'teko-deployment-paused')
+    assert.ok(rule)
+    assert.equal(
+      rule.expr,
+      'max by (job, instance) ((max_over_time(probe_http_status_code{job=~"teko-.+"}[65m]) == 503) or (max_over_time(probe_http_status_code{job=~"teko-.+"}[65m]) == 402))',
     )
-    assert.deepEqual(runsInWindow, [4, 4, 1])
+    assert.equal(rule.rangeSeconds, 3900)
   })
 
   it('o painel de sinais de RAG cobre recusa por motivo, lexical_only e citações invalidadas', () => {
@@ -164,6 +189,60 @@ describe('validate (casos de erro)', () => {
     assert.ok(disabled)
     const off: GrafanaAsCode = { ...code, checks: { checks: [{ ...disabled, enabled: false }] } }
     assert.deepEqual(validate(off, runbooks), [])
+  })
+
+  it('check que invoca a Function com menos de 60 min entre execuções', () => {
+    const withChecks = (
+      patch: (check: GrafanaAsCode['checks']['checks'][number]) => object,
+    ): GrafanaAsCode => ({
+      ...code,
+      checks: { checks: code.checks.checks.map((check) => ({ ...check, ...patch(check) })) },
+    })
+    // O /healthz de staging de volta aos 5 min: 288 cold starts por dia.
+    const staging = validate(
+      withChecks((check) =>
+        check.job === 'teko-healthz-staging' ? { enabled: true, frequency: 300_000 } : {},
+      ),
+      runbooks,
+    )
+    assert.ok(
+      staging.some((error) =>
+        error.includes('check teko-healthz-staging: invoca a Function 288x/dia'),
+      ),
+      staging.join('\n'),
+    )
+    // Estático (a landing) pode rodar mais vezes: não passa pela Function.
+    const landing = validate(
+      withChecks((check) =>
+        check.job === 'teko-landing-production' ? { frequency: 300_000 } : {},
+      ),
+      runbooks,
+    )
+    assert.deepEqual(landing, [])
+  })
+
+  it('janela de alerta sintético menor que a frequência do check mais lento', () => {
+    const short = validate(
+      withRule(
+        {
+          expr: 'max by (job, instance) (max_over_time(probe_success{job=~"teko-.+"}[20m]))',
+          rangeSeconds: 1200,
+        },
+        'teko-synthetic-failed',
+      ),
+      runbooks,
+    )
+    assert.ok(
+      short.some((error) =>
+        error.includes(
+          'teko-synthetic-failed: janela de 20 min não passa da frequência do teko-healthz-production (60 min)',
+        ),
+      ),
+    )
+    const narrow = validate(withRule({ rangeSeconds: 600 }, 'teko-deployment-paused'), runbooks)
+    assert.deepEqual(narrow, [
+      'alerta teko-deployment-paused: rangeSeconds menor que a janela de 65 min',
+    ])
   })
 
   it('e-mail em qualquer JSON de infra/grafana', () => {
@@ -361,7 +440,7 @@ describe('applyGrafana', () => {
     )
     assert.deepEqual(
       plan.filter((item) => item.kind === 'check').map((item) => item.note),
-      ['8640 execuções/mês', '8640 execuções/mês', '2880 execuções/mês'],
+      ['720 execuções/mês', 'desligado, 0 execuções/mês', '2880 execuções/mês'],
     )
   })
 

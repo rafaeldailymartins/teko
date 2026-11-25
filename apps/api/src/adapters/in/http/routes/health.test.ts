@@ -43,6 +43,7 @@ const container: Container = {
   telemetry: noopTelemetry,
   errorReporter: noopErrorReporter,
   streamBudget: { timeoutMs: () => 100_000 },
+  warmUp: async () => {},
   close: async () => {},
 }
 
