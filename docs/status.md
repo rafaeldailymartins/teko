@@ -414,6 +414,27 @@ Pendência (mantenedor): o lock de `main` (versão 14) foi exportado antes das m
 `promote-corpus` o recusaria. Antes do próximo release, rodar a ingestão completa no staging para
 reexportar o snapshot com a migração atual e fazer o merge do PR do lock.
 
+## Staging suspenso pelo Neon (2026-11-18)
+
+O Neon suspendeu o compute do `teko-staging` em 2026-11-18: 5,09 GB de transferência pública no
+ciclo iniciado em 2026-11-10, contra os 5 GB do Free. O staging fica sem banco (API, ingestão,
+`corpus-eval`, `mark-coverage` do staging) até o ciclo virar, por volta de 2026-12-10; a produção
+não foi afetada (`teko-prod` quase zerado) e recebe o corpus pelo snapshot do lock.
+
+Causa (estimativa pelo código e pelos 31 runs do `ingest.yml` no ciclo; o Neon não detalha por
+consulta): as 13 exportações de snapshot (versões 3 a 14 e a reexportação da 14 por causa da
+migração), cada uma com ~340 MB, dos quais ~270 MB eram os vetores em texto (~12,7 KB por chunk);
+depois, a ingestão que trazia cada vetor do `embedding_cache` para a aplicação duas vezes, os 26
+`corpus-eval` e as podas do cache. Correção (mudança `fix-neon-egress`): a ingestão copia o vetor
+por SQL e só confere as chaves do cache; a exportação lê o vetor em binário (~2,8 KB) e reaproveita
+o snapshot da mesma versão e migração já gravado; a poda só roda em run que publicou; o job
+`quotas` emite `teko_neon_data_transfer_ratio` com alertas em 50% e 80%; e o `ingest.yml` para
+acima de 80% sem o input `allow_high_transfer`
+([runbook](runbooks/neon-suspended.md#transferencia-acima-da-cota)).
+
+Pendência (mantenedor): quando o ciclo virar, conferir no painel de cotas a transferência do
+staging depois da primeira ingestão completa (a estimativa é de ~130 MB por exportação).
+
 ## Vercel desativada (2026-11-25)
 
 A Vercel desativou os dois projetos (`402 DEPLOYMENT_DISABLED` em todas as URLs, inclusive o

@@ -154,20 +154,34 @@ describe('PgIngestionRunRepository', () => {
 })
 
 describe('PgEmbeddingCache', () => {
-  it('lê em lotes de 500 hashes e grava ignorando conflitos', async () => {
+  it('confere só as chaves, em lotes de 500, e grava ignorando conflitos', async () => {
     const { db, statements } = fakeDb((text) =>
-      text.startsWith('select') ? [{ hash: 'h1', embedding: '[0.5,0.25]' }] : undefined,
+      text.startsWith('select') ? [{ hash: 'h1' }] : undefined,
     )
     const cache = createPgEmbeddingCache(db)
-    const found = await cache.getMany(
+    const found = await cache.cachedHashes(
       [...Array.from({ length: 600 }, (_, i) => `h${String(i)}`), 'h1'],
       'm',
     )
-    expect(found.get('h1')).toEqual([0.5, 0.25])
-    expect(statements.filter((statement) => statement.text.startsWith('select'))).toHaveLength(2)
+    expect([...found]).toEqual(['h1'])
+    const selects = statements.filter((statement) => statement.text.startsWith('select'))
+    expect(selects).toHaveLength(2)
+    // Nenhuma leitura traz o vetor (transferência pública do Neon).
+    expect(selects.every((statement) => !statement.text.includes('"embedding"'))).toBe(true)
     await cache.putMany([], 'm')
     await cache.putMany([{ hash: 'h9', vector: [1, 0] }], 'm')
     expect(statements.at(-1)?.text).toMatch(/on conflict do nothing/)
+  })
+
+  it('a poda apaga no banco, com a lista do que fica como parâmetro', async () => {
+    const { db, statements } = fakeDb()
+    const cache = createPgEmbeddingCache(db)
+    expect(await cache.retainOnly('m', new Set(['a', 'b']))).toBe(0)
+    expect(statements).toHaveLength(1)
+    expect(statements[0]?.text).toMatch(
+      /^delete from "corpus"."embedding_cache" .*<> ALL\(\$2::text\[\]\)/,
+    )
+    expect(statements[0]?.values).toEqual(['m', ['a', 'b']])
   })
 })
 
@@ -316,7 +330,7 @@ describe('PgCorpusIngestionRepository', () => {
         text: 'Art. 1.',
         contentHash: 'h2',
         structured: null,
-        chunks: [{ ordinal: 0, content: 'Art. 1.', contentHash: 'c', embedding: [0.5, 0.25] }],
+        chunks: [{ ordinal: 0, content: 'Art. 1.', contentHash: 'c', embeddingHash: 'e' }],
       }
       const inserted = await uow.insertVersions(
         [
@@ -365,6 +379,12 @@ describe('PgCorpusIngestionRepository', () => {
     )
     // Data de efeito posterior ao fim da redação: o início da redação evita o range vazio.
     expect(amendmentInsert?.values).toContain('[2000-01-01,2010-01-01)')
+    // O vetor vem do embedding_cache por subconsulta, sem passar pela aplicação.
+    const chunkInsert = statements.find((statement) =>
+      statement.text.startsWith('insert into "corpus"."chunks"'),
+    )
+    expect(chunkInsert?.text).toMatch(/SELECT ec.embedding FROM corpus.embedding_cache ec/)
+    expect(chunkInsert?.values).toEqual(expect.arrayContaining(['e', 'bge']))
   })
 
   it('erros de invariante desfazem a transação', async () => {
@@ -377,6 +397,37 @@ describe('PgCorpusIngestionRepository', () => {
       ),
     ).rejects.toThrow(/2 chunk/)
     expect(texts(orphan.statements).at(-1)).toBe('rollback')
+
+    // Vetor que sumiu do cache entre a conferência e a transação: nenhum chunk aberto sem vetor.
+    const noVector = repository((text) =>
+      text.includes('embedding IS NULL') ? [{ missing: 1 }] : undefined,
+    )
+    await expect(
+      createPgCorpusIngestionRepository(noVector.db).transaction((uow) =>
+        uow.insertVersions(
+          [
+            {
+              provisionId: 'p',
+              headingPath: 'RCTE > Art. 1',
+              displayLabel: 'RCTE, art. 1',
+              validDuring: { from: '2000-01-01', to: null },
+              knowledge: { from: '2026-06-01', to: null },
+              modality: 'mandatory',
+              validityBasis: 'legal_effect',
+              retroactive: false,
+              reviewStatus: 'auto',
+              text: 'Art. 1.',
+              contentHash: 'h2',
+              structured: null,
+              amendment: null,
+              chunks: [{ ordinal: 0, content: 'Art. 1.', contentHash: 'c', embeddingHash: 'e' }],
+            },
+          ],
+          { family: 'rcte', jurisdiction: 'GO', embeddingModel: 'bge' },
+        ),
+      ),
+    ).rejects.toThrow(/sem vetor no embedding_cache/)
+    expect(texts(noVector.statements).at(-1)).toBe('rollback')
 
     const foreign = repository((text) =>
       text.includes('stable_key = ANY')

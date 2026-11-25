@@ -30,7 +30,7 @@ function deps() {
   const value: SnapshotCliDeps = {
     exportSnapshot: (command) => {
       exportCalls.push(command)
-      return Promise.resolve({ manifestKey: 'snapshots/4/manifest.json', manifest })
+      return Promise.resolve({ manifestKey: 'snapshots/4/manifest.json', manifest, reused: false })
     },
     promoteSnapshot: (command) => {
       promoteCalls.push(command)

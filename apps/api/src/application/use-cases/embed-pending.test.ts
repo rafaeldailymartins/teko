@@ -25,15 +25,7 @@ function memoryCache(initial: Record<string, number[]> = {}) {
   const store = new Map(Object.entries(initial))
   const puts: string[][] = []
   const cache: EmbeddingCache = {
-    getMany: (hashes) =>
-      Promise.resolve(
-        new Map(
-          hashes.flatMap((hash) => {
-            const found = store.get(hash)
-            return found === undefined ? [] : [[hash, found] as const]
-          }),
-        ),
-      ),
+    cachedHashes: (hashes) => Promise.resolve(new Set(hashes.filter((hash) => store.has(hash)))),
     putMany: (entries) => {
       puts.push(entries.map((entry) => entry.hash))
       for (const entry of entries) {

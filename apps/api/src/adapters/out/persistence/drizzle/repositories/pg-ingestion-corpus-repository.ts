@@ -397,12 +397,28 @@ function unitOfWork(tx: Tx): IngestionUnitOfWork {
             modality: row.modality,
             reviewStatus: row.reviewStatus,
             corpusVersion: UNVERSIONED_CORPUS,
-            embedding: [...chunk.embedding],
+            // Cópia do vetor dentro do banco: trazê-lo do cache para a aplicação e mandá-lo de
+            // volta custava ~12,7 KB de transferência pública por chunk (o texto do `halfvec`).
+            embedding: sql`(SELECT ec.embedding FROM corpus.embedding_cache ec
+              WHERE ec.content_hash = ${chunk.embeddingHash} AND ec.model = ${context.embeddingModel})`,
             embeddingModel: context.embeddingModel,
           })),
         ),
         (batch) => tx.insert(chunks).values(batch),
       )
+      if (pvIds.length > 0) {
+        // O cache foi conferido antes da transação; um vetor que sumiu no meio do caminho não pode
+        // virar chunk aberto sem embedding (a busca semântica o ignoraria sem aviso).
+        const missing = await tx.execute<{ missing: number }>(sql`
+          SELECT count(*)::int AS missing FROM corpus.chunks
+          WHERE provision_version_id = ANY(${uuidArray(pvIds)}) AND embedding IS NULL`)
+        const count = missing.rows[0]?.missing ?? 0
+        if (count > 0) {
+          throw new CorpusInvariantError(
+            `${String(count)} chunk(s) novo(s) sem vetor no embedding_cache (${context.embeddingModel})`,
+          )
+        }
+      }
       return pvIds
     },
 

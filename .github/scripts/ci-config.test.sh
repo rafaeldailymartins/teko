@@ -207,6 +207,12 @@ check "ingest: allowlist do load inclui Cloudflare e Neon" \
   yq_true '.jobs.load.steps[0].with."allowed-endpoints" | (test("api\\.cloudflare\\.com:443") and test("neon\\.tech:5432"))' "$ingest"
 check "ingest: discover, load e corpus-eval no environment staging" \
   yq_true '[.jobs.discover, .jobs.load, .jobs."corpus-eval" | .environment == "staging"] | all' "$ingest"
+check "ingest: guarda de transferência do Neon antes de qualquer job que toca o banco" \
+  yq_true '.jobs."neon-transfer".environment == "staging" and .jobs.discover.needs == "neon-transfer" and (.jobs."corpus-eval".needs | contains(["neon-transfer"])) and (.jobs."corpus-eval".if | test("needs\\.neon-transfer\\.result == .success.")) and (.jobs.summary.needs | contains(["neon-transfer"]))' "$ingest"
+check "ingest: a guarda só fala com a API do Neon (console), lê o input por env e não passa segredo no run" \
+  bash -c "yq -e '.jobs.\"neon-transfer\".steps[0].with.\"allowed-endpoints\" | (test(\"console\\\\.neon\\\\.tech:443\") and (test(\"5432\") | not))' '$ingest' >/dev/null && yq -r '.jobs.\"neon-transfer\".steps[] | select(.id == \"guard\") | .run' '$ingest' | grep -Fq 'node scripts/neon-transfer-guard.ts' && ! yq -r '.jobs.\"neon-transfer\".steps[].run // \"\"' '$ingest' | grep -q '\${{'"
+check "ingest: allow_high_transfer no dispatch e no workflow_call, boolean e desligado por padrão" \
+  yq_true '.on.workflow_dispatch.inputs.allow_high_transfer.type == "boolean" and .on.workflow_dispatch.inputs.allow_high_transfer.default == false and .on.workflow_call.inputs.allow_high_transfer.type == "boolean" and .on.workflow_call.inputs.allow_high_transfer.default == false' "$ingest"
 check "ingest: extract e docling-models sem environment" \
   yq_true '[.jobs.extract, .jobs."docling-models" | has("environment") | not] | all' "$ingest"
 no_secrets_in_extract() {

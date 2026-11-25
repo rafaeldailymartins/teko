@@ -244,6 +244,7 @@ function useCases(
             migration: { hash: migrationHash, name: null },
             tables: [],
           },
+          reused: false,
         }
       },
     },
@@ -370,7 +371,11 @@ describe('ingest load', () => {
     expect(Object.keys(lock.sources)).toHaveLength(6)
     // Linhagem no manifesto e no lock; sem lock anterior, nada a proteger da retenção.
     expect(recorder.exportCommands).toEqual([
-      { corpusVersion: 7, lineage: { gitSha: 'a'.repeat(40), ...LINEAGE } },
+      {
+        corpusVersion: 7,
+        lineage: { gitSha: 'a'.repeat(40), ...LINEAGE },
+        reuseExisting: true,
+      },
     ])
     expect(lock.lineage).toEqual({ gitSha: 'a'.repeat(40), ...LINEAGE })
     expect(lock.sources['efd-icms-ipi/guia-pratico/3.2.4']).toEqual({
@@ -406,6 +411,8 @@ describe('ingest load', () => {
     expect(second.recorder.exports).toEqual([])
     expect(readFileSync(lockFile, 'utf8')).toBe(before)
     expect(second.recorder.finished[0]?.report).toMatchObject({ chunksNew: 0, lockChanged: false })
+    // Nada publicado: a poda (que lê o texto de todos os chunks abertos) não roda.
+    expect(second.recorder.pruned).toBe(0)
     // Na segunda execução o docling vem da pasta de novo; sem ela, viria do Blobs.
   })
 
@@ -532,11 +539,16 @@ describe('ingest load', () => {
     expect(await load(deps(migrated.useCases).value)).toBe(0)
     expect(migrated.recorder.exports).toEqual([7])
     expect(migrated.recorder.exportCommands[0]?.protect).toEqual([7])
+    // O manifesto da mesma versão e migração já gravado é reaproveitado (o caso de uso decide).
+    expect(migrated.recorder.exportCommands[0]?.reuseExisting).toBe(true)
     expect(readCorpusLock(lockFile).snapshot).toMatchObject({
       corpusVersion: 7,
       migration: 'mig-nova',
     })
-    expect(migrated.recorder.finished[0]?.report).toMatchObject({ lockChanged: true })
+    expect(migrated.recorder.finished[0]?.report).toMatchObject({
+      lockChanged: true,
+      snapshotReused: false,
+    })
   })
 
   it('A5: sha256 novo com o mesmo conteúdo não grava raw nem entra no lock', async () => {

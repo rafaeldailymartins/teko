@@ -1,4 +1,4 @@
-import { and, eq, inArray } from 'drizzle-orm'
+import { and, eq, inArray, sql } from 'drizzle-orm'
 import type { EmbeddingCache } from '#app/ports/embedding-cache.ts'
 import type { DrizzleDb } from '../client.ts'
 import { embeddingCache } from '../schema/corpus.ts'
@@ -8,18 +8,22 @@ import { embeddingCache } from '../schema/corpus.ts'
  * fora da transação da versão de documento): é o checkpoint que permite retomar depois do
  * `budget_exhausted`. Conflito na chave mantém o vetor gravado (o mesmo texto e modelo dão o mesmo
  * vetor; o BGE-M3 é determinístico).
+ *
+ * Nenhuma consulta daqui devolve vetor: `cachedHashes` lê só as chaves e a poda (`retainOnly`)
+ * manda a lista do que fica para o banco, que apaga o resto lá dentro. O que sai do banco conta na
+ * transferência pública do Neon; o que entra, não.
  */
 
 const LOOKUP_BATCH = 500
 
 export function createPgEmbeddingCache(db: DrizzleDb): EmbeddingCache {
   return {
-    async getMany(hashes, model) {
-      const found = new Map<string, number[]>()
+    async cachedHashes(hashes, model) {
+      const found = new Set<string>()
       const unique = [...new Set(hashes)]
       for (let start = 0; start < unique.length; start += LOOKUP_BATCH) {
         const rows = await db
-          .select({ hash: embeddingCache.contentHash, embedding: embeddingCache.embedding })
+          .select({ hash: embeddingCache.contentHash })
           .from(embeddingCache)
           .where(
             and(
@@ -28,7 +32,7 @@ export function createPgEmbeddingCache(db: DrizzleDb): EmbeddingCache {
             ),
           )
         for (const row of rows) {
-          found.set(row.hash, row.embedding)
+          found.add(row.hash)
         }
       }
       return found
@@ -49,22 +53,17 @@ export function createPgEmbeddingCache(db: DrizzleDb): EmbeddingCache {
         .onConflictDoNothing()
     },
     async retainOnly(model, keep) {
-      const rows = await db
-        .select({ hash: embeddingCache.contentHash })
-        .from(embeddingCache)
-        .where(eq(embeddingCache.model, model))
-      const stale = rows.map((row) => row.hash).filter((hash) => !keep.has(hash))
-      for (let start = 0; start < stale.length; start += LOOKUP_BATCH) {
-        await db
-          .delete(embeddingCache)
-          .where(
-            and(
-              eq(embeddingCache.model, model),
-              inArray(embeddingCache.contentHash, stale.slice(start, start + LOOKUP_BATCH)),
-            ),
-          )
-      }
-      return stale.length
+      // Um comando só, com a lista do que fica como parâmetro (entra no banco, não sai): nem os
+      // hashes do cache precisam vir para a aplicação.
+      const result = await db
+        .delete(embeddingCache)
+        .where(
+          and(
+            eq(embeddingCache.model, model),
+            sql`${embeddingCache.contentHash} <> ALL(${sql.param([...keep])}::text[])`,
+          ),
+        )
+      return result.rowCount ?? 0
     },
   }
 }

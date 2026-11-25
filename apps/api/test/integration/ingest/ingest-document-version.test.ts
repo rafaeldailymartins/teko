@@ -845,6 +845,14 @@ describe('poda do embedding_cache', () => {
       blobDocling: null,
       parserRevision: 1,
     })
+    // O vetor de cada chunk aberto foi copiado do cache dentro do banco, sem passar pela aplicação.
+    expect(
+      await count(
+        'chunks',
+        `upper_inf(knowledge) AND (embedding IS NULL OR NOT EXISTS (
+          SELECT 1 FROM corpus.embedding_cache ec WHERE ec.embedding = chunks.embedding))`,
+      ),
+    ).toBe(0)
     await owner.query(
       `INSERT INTO corpus.embedding_cache (content_hash, model, embedding)
        SELECT 'lixo', model, embedding FROM corpus.embedding_cache LIMIT 1`,

@@ -142,6 +142,7 @@ export const KNOWN_METRICS: ReadonlySet<string> = new Set([
   // ops.yml (F6, scripts/ops-metrics.ts)
   'teko_neon_compute_hours',
   'teko_neon_cu_hours_ratio',
+  'teko_neon_data_transfer_ratio',
   'teko_coverage_verified_age_days',
   'teko_token_expiry_days',
   'teko_ops_job_last_success_timestamp_seconds',
@@ -166,6 +167,8 @@ export const REQUIRED_ALERTS: Readonly<Record<string, string>> = {
   'teko-llm-429': '429 por provedor > 20% em 15 min',
   'teko-quota-used': 'teko_quota_used_ratio > 0,7',
   'teko-neon-cu-hours': 'CU-h > 70% pró-rata',
+  'teko-neon-transfer-50': 'teko_neon_data_transfer_ratio > 0,5',
+  'teko-neon-transfer-80': 'teko_neon_data_transfer_ratio > 0,8',
   'teko-langfuse-units': 'Langfuse projetado > 35k',
   'teko-vercel-usage-50': 'teko_vercel_usage_ratio > 0,5',
   'teko-vercel-usage-75': 'teko_vercel_usage_ratio > 0,75',
