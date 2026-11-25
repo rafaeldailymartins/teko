@@ -1,6 +1,10 @@
 import sensible from '@fastify/sensible'
 import { AppEnv } from '@teko/shared/contracts'
-import Fastify, { type FastifyBaseLogger, type FastifyInstance } from 'fastify'
+import Fastify, {
+  type FastifyBaseLogger,
+  type FastifyInstance,
+  type FastifyServerOptions,
+} from 'fastify'
 import { serializerCompiler, validatorCompiler } from 'fastify-type-provider-zod'
 import { BODY_LIMIT_BYTES, type HttpOptions } from '#adapters/in/http/http-options.ts'
 import { registerAuth } from '#adapters/in/http/plugins/auth.ts'
@@ -55,6 +59,23 @@ export function fastifyTrustProxy(trustProxy: HttpOptions['trustProxy']): Fastif
   return [...trustProxy]
 }
 
+type CompilersFactory = NonNullable<
+  NonNullable<FastifyServerOptions['schemaController']>['compilersFactory']
+>
+
+/**
+ * Os compilers Zod desde a criação da instância. Sem isto, o Fastify carrega e monta o Ajv e o
+ * fast-json-stringify padrão, que nenhuma rota usa (o `setValidatorCompiler` e o
+ * `setSerializerCompiler` valem para todas), e o cold start da Function paga a carga dos dois. Os
+ * tipos do Fastify descrevem a fábrica com as assinaturas do Ajv, mas em runtime ele só chama
+ * `buildValidator()`/`buildSerializer()` e usa o resultado como o compiler das rotas, o mesmo
+ * contrato do `setValidatorCompiler`; daí a conversão.
+ */
+const ZOD_COMPILERS_FACTORY = {
+  buildValidator: () => validatorCompiler,
+  buildSerializer: () => serializerCompiler,
+} as unknown as CompilersFactory
+
 /**
  * Monta a aplicação Fastify sem abrir porta (`listen` fica em `server.ts`, o único entrypoint
  * HTTP; os testes usam `app.inject`). A ordem segue o pipeline HTTP do plano:
@@ -86,6 +107,7 @@ export async function buildApp(deps: BuildAppDeps): Promise<FastifyInstance> {
     requestIdHeader: false,
     genReqId: createRequestIdGenerator(deps.http.requestIdHeader),
     return503OnClosing: true,
+    schemaController: { compilersFactory: ZOD_COMPILERS_FACTORY },
   })
 
   app.setValidatorCompiler(validatorCompiler)

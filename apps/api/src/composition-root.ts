@@ -17,7 +17,7 @@ import {
   normalizeWebOpenApi,
   serializeOpenApi,
 } from '#adapters/in/http/plugins/openapi-document.ts'
-import { createBetterAuthGateway } from '#adapters/out/auth/better-auth.ts'
+import { createLazyBetterAuthGateway } from '#adapters/out/auth/lazy-better-auth.ts'
 import { createGithubReleasesBlobStore } from '#adapters/out/blobs/github-releases-blob-store.ts'
 import { systemClock } from '#adapters/out/clock/system-clock.ts'
 import { sha256ContentHasher } from '#adapters/out/crypto/sha256-content-hasher.ts'
@@ -30,10 +30,9 @@ import {
 import { createFakeLlmAdapter } from '#adapters/out/fakes/fake-llm-adapter.ts'
 import { createInMemoryBlobStore } from '#adapters/out/fakes/in-memory-blob-store.ts'
 import { createSafeFetcher } from '#adapters/out/http/safe-fetcher.ts'
-import { createLlmChain } from '#adapters/out/llm/ai-sdk-llm.ts'
+import { createLazyLlmChain } from '#adapters/out/llm/lazy-llm-chain.ts'
 import { createNeonComputeUsage } from '#adapters/out/neon/neon-compute-usage.ts'
 import { createDatabase, type Database } from '#adapters/out/persistence/drizzle/client.ts'
-import { runMigrations } from '#adapters/out/persistence/drizzle/migrate.ts'
 import {
   createPgAccountRepository,
   createPgMaintenanceRepository,
@@ -718,7 +717,7 @@ function createLlmModels(env: Env): LlmModel[] {
   if (env.LLM_PROVIDER === undefined || env.GROQ_API_KEY === undefined) {
     return []
   }
-  const chain = createLlmChain({
+  const chain = createLazyLlmChain({
     geminiApiKey: env.GEMINI_API_KEY ?? '',
     groqApiKey: env.GROQ_API_KEY,
     geminiModels: [env.GEMINI_MODEL_PRIMARY, env.GEMINI_MODEL_FALLBACK],
@@ -852,7 +851,7 @@ function createAuth(env: Env, database: Database): AuthGateway | null {
   }
   const app = (clientId: string | undefined, clientSecret: string | undefined) =>
     clientId === undefined || clientSecret === undefined ? null : { clientId, clientSecret }
-  return createBetterAuthGateway(database.db, {
+  return createLazyBetterAuthGateway(database.db, {
     secret: env.BETTER_AUTH_SECRET,
     webOrigin: env.WEB_ORIGIN,
     cookiePrefix: cookiePrefixFor(env.APP_ENV),
@@ -1000,9 +999,14 @@ export function logBackgroundFailure(
   }
 }
 
-/** Aplica as migrações (URL direta do owner). Usado pela CLI (`seed-fixtures --migrate`). */
-export function migrateDatabase(ownerUrl: string, migrationsFolder?: string): Promise<void> {
-  return runMigrations(ownerUrl, migrationsFolder)
+/**
+ * Aplica as migrações (URL direta do owner). Usado pela CLI (`seed-fixtures --migrate`). O migrator
+ * do Drizzle entra por import dinâmico: a API publicada nunca migra, e o cold start da Function não
+ * o carrega.
+ */
+export async function migrateDatabase(ownerUrl: string, migrationsFolder?: string): Promise<void> {
+  const { runMigrations } = await import('#adapters/out/persistence/drizzle/migrate.ts')
+  await runMigrations(ownerUrl, migrationsFolder)
 }
 
 export interface Runtime {

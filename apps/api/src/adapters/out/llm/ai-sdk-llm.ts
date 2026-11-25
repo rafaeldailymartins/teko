@@ -11,6 +11,7 @@ import {
   type LlmRequest,
 } from '#app/ports/llm-port.ts'
 import { tracedIterable } from '../telemetry/tracing.ts'
+import { chainIdentities, type LlmChainConfig, type ModelIdentity } from './chain-models.ts'
 
 /**
  * Gemini e Groq pelo AI SDK da Vercel (decisão do mantenedor em 2026-11-14: `@google/genai` não tem
@@ -129,12 +130,6 @@ export function toLlmError(error: unknown, signal: AbortSignal, nowMs: number): 
   return new LlmError(LlmErrorKind.Unavailable, 'provider unreachable')
 }
 
-interface ModelIdentity {
-  readonly provider: 'gemini' | 'groq'
-  readonly model: string
-  readonly zeroDataRetention: boolean
-}
-
 /** Valores de `gen_ai.provider.name` da semconv de GenAI. */
 const GEN_AI_PROVIDER = { gemini: 'gcp.gemini', groq: 'groq' } as const
 
@@ -223,15 +218,11 @@ async function* streamEvents(
   }
 }
 
-export interface LlmChainConfig {
-  readonly geminiApiKey: string
-  readonly groqApiKey: string
-  readonly geminiModels: readonly string[]
-  readonly groqModel: string
-  readonly fetch?: Fetch
-}
-
-/** Cadeia do plano: Gemini primário → Gemini de fallback → Groq (ZDR). */
+/**
+ * Cadeia do plano (`chainIdentities`): Gemini primário → Gemini de fallback → Groq (ZDR). Este
+ * módulo carrega o AI SDK; a raiz de composição o alcança só por `lazy-llm-chain.ts`, na primeira
+ * pergunta.
+ */
 export function createLlmChain(config: LlmChainConfig): LlmModel[] {
   const google = createGoogle({
     apiKey: config.geminiApiKey,
@@ -243,18 +234,9 @@ export function createLlmChain(config: LlmChainConfig): LlmModel[] {
     baseURL: GROQ_BASE_URL,
     fetch: pinnedFetch(GROQ_BASE_URL, config.fetch),
   })
-  return [
-    ...config.geminiModels.map((model) =>
-      createAiSdkLlm(
-        google(model),
-        { provider: 'gemini', model, zeroDataRetention: false },
-        GEMINI_OPTIONS,
-      ),
-    ),
-    createAiSdkLlm(groq(config.groqModel), {
-      provider: 'groq',
-      model: config.groqModel,
-      zeroDataRetention: true,
-    }),
-  ]
+  return chainIdentities(config).map((identity) =>
+    identity.provider === 'gemini'
+      ? createAiSdkLlm(google(identity.model), identity, GEMINI_OPTIONS)
+      : createAiSdkLlm(groq(identity.model), identity),
+  )
 }

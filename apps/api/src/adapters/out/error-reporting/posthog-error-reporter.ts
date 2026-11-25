@@ -1,6 +1,7 @@
 import type { AppEnv } from '@teko/shared/contracts'
-import { type EventMessage, PostHog } from 'posthog-node'
+import type { EventMessage } from 'posthog-node'
 import type { ErrorReportContext, ErrorReporterPort } from '#app/ports/error-reporter.ts'
+import { lazyModule } from '../lazy-module.ts'
 import { scrubError } from './scrub.ts'
 
 /**
@@ -14,6 +15,8 @@ import { scrubError } from './scrub.ts'
  * - `distinct_id` é o `trace_id` da requisição: um identificador técnico e aleatório, que não liga o
  *   erro a uma pessoa nem junta erros de pessoas diferentes num perfil (`$process_person_profile`
  *   falso; sem GeoIP, que seria o do servidor). Nada de corpo, pergunta, e-mail, IP nem usuário.
+ * - O `posthog-node` entra por import dinâmico no primeiro erro reportado: o cold start da Function
+ *   não o carrega, e um processo sem erro nunca o carrega (nem o encerra).
  */
 
 /** Ingestão do PostHog na UE, a única região do Tekó (fixa no código, como os hosts de LLM). */
@@ -91,7 +94,8 @@ export function onlyExceptions(event: EventMessage): EventMessage | null {
   }
 }
 
-function createClient(projectKey: string): ExceptionClient {
+async function createClient(projectKey: string): Promise<ExceptionClient> {
+  const { PostHog } = await import('posthog-node')
   return new PostHog(projectKey, {
     host: POSTHOG_EU_HOST,
     flushAt: 20,
@@ -108,7 +112,13 @@ function createClient(projectKey: string): ExceptionClient {
 export function createPosthogErrorReporter(
   options: PosthogErrorReporterOptions,
 ): ErrorReporterPort {
-  const client = options.client ?? createClient(options.projectKey)
+  const injected = options.client
+  const client =
+    injected === undefined
+      ? lazyModule(() => createClient(options.projectKey))
+      : () => Promise.resolve(injected)
+  /** Algum erro já pediu o cliente (sem isso, o encerramento não carrega o SDK só para fechá-lo). */
+  let used = injected !== undefined
   const sending = new Set<Promise<void>>()
 
   async function flush(): Promise<void> {
@@ -120,18 +130,21 @@ export function createPosthogErrorReporter(
     report(error: unknown, context: ErrorReportContext) {
       try {
         const scrubbed = scrubError(error)
-        const send = client
-          .captureExceptionImmediate(scrubbed, context.traceId, {
-            $process_person_profile: false,
-            trace_id: context.traceId,
-            http_method: context.method,
-            http_route: context.route,
-            http_status_code: context.statusCode,
-            error_code: scrubbed.errorCode,
-            release: options.release,
-            app_env: options.appEnv,
-            service: 'teko-api',
-          })
+        used = true
+        const send = client()
+          .then((ready) =>
+            ready.captureExceptionImmediate(scrubbed, context.traceId, {
+              $process_person_profile: false,
+              trace_id: context.traceId,
+              http_method: context.method,
+              http_route: context.route,
+              http_status_code: context.statusCode,
+              error_code: scrubbed.errorCode,
+              release: options.release,
+              app_env: options.appEnv,
+              service: 'teko-api',
+            }),
+          )
           .catch(() => {})
         sending.add(send)
         void send.finally(() => sending.delete(send))
@@ -143,7 +156,9 @@ export function createPosthogErrorReporter(
     async shutdown(timeoutMs) {
       try {
         await flush()
-        await client.shutdown(timeoutMs)
+        if (used) {
+          await (await client()).shutdown(timeoutMs)
+        }
       } catch {
         // Encerramento: o que não saiu se perde.
       }
