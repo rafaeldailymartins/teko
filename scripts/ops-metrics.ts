@@ -6,6 +6,7 @@
  * | --------------------------------------------- | ---------------------------------------- | ----------------------------------------------------- |
  * | `teko_neon_compute_hours`                     | `project`, ambiente                      | `compute_time_seconds` do período (API do Neon)       |
  * | `teko_neon_cu_hours_ratio`                    | `project`, ambiente                      | projeção linear do período sobre 100 CU-h             |
+ * | `teko_neon_data_transfer_ratio`               | `project`, ambiente                      | `data_transfer_bytes` do período sobre 5 GB           |
  * | `teko_token_expiry_days`                      | `token`                                  | variável `TOKEN_EXPIRY_DATES` (JSON nome → data)      |
  * | `teko_coverage_verified_age_days`             | `family`, ambiente                       | JSON do `cli coverage-age` (job `coverage-age`)       |
  * | `teko_ops_job_last_success_timestamp_seconds` | `ops_job`                                | o próprio job, ao terminar sem erro                   |
@@ -26,6 +27,12 @@ import { envValue, type GaugePoint, logLine, publishPoints } from './lib/otlp-me
 
 /** Cota do Neon Free por projeto e por mês (docs/architecture/contas-e-cotas.md). */
 export const NEON_CU_HOURS_QUOTA = 100
+/**
+ * Transferência pública (egress) do Neon Free por projeto e por mês: 5 GB, em base decimal (a API
+ * manda dividir `data_transfer_bytes` por 1.000.000.000). Estourar suspende o compute até o ciclo
+ * virar (incidente do staging em 2026-11-18; docs/runbooks/neon-suspended.md).
+ */
+export const NEON_TRANSFER_QUOTA_BYTES = 5_000_000_000
 const NEON_API = 'https://console.neon.tech/api/v2'
 const PROJECT_ID = /^[a-z0-9-]{1,64}$/u
 const TOKEN_NAME = /^[A-Za-z0-9_.@:() -]{1,64}$/u
@@ -37,6 +44,8 @@ type Environment = 'production' | 'staging'
 
 export interface NeonProjectUsage {
   readonly compute_time_seconds: number
+  /** Transferência do período (pública e privada; no Free só há a pública), em bytes. */
+  readonly data_transfer_bytes: number
   readonly consumption_period_start: string
   readonly consumption_period_end?: string | null
 }
@@ -110,7 +119,24 @@ export function neonUsagePoints(
       environment: project.environment,
       description: 'Projeção linear dos CU-h do período sobre a cota de 100 CU-h',
     },
+    {
+      // Valor do período, sem projeção: o estouro suspende o compute na hora, e o gasto vem em
+      // rajadas (ingestão, snapshot, corpus-eval), não em ritmo constante.
+      name: 'teko_neon_data_transfer_ratio',
+      value: neonTransferRatio(usage.data_transfer_bytes),
+      labels,
+      environment: project.environment,
+      description: 'Transferência pública do período do Neon sobre a cota de 5 GB do Free',
+    },
   ]
+}
+
+/** Fração da cota de transferência do Free já usada no período. */
+export function neonTransferRatio(bytes: number): number {
+  if (!Number.isFinite(bytes) || bytes < 0) {
+    throw new RangeError(`data_transfer_bytes inválido: ${String(bytes)}`)
+  }
+  return bytes / NEON_TRANSFER_QUOTA_BYTES
 }
 
 /** `{"VERCEL_TOKEN (staging)": "2027-02-10", ...}` → dias até a expiração (negativo = vencido). */
@@ -209,7 +235,8 @@ const NEON_PROJECTS = [
   },
 ] as const
 
-async function fetchNeonUsage(
+/** `GET /projects/{id}` da API do Neon (console, nunca o compute: não acorda o banco). */
+export async function fetchNeonUsage(
   projectId: string,
   apiKey: string,
   doFetch: typeof fetch,
@@ -228,12 +255,16 @@ async function fetchNeonUsage(
   const project = body.project
   if (
     typeof project?.compute_time_seconds !== 'number' ||
-    typeof project.consumption_period_start !== 'string'
+    typeof project.consumption_period_start !== 'string' ||
+    typeof project.data_transfer_bytes !== 'number'
   ) {
-    throw new Error('resposta do Neon sem compute_time_seconds ou consumption_period_start')
+    throw new Error(
+      'resposta do Neon sem compute_time_seconds, data_transfer_bytes ou consumption_period_start',
+    )
   }
   return {
     compute_time_seconds: project.compute_time_seconds,
+    data_transfer_bytes: project.data_transfer_bytes,
     consumption_period_start: project.consumption_period_start,
     consumption_period_end: project.consumption_period_end ?? null,
   }

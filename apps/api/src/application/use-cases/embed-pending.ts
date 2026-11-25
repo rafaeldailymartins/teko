@@ -128,11 +128,12 @@ export function createEmbedPending(deps: EmbedPendingDeps): EmbedPending {
 
   return async ({ runId, texts }) => {
     const unique = uniqueByHash(texts)
-    const cachedVectors = await deps.cache.getMany(
+    // Só as chaves: o vetor já gravado não precisa sair do banco para saber que existe.
+    const cachedHashes = await deps.cache.cachedHashes(
       unique.map((entry) => entry.hash),
       model,
     )
-    const missing = unique.filter((entry) => !cachedVectors.has(entry.hash))
+    const missing = unique.filter((entry) => !cachedHashes.has(entry.hash))
     const cached = unique.length - missing.length
     const batches = planEmbeddingBatches(
       missing.map((entry) => entry.text),

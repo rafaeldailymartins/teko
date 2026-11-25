@@ -4,6 +4,8 @@ import { buildMetricsPayload, pushMetrics } from './lib/otlp-metrics.ts'
 import {
   coverageAgePoints,
   jobSuccessPoint,
+  NEON_TRANSFER_QUOTA_BYTES,
+  neonTransferRatio,
   neonUsagePoints,
   type RunDeps,
   run,
@@ -24,6 +26,7 @@ describe('neonUsagePoints', () => {
       PROD,
       {
         compute_time_seconds: 30 * 3600,
+        data_transfer_bytes: 0,
         consumption_period_start: '2026-11-01T00:00:00Z',
         consumption_period_end: '2026-11-11T00:00:00Z',
       },
@@ -38,7 +41,11 @@ describe('neonUsagePoints', () => {
   it('sem consumption_period_end usa um mês a partir do início', () => {
     const points = neonUsagePoints(
       PROD,
-      { compute_time_seconds: 15 * 3600, consumption_period_start: '2026-11-01T00:00:00Z' },
+      {
+        compute_time_seconds: 15 * 3600,
+        data_transfer_bytes: 0,
+        consumption_period_start: '2026-11-01T00:00:00Z',
+      },
       new Date('2026-11-16T00:00:00Z'),
     )
     assert.equal(pointValue(points, 'teko_neon_cu_hours_ratio'), 0.3)
@@ -49,6 +56,7 @@ describe('neonUsagePoints', () => {
       PROD,
       {
         compute_time_seconds: 3600,
+        data_transfer_bytes: 0,
         consumption_period_start: '2026-11-01T00:00:00Z',
         consumption_period_end: '2026-12-01T00:00:00Z',
       },
@@ -59,9 +67,44 @@ describe('neonUsagePoints', () => {
 
   it('recusa período inválido', () => {
     assert.throws(
-      () => neonUsagePoints(PROD, { compute_time_seconds: 1, consumption_period_start: 'x' }, NOW),
+      () =>
+        neonUsagePoints(
+          PROD,
+          { compute_time_seconds: 1, data_transfer_bytes: 0, consumption_period_start: 'x' },
+          NOW,
+        ),
       /consumption_period_start inválido/u,
     )
+  })
+})
+
+describe('neonTransferRatio', () => {
+  it('5,09 GB do staging em 2026-11-18 são 102% da cota de 5 GB do Free', () => {
+    assert.equal(NEON_TRANSFER_QUOTA_BYTES, 5_000_000_000)
+    assert.equal(neonTransferRatio(5_090_000_000), 1.018)
+    assert.equal(neonTransferRatio(0), 0)
+  })
+
+  it('o ponto de transferência vai com o projeto e o ambiente, sem projeção', () => {
+    const points = neonUsagePoints(
+      PROD,
+      {
+        compute_time_seconds: 0,
+        data_transfer_bytes: 4_000_000_000,
+        consumption_period_start: '2026-11-01T00:00:00Z',
+        consumption_period_end: '2026-12-01T00:00:00Z',
+      },
+      new Date('2026-11-02T00:00:00Z'),
+    )
+    assert.equal(pointValue(points, 'teko_neon_data_transfer_ratio'), 0.8)
+    const point = points.find((entry) => entry.name === 'teko_neon_data_transfer_ratio')
+    assert.deepEqual(point?.labels, { project: 'teko-prod' })
+    assert.equal(point?.environment, 'production')
+  })
+
+  it('recusa valor negativo ou não finito', () => {
+    assert.throws(() => neonTransferRatio(-1), RangeError)
+    assert.throws(() => neonTransferRatio(Number.NaN), RangeError)
   })
 })
 
@@ -149,7 +192,11 @@ describe('buildMetricsPayload', () => {
       [
         ...neonUsagePoints(
           PROD,
-          { compute_time_seconds: 3600, consumption_period_start: '2026-11-01T00:00:00Z' },
+          {
+            compute_time_seconds: 3600,
+            data_transfer_bytes: 0,
+            consumption_period_start: '2026-11-01T00:00:00Z',
+          },
           NOW,
         ),
         jobSuccessPoint('quotas', NOW),
@@ -173,7 +220,7 @@ describe('buildMetricsPayload', () => {
     const metrics = production?.scopeMetrics[0]?.metrics ?? []
     assert.deepEqual(
       metrics.map((metric) => metric['name']),
-      ['teko_neon_compute_hours', 'teko_neon_cu_hours_ratio'],
+      ['teko_neon_compute_hours', 'teko_neon_cu_hours_ratio', 'teko_neon_data_transfer_ratio'],
     )
     for (const metric of metrics) {
       assert.equal('unit' in metric, false)
@@ -269,6 +316,7 @@ describe('run', () => {
         JSON.stringify({
           project: {
             compute_time_seconds: seconds,
+            data_transfer_bytes: 2_500_000_000,
             consumption_period_start: '2026-11-01T00:00:00Z',
             consumption_period_end: '2026-12-01T00:00:00Z',
           },

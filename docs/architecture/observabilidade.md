@@ -266,7 +266,7 @@ Grafana e do Synthetic Monitoring por `scripts/grafana-apply.ts`, no job `grafan
 [`infra/grafana/README.md`](../../infra/grafana/README.md).
 
 - **Dashboards:** API RED; LLM (TTFT, tokens, custo-sombra, fallback, 429); cotas (Gemini, Groq,
-  neurons, Langfuse units, CU-h, idade da cobertura, expiração de tokens); Vercel Hobby
+  neurons, Langfuse units, CU-h, transferência do Neon, idade da cobertura, expiração de tokens); Vercel Hobby
   (`teko_vercel_usage_ratio` por recurso); sinais de RAG por ambiente e `corpus_version`.
 - **Synthetic Monitoring** substitui UptimeRobot e Checkly: `/healthz` de `tekoia.vercel.app` de
   hora em hora (sem DB; prova a Function viva) e a landing de produção (`/pt-BR/`) a cada 15 min
@@ -277,7 +277,7 @@ Grafana e do Synthetic Monitoring por `scripts/grafana-apply.ts`, no job `grafan
   (mudança `reduce-api-cold-start`). O check da landing foi ligado no primeiro deploy do web de
   produção (F7, 2026-11-18).
 - **Métricas do `ops.yml`** (job `quotas`, uma vez por dia, OTLP/HTTP com `service.name=teko-ops`):
-  `teko_neon_compute_hours` e `teko_neon_cu_hours_ratio` por `project`,
+  `teko_neon_compute_hours`, `teko_neon_cu_hours_ratio` e `teko_neon_data_transfer_ratio` por `project`,
   `teko_coverage_verified_age_days` por `family`, `teko_token_expiry_days` por `token` e
   `teko_ops_job_last_success_timestamp_seconds` por `ops_job`. O job `langfuse` (uma vez por dia)
   emite `teko_langfuse_units_projected` e o próprio sucesso. O `vercel-usage` (F7, uma vez por dia)
@@ -285,7 +285,9 @@ Grafana e do Synthetic Monitoring por `scripts/grafana-apply.ts`, no job `grafan
   registra o sucesso pelo `weekly-maintenance-metrics`. Contrato da fonte que chega depois:
   `teko_prod_vuln_findings{severity}` (`prod-vuln-scan`, F7).
 - **Alertas por e-mail:** 5xx > 2% em 10 min; p95 de `POST /api/v1/questions` ou TTFT p95 > 3 s;
-  429 por provedor > 20% em 15 min; `teko_quota_used_ratio` > 0,7; CU-h > 70% pró-rata; Langfuse
+  429 por provedor > 20% em 15 min; `teko_quota_used_ratio` > 0,7; CU-h > 70% pró-rata;
+  `teko_neon_data_transfer_ratio` > 0,5 e > 0,8 (transferência pública do Neon; a guarda do
+  `ingest.yml` para em 0,8); Langfuse
   projetado > 35k; `teko_vercel_usage_ratio` > 0,5 e > 0,75 (o kill switch entra em 0,85); 503
   `DEPLOYMENT_PAUSED` visto pelo Synthetic Monitoring; check do Synthetic Monitoring falhando em
   todas as execuções de 65 min (timeout, erro de rede ou status fora de 200, inclusive o 500; a
@@ -302,7 +304,7 @@ Grafana e do Synthetic Monitoring por `scripts/grafana-apply.ts`, no job `grafan
 | `rollback-corpus.md`    | ADR 0031 | repromover um snapshot antigo como `corpus_version` nova                                                                                                      |
 | `provider-outage.md`    | existe   | breaker e fallback; `LLM_KILL_SWITCH`; troca de modelos por env; 5xx, latência e embeddings fora do ar                                                        |
 | `quota-exhausted.md`    | existe   | qual cota estourou; reduzir tetos e amostragens por env                                                                                                       |
-| `neon-suspended.md`     | existe   | `LLM_KILL_SWITCH`; esperar o ciclo do Neon; contingência opcional com projeto novo e o corpus pelo snapshot                                                   |
+| `neon-suspended.md`     | existe   | CU-h e transferência (achar o fluxo culpado); `LLM_KILL_SWITCH`; esperar o ciclo do Neon; projeto novo com o corpus pelo snapshot                             |
 | `ops-alerts.md`         | existe   | cobertura sem verificação, jobs do `ops.yml` sem sucesso, achado do `prod-vuln-scan`, check sintético falhando, recusa fora do normal                         |
 | `vercel-paused.md`      | existe   | diagnóstico; esperar os 30 dias com aviso no README e no status e **retomar à mão** (`vercel project resume` ou a API `unpause`); nunca Pro nem segunda conta |
 | `vercel-deploy.md`      | F7       | fluxo do deploy `--prebuilt`, WAF, Deployment Protection, opt-out de Model Training                                                                           |

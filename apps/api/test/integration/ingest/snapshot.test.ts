@@ -3,6 +3,10 @@ import { readdirSync, readFileSync } from 'node:fs'
 import pg from 'pg'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { createInMemoryBlobStore } from '#adapters/out/fakes/in-memory-blob-store.ts'
+import {
+  halfvecBase64Sql,
+  halfvecTextFromBase64,
+} from '#adapters/out/persistence/drizzle/repositories/halfvec-wire.ts'
 import type { Container } from '#app/container.ts'
 import { BlobStoreName } from '#app/ports/blob-store.ts'
 import type { SnapshotManifest } from '#app/ports/snapshot-repository.ts'
@@ -103,6 +107,24 @@ describe('exportação', () => {
     expect(rows['corpus_versions']).toBe(1)
   })
 
+  it('o vetor lido em binário vira o mesmo texto canônico do halfvec_out', async () => {
+    const { rows } = await stagingOwner.query<{ text: string; base64: string }>(
+      `SELECT embedding::text AS text, ${halfvecBase64Sql('embedding')} AS base64
+       FROM corpus.chunks WHERE embedding IS NOT NULL ORDER BY id LIMIT 300`,
+    )
+    expect(rows).toHaveLength(300)
+    for (const row of rows) {
+      const converted = halfvecTextFromBase64(row.base64)
+      const same = await stagingOwner.query<{ same: boolean }>(
+        'SELECT $1::halfvec = $2::halfvec AS same',
+        [converted, row.text],
+      )
+      expect(same.rows[0]?.same).toBe(true)
+      // ~4,6 vezes menos bytes no fio que o texto (o que conta na transferência do Neon).
+      expect(row.base64.length * 4).toBeLessThan(row.text.length)
+    }
+  })
+
   it('exporta todas as linhas publicáveis e nenhum dado operacional', async () => {
     const publishable = await stagingOwner.query<{ n: number }>(
       `SELECT count(*)::int AS n FROM corpus.chunks WHERE review_status IN ('auto', 'approved')`,
@@ -161,10 +183,11 @@ describe('promoção num banco vazio', () => {
     expect(await tableCounts(productionOwner)).toEqual(
       Object.fromEntries(manifest.tables.map((table) => [table.name, table.rows])),
     )
-    const sample = `SELECT id, embedding::text AS embedding FROM corpus.chunks ORDER BY id LIMIT 20`
-    expect((await productionOwner.query(sample)).rows).toEqual(
-      (await stagingOwner.query(sample)).rows,
-    )
+    // Todos os vetores, bit a bit: saem do staging pelo binário do halfvec_send e voltam pelo texto.
+    const vectors = `SELECT id, md5(embedding::text) AS embedding FROM corpus.chunks ORDER BY id`
+    const promotedVectors = (await productionOwner.query(vectors)).rows
+    expect(promotedVectors).toEqual((await stagingOwner.query(vectors)).rows)
+    expect(promotedVectors.filter((row) => row.embedding !== null).length).toBeGreaterThan(1500)
     const coverage = `SELECT family, covered::text, verified_at::text, gaps::text, gap_reason
       FROM corpus.coverage ORDER BY family`
     expect((await productionOwner.query(coverage)).rows).toEqual(

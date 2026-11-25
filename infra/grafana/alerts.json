@@ -152,6 +152,36 @@
       "rangeSeconds": 172800
     },
     {
+      "uid": "teko-neon-transfer-50",
+      "title": "Neon: transferência acima de 50% da cota",
+      "group": "teko-capacity",
+      "expr": "max by (deployment_environment_name, project) (last_over_time(teko_neon_data_transfer_ratio[2d]))",
+      "op": "gt",
+      "threshold": 0.5,
+      "for": "0s",
+      "severity": "warning",
+      "runbook": "neon-suspended.md#transferencia-acima-da-cota",
+      "summary": "{{ $labels.project }}: {{ humanizePercentage $value }} dos 5 GB de transferência pública do período",
+      "description": "data_transfer_bytes do período sobre os 5 GB do Free (job quotas do ops.yml, API do Neon). Estourar suspende o compute até o ciclo virar. Ache o fluxo que leu o banco (ingestão, snapshot, corpus-eval) antes do próximo run.",
+      "source": "ops",
+      "rangeSeconds": 172800
+    },
+    {
+      "uid": "teko-neon-transfer-80",
+      "title": "Neon: transferência acima de 80% da cota",
+      "group": "teko-capacity",
+      "expr": "max by (deployment_environment_name, project) (last_over_time(teko_neon_data_transfer_ratio[2d]))",
+      "op": "gt",
+      "threshold": 0.8,
+      "for": "0s",
+      "severity": "critical",
+      "runbook": "neon-suspended.md#transferencia-acima-da-cota",
+      "summary": "{{ $labels.project }}: {{ humanizePercentage $value }} dos 5 GB de transferência pública; o compute é suspenso em 100%",
+      "description": "Acima de 80% o ingest.yml não roda sem allow_high_transfer. Segure ingestões, corpus-eval e deploys do projeto até o ciclo virar.",
+      "source": "ops",
+      "rangeSeconds": 172800
+    },
+    {
       "uid": "teko-langfuse-units",
       "title": "Langfuse: projeção acima de 35k units",
       "group": "teko-capacity",
