@@ -8,23 +8,69 @@ que o job `vercel-usage` do `ops.yml` faz sozinho em 85% e 95%. A conta Hobby so
 
 ## Onde ver
 
-- Dashboard **Tekó · Vercel Hobby**: `teko_vercel_usage_ratio{resource}`, uso dos últimos 30 dias
-  sobre a cota mensal, por recurso (`provisioned_memory`, `active_cpu`, `function_invocations`,
-  `fast_origin_transfer`, `fast_data_transfer`, `cdn_requests` e os de imagem).
-- Resumo do job `vercel-usage` (Actions → Ops): a tabela de uso, cota e porcentagem e o que o job
-  fez em cada projeto.
-- Vercel → Usage (a fonte do `vercel billing usage --since 30d --json` que o job lê). As cotas ficam
-  fixadas em `scripts/vercel-usage.ts` (`HOBBY_QUOTAS`), porque a saída traz o uso e não o saldo.
+- Dashboard **Tekó · Vercel Hobby**: `teko_vercel_usage_ratio{resource}`, uso estimado dos últimos
+  30 dias sobre a cota, por recurso medido (`active_cpu`, `provisioned_memory`,
+  `function_invocations`, `fast_origin_transfer`).
+- Resumo do job `vercel-usage` (Actions → Ops, a cada 10 min): a janela lida, a tabela de uso lido,
+  estimado, cota e porcentagem, a cobertura e o que o job fez em cada projeto. Os recursos sem fonte
+  no Hobby aparecem como "sem fonte no Hobby".
+- Vercel → Usage, no dashboard: a única visão completa da conta (inclusive Fast Data Transfer e CDN
+  Requests), sem API no Hobby. Confira à mão quando um alerta chegar.
+
+<a id="fonte"></a>
+
+## Fonte do uso e grau de confiança
+
+No Hobby não há relatório de uso por API (conferido em 2026-11-25): o `vercel billing usage` e o
+`GET /v1/billing/charges` respondem 404 `costs_not_found` porque a conta não tem assinatura, e a
+Observability Plus, que abre o `vercel metrics` para janelas longas, não se compra no Hobby. O que
+responde é o `vercel metrics` para as métricas de invocação de função da conta inteira, só em
+janelas que comecem há no máximo 30 minutos. Daí a guarda:
+
+- O `vercel-usage` roda a cada 10 minutos (cron `3-59/10 * * * *` do `ops.yml`) e lê a janela que
+  ainda não contou: do fim da leitura anterior até 5 minutos atrás (atraso de ingestão), nunca mais
+  de 27 minutos para trás. Uma chamada do `vercel metrics --all --json` por métrica:
+
+  | Recurso                | Métrica                                                    | Observação                                                   |
+  | ---------------------- | ---------------------------------------------------------- | ------------------------------------------------------------ |
+  | `active_cpu`           | `vercel.function_invocation.function_cpu_time_ms` (soma)   | o recurso que pausou a conta em 2026-11-25                   |
+  | `provisioned_memory`   | `vercel.function_invocation.function_duration_gbhr` (soma) | limite superior: invocações concorrentes dividem a instância |
+  | `function_invocations` | `vercel.function_invocation.count`                         |                                                              |
+  | `fast_origin_transfer` | `vercel.function_invocation.fot_total_bytes` (soma)        | só as funções (o Tekó não tem middleware)                    |
+
+- As janelas somam por dia (UTC) em `.vercel-usage/state.json`, guardado no cache do Actions entre
+  os runs. O uso de 30 dias é a soma dos dias, multiplicada por minutos acompanhados sobre minutos
+  lidos: a lacuna (cron atrasado, run vermelho) vira a média do que foi lido.
+- **Sem fonte no Hobby:** Fast Data Transfer, CDN Requests, spans de tracing e imagens
+  (`payment_required` em qualquer janela). Esses só têm o e-mail de uso da Vercel e a Vercel → Usage.
+
+**Grau de confiança: baixo a médio.**
+
+- A janela de 30 minutos vem da mensagem da API, não da documentação (que diz que só Web Analytics
+  e Speed Insights saem sem Observability Plus). Se a Vercel fechar a brecha, o job fica vermelho e
+  o `teko-ops-job-stale` dispara em 6 h: a partir daí, a guarda é só a Vercel → Usage à mão.
+- Pico curto dentro de uma lacuna não é visto, só extrapolado pela média. Os agendamentos do
+  Actions neste repositório já atrasaram horas; a linha "Cobertura" do resumo diz quanto da janela
+  foi lido (abaixo de 50%, o job avisa).
+- O cache do Actions expira com 7 dias sem uso; perdido, a contagem recomeça do zero (cobertura e
+  dias acompanhados voltam a crescer). Depois de uma retomada, a contagem também começa do zero.
+- A memória provisionada é superestimada (concorrência), o que só antecipa o kill switch.
+
+**Fonte que não responde** (erro do CLI, `payment_required`, formato novo): o job fica vermelho,
+não registra sucesso, não avança o estado e não age. O `teko-ops-job-stale` dispara com 6 h sem
+sucesso, ou com nenhum sucesso em 10 dias ([ops-alerts.md](ops-alerts.md#job-sem-sucesso)).
+Enquanto isso, confira a Vercel → Usage todo dia e ligue o kill switch à mão
+([abaixo](#ligar-a-mao)) se algum recurso passar de 85%.
 
 ## Limiares
 
-| Uso (qualquer recurso) | O que acontece                                                                      | Quem age                             |
-| ---------------------- | ----------------------------------------------------------------------------------- | ------------------------------------ |
-| 50%                    | e-mail (`teko-vercel-usage-50`)                                                     | mantenedor: investigar               |
-| 75%                    | e-mail (`teko-vercel-usage-75`)                                                     | mantenedor: cortar consumo           |
-| **85%**                | `LLM_KILL_SWITCH=true` nos dois projetos + redeploy da deployment de produção atual | `vercel-usage`, sozinho              |
-| **95%**                | além disso, lockdown: a regra 1 do WAF manda tudo (menos `/healthz`) para `/aviso/` | `vercel-usage`, sozinho              |
-| 100%                   | a Vercel pausa os projetos (503 `DEPLOYMENT_PAUSED`)                                | [vercel-paused.md](vercel-paused.md) |
+| Uso estimado (qualquer recurso medido) | O que acontece                                                                                       | Quem age                             |
+| -------------------------------------- | ---------------------------------------------------------------------------------------------------- | ------------------------------------ |
+| 50%                                    | e-mail (`teko-vercel-usage-50`)                                                                      | mantenedor: investigar               |
+| 75%                                    | e-mail (`teko-vercel-usage-75`)                                                                      | mantenedor: cortar consumo           |
+| **85%**                                | `LLM_KILL_SWITCH=true` nos dois projetos + redeploy da deployment de produção atual                  | `vercel-usage`, sozinho              |
+| **95%**                                | além disso, lockdown: a regra 1 do WAF manda tudo (menos `/healthz`) para `/aviso/`                  | `vercel-usage`, sozinho              |
+| 100%                                   | a Vercel pausa os projetos (503 `DEPLOYMENT_PAUSED`) ou desativa a conta (402 `DEPLOYMENT_DISABLED`) | [vercel-paused.md](vercel-paused.md) |
 
 O job **nunca desliga** o kill switch nem o lockdown: a volta é sempre manual (abaixo). Ele é
 idempotente: com o kill switch já ligado e a deployment de produção mais nova que a variável, não
@@ -51,7 +97,8 @@ grava nem redeploya de novo; o lockdown é reaplicado a cada execução acima de
    ou, se não der para esperar, ligue o kill switch à mão no staging (abaixo): o staging divide a
    mesma cota.
 2. Confira se a conta da janela de 30 dias vai cair sozinha (pico antigo saindo da janela) ou se o
-   consumo diário continua alto. Se continuar, o 85% chega e o job age.
+   consumo diário continua alto. Se continuar, o 85% chega e o job age. Com cobertura baixa no
+   resumo, não espere o job: a estimativa pode estar atrasada em relação à Vercel → Usage.
 
 ## 85%: kill switch de geração (automático)
 
@@ -116,7 +163,8 @@ O modo de exercício não lê o uso nem envia métricas; age só no projeto esco
 ## Desligar (volta manual)
 
 Só depois que `teko_vercel_usage_ratio` de todos os recursos ficar **abaixo de 0,85** na janela de
-30 dias: senão a execução diária seguinte liga tudo de novo.
+30 dias (e a Vercel → Usage confirmar, inclusive para os recursos sem fonte no Hobby): senão a
+execução seguinte, em até 10 minutos, liga tudo de novo.
 
 1. Actions → Ops → Run workflow: `job: vercel-usage`, `kill_switch: release`,
    `kill_switch_target: staging`, `dry_run: false`. Repita com `production`.

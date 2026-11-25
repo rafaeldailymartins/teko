@@ -1,19 +1,35 @@
 /**
- * Job `vercel-usage` do `.github/workflows/ops.yml` (F7, mudança OpenSpec `add-usage-guard`): guarda
- * de uso da conta Vercel Hobby (`docs/architecture/contas-e-cotas.md`, "Guard rails").
+ * Job `vercel-usage` do `.github/workflows/ops.yml` (F7, mudanças OpenSpec `add-usage-guard` e
+ * `fix-vercel-usage-hobby`): guarda de uso da conta Vercel Hobby
+ * (`docs/architecture/contas-e-cotas.md`, "Guard rails").
  *
- * 1. Lê o uso dos últimos 30 dias da conta com o Vercel CLI isolado de `tools/vercel-cli`
- *    (`vercel billing usage --since 30d --json`; o `vercel usage` da arquitetura virou subcomando de
- *    `billing`). A saída traz o uso, não o saldo: as cotas do Hobby ficam fixadas aqui
- *    (`HOBBY_QUOTAS`) e a razão uso/cota de cada recurso sai como `teko_vercel_usage_ratio{resource}`
- *    por OTLP (`scripts/lib/otlp-metrics.ts`), junto com o sucesso do job.
- * 2. **85%** em qualquer recurso: kill switch de geração. Grava `LLM_KILL_SWITCH=true` (Production)
- *    nos dois projetos e redeploya a deployment de produção atual de cada um (env var só vale em
- *    deployment nova). **95%**: além disso, `scripts/vercel-firewall.ts --lockdown on` nos dois
- *    projetos (a regra 1 do WAF passa a negar tudo exceto `/healthz` e a página de aviso).
- * 3. Nunca desliga nada sozinho: a volta é manual (`--release`, runbook `budget-kill-switch.md`).
+ * 1. **Fonte.** No Hobby não há relatório de uso por API: o `vercel billing usage` e o
+ *    `GET /v1/billing/charges` respondem 404 `costs_not_found` (a conta não tem assinatura), e o
+ *    `vercel metrics` só aceita consultas de invocação de função que comecem há no máximo 30 minutos
+ *    (Observability Plus, que o Hobby não compra, para o resto). O job roda a cada 10 minutos e lê,
+ *    com o Vercel CLI isolado de `tools/vercel-cli`, a janela que ainda não contou (no máximo os
+ *    últimos 27 minutos, menos 5 de atraso da ingestão) de quatro métricas da conta inteira
+ *    (`--all`): CPU ativa, memória provisionada (limite superior: GB-h de duração das invocações),
+ *    invocações e Fast Origin Transfer das funções. Fast Data Transfer, CDN Requests, spans e
+ *    imagens não têm fonte no Hobby e ficam fora da guarda (o e-mail de uso da Vercel é o único
+ *    aviso deles).
+ * 2. **Estado.** As janelas somam por dia (UTC) em `.vercel-usage/state.json`, que o workflow
+ *    guarda no cache do Actions entre execuções. O uso de 30 dias é a soma dos últimos 30 dias,
+ *    extrapolada pela cobertura: minutos acompanhados sobre minutos efetivamente lidos (cron
+ *    atrasado ou execução que falhou viram lacuna, e a lacuna é preenchida pela média do que foi
+ *    lido). A razão estimativa/cota de cada recurso medido sai como
+ *    `teko_vercel_usage_ratio{resource}` por OTLP (`scripts/lib/otlp-metrics.ts`), junto com o
+ *    sucesso do job.
+ * 3. **85%** em qualquer recurso medido: kill switch de geração. Grava `LLM_KILL_SWITCH=true`
+ *    (Production) nos dois projetos e redeploya a deployment de produção atual de cada um (env var
+ *    só vale em deployment nova). **95%**: além disso, `scripts/vercel-firewall.ts --lockdown on`
+ *    nos dois projetos (a regra 1 do WAF passa a negar tudo exceto `/healthz` e a página de aviso).
+ * 4. Nunca desliga nada sozinho: a volta é manual (`--release`, runbook `budget-kill-switch.md`).
  *    Idempotente: com o kill switch já ligado e a deployment de produção mais nova que a variável,
  *    não grava nem redeploya de novo.
+ *
+ * Fonte que não responde (erro do CLI, `payment_required`, formato novo) deixa o job vermelho, sem
+ * registrar sucesso e sem avançar o estado; o alerta `teko-ops-job-stale` dispara em 6 h.
  *
  * Modos:
  *   node scripts/vercel-usage.ts [--dry-run]
@@ -22,15 +38,15 @@
  *
  * `--force-threshold` age como se o uso tivesse chegado ao limiar, sem ler o uso nem enviar
  * métricas: é o exercício do DoD da F7 no staging. `--release` desliga o kill switch (com redeploy)
- * e o lockdown. `--dry-run` só lê e mostra o plano.
+ * e o lockdown. `--dry-run` só lê e mostra o plano, sem gravar o estado.
  *
  * Ambiente: `VERCEL_TOKEN` (no workflow, o segredo `VERCEL_USAGE_TOKEN` do environment `ops`),
  * `VERCEL_ORG_ID` (o time Hobby) e a credencial OTLP do `ops`. Sem `VERCEL_TOKEN`, avisa e sai com 0.
- * Os projetos e o CLI são constantes; nenhum caminho nem executável vem da linha de comando
- * (`scripts/lib/cli-guards.ts`).
+ * Os projetos, o CLI e o arquivo de estado são constantes; nenhum caminho nem executável vem da
+ * linha de comando (`scripts/lib/cli-guards.ts`).
  */
 import { execFile } from 'node:child_process'
-import { appendFileSync, existsSync } from 'node:fs'
+import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { exit } from 'node:process'
 import { setTimeout as delay } from 'node:timers/promises'
@@ -51,6 +67,8 @@ export const VERCEL_CLI = join(
 )
 /** Script do WAF (mudança add-vercel-deployment): `--env staging|production --lockdown on|off`. */
 export const FIREWALL_SCRIPT = join(REPO_ROOT, 'scripts', 'vercel-firewall.ts')
+/** Estado acumulado entre execuções (o `ops.yml` o guarda no cache do Actions; fora do git). */
+export const STATE_FILE = join(REPO_ROOT, '.vercel-usage', 'state.json')
 const VERCEL_API = 'https://api.vercel.com'
 const SERVICE_NAME = 'teko-ops'
 const TITLE = 'vercel-usage'
@@ -58,9 +76,24 @@ const KILL_SWITCH = 'LLM_KILL_SWITCH'
 /** ID do time (`team_...`); só o formato, para nada estranho entrar na URL nem nos argumentos. */
 const ORG_ID = /^[A-Za-z0-9_]{1,64}$/u
 const POLL_MS = 10_000
+const MINUTE_MS = 60_000
+const DAY_MS = 86_400_000
 
 export const KILL_SWITCH_RATIO = 0.85
 export const LOCKDOWN_RATIO = 0.95
+
+/**
+ * Quanto para trás o `vercel metrics` aceita no Hobby: 30 minutos ("Observability Plus is required
+ * for function invocations that start more than 30 minutes ago"), com 3 de folga para as quatro
+ * chamadas do CLI.
+ */
+export const LOOKBACK_MINUTES = 27
+/** Atraso dado à ingestão das métricas: os últimos minutos ficam para a execução seguinte. */
+export const LAG_MINUTES = 5
+/** Janela que a Vercel usa para pausar a conta Hobby ("wait until 30 days have passed"). */
+export const WINDOW_DAYS = 30
+/** Abaixo disso, o resumo avisa que a estimativa é pouco confiável. */
+export const LOW_COVERAGE = 0.5
 
 export type Environment = 'production' | 'staging'
 
@@ -88,303 +121,284 @@ export const PROJECTS: readonly Project[] = [
   },
 ]
 
-type QuantityKind = 'count' | 'gb_hours' | 'gigabytes' | 'hours'
-
 export interface Quota {
   /** Label `resource` da métrica. */
   readonly resource: string
   readonly limit: number
   /** Unidade do `limit` (só para o resumo). */
   readonly unit: string
-  readonly kind: QuantityKind
-  /** Casa o nome (ou o slug do produto) normalizado: minúsculas, só letras, dígitos e espaços. */
-  readonly match: RegExp
 }
 
 /**
  * Cotas mensais da conta Hobby, somando os dois projetos. Fonte: https://vercel.com/docs/plans/hobby
  * ("Hobby Plan Included Usage", lida pelo Context7 `/websites/vercel` em 2026-11-18) e a tabela da
  * Vercel em `docs/architecture/contas-e-cotas.md`. Deployment storage não é uso mensal e fica na
- * checagem manual mensal; linha do relatório sem cota aqui vira aviso no resumo do job.
+ * checagem manual mensal.
  */
 export const HOBBY_QUOTAS: readonly Quota[] = [
-  {
-    resource: 'provisioned_memory',
-    limit: 360,
-    unit: 'GB-h',
-    kind: 'gb_hours',
-    match: /^(?:fluid |function )?provisioned memory$/u,
-  },
-  {
-    resource: 'active_cpu',
-    limit: 4,
-    unit: 'h',
-    kind: 'hours',
-    match: /^(?:fluid |function )?active cpu$/u,
-  },
-  {
-    resource: 'function_invocations',
-    limit: 1_000_000,
-    unit: 'invocações',
-    kind: 'count',
-    match: /^(?:fluid |function |functions )?invocations?$/u,
-  },
-  {
-    resource: 'fast_origin_transfer',
-    limit: 10,
-    unit: 'GB',
-    kind: 'gigabytes',
-    match: /^fast origin transfer$/u,
-  },
-  {
-    resource: 'fast_data_transfer',
-    limit: 100,
-    unit: 'GB',
-    kind: 'gigabytes',
-    match: /^fast data transfer$/u,
-  },
-  {
-    resource: 'cdn_requests',
-    limit: 1_000_000,
-    unit: 'requests',
-    kind: 'count',
-    match: /^(?:cdn|edge) requests?$/u,
-  },
-  {
-    // Spans de infraestrutura da Vercel (o Tekó não usa @vercel/otel); a cota vem da tabela de
-    // contas-e-cotas.md. Nome provável no relatório; outro nome aparece como aviso no resumo.
-    resource: 'tracing_spans',
-    limit: 1_000_000,
-    unit: 'spans',
-    kind: 'count',
-    match: /^(?:tracing |trace |traces )?spans?$/u,
-  },
-  {
-    resource: 'image_transformations',
-    limit: 5000,
-    unit: 'transformações',
-    kind: 'count',
-    match: /^image (?:optimization )?transformations?$/u,
-  },
-  {
-    resource: 'image_cache_reads',
-    limit: 300_000,
-    unit: 'leituras',
-    kind: 'count',
-    match: /^image (?:optimization )?cache reads?$/u,
-  },
-  {
-    resource: 'image_cache_writes',
-    limit: 100_000,
-    unit: 'escritas',
-    kind: 'count',
-    match: /^image (?:optimization )?cache writes?$/u,
-  },
+  { resource: 'provisioned_memory', limit: 360, unit: 'GB-h' },
+  { resource: 'active_cpu', limit: 4, unit: 'h' },
+  { resource: 'function_invocations', limit: 1_000_000, unit: 'invocações' },
+  { resource: 'fast_origin_transfer', limit: 10, unit: 'GB' },
+  { resource: 'fast_data_transfer', limit: 100, unit: 'GB' },
+  { resource: 'cdn_requests', limit: 1_000_000, unit: 'requests' },
+  { resource: 'tracing_spans', limit: 1_000_000, unit: 'spans' },
+  { resource: 'image_transformations', limit: 5000, unit: 'transformações' },
+  { resource: 'image_cache_reads', limit: 300_000, unit: 'leituras' },
+  { resource: 'image_cache_writes', limit: 100_000, unit: 'escritas' },
 ]
 
-export interface UsageService {
-  readonly name: string
-  readonly product?: string
-  readonly quantity: number
-  readonly unit?: string
-  readonly category?: string
+export interface UsageSource {
+  readonly resource: string
+  /** Métrica do `vercel metrics schema` (Vercel CLI 65.11.0). */
+  readonly metric: string
+  readonly aggregation: 'count' | 'sum'
+  /** Divisor da unidade da métrica até a unidade da cota. */
+  readonly divisor: number
 }
 
 /**
- * JSON do `vercel billing usage --json` (Vercel CLI 65.11.0, `serializeService`):
- * `{ period, context, costUnit, services: [{ name, product, quantity, unit, cost, included,
- * category }], totals }`. Tolerante: aceita lixo antes do objeto, ignora campos desconhecidos e
- * entradas sem nome ou quantidade numérica, e lê `usage` ou `value` se `quantity` sumir.
+ * O que o `vercel metrics` responde no Hobby (conferido em 2026-11-25 contra a conta real): só as
+ * métricas de `vercel.function_invocation.*` nos últimos 30 minutos. `vercel.request.*` (CDN
+ * Requests, Fast Data Transfer) responde `payment_required` em qualquer janela. A memória
+ * provisionada do Fluid só é cobrada enquanto há requisição em andamento, e invocações concorrentes
+ * dividem a instância: a soma dos GB-h de duração de cada invocação é um limite superior dela.
  */
-export function parseUsageReport(raw: string): UsageService[] {
+export const USAGE_SOURCES: readonly UsageSource[] = [
+  {
+    resource: 'active_cpu',
+    metric: 'vercel.function_invocation.function_cpu_time_ms',
+    aggregation: 'sum',
+    divisor: 3_600_000,
+  },
+  {
+    resource: 'provisioned_memory',
+    metric: 'vercel.function_invocation.function_duration_gbhr',
+    aggregation: 'sum',
+    divisor: 1,
+  },
+  {
+    resource: 'function_invocations',
+    metric: 'vercel.function_invocation.count',
+    aggregation: 'count',
+    divisor: 1,
+  },
+  {
+    resource: 'fast_origin_transfer',
+    metric: 'vercel.function_invocation.fot_total_bytes',
+    aggregation: 'sum',
+    divisor: 1e9,
+  },
+]
+
+/** Coluna do valor no JSON do `vercel metrics` (`getRollupColumnName` do CLI 65.11.0). */
+export function rollupColumn(source: UsageSource): string {
+  return `${source.metric}_${source.aggregation}`.replaceAll(/[./]/gu, '_')
+}
+
+/**
+ * Total da janela no JSON do `vercel metrics <métrica> --json` (CLI 65.11.0, `formatQueryJson`):
+ * `{ query, summary: [{ <coluna>: número | null }], data: [{ timestamp, <coluna> }] }`, ou
+ * `{ error: { code, message } }`. Sem invocação na janela, `summary` e `data` vêm vazios (0). Linha
+ * de resumo sem a coluna é formato novo: falha, para não virar uso zero.
+ */
+export function parseMetricsOutput(raw: string, source: UsageSource): number {
   let parsed: unknown
   try {
     parsed = JSON.parse(raw)
   } catch {
-    const start = raw.indexOf('{')
-    const end = raw.lastIndexOf('}')
-    if (start === -1 || end <= start) {
-      throw new Error('saída do vercel billing usage não é JSON')
-    }
-    try {
-      parsed = JSON.parse(raw.slice(start, end + 1))
-    } catch {
-      throw new Error('saída do vercel billing usage não é JSON')
-    }
+    throw new Error(`vercel metrics ${source.metric}: saída não é JSON`)
   }
-  const services = (parsed as { services?: unknown } | null)?.services
-  if (!Array.isArray(services)) {
-    throw new Error('saída do vercel billing usage sem a lista "services"')
+  const record = (typeof parsed === 'object' && parsed !== null ? parsed : {}) as Record<
+    string,
+    unknown
+  >
+  const error = record['error']
+  if (typeof error === 'object' && error !== null) {
+    const { code, message } = error as { code?: unknown; message?: unknown }
+    const detail = [code, message].filter((part) => typeof part === 'string').join(': ')
+    throw new Error(`vercel metrics ${source.metric}: ${detail.slice(0, 300)}`)
   }
-  const result: UsageService[] = []
-  for (const entry of services as unknown[]) {
-    if (typeof entry !== 'object' || entry === null) {
+  const summary = record['summary']
+  if (!Array.isArray(summary)) {
+    throw new Error(`vercel metrics ${source.metric}: saída sem "summary"`)
+  }
+  const column = rollupColumn(source)
+  let total = 0
+  for (const row of summary as unknown[]) {
+    const value = typeof row === 'object' && row !== null ? Reflect.get(row, column) : undefined
+    if (value === null) {
       continue
     }
-    const record = entry as Record<string, unknown>
-    const quantity = [record['quantity'], record['usage'], record['value']].find(
-      (candidate): candidate is number =>
-        typeof candidate === 'number' && Number.isFinite(candidate),
-    )
-    const name = typeof record['name'] === 'string' ? record['name'] : undefined
-    const product = typeof record['product'] === 'string' ? record['product'] : undefined
-    if (quantity === undefined || (name === undefined && product === undefined)) {
-      continue
+    if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) {
+      throw new Error(`vercel metrics ${source.metric}: resumo sem a coluna ${column}`)
     }
-    result.push({
-      name: name ?? product ?? '',
-      ...(product === undefined ? {} : { product }),
-      quantity,
-      ...(typeof record['unit'] === 'string' ? { unit: record['unit'] } : {}),
-      ...(typeof record['category'] === 'string' ? { category: record['category'] } : {}),
-    })
+    total += value
   }
-  return result
+  return total / source.divisor
 }
 
-/** `Fluid Provisioned-Memory`, `fluidProvisionedMemory` → `fluid provisioned memory`. */
-function normalizeName(text: string): string {
-  return text
-    .replaceAll(/([a-z])([A-Z])/gu, '$1 $2')
-    .toLowerCase()
-    .replaceAll(/[^a-z0-9]+/gu, ' ')
-    .trim()
-}
-
-function quotaOf(service: UsageService): Quota | undefined {
-  const candidates = [service.name, service.product ?? ''].map(normalizeName)
-  return HOBBY_QUOTAS.find((quota) => candidates.some((name) => quota.match.test(name)))
-}
-
-/** Unidade normalizada → [multiplicador, divisor] até a unidade da cota (frações exatas). */
-const UNIT_FACTORS: Readonly<
-  Record<QuantityKind, Readonly<Record<string, readonly [number, number]>>>
-> = {
-  gb_hours: {
-    gbhrs: [1, 1],
-    gbhr: [1, 1],
-    gbhours: [1, 1],
-    gbhour: [1, 1],
-    gbh: [1, 1],
-    mbhrs: [1, 1000],
-    mbhr: [1, 1000],
-    mbhours: [1, 1000],
-    mbh: [1, 1000],
-    gbs: [1, 3600],
-    gbsec: [1, 3600],
-    gbseconds: [1, 3600],
-  },
-  hours: {
-    hrs: [1, 1],
-    hr: [1, 1],
-    hours: [1, 1],
-    hour: [1, 1],
-    h: [1, 1],
-    cpuhrs: [1, 1],
-    cpuhours: [1, 1],
-    cpuh: [1, 1],
-    min: [1, 60],
-    mins: [1, 60],
-    minutes: [1, 60],
-    s: [1, 3600],
-    sec: [1, 3600],
-    secs: [1, 3600],
-    seconds: [1, 3600],
-    ms: [1, 3_600_000],
-    milliseconds: [1, 3_600_000],
-  },
-  gigabytes: {
-    b: [1, 1e9],
-    bytes: [1, 1e9],
-    kb: [1, 1e6],
-    mb: [1, 1e3],
-    gb: [1, 1],
-    tb: [1e3, 1],
-    kib: [1024, 1e9],
-    mib: [1024 ** 2, 1e9],
-    gib: [1024 ** 3, 1e9],
-    tib: [1024 ** 4, 1e9],
-  },
-  count: { k: [1e3, 1], thousand: [1e3, 1], m: [1e6, 1], million: [1e6, 1] },
+export interface UsageWindow {
+  /** Início (inclusivo), em ms, alinhado ao minuto. */
+  readonly since: number
+  /** Fim (exclusivo), em ms, alinhado ao minuto. */
+  readonly until: number
 }
 
 /**
- * Quantidade na unidade da cota. Contagens aceitam qualquer unidade em palavra (`invocations`,
- * `requests`) ou nenhuma; tempo, memória e transferência exigem uma unidade conhecida, para uma
- * mudança de unidade na Vercel virar falha visível e não uma razão errada.
+ * Janela desta execução: do fim da anterior (ou do mais antigo que o Hobby aceita) até agora menos
+ * o atraso da ingestão. `undefined`: menos de um minuto novo.
  */
-export function toQuotaUnit(quota: Quota, service: UsageService): number {
-  const unit = (service.unit ?? '').toLowerCase().replaceAll(/[\s_-]+/gu, '')
-  const factor = UNIT_FACTORS[quota.kind][unit]
-  if (factor !== undefined) {
-    return (service.quantity * factor[0]) / factor[1]
+export function planWindow(now: Date, coveredUntil?: number): UsageWindow | undefined {
+  const minute = Math.floor(now.getTime() / MINUTE_MS) * MINUTE_MS
+  const until = minute - LAG_MINUTES * MINUTE_MS
+  const earliest = minute - LOOKBACK_MINUTES * MINUTE_MS
+  const since = Math.max(earliest, coveredUntil ?? earliest)
+  return until - since < MINUTE_MS ? undefined : { since, until }
+}
+
+export interface UsageDay {
+  /** `YYYY-MM-DD` (UTC). */
+  readonly day: string
+  readonly coveredMinutes: number
+  /** Uso lido no dia, por recurso, na unidade da cota. */
+  readonly used: Readonly<Record<string, number>>
+}
+
+export interface UsageState {
+  readonly schemaVersion: 1
+  /** Início da primeira janela lida (ms). */
+  readonly trackingSince: number
+  /** Fim da última janela lida (ms). */
+  readonly coveredUntil: number
+  readonly days: readonly UsageDay[]
+}
+
+function utcDay(ms: number): string {
+  return new Date(ms).toISOString().slice(0, 10)
+}
+
+function isFiniteNonNegative(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0
+}
+
+/** Estado lido do cache; formato inesperado é erro (o chamador recomeça do zero, com aviso). */
+export function parseState(raw: string): UsageState {
+  const parsed = JSON.parse(raw) as Record<string, unknown>
+  const { schemaVersion, trackingSince, coveredUntil, days } = parsed
+  if (
+    schemaVersion !== 1 ||
+    !isFiniteNonNegative(trackingSince) ||
+    !isFiniteNonNegative(coveredUntil) ||
+    trackingSince > coveredUntil ||
+    !Array.isArray(days)
+  ) {
+    throw new Error('estado com formato desconhecido')
   }
-  if (quota.kind === 'count') {
-    return service.quantity
+  const result: UsageDay[] = []
+  for (const entry of days as unknown[]) {
+    const record = (typeof entry === 'object' && entry !== null ? entry : {}) as Record<
+      string,
+      unknown
+    >
+    const used = record['used']
+    if (
+      typeof record['day'] !== 'string' ||
+      !/^\d{4}-\d{2}-\d{2}$/u.test(record['day']) ||
+      !isFiniteNonNegative(record['coveredMinutes']) ||
+      typeof used !== 'object' ||
+      used === null ||
+      !Object.values(used).every(isFiniteNonNegative)
+    ) {
+      throw new Error('estado com um dia ilegível')
+    }
+    result.push({
+      day: record['day'],
+      coveredMinutes: record['coveredMinutes'],
+      used: used as Record<string, number>,
+    })
   }
-  throw new RangeError(
-    `${quota.resource}: unidade desconhecida "${service.unit ?? '(nenhuma)'}" em "${service.name}"`,
-  )
+  return { schemaVersion: 1, trackingSince, coveredUntil, days: result }
+}
+
+/** Primeiro instante (ms) da janela de 30 dias que termina em `at`: meia-noite UTC de 29 dias antes. */
+function windowStart(at: number): number {
+  return Date.parse(`${utcDay(at)}T00:00:00.000Z`) - (WINDOW_DAYS - 1) * DAY_MS
+}
+
+/**
+ * Soma a janela lida no dia (UTC) do seu início e descarta os dias que saíram dos 30. Uma janela
+ * que cruza a meia-noite fica inteira no dia em que começou (no máximo 22 minutos de diferença).
+ */
+export function addWindow(
+  state: UsageState | undefined,
+  window: UsageWindow,
+  used: Readonly<Record<string, number>>,
+): UsageState {
+  const day = utcDay(window.since)
+  const minutes = (window.until - window.since) / MINUTE_MS
+  const oldest = utcDay(windowStart(window.until))
+  const days = (state?.days ?? []).filter((entry) => entry.day >= oldest && entry.day !== day)
+  const today = state?.days.find((entry) => entry.day === day)
+  const summed: Record<string, number> = { ...today?.used }
+  for (const [resource, value] of Object.entries(used)) {
+    summed[resource] = (summed[resource] ?? 0) + value
+  }
+  days.push({ day, coveredMinutes: (today?.coveredMinutes ?? 0) + minutes, used: summed })
+  days.sort((a, b) => (a.day < b.day ? -1 : Number(a.day > b.day)))
+  return {
+    schemaVersion: 1,
+    trackingSince: Math.min(state?.trackingSince ?? window.since, window.since),
+    coveredUntil: Math.max(state?.coveredUntil ?? window.until, window.until),
+    days,
+  }
 }
 
 export interface UsageRatio {
   readonly resource: string
+  /** Lido nas janelas dos últimos 30 dias. */
+  readonly measured: number
+  /** Medido extrapolado pela cobertura. */
   readonly used: number
   readonly limit: number
   readonly unit: string
   readonly ratio: number
 }
 
-/**
- * Razão uso/cota por recurso conhecido (soma das linhas que casam; recurso ausente vale 0). Falha
- * de unidade fica só naquele recurso. Linhas sem cota fixada voltam em `unknown` (aviso), e um
- * relatório com linhas mas nenhuma reconhecida é falha (formato mudou).
- */
-export function usageRatios(services: readonly UsageService[]): {
-  ratios: UsageRatio[]
-  failures: string[]
-  unknown: string[]
-} {
-  const used = new Map<string, number>()
-  const failed = new Set<string>()
-  const failures: string[] = []
-  const unknown: string[] = []
-  let recognized = 0
-  for (const service of services) {
-    if (service.category === 'subscription') {
-      continue
-    }
-    const quota = quotaOf(service)
+export interface UsageEstimate {
+  readonly ratios: readonly UsageRatio[]
+  /** Minutos lidos sobre minutos acompanhados nos 30 dias (1 = nenhuma lacuna). */
+  readonly coverage: number
+  /** Dias acompanhados dentro da janela de 30 (menos de 30 no começo). */
+  readonly trackedDays: number
+}
+
+/** Uso de 30 dias por recurso medido, extrapolado pela cobertura (nunca reduzido). */
+export function estimateUsage(state: UsageState): UsageEstimate {
+  const start = Math.max(windowStart(state.coveredUntil), state.trackingSince)
+  const trackedMinutes = Math.max(0, (state.coveredUntil - start) / MINUTE_MS)
+  const oldest = utcDay(windowStart(state.coveredUntil))
+  const days = state.days.filter((entry) => entry.day >= oldest)
+  const coveredMinutes = days.reduce((sum, entry) => sum + entry.coveredMinutes, 0)
+  const coverage = trackedMinutes === 0 ? 1 : Math.min(1, coveredMinutes / trackedMinutes)
+  const factor = coverage === 0 ? 1 : 1 / coverage
+  const ratios = USAGE_SOURCES.map((source) => {
+    const quota = HOBBY_QUOTAS.find((entry) => entry.resource === source.resource)
     if (quota === undefined) {
-      if (service.quantity !== 0) {
-        unknown.push(service.name)
-      }
-      continue
+      throw new Error(`${source.resource} sem cota em HOBBY_QUOTAS`)
     }
-    recognized += 1
-    try {
-      used.set(quota.resource, (used.get(quota.resource) ?? 0) + toQuotaUnit(quota, service))
-    } catch (error) {
-      failed.add(quota.resource)
-      failures.push(error instanceof Error ? error.message : String(error))
-    }
-  }
-  if (recognized === 0 && services.some((service) => service.category !== 'subscription')) {
-    failures.push(
-      'nenhum recurso do relatório casou com as cotas do Hobby (formato do vercel billing usage mudou?)',
-    )
-  }
-  const ratios = HOBBY_QUOTAS.filter((quota) => !failed.has(quota.resource)).map((quota) => {
-    const value = used.get(quota.resource) ?? 0
+    const measured = days.reduce((sum, entry) => sum + (entry.used[source.resource] ?? 0), 0)
+    const used = measured * factor
     return {
       resource: quota.resource,
-      used: value,
+      measured,
+      used,
       limit: quota.limit,
       unit: quota.unit,
-      ratio: value / quota.limit,
+      ratio: used / quota.limit,
     }
   })
-  return { ratios, failures, unknown }
+  return { ratios, coverage, trackedDays: trackedMinutes / 1440 }
 }
 
 export type GuardLevel = 'none' | 'kill-switch' | 'lockdown'
@@ -414,6 +428,9 @@ export interface RunDeps {
   readonly fetch: typeof fetch
   readonly exec: Exec
   readonly fileExists: (path: string) => boolean
+  /** Conteúdo do arquivo (`undefined`: não existe). */
+  readonly readFile: (path: string) => string | undefined
+  readonly writeFile: (path: string, content: string) => void
   readonly sleep: (ms: number) => Promise<void>
   readonly log: (line: string) => void
   /** Teto da espera pelo `READY` da deployment nova. */
@@ -726,22 +743,66 @@ async function setLockdown(
   return `${project.name}: lockdown ${on ? 'ligado' : 'desligado'} (regra 1 do WAF)${dryRun ? ' [dry-run]' : ''}`
 }
 
-async function readUsage(ctx: Context): Promise<UsageService[]> {
+/** Uso da janela por recurso medido, uma chamada do `vercel metrics` por métrica. */
+async function readWindow(ctx: Context, window: UsageWindow): Promise<Record<string, number>> {
   if (!ctx.deps.fileExists(VERCEL_CLI)) {
     throw new Error(
       'Vercel CLI ausente: rode pnpm --dir tools/vercel-cli install --frozen-lockfile antes',
     )
   }
-  const result = await ctx.deps.exec(
-    process.execPath,
-    [VERCEL_CLI, 'billing', 'usage', '--since', '30d', '--json', '--scope', ctx.orgId],
-    childEnv(ctx),
-  )
-  if (result.code !== 0) {
-    forwardOutput(ctx, { code: result.code, stdout: '', stderr: result.stderr })
-    throw new Error(`vercel billing usage saiu com ${String(result.code)}`)
+  const used: Record<string, number> = {}
+  for (const source of USAGE_SOURCES) {
+    const result = await ctx.deps.exec(
+      process.execPath,
+      [
+        VERCEL_CLI,
+        'metrics',
+        source.metric,
+        '--all',
+        '--aggregation',
+        source.aggregation,
+        '--since',
+        new Date(window.since).toISOString(),
+        '--until',
+        new Date(window.until).toISOString(),
+        '--granularity',
+        '1m',
+        '--json',
+        '--scope',
+        ctx.orgId,
+      ],
+      childEnv(ctx),
+    )
+    if (result.code !== 0) {
+      // O erro do CLI vem em JSON no stdout (`{ error: { code, message } }`); sem ele, o stderr.
+      let parsedError: Error | undefined
+      try {
+        parseMetricsOutput(result.stdout, source)
+      } catch (error) {
+        parsedError = error instanceof Error ? error : undefined
+      }
+      if (parsedError !== undefined && !parsedError.message.endsWith('saída não é JSON')) {
+        throw new Error(`${parsedError.message} (saiu com ${String(result.code)})`)
+      }
+      forwardOutput(ctx, { code: result.code, stdout: '', stderr: result.stderr })
+      throw new Error(`vercel metrics ${source.metric} saiu com ${String(result.code)}`)
+    }
+    used[source.resource] = parseMetricsOutput(result.stdout, source)
   }
-  return parseUsageReport(result.stdout)
+  return used
+}
+
+/** Estado anterior; ausente ou ilegível recomeça do zero (com aviso no segundo caso). */
+function loadState(ctx: Context): { state?: UsageState; warning?: string } {
+  const raw = ctx.deps.readFile(STATE_FILE)
+  if (raw === undefined) {
+    return {}
+  }
+  try {
+    return { state: parseState(raw) }
+  } catch (error) {
+    return { warning: `estado ilegível (${errorMessage(error)}); recomeçando do zero` }
+  }
 }
 
 function errorMessage(error: unknown): string {
@@ -781,10 +842,88 @@ async function act(
   return { plan, failures }
 }
 
+function round(value: number, digits = 3): string {
+  const factor = 10 ** digits
+  return String(Math.round(value * factor) / factor)
+}
+
 function ratioLine(ratio: UsageRatio): string {
-  const percent = Math.round(ratio.ratio * 1000) / 10
-  const used = Math.round(ratio.used * 1000) / 1000
-  return `| ${ratio.resource} | ${String(used)} ${ratio.unit} | ${String(ratio.limit)} ${ratio.unit} | ${String(percent)}% |`
+  return `| ${ratio.resource} | ${round(ratio.measured)} ${ratio.unit} | ${round(ratio.used)} ${ratio.unit} | ${String(ratio.limit)} ${ratio.unit} | ${round(ratio.ratio * 100, 1)}% |`
+}
+
+/** Recursos com cota e sem fonte no Hobby: aparecem no resumo, fora da guarda. */
+function unmeasuredLines(): string[] {
+  const measured = new Set(USAGE_SOURCES.map((source) => source.resource))
+  return HOBBY_QUOTAS.filter((quota) => !measured.has(quota.resource)).map(
+    (quota) =>
+      `| ${quota.resource} | sem fonte no Hobby | — | ${String(quota.limit)} ${quota.unit} | — |`,
+  )
+}
+
+interface Measurement {
+  readonly ratios: readonly UsageRatio[]
+  readonly level: GuardLevel
+}
+
+/**
+ * Lê a janela nova, soma no estado (gravado fora do dry-run) e estima os 30 dias. Falha da fonte
+ * não avança o estado: a janela perdida vira lacuna na cobertura.
+ */
+async function measure(
+  ctx: Context,
+  dryRun: boolean,
+  summary: string[],
+  failures: string[],
+): Promise<Measurement | undefined> {
+  const loaded = loadState(ctx)
+  if (loaded.warning !== undefined) {
+    ctx.deps.log(`::warning title=${TITLE}::${loaded.warning}`)
+  }
+  let state = loaded.state
+  const window = planWindow(ctx.deps.now, state?.coveredUntil)
+  if (window === undefined) {
+    summary.push('Nenhum minuto novo desde a última leitura.', '')
+  } else {
+    try {
+      const used = await readWindow(ctx, window)
+      state = addWindow(state, window, used)
+      summary.push(
+        `Janela lida: ${new Date(window.since).toISOString()} a ${new Date(window.until).toISOString()}.`,
+        '',
+      )
+    } catch (error) {
+      failures.push(`fonte de uso não respondeu: ${errorMessage(error)}`)
+      summary.push(
+        '**A fonte de uso não respondeu: guarda sem leitura nesta execução** (runbook `budget-kill-switch.md`).',
+        '',
+      )
+      return undefined
+    }
+    if (!dryRun) {
+      ctx.deps.writeFile(STATE_FILE, `${JSON.stringify(state)}\n`)
+    }
+  }
+  if (state === undefined) {
+    summary.push('Sem estado: nada medido ainda.', '')
+    return { ratios: [], level: 'none' }
+  }
+  const estimate = estimateUsage(state)
+  summary.push(
+    '| Recurso | Lido (30 dias) | Estimado (30 dias) | Cota Hobby | % |',
+    '|---|---|---|---|---|',
+    ...estimate.ratios.map(ratioLine),
+    ...unmeasuredLines(),
+    '',
+    `Cobertura: ${round(estimate.coverage * 100, 1)}% de ${round(estimate.trackedDays, 1)} dia(s) acompanhados.`,
+    '',
+  )
+  if (estimate.coverage < LOW_COVERAGE) {
+    ctx.deps.log(
+      `::warning title=${TITLE}::cobertura de ${round(estimate.coverage * 100, 1)}% nos 30 dias: a estimativa extrapola lacunas grandes (cron atrasado ou falhas)`,
+    )
+  }
+  const max = Math.max(0, ...estimate.ratios.map((ratio) => ratio.ratio))
+  return { ratios: estimate.ratios, level: levelFor(max) }
 }
 
 /** Código de saída: 0 ok (ou só avisos), 1 leitura, ação ou envio falhou. */
@@ -795,7 +934,7 @@ export async function run(
   const mode = options.release
     ? 'release'
     : options.forceThreshold === undefined
-      ? 'diário'
+      ? 'medição'
       : `exercício ${String(options.forceThreshold)}`
   const summary = [`### vercel-usage (${mode}${options.dryRun ? ', dry-run' : ''})`, '']
   const token = envValue(deps.env, 'VERCEL_TOKEN')
@@ -825,33 +964,17 @@ export async function run(
   if (options.release) {
     level = 'release'
   } else if (options.forceThreshold === undefined) {
-    level = 'none'
-    try {
-      const services = await readUsage(ctx)
-      const result = usageRatios(services)
-      failures.push(...result.failures)
-      for (const name of result.unknown) {
-        deps.log(`::warning title=${TITLE}::sem cota fixada para "${name}" (só no resumo)`)
-      }
-      summary.push(
-        '| Recurso | Uso (30 dias) | Cota Hobby | % |',
-        '|---|---|---|---|',
-        ...result.ratios.map(ratioLine),
-        '',
-      )
-      const max = Math.max(0, ...result.ratios.map((ratio) => ratio.ratio))
-      level = levelFor(max)
-      points.push(
-        ...result.ratios.map((ratio) => ({
-          name: 'teko_vercel_usage_ratio',
-          value: ratio.ratio,
-          labels: { resource: ratio.resource },
-          description: 'Uso dos últimos 30 dias sobre a cota mensal do Hobby (conta inteira)',
-        })),
-      )
-    } catch (error) {
-      failures.push(errorMessage(error))
-    }
+    const measured = await measure(ctx, options.dryRun, summary, failures)
+    level = measured?.level ?? 'none'
+    points.push(
+      ...(measured?.ratios ?? []).map((ratio) => ({
+        name: 'teko_vercel_usage_ratio',
+        value: ratio.ratio,
+        labels: { resource: ratio.resource },
+        description:
+          'Uso estimado dos últimos 30 dias sobre a cota do Hobby (conta inteira; vercel metrics acumulado)',
+      })),
+    )
   } else {
     level = levelFor(options.forceThreshold)
   }
@@ -884,7 +1007,7 @@ export async function run(
     }
   }
   for (const failure of failures) {
-    deps.log(`::error title=${TITLE}::${failure}`)
+    deps.log(`::error title=${TITLE}::${failure.replaceAll('::', ': :')}`)
   }
   return { code: failures.length === 0 ? 0 : 1, summary }
 }
@@ -953,6 +1076,11 @@ async function main(): Promise<number> {
       fetch,
       exec: execProcess,
       fileExists: existsSync,
+      readFile: (path) => (existsSync(path) ? readFileSync(path, 'utf8') : undefined),
+      writeFile: (path, content) => {
+        mkdirSync(dirname(path), { recursive: true })
+        writeFileSync(path, content)
+      },
       sleep: (ms) => delay(ms),
       log: logLine,
     },

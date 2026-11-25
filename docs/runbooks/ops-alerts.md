@@ -31,18 +31,23 @@ estão em [infra/grafana/README.md](../../infra/grafana/README.md).
 ## Job do `ops.yml` sem sucesso
 
 `teko_ops_job_last_success_timestamp_seconds{ops_job}` só é gravado quando o job termina sem erro.
-O alerta olha o `vercel-usage` (diário, mais de 30 h) e o `weekly-maintenance` (domingo 06:00 UTC,
-mais de 8 dias); o `quotas` da F6 aparece no dashboard **Tekó · Cotas**. Um job sem o segredo
-avisa e termina verde, mas não registra sucesso: o alerta dispara do mesmo jeito.
+O alerta olha o `vercel-usage` (a cada 10 min: mais de 6 h sem sucesso, ou nenhum sucesso nos
+últimos 10 dias) e o `weekly-maintenance` (domingo 06:00 UTC, mais de 8 dias); o `quotas` da F6
+aparece no dashboard **Tekó · Cotas**. Um job sem o segredo avisa e termina verde, mas não registra
+sucesso: o alerta dispara do mesmo jeito. A regra da ausência existe porque, em 2026-11-19, o
+`vercel-usage` nunca tinha registrado um sucesso e a regra só de idade ficou em NoData (`Normal`)
+enquanto a conta caminhava para a pausa ([vercel-paused.md](vercel-paused.md#registro)).
 
 1. Actions → Ops → último run do job: a falha diz qual segredo faltou ou qual API respondeu erro.
 2. Segredo vencido (tokens da Vercel duram 90 dias): `secret-rotation.md` (F7) e atualize a data
    em `TOKEN_EXPIRY_DATES`.
 3. `vercel-usage` parado é o mais grave: sem ele, o kill switch de 85% não liga sozinho
    ([budget-kill-switch.md](budget-kill-switch.md)). Até voltar, confira o uso à mão
-   (Vercel → Usage) todo dia. Saída do `vercel billing usage` em formato novo (o job reprova com
-   "unidade desconhecida" ou "nenhum recurso do relatório casou"): ajuste `HOBBY_QUOTAS` e o
-   parser de `scripts/vercel-usage.ts` com a saída real como fixture do teste.
+   (Vercel → Usage) todo dia. O erro do run diz o motivo: `payment_required` (a Vercel fechou a
+   janela de 30 minutos do Hobby; não há outra fonte gratuita, a guarda passa a ser a checagem
+   manual, ver [budget-kill-switch.md](budget-kill-switch.md#fonte)), ou "resumo sem a coluna" /
+   "saída não é JSON" (formato novo do `vercel metrics`: ajuste `parseMetricsOutput` de
+   `scripts/vercel-usage.ts` com a saída real como fixture do teste).
 4. `weekly-maintenance`: o resumo traz a situação de cada banco. URL do `teko_app` errada no
    environment `maintenance`: [neon-roles.md](neon-roles.md); Neon suspenso:
    [neon-suspended.md](neon-suspended.md). Depois de corrigir, rode de novo: Actions → Ops → Run

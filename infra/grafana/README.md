@@ -83,8 +83,9 @@ antes disso `https://tekoia.vercel.app/pt-BR/` respondia 404 e o check só falha
 - **Deployment Protection:** o domínio de produção dos dois projetos Vercel é público (Standard
   Protection, `infra/vercel/README.md`), inclusive o `tekoia-staging.vercel.app`; os checks não
   precisam do bypass de automação, que continua só no smoke contra a URL única.
-- **503 no `/healthz`** = `DEPLOYMENT_PAUSED` (a drenagem por SIGTERM só existe fora da Vercel):
-  alerta `teko-deployment-paused`.
+- **503 no `/healthz`** = `DEPLOYMENT_PAUSED` (a drenagem por SIGTERM só existe fora da Vercel);
+  **402** = `DEPLOYMENT_DISABLED` (conta Hobby acima da cota, como em 2026-11-25): alerta
+  `teko-deployment-paused`.
 - **Qualquer outra falha** (timeout, erro de rede, TLS, 500, corpo sem o texto esperado) em todas
   as execuções de 20 min de um check: alerta `teko-synthetic-failed`, sobre `probe_success`. Os
   dois disparam juntos num 503 que dura mais de 20 min.
@@ -95,31 +96,32 @@ Todos notificam o contact point `teko-email` (rótulos `severity`, `source` e `t
 `noDataState: OK`: sem tráfego ou sem a fonte da métrica, a regra fica em Normal. Os links de
 runbook apontam para `main` no GitHub.
 
-| UID                        | Condição                                                             | Fonte                            | Runbook                                   |
-| -------------------------- | -------------------------------------------------------------------- | -------------------------------- | ----------------------------------------- |
-| `teko-api-5xx`             | 5xx > 2% em 10 min                                                   | API                              | `provider-outage.md#5xx-na-api`           |
-| `teko-api-questions-p95`   | p95 de `POST /api/v1/questions` > 3 s                                | API                              | `provider-outage.md#latencia`             |
-| `teko-llm-ttft-p95`        | TTFT p95 > 3 s                                                       | API                              | `provider-outage.md#latencia`             |
-| `teko-llm-429`             | 429 > 20% das tentativas em 15 min, por provedor                     | API                              | `quota-exhausted.md#429-por-provedor`     |
-| `teko-quota-used`          | `teko_quota_used_ratio` > 0,7                                        | API                              | `quota-exhausted.md#cotas-da-aplicacao`   |
-| `teko-rag-refusal-anomaly` | recusa em 1 h > 2× a de 7 dias, > 25% e ≥ 20 respostas               | API                              | `ops-alerts.md#recusa-...`                |
-| `teko-rag-lexical-only`    | `lexical_only` > 10% em 30 min, ≥ 5 respostas                        | API                              | `provider-outage.md#embeddings`           |
-| `teko-deployment-paused`   | `/healthz` respondeu 503 ao Synthetic Monitoring                     | Synthetic Monitoring             | `vercel-paused.md`                        |
-| `teko-synthetic-failed`    | check `teko-*` sem nenhum sucesso em 20 min (`probe_success` < 1)    | Synthetic Monitoring             | `ops-alerts.md#check-sintetico-...`       |
-| `teko-neon-cu-hours`       | `teko_neon_cu_hours_ratio` > 0,7                                     | `ops.yml` (`quotas`)             | `neon-suspended.md#cu-h-...`              |
-| `teko-langfuse-units`      | `teko_langfuse_units_projected` > 35.000                             | `ops.yml` (Langfuse)             | `quota-exhausted.md#langfuse`             |
-| `teko-vercel-usage-50`     | `teko_vercel_usage_ratio` > 0,5                                      | `ops.yml` (`vercel-usage`)       | `budget-kill-switch.md`                   |
-| `teko-vercel-usage-75`     | `teko_vercel_usage_ratio` > 0,75                                     | `ops.yml` (`vercel-usage`)       | `budget-kill-switch.md`                   |
-| `teko-coverage-stale`      | `teko_coverage_verified_age_days` > 3                                | `ops.yml` (`coverage-age`)       | `ops-alerts.md#cobertura-sem-verificacao` |
-| `teko-prod-vuln-scan`      | `teko_prod_vuln_findings{severity=~"high\|critical"}` > 0            | `ops.yml` (`prod-vuln-scan`, F7) | `ops-alerts.md#prod-vuln-scan`            |
-| `teko-token-expiry`        | `teko_token_expiry_days` < 30                                        | `ops.yml` (`quotas`)             | `secret-rotation.md` (F7)                 |
-| `teko-ops-job-stale`       | `vercel-usage` sem sucesso há 30 h ou `weekly-maintenance` há 8 dias | `ops.yml`                        | `ops-alerts.md#job-sem-sucesso`           |
+| UID                        | Condição                                                                                   | Fonte                            | Runbook                                   |
+| -------------------------- | ------------------------------------------------------------------------------------------ | -------------------------------- | ----------------------------------------- |
+| `teko-api-5xx`             | 5xx > 2% em 10 min                                                                         | API                              | `provider-outage.md#5xx-na-api`           |
+| `teko-api-questions-p95`   | p95 de `POST /api/v1/questions` > 3 s                                                      | API                              | `provider-outage.md#latencia`             |
+| `teko-llm-ttft-p95`        | TTFT p95 > 3 s                                                                             | API                              | `provider-outage.md#latencia`             |
+| `teko-llm-429`             | 429 > 20% das tentativas em 15 min, por provedor                                           | API                              | `quota-exhausted.md#429-por-provedor`     |
+| `teko-quota-used`          | `teko_quota_used_ratio` > 0,7                                                              | API                              | `quota-exhausted.md#cotas-da-aplicacao`   |
+| `teko-rag-refusal-anomaly` | recusa em 1 h > 2× a de 7 dias, > 25% e ≥ 20 respostas                                     | API                              | `ops-alerts.md#recusa-...`                |
+| `teko-rag-lexical-only`    | `lexical_only` > 10% em 30 min, ≥ 5 respostas                                              | API                              | `provider-outage.md#embeddings`           |
+| `teko-deployment-paused`   | `/healthz` respondeu 503 ou 402 ao Synthetic Monitoring                                    | Synthetic Monitoring             | `vercel-paused.md`                        |
+| `teko-synthetic-failed`    | check `teko-*` sem nenhum sucesso em 20 min (`probe_success` < 1)                          | Synthetic Monitoring             | `ops-alerts.md#check-sintetico-...`       |
+| `teko-neon-cu-hours`       | `teko_neon_cu_hours_ratio` > 0,7                                                           | `ops.yml` (`quotas`)             | `neon-suspended.md#cu-h-...`              |
+| `teko-langfuse-units`      | `teko_langfuse_units_projected` > 35.000                                                   | `ops.yml` (Langfuse)             | `quota-exhausted.md#langfuse`             |
+| `teko-vercel-usage-50`     | `teko_vercel_usage_ratio` > 0,5                                                            | `ops.yml` (`vercel-usage`)       | `budget-kill-switch.md`                   |
+| `teko-vercel-usage-75`     | `teko_vercel_usage_ratio` > 0,75                                                           | `ops.yml` (`vercel-usage`)       | `budget-kill-switch.md`                   |
+| `teko-coverage-stale`      | `teko_coverage_verified_age_days` > 3                                                      | `ops.yml` (`coverage-age`)       | `ops-alerts.md#cobertura-sem-verificacao` |
+| `teko-prod-vuln-scan`      | `teko_prod_vuln_findings{severity=~"high\|critical"}` > 0                                  | `ops.yml` (`prod-vuln-scan`, F7) | `ops-alerts.md#prod-vuln-scan`            |
+| `teko-token-expiry`        | `teko_token_expiry_days` < 30                                                              | `ops.yml` (`quotas`)             | `secret-rotation.md` (F7)                 |
+| `teko-ops-job-stale`       | `vercel-usage` sem sucesso há 6 h (ou nenhum em 10 dias) ou `weekly-maintenance` há 8 dias | `ops.yml`                        | `ops-alerts.md#job-sem-sucesso`           |
 
 **Contrato para as fontes que chegam depois** (o validador só aceita estes nomes): a mudança
 `add-llm-tracing-langfuse` emite `teko_langfuse_units_projected` (gauge, sem labels); a F7 emite
 `teko_vercel_usage_ratio{resource}` e
 `teko_ops_job_last_success_timestamp_seconds{ops_job="vercel-usage"|"weekly-maintenance"}`
-(`scripts/vercel-usage.ts` e `scripts/ops-metrics.ts --success-only`, mudança `add-usage-guard`) e
+(`scripts/vercel-usage.ts`, a cada 10 min desde a mudança `fix-vercel-usage-hobby`, e
+`scripts/ops-metrics.ts --success-only`, mudança `add-usage-guard`) e
 `teko_prod_vuln_findings{severity}`, todos pelo `scripts/lib/otlp-metrics.ts` (gauges sem `unit`, `service.name=teko-ops`). Métrica empurrada
 uma vez por dia some do Mimir 5 min depois do envio; por isso os painéis e alertas usam
 `last_over_time(...[2d])`.

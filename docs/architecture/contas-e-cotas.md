@@ -6,20 +6,20 @@ conferidas pelo `ops.yml` a partir da F6/F7.
 
 ## Contas
 
-| Serviço                                                                   | Uso                                                                  | Plano        | Segredos → destino                                                                                            | Guarda de custo                                                                        |
-| ------------------------------------------------------------------------- | -------------------------------------------------------------------- | ------------ | ------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| GitHub + App `teko-release-bot` + 2 OAuth apps                            | repositório, CI, Releases (artefatos de ingestão), atestações, login | Free         | chave da App → repositório; OAuth → Sensitive da Vercel                                                       | —                                                                                      |
-| Vercel (projetos `tekoia`, `tekoia-staging`)                              | web estático + API (uma Function Fluid), `gru1`, Git não conectado   | Hobby        | `VERCEL_TOKEN` por environment (90 dias); `VERCEL_USAGE_TOKEN` e `VERCEL_ORG_ID` → `ops`; bypass de automação | uso não comercial; opt-out de Model Training; guarda diária com kill switch; nunca Pro |
-| Neon (`teko-prod`, `teko-staging`, `aws-sa-east-1`, PG18)                 | Postgres                                                             | Free         | URLs por role → environments e Vercel; API keys project-scoped → `ops`, `staging`, `release-rehearsal`        | CU mínimo, scale-to-zero                                                               |
-| Google AI Studio (`teko-prod`, `teko-staging`, `teko-ci`) + Cloud (OAuth) | Gemini e login Google                                                | free         | chaves → Sensitive da Vercel e environment `evals`                                                            | sem billing; checagem mensal                                                           |
-| Groq (ZDR ligado)                                                         | fallback e juiz                                                      | Free         | chaves → Vercel e `evals`                                                                                     | não ativar Dev Tier                                                                    |
-| Cloudflare                                                                | Workers AI (BGE-M3 e reranker)                                       | Workers Free | token com escopo Workers AI → Vercel e environments                                                           | nunca Workers Paid                                                                     |
-| Langfuse Cloud (EU)                                                       | traces e custo de LLM                                                | Hobby        | chaves de runtime por projeto → Vercel; um par por projeto para o job `langfuse` → `ops`                      | sampler com corte em 35k units                                                         |
-| Grafana Cloud                                                             | OTLP direto, alertas e Synthetic Monitoring                          | Free         | endpoint e token OTLP → Vercel; SA token, token do SM e token OTLP de métricas → `ops`                        | sem spans de health                                                                    |
-| PostHog (EU)                                                              | analytics, surveys e Error Tracking (ADR 0037), um projeto só        | Free         | project key → build (vars do GitHub), Vercel e `staging` (source-watch); personal key → deploy (source maps)  | replay off; erros com teto por página no navegador                                     |
-| SonarQube Cloud                                                           | análise informativa de PRs e do branch principal                     | Free (OSS)   | `SONAR_TOKEN` → repositório e Dependabot                                                                      | —                                                                                      |
-| Stryker Dashboard, OpenSSF Best Practices                                 | badge de mutação; selo `passing` (projeto 16550)                     | OSS          | `STRYKER_DASHBOARD_API_KEY` → repositório                                                                     | —                                                                                      |
-| Socket.dev (GitHub App)                                                   | SCA de supply chain no PR                                            | Free (OSS)   | nenhum                                                                                                        | só o repositório `teko` liberado                                                       |
+| Serviço                                                                   | Uso                                                                  | Plano        | Segredos → destino                                                                                            | Guarda de custo                                                                                 |
+| ------------------------------------------------------------------------- | -------------------------------------------------------------------- | ------------ | ------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| GitHub + App `teko-release-bot` + 2 OAuth apps                            | repositório, CI, Releases (artefatos de ingestão), atestações, login | Free         | chave da App → repositório; OAuth → Sensitive da Vercel                                                       | —                                                                                               |
+| Vercel (projetos `tekoia`, `tekoia-staging`)                              | web estático + API (uma Function Fluid), `gru1`, Git não conectado   | Hobby        | `VERCEL_TOKEN` por environment (90 dias); `VERCEL_USAGE_TOKEN` e `VERCEL_ORG_ID` → `ops`; bypass de automação | uso não comercial; opt-out de Model Training; guarda de 10 em 10 min com kill switch; nunca Pro |
+| Neon (`teko-prod`, `teko-staging`, `aws-sa-east-1`, PG18)                 | Postgres                                                             | Free         | URLs por role → environments e Vercel; API keys project-scoped → `ops`, `staging`, `release-rehearsal`        | CU mínimo, scale-to-zero                                                                        |
+| Google AI Studio (`teko-prod`, `teko-staging`, `teko-ci`) + Cloud (OAuth) | Gemini e login Google                                                | free         | chaves → Sensitive da Vercel e environment `evals`                                                            | sem billing; checagem mensal                                                                    |
+| Groq (ZDR ligado)                                                         | fallback e juiz                                                      | Free         | chaves → Vercel e `evals`                                                                                     | não ativar Dev Tier                                                                             |
+| Cloudflare                                                                | Workers AI (BGE-M3 e reranker)                                       | Workers Free | token com escopo Workers AI → Vercel e environments                                                           | nunca Workers Paid                                                                              |
+| Langfuse Cloud (EU)                                                       | traces e custo de LLM                                                | Hobby        | chaves de runtime por projeto → Vercel; um par por projeto para o job `langfuse` → `ops`                      | sampler com corte em 35k units                                                                  |
+| Grafana Cloud                                                             | OTLP direto, alertas e Synthetic Monitoring                          | Free         | endpoint e token OTLP → Vercel; SA token, token do SM e token OTLP de métricas → `ops`                        | sem spans de health                                                                             |
+| PostHog (EU)                                                              | analytics, surveys e Error Tracking (ADR 0037), um projeto só        | Free         | project key → build (vars do GitHub), Vercel e `staging` (source-watch); personal key → deploy (source maps)  | replay off; erros com teto por página no navegador                                              |
+| SonarQube Cloud                                                           | análise informativa de PRs e do branch principal                     | Free (OSS)   | `SONAR_TOKEN` → repositório e Dependabot                                                                      | —                                                                                               |
+| Stryker Dashboard, OpenSSF Best Practices                                 | badge de mutação; selo `passing` (projeto 16550)                     | OSS          | `STRYKER_DASHBOARD_API_KEY` → repositório                                                                     | —                                                                                               |
+| Socket.dev (GitHub App)                                                   | SCA de supply chain no PR                                            | Free (OSS)   | nenhum                                                                                                        | só o repositório `teko` liberado                                                                |
 
 **Saíram na revisão de 2026-11-12:** Netlify (web e Blobs, ADRs 0029 e 0030), Codecov (o gate é o
 threshold do Vitest, ADR 0032), Checkly e UptimeRobot (o Synthetic Monitoring do Grafana cobre).
@@ -33,24 +33,25 @@ Cotas mensais da conta, somando `tekoia` e `tekoia-staging`; o Hobby não compra
 Premissa de pior caso: tetos diários de perguntas e `stream_seconds` atingidos todo dia, 20 s de
 stream em média, cerca de 30k chamadas curtas e 150k requests de estático por mês.
 
-| Recurso              | Cota Hobby | Premissa                                                                                                           | Uso esperado/mês          |
-| -------------------- | ---------- | ------------------------------------------------------------------------------------------------------------------ | ------------------------- |
-| Provisioned Memory   | 360 GB-h   | streams (6.000 + 1.500) s/dia × 30 ≈ 62 h; chamadas curtas ≈ 2,5 h; `waitUntil` ≈ 1,5 h; cold starts e pings ≈ 2 h | cerca de 136 GB-h (38%)   |
-| Active CPU           | 4 h        | só com código rodando: streams, chamadas curtas, cold starts, pings                                                | cerca de 0,9 h (23%)      |
-| Invocações           | 1M         | chamadas curtas, streams e pings de 5 min nos dois projetos; o estático não invoca a Function                      | cerca de 60k (6%)         |
-| Fast Origin Transfer | 10 GB      | só CDN ↔ Function: cerca de 10 KB por stream e 5 KB por chamada curta                                              | cerca de 0,3 GB (3%)      |
-| Fast Data Transfer   | 100 GB     | estático (cerca de 3 GB) + respostas da API                                                                        | cerca de 3,3 GB (3%)      |
-| CDN Requests         | 1M         | estático (cerca de 150k) + API (cerca de 70k)                                                                      | cerca de 220k (22%)       |
-| Deployment storage   | 10 GB      | cerca de 25 MB por deployment retida (estático + Function), staging a cada push                                    | cerca de 1,5 GB (15%)     |
-| Spans de tracing     | 1M         | sem `@vercel/otel`; os spans de fetch param com o SDK de OTel no pacote; sobram os de infraestrutura               | a medir no `vercel-usage` |
-| Deploys              | 100/dia    | um por push no tronco e um por release                                                                             | < 10/dia                  |
+| Recurso              | Cota Hobby | Premissa                                                                                                           | Uso esperado/mês        |
+| -------------------- | ---------- | ------------------------------------------------------------------------------------------------------------------ | ----------------------- |
+| Provisioned Memory   | 360 GB-h   | streams (6.000 + 1.500) s/dia × 30 ≈ 62 h; chamadas curtas ≈ 2,5 h; `waitUntil` ≈ 1,5 h; cold starts e pings ≈ 2 h | cerca de 136 GB-h (38%) |
+| Active CPU           | 4 h        | só com código rodando: streams, chamadas curtas, cold starts, pings                                                | cerca de 0,9 h (23%)    |
+| Invocações           | 1M         | chamadas curtas, streams e pings de 5 min nos dois projetos; o estático não invoca a Function                      | cerca de 60k (6%)       |
+| Fast Origin Transfer | 10 GB      | só CDN ↔ Function: cerca de 10 KB por stream e 5 KB por chamada curta                                              | cerca de 0,3 GB (3%)    |
+| Fast Data Transfer   | 100 GB     | estático (cerca de 3 GB) + respostas da API                                                                        | cerca de 3,3 GB (3%)    |
+| CDN Requests         | 1M         | estático (cerca de 150k) + API (cerca de 70k)                                                                      | cerca de 220k (22%)     |
+| Deployment storage   | 10 GB      | cerca de 25 MB por deployment retida (estático + Function), staging a cada push                                    | cerca de 1,5 GB (15%)   |
+| Spans de tracing     | 1M         | sem `@vercel/otel`; os spans de fetch param com o SDK de OTel no pacote; sobram os de infraestrutura               | sem fonte no Hobby      |
+| Deploys              | 100/dia    | um por push no tronco e um por release                                                                             | < 10/dia                |
 
 - **Tráfego negado pelo WAF** (deny, challenge ou rate limit) não conta CDN Requests nem Fast Data
   Transfer, e não invoca a Function.
 - O recurso mais apertado é a memória provisionada: esperar o LLM não gasta CPU, mas mantém os
   2 GB da instância cobrando. O teto de `stream_seconds` limita isso na aplicação.
 - **Ao estourar:** sem ciclo de cobrança, "na maioria dos casos" o recurso fica bloqueado até
-  passarem 30 dias, e a produção responde 503 `DEPLOYMENT_PAUSED`. **A retomada de um projeto
+  passarem 30 dias, e a produção responde 503 `DEPLOYMENT_PAUSED` ou, como em 2026-11-25 (Fluid
+  Active CPU acima de 4 h), 402 `DEPLOYMENT_DISABLED` em todas as deployments da conta. **A retomada de um projeto
   pausado é manual** (`vercel project resume <projeto>` ou `POST /v1/projects/{id}/unpause`), e o
   runbook `vercel-paused.md` cobre o passo. Spend Management é só do Pro. Os Termos também permitem
   encerrar a conta por exceder limites.
@@ -59,10 +60,18 @@ stream em média, cerca de 30k chamadas curtas e 150k requests de estático por 
 
 - Tetos na aplicação (perguntas, `stream_seconds`, 100 s por stream, `bodyLimit`) abaixo das cotas,
   e o WAF negando `/api` desconhecido antes de invocar a Function.
-- Job diário `vercel-usage` do `ops.yml` (`scripts/vercel-usage.ts`, environment `ops`): `vercel
-  billing usage --since 30d --json` do Vercel CLI de `tools/vercel-cli` (o antigo `vercel usage`),
-  comparado com as cotas fixadas no script (`HOBBY_QUOTAS`), porque a saída traz o uso e não o
-  saldo; janela de 30 dias. Emite `teko_vercel_usage_ratio{resource}`. Credenciais: segredo
+- Job `vercel-usage` do `ops.yml` a cada 10 minutos (`scripts/vercel-usage.ts`, environment
+  `ops`). No Hobby não há relatório de uso por API (o `vercel billing usage` e o
+  `/v1/billing/charges` respondem 404 `costs_not_found`, sem assinatura), e o `vercel metrics` só
+  aceita métricas de invocação de função em janelas iniciadas há até 30 minutos. O job lê com o
+  Vercel CLI de `tools/vercel-cli` a janela ainda não contada de CPU ativa, GB-h de duração (limite
+  superior da memória provisionada), invocações e Fast Origin Transfer da conta inteira, soma por
+  dia num estado no cache do Actions e estima os 30 dias extrapolando as lacunas pela cobertura;
+  compara com as cotas fixadas no script (`HOBBY_QUOTAS`) e emite
+  `teko_vercel_usage_ratio{resource}`. Fast Data Transfer, CDN Requests, spans e imagens não têm
+  fonte no Hobby: só o e-mail de uso da Vercel e a checagem manual. Confiança baixa a média
+  ([budget-kill-switch.md](../runbooks/budget-kill-switch.md#fonte)). Fonte que não responde deixa
+  o job vermelho e dispara o `teko-ops-job-stale` em 6 h. Credenciais: segredo
   `VERCEL_USAGE_TOKEN` (token com escopo do time Hobby, 90 dias) e variável `VERCEL_ORG_ID` (ID do
   time); sem o token, o job avisa e termina verde.
 - 50% e 75%: alerta por e-mail. **85%:** kill switch de geração (`LLM_KILL_SWITCH=true` nos dois
@@ -112,7 +121,9 @@ públicos: só documentos oficiais, snapshots do corpus e métricas, nunca dado 
 
 ## Limites que não se leem por API
 
-RPD do Gemini e do Groq e o comportamento do Langfuse ao estourar não são legíveis por API; o
-`vercel billing usage` dá o uso, não o saldo, e a documentação não diz se a janela do Hobby é móvel ou
-mensal. Contorno: checagem manual mensal registrada no relatório do `ops.yml`, cotas fixadas no
-script, janela de 30 dias e margens defensivas.
+RPD do Gemini e do Groq e o comportamento do Langfuse ao estourar não são legíveis por API. No
+Hobby, o uso da Vercel também não: o `vercel billing usage` não funciona sem assinatura, o
+`vercel metrics` só cobre os últimos 30 minutos das métricas de função, e a documentação não diz se
+a janela do Hobby é móvel ou mensal. Contorno: leitura acumulada a cada 10 minutos, checagem manual
+da Vercel → Usage (os recursos sem fonte), cotas fixadas no script, janela de 30 dias e margens
+defensivas.

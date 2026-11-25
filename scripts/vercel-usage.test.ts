@@ -1,20 +1,34 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 import {
+  addWindow,
   type ExecResult,
+  estimateUsage,
   FIREWALL_SCRIPT,
   HOBBY_QUOTAS,
+  LAG_MINUTES,
+  LOOKBACK_MINUTES,
   levelFor,
+  parseMetricsOutput,
   parseOptions,
-  parseUsageReport,
+  parseState,
+  planWindow,
   type RunDeps,
+  rollupColumn,
   run,
-  toQuotaUnit,
-  usageRatios,
+  STATE_FILE,
+  USAGE_SOURCES,
+  type UsageSource,
+  type UsageState,
   VERCEL_CLI,
 } from './vercel-usage.ts'
 
-const NOW = new Date('2026-11-18T09:45:00.000Z')
+const NOW = new Date('2026-11-18T09:45:30.000Z')
+const MINUTE = 60_000
+const DAY = 86_400_000
+/** Janela da primeira execução em NOW: 09:18 a 09:40 (27 min para trás, 5 de atraso). */
+const SINCE = Date.parse('2026-11-18T09:18:00.000Z')
+const UNTIL = Date.parse('2026-11-18T09:40:00.000Z')
 const ORG = 'team_abc123'
 const STAGING = 'prj_rgXwv6zcTTb1UPU1qkEMrAWu6hY5'
 const PROD = 'prj_Oe6xdCbPyqiwfNcz1n2KvsCP09as'
@@ -24,135 +38,177 @@ const OTLP = {
   GRAFANA_OTLP_TOKEN: 'otlp-token',
 }
 
-/** Formato real do `vercel billing usage --json` (Vercel CLI 65.11.0, `serializeService`). */
-function report(services: unknown[]): string {
-  return JSON.stringify({
-    period: { from: '2026-10-19', to: '2026-11-18' },
-    context: 'teko',
-    costUnit: 'USD',
-    services,
-    totals: { cost: 0 },
-  })
+function source(resource: string): UsageSource {
+  const found = USAGE_SOURCES.find((entry) => entry.resource === resource)
+  assert.ok(found)
+  return found
 }
 
-const LOW_USAGE = report([
-  {
-    name: 'Fluid Provisioned Memory',
-    product: 'fluidProvisionedMemory',
-    quantity: 36,
-    unit: 'GB-Hrs',
-    cost: 0,
-    included: true,
-    category: 'usage',
+/**
+ * Formato real do `vercel metrics <métrica> --all --json` (Vercel CLI 65.11.0, `formatQueryJson`
+ * sobre `canonicalResponseToMetricsResponse`); `value` `undefined` = janela sem invocação, como a
+ * conta pausada respondeu em 2026-11-25.
+ */
+function metricsJson(entry: UsageSource, value?: number | null): string {
+  return JSON.stringify(
+    {
+      query: {
+        metric: entry.metric,
+        aggregation: entry.aggregation,
+        groupBy: [],
+        startTime: new Date(SINCE).toISOString(),
+        endTime: new Date(UNTIL).toISOString(),
+        granularity: { minutes: 1 },
+      },
+      summary: value === undefined ? [] : [{ [rollupColumn(entry)]: value }],
+      data: value === undefined ? [] : [{ timestamp: new Date(SINCE).toISOString() }],
+    },
+    null,
+    2,
+  )
+}
+
+/** Erro real do CLI no Hobby para janela de mais de 30 minutos (2026-11-25). */
+const PAYMENT_REQUIRED = JSON.stringify({
+  error: {
+    code: 'payment_required',
+    message:
+      'Observability Plus is required for function invocations that start more than 30 minutes ago.',
+    hint: 'Observability Plus is available on Pro and Enterprise.',
+    retryable: false,
   },
-  { name: 'Fluid Active CPU', product: 'fluidActiveCpu', quantity: 0.4, unit: 'Hrs', cost: 0 },
-  { name: 'Function Invocations', quantity: 60_000, cost: 0 },
-  { name: 'Fast Data Transfer', quantity: 3300, unit: 'MB', cost: 0 },
-  { name: 'Edge Requests', quantity: 220_000, unit: 'requests', cost: 0 },
-])
-
-describe('parseUsageReport', () => {
-  it('lê services com nome, produto, quantidade e unidade', () => {
-    const services = parseUsageReport(LOW_USAGE)
-    assert.equal(services.length, 5)
-    assert.deepEqual(services[0], {
-      name: 'Fluid Provisioned Memory',
-      product: 'fluidProvisionedMemory',
-      quantity: 36,
-      unit: 'GB-Hrs',
-      category: 'usage',
-    })
-  })
-
-  it('tolera texto antes do JSON e entradas sem quantidade numérica', () => {
-    const raw = `Fetching usage...\n${report([
-      { name: 'Fast Origin Transfer', usage: 1.5, unit: 'GB' },
-      { name: 'Quebrado', quantity: 'muito' },
-      'lixo',
-    ])}\n`
-    assert.deepEqual(parseUsageReport(raw), [
-      { name: 'Fast Origin Transfer', quantity: 1.5, unit: 'GB' },
-    ])
-  })
-
-  it('recusa saída sem JSON ou sem services', () => {
-    assert.throws(() => parseUsageReport('Error: not authorized'), /não é JSON/u)
-    assert.throws(() => parseUsageReport('{"totals":{}}'), /sem a lista "services"/u)
-  })
 })
 
-describe('toQuotaUnit', () => {
-  const quota = (resource: string) => {
-    const found = HOBBY_QUOTAS.find((entry) => entry.resource === resource)
-    assert.ok(found)
-    return found
-  }
-
-  it('converte tempo, memória e transferência para a unidade da cota', () => {
+describe('parseMetricsOutput', () => {
+  it('lê o total do resumo e converte para a unidade da cota', () => {
     assert.equal(
-      toQuotaUnit(quota('active_cpu'), { name: 'x', quantity: 7_200_000, unit: 'ms' }),
+      parseMetricsOutput(metricsJson(source('active_cpu'), 7_200_000), source('active_cpu')),
       2,
     )
-    assert.equal(toQuotaUnit(quota('active_cpu'), { name: 'x', quantity: 90, unit: 'min' }), 1.5)
     assert.equal(
-      toQuotaUnit(quota('provisioned_memory'), { name: 'x', quantity: 3600, unit: 'GB-s' }),
-      1,
+      parseMetricsOutput(
+        metricsJson(source('fast_origin_transfer'), 2.5e9),
+        source('fast_origin_transfer'),
+      ),
+      2.5,
     )
     assert.equal(
-      toQuotaUnit(quota('fast_data_transfer'), { name: 'x', quantity: 2500, unit: 'MB' }),
-      2.5,
+      parseMetricsOutput(
+        metricsJson(source('function_invocations'), 42),
+        source('function_invocations'),
+      ),
+      42,
     )
   })
 
-  it('contagem aceita unidade em palavra ou nenhuma; tempo sem unidade conhecida é erro', () => {
+  it('janela sem invocação (resumo vazio ou null) vale 0', () => {
+    assert.equal(parseMetricsOutput(metricsJson(source('active_cpu')), source('active_cpu')), 0)
     assert.equal(
-      toQuotaUnit(quota('function_invocations'), { name: 'x', quantity: 10, unit: 'Invocations' }),
-      10,
+      parseMetricsOutput(metricsJson(source('active_cpu'), null), source('active_cpu')),
+      0,
     )
-    assert.equal(toQuotaUnit(quota('cdn_requests'), { name: 'x', quantity: 3, unit: 'K' }), 3000)
+  })
+
+  it('erro do CLI, saída sem JSON e formato novo são falha', () => {
     assert.throws(
-      () => toQuotaUnit(quota('active_cpu'), { name: 'Active CPU', quantity: 1 }),
-      /active_cpu: unidade desconhecida "\(nenhuma\)"/u,
+      () => parseMetricsOutput(PAYMENT_REQUIRED, source('active_cpu')),
+      /payment_required: Observability Plus is required/u,
+    )
+    assert.throws(
+      () => parseMetricsOutput('Error: not authorized', source('active_cpu')),
+      /não é JSON/u,
+    )
+    assert.throws(() => parseMetricsOutput('{"data":[]}', source('active_cpu')), /sem "summary"/u)
+    assert.throws(
+      () => parseMetricsOutput('{"summary":[{"outra_coluna":1}]}', source('active_cpu')),
+      /resumo sem a coluna vercel_function_invocation_function_cpu_time_ms_sum/u,
     )
   })
 })
 
-describe('usageRatios', () => {
-  it('soma por recurso, zera os ausentes e casa nome ou slug do produto', () => {
-    const { ratios, failures, unknown } = usageRatios(parseUsageReport(LOW_USAGE))
-    assert.deepEqual(failures, [])
-    assert.deepEqual(unknown, [])
-    const byResource = Object.fromEntries(ratios.map((ratio) => [ratio.resource, ratio.ratio]))
-    assert.equal(byResource['provisioned_memory'], 0.1)
-    assert.equal(byResource['active_cpu'], 0.1)
-    assert.equal(byResource['function_invocations'], 0.06)
-    assert.equal(byResource['fast_data_transfer'], 0.033)
-    assert.equal(byResource['cdn_requests'], 0.22)
-    assert.equal(byResource['fast_origin_transfer'], 0)
-    assert.equal(ratios.length, HOBBY_QUOTAS.length)
+describe('planWindow', () => {
+  it('primeira execução: os últimos 27 minutos menos 5 de atraso', () => {
+    assert.equal(LOOKBACK_MINUTES, 27)
+    assert.equal(LAG_MINUTES, 5)
+    assert.deepEqual(planWindow(NOW), { since: SINCE, until: UNTIL })
   })
 
-  it('unidade nova reprova só aquele recurso; sem cota fixada vira aviso', () => {
-    const { ratios, failures, unknown } = usageRatios([
-      { name: 'Active CPU', quantity: 5, unit: 'vCPU-fortnights' },
-      { name: 'Blob Storage', quantity: 2, unit: 'GB' },
-      { name: 'Pro Seat', quantity: 1, category: 'subscription' },
-      { name: 'Fast Origin Transfer', quantity: 5, unit: 'GB' },
-    ])
-    assert.equal(failures.length, 1)
-    assert.match(failures[0] ?? '', /active_cpu: unidade desconhecida/u)
-    assert.deepEqual(unknown, ['Blob Storage'])
-    assert.ok(!ratios.some((ratio) => ratio.resource === 'active_cpu'))
-    assert.equal(ratios.find((ratio) => ratio.resource === 'fast_origin_transfer')?.ratio, 0.5)
+  it('continua do fim da anterior e nunca volta além do que o Hobby aceita', () => {
+    const previous = Date.parse('2026-11-18T09:30:00.000Z')
+    assert.deepEqual(planWindow(NOW, previous), { since: previous, until: UNTIL })
+    assert.deepEqual(planWindow(NOW, SINCE - 3 * 60 * MINUTE), { since: SINCE, until: UNTIL })
   })
 
-  it('relatório com linhas e nenhuma reconhecida é falha (formato mudou)', () => {
-    const { failures } = usageRatios([{ name: 'Something Else', quantity: 1 }])
-    assert.match(failures[0] ?? '', /nenhum recurso do relatório casou/u)
+  it('menos de um minuto novo: nada a ler', () => {
+    assert.equal(planWindow(NOW, UNTIL), undefined)
+  })
+})
+
+describe('estado e estimativa', () => {
+  it('soma as janelas por dia, descarta o que saiu dos 30 dias e estima com cobertura total', () => {
+    let state = addWindow(undefined, { since: SINCE, until: UNTIL }, { active_cpu: 0.5 })
+    state = addWindow(
+      state,
+      { since: UNTIL, until: UNTIL + 10 * MINUTE },
+      { active_cpu: 0.25, function_invocations: 100 },
+    )
+    assert.equal(state.days.length, 1)
+    assert.deepEqual(state.days[0], {
+      day: '2026-11-18',
+      coveredMinutes: 32,
+      used: { active_cpu: 0.75, function_invocations: 100 },
+    })
+    const estimate = estimateUsage(state)
+    assert.equal(estimate.coverage, 1)
+    const cpu = estimate.ratios.find((ratio) => ratio.resource === 'active_cpu')
+    assert.equal(cpu?.used, 0.75)
+    assert.equal(cpu?.ratio, 0.75 / 4)
+    // 31 dias depois, o dia de 18/11 sai da janela.
+    const later = addWindow(
+      state,
+      { since: SINCE + 31 * DAY, until: UNTIL + 31 * DAY },
+      { active_cpu: 0 },
+    )
+    assert.deepEqual(
+      later.days.map((day) => day.day),
+      ['2026-12-19'],
+    )
   })
 
-  it('relatório vazio (conta sem uso) não é falha', () => {
-    assert.deepEqual(usageRatios([]).failures, [])
+  it('lacuna (cron atrasado, falha) é extrapolada pela média do que foi lido', () => {
+    let state = addWindow(undefined, { since: SINCE, until: UNTIL }, { active_cpu: 0.2 })
+    // Duas horas sem leitura e mais 22 minutos lidos: 44 de 164 minutos acompanhados.
+    const next = UNTIL + 2 * 60 * MINUTE
+    state = addWindow(state, { since: next, until: next + 22 * MINUTE }, { active_cpu: 0.2 })
+    const estimate = estimateUsage(state)
+    assert.equal(Math.round(estimate.coverage * 1000) / 1000, Math.round((44 / 164) * 1000) / 1000)
+    const cpu = estimate.ratios.find((ratio) => ratio.resource === 'active_cpu')
+    assert.equal(cpu?.measured, 0.4)
+    assert.ok(Math.abs((cpu?.used ?? 0) - 0.4 * (164 / 44)) < 1e-9)
+  })
+
+  it('só os recursos com fonte entram na estimativa', () => {
+    const estimate = estimateUsage(addWindow(undefined, { since: SINCE, until: UNTIL }, {}))
+    assert.deepEqual(
+      estimate.ratios.map((ratio) => ratio.resource),
+      ['active_cpu', 'provisioned_memory', 'function_invocations', 'fast_origin_transfer'],
+    )
+    for (const ratio of estimate.ratios) {
+      assert.ok(HOBBY_QUOTAS.some((quota) => quota.resource === ratio.resource))
+    }
+  })
+
+  it('parseState aceita o que addWindow grava e recusa formato desconhecido', () => {
+    const state = addWindow(undefined, { since: SINCE, until: UNTIL }, { active_cpu: 0.1 })
+    assert.deepEqual(parseState(JSON.stringify(state)), state)
+    assert.throws(() => parseState('{"schemaVersion":2}'), /formato desconhecido/u)
+    assert.throws(
+      () =>
+        parseState(
+          JSON.stringify({ ...state, days: [{ day: 'ontem', coveredMinutes: 1, used: {} }] }),
+        ),
+      /dia ilegível/u,
+    )
   })
 })
 
@@ -212,14 +268,17 @@ function fakeDeps(
   vercel: FakeVercel,
   exec: (args: readonly string[]) => ExecResult = () => ({ code: 0, stdout: '', stderr: '' }),
   files: readonly string[] = [VERCEL_CLI, FIREWALL_SCRIPT],
+  state?: string,
 ): RunDeps & {
   calls: Call[]
   execs: { args: readonly string[]; env: Record<string, string> }[]
   lines: string[]
+  written: string[]
 } {
   const calls: Call[] = []
   const execs: { args: readonly string[]; env: Record<string, string> }[] = []
   const lines: string[] = []
+  const written: string[] = []
   const states = [...(vercel.states ?? ['READY'])]
   let created = 0
   const json = (body: unknown, status = 200) =>
@@ -230,9 +289,15 @@ function fakeDeps(
     calls,
     execs,
     lines,
+    written,
     log: (line) => lines.push(line),
     sleep: async () => {},
     fileExists: (path) => files.includes(path),
+    readFile: (path) => (path === STATE_FILE ? state : undefined),
+    writeFile: (path, content) => {
+      assert.equal(path, STATE_FILE)
+      written.push(content)
+    },
     deployTimeoutMs: 30_000,
     exec: async (_file, args, childEnv) => {
       execs.push({ args, env: { ...childEnv } })
@@ -322,11 +387,34 @@ const BOTH_LIVE: FakeVercel['production'] = {
   'tekoia.vercel.app': { id: 'dpl_prod', createdAt: OLD },
 }
 
-function usageExec(raw: string) {
-  return (args: readonly string[]): ExecResult =>
-    args.includes('billing')
-      ? { code: 0, stdout: raw, stderr: 'Fetching usage' }
-      : { code: 0, stdout: 'ok', stderr: '' }
+/**
+ * `vercel metrics` de mentira: valor por recurso, na unidade da métrica (ms, GB-h, contagem, bytes);
+ * recurso ausente responde janela vazia.
+ */
+function metricsExec(values: Readonly<Record<string, number>> = {}) {
+  return (args: readonly string[]): ExecResult => {
+    if (args[1] !== 'metrics') {
+      return { code: 0, stdout: 'ok', stderr: '' }
+    }
+    const entry = USAGE_SOURCES.find((candidate) => candidate.metric === args[2])
+    assert.ok(entry, `métrica inesperada: ${String(args[2])}`)
+    return {
+      code: 0,
+      stdout: metricsJson(entry, values[entry.resource]),
+      stderr: '',
+    }
+  }
+}
+
+/** Estado com um dia inteiro lido até o início da janela de NOW (cobertura total). */
+function fullState(used: Readonly<Record<string, number>>): string {
+  const state: UsageState = {
+    schemaVersion: 1,
+    trackingSince: SINCE - DAY,
+    coveredUntil: SINCE,
+    days: [{ day: '2026-11-17', coveredMinutes: 1440, used }],
+  }
+  return JSON.stringify(state)
 }
 
 function writes(calls: readonly Call[]): string[] {
@@ -352,38 +440,92 @@ describe('run', () => {
     assert.deepEqual(d.execs, [])
   })
 
-  it('uso baixo: só mede e envia as razões e o sucesso, sem tocar nos projetos', async () => {
-    const d = fakeDeps(BASE_ENV, { killSwitch: {}, production: BOTH_LIVE }, usageExec(LOW_USAGE))
+  it('uso baixo: lê a janela das quatro métricas, grava o estado e envia as razões e o sucesso', async () => {
+    const d = fakeDeps(
+      BASE_ENV,
+      { killSwitch: {}, production: BOTH_LIVE },
+      metricsExec({ active_cpu: 360_000, function_invocations: 1200, fast_origin_transfer: 5e7 }),
+    )
     const result = await run(d, { dryRun: false, release: false })
-    assert.equal(result.code, 0)
-    assert.equal(d.execs.length, 1)
+    assert.equal(result.code, 0, d.lines.join('\n'))
+    assert.deepEqual(
+      d.execs.map((exec) => exec.args[2]),
+      USAGE_SOURCES.map((entry) => entry.metric),
+    )
     assert.deepEqual(d.execs[0]?.args.slice(1), [
-      'billing',
-      'usage',
+      'metrics',
+      'vercel.function_invocation.function_cpu_time_ms',
+      '--all',
+      '--aggregation',
+      'sum',
       '--since',
-      '30d',
+      '2026-11-18T09:18:00.000Z',
+      '--until',
+      '2026-11-18T09:40:00.000Z',
+      '--granularity',
+      '1m',
       '--json',
       '--scope',
       ORG,
     ])
+    assert.equal(d.execs[2]?.args[5], 'count')
     // O CLI recebe o token e o time, e nada da credencial OTLP.
     assert.equal(d.execs[0]?.env['VERCEL_TOKEN'], 'vercel-token')
     assert.equal(d.execs[0]?.env['GRAFANA_OTLP_TOKEN'], undefined)
     assert.deepEqual(writes(d.calls), [])
+    assert.equal(d.written.length, 1)
+    const state = parseState(d.written[0] ?? '')
+    assert.equal(state.coveredUntil, UNTIL)
+    assert.deepEqual(state.days[0]?.used, {
+      active_cpu: 0.1,
+      provisioned_memory: 0,
+      function_invocations: 1200,
+      fast_origin_transfer: 0.05,
+    })
     const otlp = d.calls.filter((call) => call.path === '/otlp/v1/metrics')
     assert.equal(otlp.length, 1)
     const sent = JSON.stringify(otlp[0]?.body)
     assert.ok(sent.includes('teko_vercel_usage_ratio'))
     assert.ok(sent.includes('"stringValue":"vercel-usage"'))
-    assert.ok(result.summary.some((line) => line.includes('| cdn_requests | 220000 requests |')))
+    assert.ok(!sent.includes('cdn_requests'))
+    assert.ok(
+      result.summary.some((line) => line.includes('| active_cpu | 0.1 h | 0.1 h | 4 h | 2.5% |')),
+    )
+    assert.ok(result.summary.some((line) => line.includes('| cdn_requests | sem fonte no Hobby |')))
+    assert.ok(result.summary.some((line) => line.startsWith('Cobertura: 100%')))
+  })
+
+  it('continua do estado anterior e soma a janela nova', async () => {
+    const d = fakeDeps(
+      BASE_ENV,
+      { killSwitch: {}, production: BOTH_LIVE },
+      metricsExec({ active_cpu: 3_600_000 }),
+      undefined,
+      fullState({ active_cpu: 1 }),
+    )
+    const result = await run(d, { dryRun: false, release: false })
+    assert.equal(result.code, 0, d.lines.join('\n'))
+    const state = parseState(d.written[0] ?? '')
+    assert.equal(state.trackingSince, SINCE - DAY)
+    assert.deepEqual(
+      state.days.map((day) => [day.day, day.used['active_cpu']]),
+      [
+        ['2026-11-17', 1],
+        ['2026-11-18', 1],
+      ],
+    )
+    assert.ok(
+      result.summary.some((line) => line.includes('| active_cpu | 2 h | 2 h | 4 h | 50% |')),
+    )
   })
 
   it('85%: grava o kill switch e redeploya a produção atual dos dois projetos', async () => {
-    const usage = report([{ name: 'Fluid Provisioned Memory', quantity: 306, unit: 'GB-Hrs' }])
     const d = fakeDeps(
       BASE_ENV,
       { killSwitch: {}, production: BOTH_LIVE, states: ['BUILDING', 'READY'] },
-      usageExec(usage),
+      metricsExec(),
+      undefined,
+      fullState({ provisioned_memory: 306 }),
     )
     const result = await run(d, { dryRun: false, release: false })
     assert.equal(result.code, 0, d.lines.join('\n'))
@@ -419,7 +561,6 @@ describe('run', () => {
   })
 
   it('85% com o kill switch já ligado e aplicado: não grava nem redeploya (idempotente)', async () => {
-    const usage = report([{ name: 'Fluid Active CPU', quantity: 3.6, unit: 'Hrs' }])
     const d = fakeDeps(
       BASE_ENV,
       {
@@ -429,7 +570,9 @@ describe('run', () => {
         },
         production: BOTH_LIVE,
       },
-      usageExec(usage),
+      metricsExec(),
+      undefined,
+      fullState({ active_cpu: 3.6 }),
     )
     const result = await run(d, { dryRun: false, release: false })
     assert.equal(result.code, 0)
@@ -456,8 +599,14 @@ describe('run', () => {
   })
 
   it('95%: lockdown pelo vercel-firewall.ts e kill switch, nos dois projetos', async () => {
-    const usage = report([{ name: 'Edge Requests', quantity: 960_000 }])
-    const d = fakeDeps(BASE_ENV, { killSwitch: {}, production: BOTH_LIVE }, usageExec(usage))
+    // 940 mil lidas + 20 mil na janela: 96% das invocações.
+    const d = fakeDeps(
+      BASE_ENV,
+      { killSwitch: {}, production: BOTH_LIVE },
+      metricsExec({ function_invocations: 20_000 }),
+      undefined,
+      fullState({ function_invocations: 940_000 }),
+    )
     const result = await run(d, { dryRun: false, release: false })
     assert.equal(result.code, 0, d.lines.join('\n'))
     const firewall = d.execs.filter((exec) => exec.args[0] === FIREWALL_SCRIPT)
@@ -601,18 +750,139 @@ describe('run', () => {
     assert.ok(d.lines.some((line) => line.includes('scripts/vercel-firewall.ts não existe')))
   })
 
-  it('CLI com erro: job vermelho, sem sucesso registrado e sem agir', async () => {
-    const d = fakeDeps(BASE_ENV, { killSwitch: {}, production: BOTH_LIVE }, () => ({
-      code: 1,
-      stdout: '',
-      stderr: 'Error: ::set-output forbidden',
-    }))
+  it('CLI com erro: job vermelho, sem sucesso registrado, sem gravar o estado e sem agir', async () => {
+    const d = fakeDeps(
+      BASE_ENV,
+      { killSwitch: {}, production: BOTH_LIVE },
+      () => ({
+        code: 1,
+        stdout: '',
+        stderr: 'Error: ::set-output forbidden',
+      }),
+      undefined,
+      fullState({ active_cpu: 3.9 }),
+    )
     const result = await run(d, { dryRun: false, release: false })
     assert.equal(result.code, 1)
     assert.deepEqual(writes(d.calls), [])
+    assert.deepEqual(d.written, [])
     // A saída do filho não vira comando do Actions.
     assert.ok(d.lines.includes('  Error: : :set-output forbidden'))
     const otlp = d.calls.find((call) => call.path === '/otlp/v1/metrics')
     assert.ok(!JSON.stringify(otlp?.body ?? {}).includes('vercel-usage'))
+  })
+
+  it('fonte recusada (payment_required do Hobby): falha visível, sem sucesso e estado intacto', async () => {
+    const d = fakeDeps(
+      BASE_ENV,
+      { killSwitch: {}, production: BOTH_LIVE },
+      (args) =>
+        args[1] === 'metrics'
+          ? { code: 1, stdout: PAYMENT_REQUIRED, stderr: '' }
+          : { code: 0, stdout: 'ok', stderr: '' },
+      undefined,
+      fullState({ active_cpu: 1 }),
+    )
+    const result = await run(d, { dryRun: false, release: false })
+    assert.equal(result.code, 1)
+    assert.equal(d.execs.length, 1)
+    assert.deepEqual(d.written, [])
+    assert.ok(
+      d.lines.some(
+        (line) =>
+          line.startsWith(
+            '::error title=vercel-usage::fonte de uso não respondeu: vercel metrics',
+          ) && line.includes('payment_required: Observability Plus is required'),
+      ),
+    )
+    assert.ok(result.summary.some((line) => line.includes('A fonte de uso não respondeu')))
+    const otlp = d.calls.find((call) => call.path === '/otlp/v1/metrics')
+    const sent = JSON.stringify(otlp?.body ?? {})
+    assert.ok(!sent.includes('teko_ops_job_last_success_timestamp_seconds'))
+    assert.ok(!sent.includes('teko_vercel_usage_ratio'))
+  })
+
+  it('formato novo do vercel metrics é falha, não uso zero', async () => {
+    const d = fakeDeps(BASE_ENV, { killSwitch: {}, production: BOTH_LIVE }, (args) =>
+      args[1] === 'metrics'
+        ? { code: 0, stdout: '{"summary":[{"cpu":1}]}', stderr: '' }
+        : { code: 0, stdout: 'ok', stderr: '' },
+    )
+    const result = await run(d, { dryRun: false, release: false })
+    assert.equal(result.code, 1)
+    assert.deepEqual(d.written, [])
+    assert.ok(d.lines.some((line) => line.includes('resumo sem a coluna')))
+  })
+
+  it('dry-run da medição: lê e mostra, sem gravar o estado nem enviar', async () => {
+    const d = fakeDeps(
+      BASE_ENV,
+      { killSwitch: {}, production: BOTH_LIVE },
+      metricsExec({ active_cpu: 360_000 }),
+    )
+    const result = await run(d, { dryRun: true, release: false })
+    assert.equal(result.code, 0, d.lines.join('\n'))
+    assert.equal(d.execs.length, USAGE_SOURCES.length)
+    assert.deepEqual(d.written, [])
+    assert.ok(!d.calls.some((call) => call.path === '/otlp/v1/metrics'))
+  })
+
+  it('estado ilegível: avisa e recomeça do zero', async () => {
+    const d = fakeDeps(
+      BASE_ENV,
+      { killSwitch: {}, production: BOTH_LIVE },
+      metricsExec(),
+      undefined,
+      '{"schemaVersion":9}',
+    )
+    const result = await run(d, { dryRun: false, release: false })
+    assert.equal(result.code, 0, d.lines.join('\n'))
+    assert.ok(
+      d.lines.some((line) => line.startsWith('::warning title=vercel-usage::estado ilegível')),
+    )
+    assert.equal(parseState(d.written[0] ?? '').trackingSince, SINCE)
+  })
+
+  it('cobertura baixa: avisa que a estimativa extrapola lacunas', async () => {
+    const stale: UsageState = {
+      schemaVersion: 1,
+      trackingSince: SINCE - 2 * DAY,
+      coveredUntil: SINCE - DAY,
+      days: [{ day: '2026-11-16', coveredMinutes: 60, used: { active_cpu: 0.01 } }],
+    }
+    const d = fakeDeps(
+      BASE_ENV,
+      { killSwitch: {}, production: BOTH_LIVE },
+      metricsExec(),
+      undefined,
+      JSON.stringify(stale),
+    )
+    const result = await run(d, { dryRun: false, release: false })
+    assert.equal(result.code, 0, d.lines.join('\n'))
+    assert.ok(d.lines.some((line) => line.startsWith('::warning title=vercel-usage::cobertura de')))
+  })
+
+  it('sem minuto novo desde a última leitura: não chama o CLI e registra o sucesso', async () => {
+    const state: UsageState = {
+      schemaVersion: 1,
+      trackingSince: SINCE,
+      coveredUntil: UNTIL,
+      days: [{ day: '2026-11-18', coveredMinutes: 22, used: {} }],
+    }
+    const d = fakeDeps(
+      BASE_ENV,
+      { killSwitch: {}, production: BOTH_LIVE },
+      metricsExec(),
+      undefined,
+      JSON.stringify(state),
+    )
+    const result = await run(d, { dryRun: false, release: false })
+    assert.equal(result.code, 0)
+    assert.deepEqual(d.execs, [])
+    assert.deepEqual(d.written, [])
+    const otlp = d.calls.find((call) => call.path === '/otlp/v1/metrics')
+    assert.ok(
+      JSON.stringify(otlp?.body ?? {}).includes('teko_ops_job_last_success_timestamp_seconds'),
+    )
   })
 })

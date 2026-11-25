@@ -414,6 +414,24 @@ Pendência (mantenedor): o lock de `main` (versão 14) foi exportado antes das m
 `promote-corpus` o recusaria. Antes do próximo release, rodar a ingestão completa no staging para
 reexportar o snapshot com a migração atual e fazer o merge do PR do lock.
 
+## Vercel desativada (2026-11-25)
+
+A Vercel desativou os dois projetos (`402 DEPLOYMENT_DISABLED` em todas as URLs, inclusive o
+estático): a conta Hobby passou de 4 h de Fluid Active CPU. A guarda de uso nunca mediu nada: o
+`vercel billing usage` não funciona no Hobby (404 `costs_not_found`), os runs agendados do
+`vercel-usage` ficaram vermelhos desde 2026-11-19, e o `teko-ops-job-stale` ficou em `Normal`
+porque a série de sucesso nunca existiu. A mudança `fix-vercel-usage-hobby` troca a fonte pelo
+`vercel metrics` (a única que responde no Hobby, só nos últimos 30 minutos), lida a cada 10 minutos
+e acumulada no cache do Actions, faz o alerta disparar com 6 h sem sucesso ou com a série ausente e
+põe o 402 no `teko-deployment-paused` (registro em
+[vercel-paused.md](runbooks/vercel-paused.md#registro); confiança da fonte em
+[budget-kill-switch.md](runbooks/budget-kill-switch.md#fonte)). Fast Data Transfer e CDN Requests
+continuam sem fonte no Hobby.
+
+Pendência (mantenedor): retomada dos projetos quando a Vercel liberar
+([vercel-paused.md](runbooks/vercel-paused.md#retomar)), conferindo o `vercel-usage` verde e a
+cobertura subindo depois dela.
+
 ## Revisão antes da F4 (2026-11-12)
 
 O mantenedor aprovou as recomendações da revisão de arquitetura; os pacotes estão no

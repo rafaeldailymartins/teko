@@ -15,20 +15,22 @@
 #     apps/api/src/application/services/pricing.ts, a score config user_feedback e a annotation
 #     queue do 👎, e empurra teko_langfuse_units_projected (Metrics API dos dois projetos) e o
 #     sucesso do job. Dispatch com dry_run só lê.
-#   - vercel-usage (environment ops, F7, mudança add-usage-guard): scripts/vercel-usage.ts lê o uso
-#     de 30 dias da conta Vercel Hobby (Vercel CLI de tools/vercel-cli), empurra
-#     teko_vercel_usage_ratio{resource} e o sucesso, e aplica a guarda: 85% liga LLM_KILL_SWITCH com
-#     redeploy nos dois projetos, 95% também o lockdown do WAF (scripts/vercel-firewall.ts). Nunca
-#     desliga sozinho. O dispatch exercita a guarda num projeto (kill_switch 0.85 ou 0.95) e faz a
-#     volta (release); runbook docs/runbooks/budget-kill-switch.md.
+#   - vercel-usage (environment ops, F7, mudanças add-usage-guard e fix-vercel-usage-hobby): a cada
+#     10 min, scripts/vercel-usage.ts lê com o `vercel metrics` (Vercel CLI de tools/vercel-cli) a
+#     janela ainda não contada das métricas de função da conta Hobby (o Hobby só aceita os últimos
+#     30 min), soma no estado .vercel-usage/state.json (cache do Actions, sem escrita no repositório),
+#     empurra teko_vercel_usage_ratio{resource} (estimativa de 30 dias) e o sucesso, e aplica a
+#     guarda: 85% liga LLM_KILL_SWITCH com redeploy nos dois projetos, 95% também o lockdown do WAF
+#     (scripts/vercel-firewall.ts). Nunca desliga sozinho. O dispatch exercita a guarda num projeto
+#     (kill_switch 0.85 ou 0.95) e faz a volta (release); runbook docs/runbooks/budget-kill-switch.md.
 #   - weekly-maintenance (environment maintenance, domingo 06:00 UTC): `cli maintenance purge`
 #     (PurgeExpiredData, role teko_app) no staging e na produção; produção sem schema (antes da
 #     primeira migração) é aviso. O OTLP fica no environment ops, então o sucesso vai por output ao
 #     weekly-maintenance-metrics, que o registra com scripts/ops-metrics.ts --success-only.
 #
-# Cada job escolhe o cron pelo github.event.schedule: o diário roda grafana, coverage-age, quotas,
-# langfuse e vercel-usage; o semanal, só o weekly-maintenance. No dispatch, `job` escolhe um job
-# (all = os diários).
+# Cada job escolhe o cron pelo github.event.schedule: o diário roda grafana, coverage-age, quotas e
+# langfuse; o semanal, só o weekly-maintenance; o de 10 em 10 minutos, só o vercel-usage. No
+# dispatch, `job` escolhe um job (all = os diários e o vercel-usage).
 #
 # O environment ops pode estar vazio: cada job confere os segredos e, sem eles, avisa no resumo e
 # termina verde (o grafana ainda valida os arquivos). Quem cadastra é o mantenedor
@@ -50,6 +52,8 @@ on:
     - cron: "40 9 * * *"
     # Domingo 06:00 UTC: manutenção semanal (weekly-maintenance).
     - cron: "0 6 * * 0"
+    # A cada 10 min, fora da virada da hora (pico de atraso do Actions): guarda de uso da Vercel.
+    - cron: "3-59/10 * * * *"
   push:
     branches: [main]
     paths:
@@ -100,8 +104,10 @@ on:
 
 permissions: {}
 
+# O cron de 10 min tem grupo próprio: no grupo `ops`, um run dele na fila cancelaria o diário
+# pendente. O vercel-usage serializa por si (concurrency do job), em qualquer gatilho.
 concurrency:
-  group: ops
+  group: ${{ github.event.schedule == '3-59/10 * * * *' && format('ops-usage-{0}', github.run_id) || 'ops' }}
   cancel-in-progress: false
 
 env:
@@ -378,8 +384,12 @@ jobs:
   vercel-usage:
     name: vercel-usage
     if: >-
-      github.event.schedule == '40 9 * * *' || (github.event_name == 'workflow_dispatch' &&
+      github.event.schedule == '3-59/10 * * * *' || (github.event_name == 'workflow_dispatch' &&
       contains(fromJSON('["all","vercel-usage"]'), inputs.job))
+    # Uma execução por vez: o estado do cache e o kill switch não admitem duas em paralelo.
+    concurrency:
+      group: ops-vercel-usage
+      cancel-in-progress: false
     runs-on: ubuntu-24.04
     # A espera do READY do redeploy dos dois projetos cabe aqui (até 15 min cada, no pior caso).
     timeout-minutes: 40
@@ -435,6 +445,16 @@ jobs:
         if: steps.secrets.outputs.ready == 'true'
         run: pnpm --dir tools/vercel-cli install --frozen-lockfile
 
+      # Estado das janelas já lidas: o cache mais recente (cada run grava uma chave nova). Sem ele, o
+      # script recomeça do zero e o resumo mostra a cobertura menor.
+      - name: Estado da guarda (cache do Actions)
+        if: steps.secrets.outputs.ready == 'true'
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .vercel-usage
+          key: vercel-usage-state-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: vercel-usage-state-
+
       - name: Guarda de uso da Vercel (OTLP ao Grafana Cloud)
         if: steps.secrets.outputs.ready == 'true'
         env:
@@ -460,6 +480,17 @@ jobs:
               ;;
           esac
           node scripts/vercel-usage.ts "${args[@]}"
+
+      # Grava mesmo com o job vermelho por falha no kill switch (a leitura já avançou o estado); fonte
+      # que não respondeu não toca no arquivo. Dry-run não grava.
+      - name: Guardar o estado da guarda
+        if: >-
+          !cancelled() && steps.secrets.outputs.ready == 'true' && env.DRY_RUN != 'true' &&
+          hashFiles('.vercel-usage/state.json') != ''
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .vercel-usage
+          key: vercel-usage-state-${{ github.run_id }}-${{ github.run_attempt }}
 
   weekly-maintenance:
     name: weekly-maintenance
