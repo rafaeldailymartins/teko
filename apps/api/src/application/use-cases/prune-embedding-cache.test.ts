@@ -33,7 +33,7 @@ describe('PruneEmbeddingCache', () => {
     }
     const calls: [string, string[]][] = []
     const cache: EmbeddingCache = {
-      getMany: fail,
+      cachedHashes: fail,
       putMany: fail,
       retainOnly: (model, keep) => {
         calls.push([model, [...keep].sort()])

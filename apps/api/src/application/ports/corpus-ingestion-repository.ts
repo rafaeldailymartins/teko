@@ -57,7 +57,11 @@ interface NewChunkRow {
   readonly ordinal: number
   readonly content: string
   readonly contentHash: string
-  readonly embedding: readonly number[]
+  /**
+   * Chave do vetor no `embedding_cache` (com o `embeddingModel` do contexto): o vetor é copiado do
+   * cache para o chunk dentro do banco, sem passar pela aplicação.
+   */
+  readonly embeddingHash: string
 }
 
 export interface NewProvisionVersionRow {
@@ -153,7 +157,11 @@ export interface IngestionUnitOfWork {
   widen(
     rows: readonly { readonly id: string; readonly validDuring: ValidityInterval }[],
   ): Promise<void>
-  /** Insere redações novas (com alterações e chunks); devolve os IDs, na ordem. */
+  /**
+   * Insere redações novas (com alterações e chunks); devolve os IDs, na ordem. O vetor de cada chunk
+   * vem do `embedding_cache` (`embeddingHash`, `embeddingModel`) por SQL; chunk que ficaria sem
+   * vetor lança `CorpusInvariantError` (a transação volta).
+   */
   insertVersions(
     rows: readonly NewProvisionVersionRow[],
     context: {

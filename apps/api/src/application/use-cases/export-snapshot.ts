@@ -7,6 +7,7 @@ import {
   type SnapshotLineage,
   type SnapshotManifest,
   type SnapshotRepository,
+  snapshotManifestSchema,
 } from '../ports/snapshot-repository.ts'
 
 /**
@@ -16,6 +17,11 @@ import {
  * última migração aplicada, e a linhagem quando informada). Um manifesto só existe se todos os
  * arquivos dele foram gravados. Depois apaga os snapshots além dos 3 mais recentes, menos os
  * protegidos (o do `corpus.lock.json` vigente, que o rollback pode repromover).
+ *
+ * Com `reuseExisting` (o `ingest load`), um manifesto já gravado da mesma versão e da mesma migração
+ * é devolvido sem reler as tabelas: a exportação é o maior gasto de transferência pública do Neon
+ * do staging (incidente de 2026-11-18), e a mesma versão do corpus é o mesmo conteúdo publicado,
+ * a regra que o `load` já usa para não exportar.
  */
 
 const SNAPSHOT_PREFIX = 'snapshots/'
@@ -36,11 +42,15 @@ interface ExportSnapshotCommand {
   readonly lineage?: SnapshotLineage
   /** Versões que a retenção não apaga (a do `corpus.lock.json` vigente: o rollback precisa dela). */
   readonly protect?: readonly number[]
+  /** Reaproveita o manifesto da mesma versão e da mesma migração, se já estiver no store. */
+  readonly reuseExisting?: boolean
 }
 
 export type ExportSnapshot = (command: ExportSnapshotCommand) => Promise<{
   readonly manifestKey: string
   readonly manifest: SnapshotManifest
+  /** `true` quando o manifesto já estava no store e nenhuma tabela foi lida. */
+  readonly reused: boolean
 }>
 
 export interface SnapshotDeps {
@@ -54,6 +64,41 @@ export class SnapshotError extends Error {
   constructor(message: string) {
     super(message)
     this.name = 'SnapshotError'
+  }
+}
+
+export function parseManifest(raw: Uint8Array, key: string): SnapshotManifest {
+  let json: unknown
+  try {
+    json = JSON.parse(new TextDecoder().decode(raw))
+  } catch (error) {
+    throw new SnapshotError(`manifesto ${key} não é JSON: ${String(error)}`)
+  }
+  const parsed = snapshotManifestSchema.safeParse(json)
+  if (!parsed.success) {
+    throw new SnapshotError(`manifesto ${key} inválido: ${parsed.error.message}`)
+  }
+  return parsed.data
+}
+
+/** Manifesto já gravado da versão, se for da mesma migração; ilegível conta como ausente. */
+async function existingManifest(
+  blobs: BlobStore,
+  corpusVersion: number,
+  migrationHash: string,
+): Promise<SnapshotManifest | null> {
+  const key = snapshotManifestKey(corpusVersion)
+  const raw = await blobs.get(BlobStoreName.CorpusSnapshots, key)
+  if (raw === null) {
+    return null
+  }
+  try {
+    const manifest = parseManifest(raw, key)
+    return manifest.corpusVersion === corpusVersion && manifest.migration.hash === migrationHash
+      ? manifest
+      : null
+  } catch {
+    return null
   }
 }
 
@@ -103,6 +148,13 @@ export function createExportSnapshot(deps: SnapshotDeps): ExportSnapshot {
       if (reader.migration === null) {
         throw new SnapshotError('banco sem migrações aplicadas')
       }
+      const manifestKey = snapshotManifestKey(corpusVersion)
+      if (command.reuseExisting === true) {
+        const existing = await existingManifest(deps.blobs, corpusVersion, reader.migration.hash)
+        if (existing !== null) {
+          return { manifestKey, manifest: existing, reused: true }
+        }
+      }
       const tables: SnapshotManifest['tables'][number][] = []
       for (const table of SNAPSHOT_TABLES) {
         const encoded = await deps.codec.encode(reader.rows(table))
@@ -124,13 +176,12 @@ export function createExportSnapshot(deps: SnapshotDeps): ExportSnapshot {
         ...(command.lineage === undefined ? {} : { lineage: command.lineage }),
         tables,
       }
-      const manifestKey = snapshotManifestKey(corpusVersion)
       await deps.blobs.set(
         BlobStoreName.CorpusSnapshots,
         manifestKey,
         `${JSON.stringify(manifest, null, 2)}\n`,
       )
-      return { manifestKey, manifest }
+      return { manifestKey, manifest, reused: false }
     })
     await pruneSnapshots(deps.blobs, SNAPSHOT_RETENTION, command.protect ?? [])
     return result
