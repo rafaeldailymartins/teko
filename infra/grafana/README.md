@@ -107,6 +107,8 @@ runbook apontam para `main` no GitHub.
 | `teko-deployment-paused`   | `/healthz` respondeu 503 ao Synthetic Monitoring                     | Synthetic Monitoring             | `vercel-paused.md`                        |
 | `teko-synthetic-failed`    | check `teko-*` sem nenhum sucesso em 20 min (`probe_success` < 1)    | Synthetic Monitoring             | `ops-alerts.md#check-sintetico-...`       |
 | `teko-neon-cu-hours`       | `teko_neon_cu_hours_ratio` > 0,7                                     | `ops.yml` (`quotas`)             | `neon-suspended.md#cu-h-...`              |
+| `teko-neon-transfer-50`    | `teko_neon_data_transfer_ratio` > 0,5                                | `ops.yml` (`quotas`)             | `neon-suspended.md#transferencia-...`     |
+| `teko-neon-transfer-80`    | `teko_neon_data_transfer_ratio` > 0,8 (crítico)                      | `ops.yml` (`quotas`)             | `neon-suspended.md#transferencia-...`     |
 | `teko-langfuse-units`      | `teko_langfuse_units_projected` > 35.000                             | `ops.yml` (Langfuse)             | `quota-exhausted.md#langfuse`             |
 | `teko-vercel-usage-50`     | `teko_vercel_usage_ratio` > 0,5                                      | `ops.yml` (`vercel-usage`)       | `budget-kill-switch.md`                   |
 | `teko-vercel-usage-75`     | `teko_vercel_usage_ratio` > 0,75                                     | `ops.yml` (`vercel-usage`)       | `budget-kill-switch.md`                   |

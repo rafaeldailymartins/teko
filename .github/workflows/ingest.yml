@@ -1,9 +1,14 @@
 # Ingestão do corpus no staging (plano: "Ingestão, vigência e avaliação"; mudanças OpenSpec
 # add-embedding-pipeline e add-docling-pdf-extraction).
 #
-#   discover (staging) → docling-models → extract (matriz, sem segredos) → load (staging)
-#     → corpus-eval (staging) → lock-pr (App teko-release-bot) → summary
+#   neon-transfer (staging) → discover (staging) → docling-models → extract (matriz, sem segredos)
+#     → load (staging) → corpus-eval (staging) → lock-pr (App teko-release-bot) → summary
 #
+# - neon-transfer: guarda da transferência pública do Neon (5 GB/mês por projeto no Free; estourar
+#   suspende o compute até o ciclo virar, como em 2026-11-18). Lê o `data_transfer_bytes` do
+#   teko-staging pela API do Neon (não acorda o compute) e para o run acima de 80%, antes de qualquer
+#   job tocar o banco, nos dois modos; o input `allow_high_transfer` libera com aviso. O número vai
+#   para o resumo (docs/runbooks/neon-suspended.md#transferencia-acima-da-cota).
 # Modo `eval-only` (dispatch, ADR 0031): pula discover, extract e load e roda só o corpus-eval
 # contra o estado atual do staging. Com `ref` (SHA de um PR do próprio repositório, disparado pelo
 # rótulo `corpus-eval`, corpus-eval-label.yml), avalia o código do PR e nunca abre PR de lock. Sem
@@ -80,6 +85,10 @@ on:
         description: corpus-eval com a reescrita da pergunta pelo LLM (ADR 0034; exige as chaves no environment staging)
         type: boolean
         default: false
+      allow_high_transfer:
+        description: Roda mesmo com o teko-staging acima de 80% da transferência do período do Neon (o estouro suspende o compute até o ciclo virar)
+        type: boolean
+        default: false
   workflow_call:
     inputs:
       target:
@@ -104,6 +113,9 @@ on:
         type: string
         default: ""
       query_rewrite:
+        type: boolean
+        default: false
+      allow_high_transfer:
         type: boolean
         default: false
     # Num workflow chamado, o segredo do environment só chega ao job com `environment: staging` se
@@ -151,8 +163,58 @@ env:
   BLOB_STORE: github-releases
 
 jobs:
+  neon-transfer:
+    name: neon-transfer
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    environment: staging
+    permissions:
+      contents: read
+    outputs:
+      ratio: ${{ steps.guard.outputs.ratio }}
+      bytes: ${{ steps.guard.outputs.bytes }}
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          # GitHub (checkout e setup-node), nodejs.org e a API do Neon (console, nunca o compute).
+          egress-policy: block
+          allowed-endpoints: >
+            github.com:443
+            api.github.com:443
+            codeload.github.com:443
+            objects.githubusercontent.com:443
+            raw.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+            results-receiver.actions.githubusercontent.com:443
+            *.actions.githubusercontent.com:443
+            nodejs.org:443
+            console.neon.tech:443
+
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Node (.nvmrc)
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+
+      - name: Transferência do teko-staging no período (API do Neon, guarda em 80%)
+        id: guard
+        env:
+          NEON_STAGING_PROJECT_ID: ${{ vars.NEON_STAGING_PROJECT_ID }}
+          NEON_API_KEY_STAGING: ${{ secrets.NEON_API_KEY_STAGING }}
+          ALLOW_HIGH_TRANSFER: ${{ inputs.allow_high_transfer }}
+        run: |
+          args=()
+          [[ "$ALLOW_HIGH_TRANSFER" == true ]] && args+=(--allow)
+          node scripts/neon-transfer-guard.ts "${args[@]}"
+
   discover:
     name: discover
+    needs: neon-transfer
     # Modo eval-only: nada é baixado nem ingerido; discover, extract e load ficam pulados.
     if: ${{ inputs.mode != 'eval-only' }}
     runs-on: ubuntu-24.04
@@ -628,11 +690,11 @@ jobs:
 
   corpus-eval:
     name: corpus-eval
-    needs: load
+    needs: [neon-transfer, load]
     # Sem `!cancelled()`, o extract pulado pula este job. No modo eval-only o load fica pulado e o
-    # eval roda contra o estado atual do staging.
+    # eval roda contra o estado atual do staging, sempre depois da guarda de transferência.
     if: >-
-      ${{ !cancelled() && (inputs.mode == 'eval-only'
+      ${{ !cancelled() && needs.neon-transfer.result == 'success' && (inputs.mode == 'eval-only'
       || (needs.load.result == 'success' && needs.load.outputs.status == 'published')) }}
     runs-on: ubuntu-24.04
     # 50: com a reescrita da pergunta, o eval vai um caso por vez e espaçado (cota por minuto do
@@ -1031,7 +1093,7 @@ jobs:
 
   summary:
     name: summary
-    needs: [discover, docling-models, extract, load, lock-pr, corpus-eval]
+    needs: [neon-transfer, discover, docling-models, extract, load, lock-pr, corpus-eval]
     if: ${{ always() }}
     runs-on: ubuntu-24.04
     timeout-minutes: 5
@@ -1054,6 +1116,10 @@ jobs:
           FAMILY: ${{ inputs.family }}
           BULK: ${{ inputs.bulk }}
           ACCEPT_CHURN: ${{ inputs.accept_churn }}
+          ALLOW_HIGH_TRANSFER: ${{ inputs.allow_high_transfer }}
+          TRANSFER: ${{ needs.neon-transfer.result }}
+          TRANSFER_RATIO: ${{ needs.neon-transfer.outputs.ratio }}
+          TRANSFER_BYTES: ${{ needs.neon-transfer.outputs.bytes }}
           DISCOVER: ${{ needs.discover.result }}
           COUNT: ${{ needs.discover.outputs.count }}
           MODELS: ${{ needs.docling-models.result }}
@@ -1074,6 +1140,12 @@ jobs:
             echo
             echo "| Etapa | Resultado |"
             echo "|---|---|"
+            if [[ -n "$TRANSFER_BYTES" ]]; then
+              transfer="$(awk -v b="$TRANSFER_BYTES" -v r="$TRANSFER_RATIO" 'BEGIN { printf "%.2f GB de 5 GB (%.1f%%)", b / 1e9, r * 100 }')"
+            else
+              transfer="sem medida"
+            fi
+            echo "| neon-transfer | ${TRANSFER} (${transfer}; guarda em 80%; allow_high_transfer: ${ALLOW_HIGH_TRANSFER:-false}) |"
             echo "| discover | ${DISCOVER} (${COUNT:-0} item(ns) para o Docling) |"
             echo "| docling-models | ${MODELS} |"
             echo "| extract | ${EXTRACT} |"
@@ -1086,6 +1158,10 @@ jobs:
             fi
             echo "| corpus-eval | ${EVAL}${EVAL_VERSION:+ (corpus_version ${EVAL_VERSION})} |"
             echo "| lock-pr | ${LOCK_PR} |"
+            if [[ "$TRANSFER" == failure ]]; then
+              echo
+              echo "> O teko-staging passou de 80% da transferência pública do período do Neon (ou a medida falhou): nada tocou o banco. Veja docs/runbooks/neon-suspended.md#transferencia-acima-da-cota; para rodar mesmo assim, dispare com \`allow_high_transfer\`."
+            fi
             if [[ "$LOAD_STATUS" == budget_exhausted ]]; then
               echo
               echo "> Orçamento diário de neurons esgotado (código 75): rode de novo amanhã; a ingestão retoma pelo embedding_cache."
@@ -1096,7 +1172,7 @@ jobs:
             fi
           } >>"$GITHUB_STEP_SUMMARY"
           # O resumo não esconde falha: qualquer etapa vermelha deixa o run vermelho.
-          for result in "$DISCOVER" "$MODELS" "$EXTRACT" "$LOAD" "$LOCK_PR" "$EVAL"; do
+          for result in "$TRANSFER" "$DISCOVER" "$MODELS" "$EXTRACT" "$LOAD" "$LOCK_PR" "$EVAL"; do
             [[ "$result" == failure || "$result" == cancelled ]] && exit 1
           done
           exit 0
