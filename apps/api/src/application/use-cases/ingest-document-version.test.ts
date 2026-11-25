@@ -368,7 +368,7 @@ function setup(options: {
   readonly size?: number
   readonly bytesPerChunk?: number
   readonly embed?: EmbedPendingResult
-  readonly cached?: (hash: string) => number[] | undefined
+  readonly cached?: (hash: string) => boolean
   readonly provisionIds?: (keys: string[]) => Map<string, string>
   readonly closedOn?: string
   readonly sameFingerprint?: { id: string; parserRevision: number }
@@ -384,14 +384,9 @@ function setup(options: {
   const ingest = createIngestDocumentVersion({
     repository,
     cache: {
-      getMany: (hashes) =>
+      cachedHashes: (hashes) =>
         Promise.resolve(
-          new Map(
-            hashes.flatMap((hash) => {
-              const found = options.cached === undefined ? [1, 2] : options.cached(hash)
-              return found === undefined ? [] : [[hash, found] as const]
-            }),
-          ),
+          new Set(hashes.filter((hash) => options.cached === undefined || options.cached(hash))),
         ),
       putMany: () => Promise.resolve(),
       retainOnly: () => Promise.resolve(0),
@@ -663,7 +658,13 @@ describe('IngestDocumentVersion', () => {
       knowledge: iv('2026-06-01'),
       structured: { campo: 1 },
       amendment: { actLabel: 'Decreto 1' },
-      chunks: [{ ordinal: 0, content: 'Art. 1. Redação nova.', embedding: [1, 2] }],
+      chunks: [
+        {
+          ordinal: 0,
+          content: 'Art. 1. Redação nova.',
+          embeddingHash: '#RCTE > Art. 1\n\nArt. 1. Redação nova.',
+        },
+      ],
     })
     expect(recorder.inserted[1]).toMatchObject({ structured: null, amendment: null })
     expect(recorder.review).toEqual([
@@ -707,7 +708,7 @@ describe('IngestDocumentVersion', () => {
   })
 
   it('falha se o embedding de um chunk novo sumiu do cache', async () => {
-    const { ingest } = setup({ cached: () => undefined })
+    const { ingest } = setup({ cached: () => false })
     await expect(ingest(command(source([version('Art. 1. Texto.')])))).rejects.toBeInstanceOf(
       ReconciliationError,
     )

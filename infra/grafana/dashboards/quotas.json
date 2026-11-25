@@ -97,6 +97,21 @@
       ]
     },
     {
+      "title": "Neon: transferência pública do período sobre 5 GB",
+      "type": "bargauge",
+      "unit": "percentunit",
+      "min": 0,
+      "max": 1,
+      "thresholds": [0.5, 0.8],
+      "description": "data_transfer_bytes do período (API do Neon) sobre os 5 GB do Free; em 100% o compute é suspenso até o ciclo virar. A guarda do ingest.yml para em 80%.",
+      "targets": [
+        {
+          "expr": "max by (project) (last_over_time(teko_neon_data_transfer_ratio[2d]))",
+          "legend": "{{project}}"
+        }
+      ]
+    },
+    {
       "title": "Langfuse: units projetadas no mês",
       "type": "stat",
       "unit": "short",

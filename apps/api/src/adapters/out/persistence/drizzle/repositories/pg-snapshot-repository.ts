@@ -10,6 +10,7 @@ import {
 import { type CoverageGapEntry, mergeGapsForPromotion } from '#domain/corpus/coverage-gaps.ts'
 import { CorpusInvariantError } from './corpus-invariant-error.ts'
 import { gapColumns, storedGapEntries } from './coverage-gap-entries.ts'
+import { halfvecBase64Sql, halfvecTextFromBase64 } from './halfvec-wire.ts'
 
 /**
  * `SnapshotRepository` sobre o `pg` (owner, conexão direta), com SQL explícito: a exportação lê
@@ -19,7 +20,10 @@ import { gapColumns, storedGapEntries } from './coverage-gap-entries.ts'
  *
  * Formato das linhas: tipos sem JSON nativo (uuid, date, daterange, datemultirange, halfvec) vão
  * como o texto canônico do Postgres, que o `jsonb_to_recordset` converte de volta pela função de
- * entrada do tipo; o `halfvec` volta exatamente igual, sem recalcular embeddings.
+ * entrada do tipo; o `halfvec` volta exatamente igual, sem recalcular embeddings. O vetor sai do banco
+ * pelo binário do `halfvec_send` em base64 (~2,8 KB por chunk, contra ~12,7 KB do texto) e vira o
+ * texto canônico aqui (`halfvec-wire.ts`): o arquivo do snapshot não muda, e a exportação gasta
+ * ~4,6 vezes menos da transferência pública do Neon nos vetores (incidente de 2026-11-18).
  *
  * Identidade entre ambientes (ADR 0025): os IDs `uuidv7()` do staging viajam no snapshot. Na
  * promoção, `documents` (`slug`), `document_versions` (`sha256`), `provisions` (`stable_key`) e
@@ -36,6 +40,8 @@ interface ColumnSpec {
   readonly type: string
   /** Expressão da exportação (alias `t`), no lugar da coluna. */
   readonly exportAs?: string
+  /** Conversão do valor lido pela `exportAs` para o formato do arquivo. */
+  readonly decode?: (value: string | null) => string | null
 }
 
 interface TableSpec {
@@ -161,7 +167,8 @@ const TABLES: Readonly<Record<SnapshotTable, TableSpec>> = {
       // Só o vetor de chunk aberto viaja (a busca nunca lê conhecimento fechado).
       {
         ...col('embedding', 'halfvec(1024)'),
-        exportAs: 'CASE WHEN upper_inf(t.knowledge) THEN t.embedding::text END',
+        exportAs: `CASE WHEN upper_inf(t.knowledge) THEN ${halfvecBase64Sql('t.embedding')} END`,
+        decode: halfvecTextFromBase64,
       },
       col('embedding_model'),
     ],
@@ -279,6 +286,26 @@ async function inTransaction<T>(
   }
 }
 
+/** Aplica as conversões das colunas lidas em formato de transporte (o `halfvec` binário). */
+function decodeRows(spec: TableSpec, rows: SnapshotRow[]): SnapshotRow[] {
+  const decoders = spec.columns.flatMap((column) =>
+    column.decode === undefined ? [] : [{ name: column.name, decode: column.decode }],
+  )
+  if (decoders.length === 0) {
+    return rows
+  }
+  return rows.map((row) => {
+    const decoded: Record<string, unknown> = { ...row }
+    for (const { name, decode } of decoders) {
+      const value = row[name]
+      if (value !== undefined) {
+        decoded[name] = decode(typeof value === 'string' ? value : null)
+      }
+    }
+    return decoded
+  })
+}
+
 async function* readTable(
   client: pg.ClientBase,
   table: SnapshotTable,
@@ -295,7 +322,7 @@ async function* readTable(
       if (result.rows.length === 0) {
         return
       }
-      yield result.rows
+      yield decodeRows(spec, result.rows)
     }
   } finally {
     await client.query(`CLOSE ${cursor}`)

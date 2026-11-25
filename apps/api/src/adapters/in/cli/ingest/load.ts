@@ -61,9 +61,11 @@ import { readZip } from './zip.ts'
  *    `embedding_cache`);
  * 5. gate de saúde (`evaluateHealth`): o estado publicado por documento contra o `health` do lock;
  * 6. no fim, `refreshCoverage`; se a versão do corpus mudou, ou se a migração do snapshot do lock
- *    ficou para trás da do banco (o `promote` exige a mesma migração), `exportSnapshot` e atualização do
- *    `corpus/corpus.lock.json` (com o `health` novo); fecha o run com o relatório (também gravado
- *    em `--report`), com a fila de revisão aberta por família e motivo.
+ *    ficou para trás da do banco (o `promote` exige a mesma migração), `exportSnapshot` (que
+ *    reaproveita o manifesto da mesma versão e migração já gravado no store, sem reler o banco) e
+ *    atualização do `corpus/corpus.lock.json` (com o `health` novo); a poda do `embedding_cache`
+ *    só quando o plano cobriu todas as famílias e alguma versão foi publicada; fecha o run com o
+ *    relatório (também gravado em `--report`), com a fila de revisão aberta por família e motivo.
  *
  * Uma fonte que falha (parse, Docling ausente, sha256 divergente, disjuntor de mudança em massa)
  * não impede as outras: o run fecha como `failed`, sem `refreshCoverage`, snapshot nem lock, e o
@@ -237,6 +239,8 @@ type LoadReport = {
   cuSeconds?: number | null
   corpusVersion?: number
   manifestKey?: string
+  /** O manifesto da mesma versão e migração já estava no store: nenhuma tabela foi relida. */
+  snapshotReused?: boolean
   lockChanged?: boolean
   budgetExhaustedAt?: string
   pendingChunks?: number
@@ -598,6 +602,8 @@ export async function runIngestLoad(
         lineage,
         // O snapshot do lock vigente é o que a produção tem: o rollback precisa dele.
         ...(lock.snapshot === null ? {} : { protect: [lock.snapshot.corpusVersion] }),
+        // Dois runs seguidos antes de o PR do lock entrar exportariam a mesma versão duas vezes.
+        reuseExisting: true,
       })
       const manifestBytes = await deps.blobs.get(
         BlobStoreName.CorpusSnapshots,
@@ -613,6 +619,7 @@ export async function runIngestLoad(
         ),
       }
       report.manifestKey = exported.manifestKey
+      report.snapshotReused = exported.reused
     }
     const sources: Record<string, { sha256: string; versionLabel: string; publishedOn: IsoDate }> =
       {}
@@ -637,10 +644,14 @@ export async function runIngestLoad(
       writeCorpusLock(lockFile, next)
     }
     report.lockChanged = next !== null
-    // Poda do cache só quando o plano cobriu todas as famílias: um run de uma família não pode
-    // apagar o checkpoint de outra que parou no orçamento.
+    // Poda do cache só quando o plano cobriu todas as famílias (um run de uma família não pode
+    // apagar o checkpoint de outra que parou no orçamento) e publicou alguma versão: a poda lê o
+    // texto de todos os chunks abertos, e um run sem nada novo não muda o que o cache precisa ter.
     const configured = new Set(deps.config.resolved.map((source) => source.family))
-    if ([...configured].every((family) => plan.families.includes(family))) {
+    const published = outcomes.some(
+      (outcome) => 'result' in outcome && outcome.result.status === 'published',
+    )
+    if (published && [...configured].every((family) => plan.families.includes(family))) {
       report.cachePruned = await deps.useCases.pruneEmbeddingCache()
     }
     return await finish('succeeded', EXIT_OK)

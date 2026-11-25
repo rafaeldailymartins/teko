@@ -521,7 +521,9 @@ export function createIngestDocumentVersion(
       )
 
       const plan = reconcile(await uow.lockOpenVersions(documentId))
-      const vectors = await deps.cache.getMany(
+      // Só confere que cada vetor está no cache: a cópia para os chunks é SQL no banco
+      // (`insertVersions`), sem trazer vetor nenhum para cá (transferência pública do Neon).
+      const cached = await deps.cache.cachedHashes(
         newChunks(plan).map((chunk) => chunk.embeddingHash),
         deps.embeddingModel,
       )
@@ -550,8 +552,7 @@ export function createIngestDocumentVersion(
           structured: version.parsed.structured ?? null,
           amendment: version.parsed.amendment ?? null,
           chunks: version.chunks.map((chunk) => {
-            const embedding = vectors.get(chunk.embeddingHash)
-            if (embedding === undefined) {
+            if (!cached.has(chunk.embeddingHash)) {
               throw new ReconciliationError(
                 `embedding ausente do cache para ${provision.stableKey} (o banco mudou durante o run?)`,
               )
@@ -560,7 +561,7 @@ export function createIngestDocumentVersion(
               ordinal: chunk.ordinal,
               content: chunk.content,
               contentHash: chunk.contentHash,
-              embedding,
+              embeddingHash: chunk.embeddingHash,
             }
           }),
         }

@@ -213,6 +213,59 @@ describe('ExportSnapshot e PromoteSnapshot', () => {
     const exported = await createExportSnapshot(deps(repository({}).repo))({ lineage })
     expect(exported.manifest.lineage).toEqual(lineage)
   })
+
+  it('reuseExisting devolve o manifesto da mesma versão e migração sem reler as tabelas', async () => {
+    const blobs = createInMemoryBlobStore()
+    const first = await createExportSnapshot(deps(repository({ rows: ROWS }).repo, blobs))({})
+    expect(first.reused).toBe(false)
+
+    let read = 0
+    const counting = (options: Parameters<typeof repository>[0]): SnapshotRepository => {
+      const { repo } = repository(options)
+      return {
+        ...repo,
+        read: (work) =>
+          repo.read((reader) =>
+            work({
+              ...reader,
+              rows: (table) => {
+                read += 1
+                return reader.rows(table)
+              },
+            }),
+          ),
+      }
+    }
+    const again = await createExportSnapshot(deps(counting({ rows: ROWS }), blobs))({
+      reuseExisting: true,
+    })
+    expect(again).toEqual({
+      manifestKey: first.manifestKey,
+      manifest: first.manifest,
+      reused: true,
+    })
+    expect(read).toBe(0)
+
+    // Sem a opção, ou com outra migração no banco, as tabelas são relidas.
+    await createExportSnapshot(deps(counting({ rows: ROWS }), blobs))({})
+    expect(read).toBe(SNAPSHOT_TABLES.length)
+    const migrated = await createExportSnapshot(
+      deps(counting({ rows: ROWS, migration: { hash: 'm2', name: null } }), blobs),
+    )({ reuseExisting: true })
+    expect(migrated.reused).toBe(false)
+    expect(migrated.manifest.migration.hash).toBe('m2')
+    expect(read).toBe(2 * SNAPSHOT_TABLES.length)
+  })
+
+  it('reuseExisting ignora manifesto ilegível no store e exporta de novo', async () => {
+    const blobs = createInMemoryBlobStore()
+    await blobs.set(BlobStoreName.CorpusSnapshots, snapshotManifestKey(1), 'não é json')
+    const exported = await createExportSnapshot(deps(repository({ rows: ROWS }).repo, blobs))({
+      reuseExisting: true,
+    })
+    expect(exported.reused).toBe(false)
+    expect(exported.manifest.tables).toHaveLength(SNAPSHOT_TABLES.length)
+  })
 })
 
 describe('rollback de corpus', () => {

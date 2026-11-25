@@ -1,11 +1,7 @@
 import { isoDateInTimeZone } from '@teko/shared/vigencia'
 import { BlobStoreName } from '../ports/blob-store.ts'
-import {
-  type SnapshotManifest,
-  type SnapshotTable,
-  snapshotManifestSchema,
-} from '../ports/snapshot-repository.ts'
-import { type SnapshotDeps, SnapshotError } from './export-snapshot.ts'
+import type { SnapshotManifest, SnapshotTable } from '../ports/snapshot-repository.ts'
+import { parseManifest, type SnapshotDeps, SnapshotError } from './export-snapshot.ts'
 
 /**
  * `PromoteSnapshot` (produção, depois da fase `migrate` do deploy; também o rollback manual): aplica
@@ -64,20 +60,6 @@ type PromoteLockedSnapshotResult =
     }
 
 export type PromoteLockedSnapshot = (locked: LockedSnapshot) => Promise<PromoteLockedSnapshotResult>
-
-function parseManifest(raw: Uint8Array, key: string): SnapshotManifest {
-  let json: unknown
-  try {
-    json = JSON.parse(new TextDecoder().decode(raw))
-  } catch (error) {
-    throw new SnapshotError(`manifesto ${key} não é JSON: ${String(error)}`)
-  }
-  const parsed = snapshotManifestSchema.safeParse(json)
-  if (!parsed.success) {
-    throw new SnapshotError(`manifesto ${key} inválido: ${parsed.error.message}`)
-  }
-  return parsed.data
-}
 
 /** Lê e valida o manifesto; devolve também os bytes (o sha256 do lock é sobre eles). */
 async function loadManifest(

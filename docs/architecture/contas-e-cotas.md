@@ -87,6 +87,21 @@ projeto: guarda de 800 MB na ingestão, aviso acima de 400 MB no staging. O job 
 `teko_neon_compute_hours{project}` e `teko_neon_cu_hours_ratio{project}` (projeção linear do
 período sobre as 100 CU-h; alerta acima de 0,7).
 
+5 GB de transferência pública por projeto por mês (o que sai do banco para os clientes; o que entra
+não conta), somando Postgres, Object Storage e Neon Functions. Estourar suspende o compute até o
+ciclo virar, como as CU-h: foi o que parou o `teko-staging` em 2026-11-18 (5,09 GB no ciclo
+iniciado em 2026-11-10, quase tudo das exportações de snapshot com o vetor em texto). Regras:
+
+- nenhum fluxo traz o `embedding` em texto para fora do banco: a ingestão copia o vetor do
+  `embedding_cache` para o chunk por SQL, confere o cache só pelas chaves, e a exportação do
+  snapshot lê o vetor pelo binário do `halfvec_send` (~2,8 KB por chunk, contra ~12,7 KB do texto);
+- a exportação reaproveita o snapshot da mesma versão e migração já gravado no GitHub Releases, e a
+  poda do `embedding_cache` só roda quando o run publicou alguma versão;
+- o job `quotas` emite `teko_neon_data_transfer_ratio{project}` (`data_transfer_bytes` do período
+  sobre 5 GB, sem projeção; alertas em 0,5 e 0,8), e o `ingest.yml` para antes de tocar o banco
+  com o staging acima de 0,8, salvo o input `allow_high_transfer`
+  ([runbook](../runbooks/neon-suspended.md#transferencia-acima-da-cota)).
+
 ## Workers AI
 
 10k neurons por dia na conta, zerados às 00:00 UTC: 8.000 para a ingestão
