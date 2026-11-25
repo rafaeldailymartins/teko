@@ -39,14 +39,24 @@ async function relaxDocsCsp(_request: FastifyRequest, reply: FastifyReply): Prom
   reply.header('content-security-policy', DOCS_CONTENT_SECURITY_POLICY)
 }
 
+function loadPlugins() {
+  return Promise.all([import('@fastify/swagger'), import('@scalar/fastify-api-reference')])
+}
+
+/**
+ * Carrega os dois plugins antes da instância do Fastify existir: a carga dentro do registro, com o
+ * `under-pressure` já medindo o event loop, atrasaria o loop e viraria 503 nas primeiras
+ * requisições (o cache de módulos faz o `registerOpenApi` não carregar de novo).
+ */
+export async function preloadOpenApi(): Promise<void> {
+  await loadPlugins()
+}
+
 export async function registerOpenApi(
   app: FastifyInstance,
   options: OpenApiOptions,
 ): Promise<void> {
-  const [{ default: swagger }, { default: scalar }] = await Promise.all([
-    import('@fastify/swagger'),
-    import('@scalar/fastify-api-reference'),
-  ])
+  const [{ default: swagger }, { default: scalar }] = await loadPlugins()
   await app.register(swagger, {
     openapi: {
       openapi: '3.1.0',

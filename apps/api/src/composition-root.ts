@@ -30,6 +30,7 @@ import {
 import { createFakeLlmAdapter } from '#adapters/out/fakes/fake-llm-adapter.ts'
 import { createInMemoryBlobStore } from '#adapters/out/fakes/in-memory-blob-store.ts'
 import { createSafeFetcher } from '#adapters/out/http/safe-fetcher.ts'
+import { isPreloadable } from '#adapters/out/lazy-module.ts'
 import { createLazyLlmChain } from '#adapters/out/llm/lazy-llm-chain.ts'
 import { createNeonComputeUsage } from '#adapters/out/neon/neon-compute-usage.ts'
 import { createDatabase, type Database } from '#adapters/out/persistence/drizzle/client.ts'
@@ -877,6 +878,7 @@ export function createContainer(env: Env, overrides: ContainerOverrides = {}): C
   let auth: AuthGateway | null = null
   let questions: QuestionUseCases | null = null
   let privacy: PrivacyUseCases | null = null
+  let models: readonly LlmModel[] = []
   const streamBudget = createStreamBudget(
     platform.invocationDeadline,
     env.STREAM_MAX_SECONDS * 1000,
@@ -888,7 +890,7 @@ export function createContainer(env: Env, overrides: ContainerOverrides = {}): C
       maxConnections: env.DATABASE_MAX_CONNECTIONS,
     })
     platform.attachDatabasePool(database.pool)
-    const models = overrides.llmModels ?? createLlmModels(env)
+    models = overrides.llmModels ?? createLlmModels(env)
     const router = models.length === 0 ? null : createProviderRouter({ models, clock, telemetry })
     retrieval = createRetrieval(
       env,
@@ -947,6 +949,13 @@ export function createContainer(env: Env, overrides: ContainerOverrides = {}): C
       users,
       questions,
       privacy,
+    },
+    warmUp: async () => {
+      // Better Auth, cadeia de LLM e PostHog sob demanda (`adapters/out/lazy-module.ts`).
+      const adapters: readonly unknown[] = [auth, errorReporter, ...models]
+      await Promise.all(
+        adapters.flatMap((adapter) => (isPreloadable(adapter) ? [adapter.preload()] : [])),
+      )
     },
     close: async () => {
       await errorReporter.shutdown(ERROR_REPORTER_SHUTDOWN_MS)

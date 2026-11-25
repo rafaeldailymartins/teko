@@ -429,7 +429,7 @@ const FUNCTION_PATH = /^\/(?:api(?:\/.*)?|healthz)$/u
  * Menor intervalo de um check que invoca a Function: cada execução acha a instância fria e paga um
  * cold start inteiro em Active CPU da Vercel (4 h/mês no Hobby; mudança `reduce-api-cold-start`).
  */
-export const FUNCTION_CHECK_MIN_FREQUENCY_MS = 3_600_000
+const FUNCTION_CHECK_MIN_FREQUENCY_MS = 3_600_000
 
 function validateChecks(checks: ChecksSpec): string[] {
   const errors: string[] = []

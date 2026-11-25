@@ -55,6 +55,13 @@ s; `posthog-node` 0,25 s; o Ajv que o Fastify monta para o compiler padrão cerc
     envio, que já era assíncrono e fica dentro do mesmo `flush`.
   - Migrator do Drizzle (`migrateDatabase`, só a CLI) e os plugins da documentação OpenAPI (só fora
     de produção): `import()` dentro da função que os usa.
+- **Fora da Vercel, tudo no boot.** Na stack de CI, no Docker e no `pnpm dev` o `under-pressure`
+  mede o atraso do event loop e responde 503 acima de 1 s; importar o Better Auth no meio do tráfego
+  passava disso (a integração `auth-email` recebeu 503 na primeira rodada). Os adapters sob demanda
+  expõem `preload` (`Preloadable`), o `Container.warmUp` chama todos, e o `buildApp` o aguarda antes
+  de montar o Fastify quando o guarda está ligado, ou seja, fora da Vercel, onde o processo vive e
+  não paga Active CPU. Lá o comportamento é o de antes. Pelo mesmo motivo, com a documentação
+  ligada (fora da produção) o `buildApp` carrega os plugins do OpenAPI antes de criar o Fastify.
 - **Compilers Zod na criação do Fastify** (`schemaController.compilersFactory`). O
   `setValidatorCompiler` e o `setSerializerCompiler` já valiam para todas as rotas; sem a fábrica, o
   Fastify ainda carregava e montava o Ajv e o fast-json-stringify padrão. Os tipos do Fastify

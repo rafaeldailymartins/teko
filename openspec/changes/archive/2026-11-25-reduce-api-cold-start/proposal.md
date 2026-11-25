@@ -17,7 +17,8 @@ pelo `/healthz`.
   plugins da documentação OpenAPI passam a entrar por `import()` dinâmico no primeiro uso, atrás
   das mesmas portas (`AuthGateway`, `LlmModel`, `ErrorReporterPort`); o Fastify nasce com os
   compilers Zod (sem montar o Ajv e o fast-json-stringify que nenhuma rota usa). Uma regra do
-  dependency-cruiser barra a volta do import estático.
+  dependency-cruiser barra a volta do import estático. Fora da Vercel (processo de vida longa, com o
+  guarda do event loop do `under-pressure`), os SDKs carregam antes de abrir a porta, como antes.
 - **Medição:** `scripts/measure-cold-start.ts` mede o CPU de um cold start completo sobre a Function
   montada como no deploy, com o ambiente da produção e Sensitive de mentira (hosts `.invalid`).
   Mediana de 7: 5,2 s antes, 2,6 s depois (-50%).

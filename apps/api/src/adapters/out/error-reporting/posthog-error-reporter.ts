@@ -1,7 +1,7 @@
 import type { AppEnv } from '@teko/shared/contracts'
 import type { EventMessage } from 'posthog-node'
 import type { ErrorReportContext, ErrorReporterPort } from '#app/ports/error-reporter.ts'
-import { lazyModule } from '../lazy-module.ts'
+import { lazyModule, type Preloadable } from '../lazy-module.ts'
 import { scrubError } from './scrub.ts'
 
 /**
@@ -111,7 +111,7 @@ async function createClient(projectKey: string): Promise<ExceptionClient> {
 
 export function createPosthogErrorReporter(
   options: PosthogErrorReporterOptions,
-): ErrorReporterPort {
+): ErrorReporterPort & Preloadable {
   const injected = options.client
   const client =
     injected === undefined
@@ -127,6 +127,10 @@ export function createPosthogErrorReporter(
 
   return {
     enabled: true,
+    async preload() {
+      used = true
+      await client()
+    },
     report(error: unknown, context: ErrorReportContext) {
       try {
         const scrubbed = scrubError(error)

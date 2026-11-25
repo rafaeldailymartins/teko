@@ -13,7 +13,7 @@ import {
   registerRateLimit,
   registerUnderPressure,
 } from '#adapters/in/http/plugins/load-protection.ts'
-import { registerOpenApi } from '#adapters/in/http/plugins/openapi.ts'
+import { preloadOpenApi, registerOpenApi } from '#adapters/in/http/plugins/openapi.ts'
 import { registerOriginGuard } from '#adapters/in/http/plugins/origin-guard.ts'
 import {
   createRequestIdGenerator,
@@ -99,6 +99,14 @@ export async function buildApp(deps: BuildAppDeps): Promise<FastifyInstance> {
   if (deps.http.evalRoutes && deps.container.appEnv !== AppEnv.Ci) {
     // Asserção de boot: as rotas de eval nunca sobem fora da stack de CI.
     throw new Error(`rotas /api/v1/_eval/* proibidas com APP_ENV=${deps.container.appEnv}`)
+  }
+  if (deps.http.eventLoopDelayGuard) {
+    // Com o guarda do event loop (fora da Vercel), os SDKs sob demanda carregam antes da porta abrir:
+    // a carga no meio do tráfego atrasaria o loop e o `under-pressure` responderia 503.
+    await deps.container.warmUp()
+  }
+  if (deps.http.docs) {
+    await preloadOpenApi()
   }
   const app = Fastify({
     ...(deps.logger === undefined ? { logger: false } : { loggerInstance: deps.logger }),

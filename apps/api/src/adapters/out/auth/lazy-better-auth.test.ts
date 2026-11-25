@@ -75,4 +75,13 @@ describe('createLazyBetterAuthGateway', () => {
     expect(real.createBetterAuthGateway).toHaveBeenCalledTimes(1)
     expect(real.createBetterAuthGateway).toHaveBeenCalledWith(db, CONFIG)
   })
+
+  it('preload carrega antes da primeira requisição, e ela reaproveita a mesma instância', async () => {
+    const gateway = createLazyBetterAuthGateway(db, CONFIG)
+
+    await gateway.preload()
+    expect(real.createBetterAuthGateway).toHaveBeenCalledTimes(1)
+    await gateway.getSession(new Headers())
+    expect(real.createBetterAuthGateway).toHaveBeenCalledTimes(1)
+  })
 })

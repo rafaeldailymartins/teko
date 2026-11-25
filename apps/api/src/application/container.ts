@@ -146,6 +146,13 @@ export interface Container {
   readonly telemetry: Telemetry
   /** Destino dos erros inesperados (`noopErrorReporter` sem `POSTHOG_PROJECT_KEY`). */
   readonly errorReporter: ErrorReporterPort
+  /**
+   * Carrega de uma vez os SDKs que os adapters deixam para o primeiro uso (Better Auth, AI SDK,
+   * PostHog). O app chama antes de abrir a porta quando o `under-pressure` mede o event loop (fora
+   * da Vercel): a carga no meio do tráfego atrasaria o loop e viraria 503. Na Vercel fica sob
+   * demanda, para o cold start não pagar o que o `/healthz` não usa.
+   */
+  warmUp(): Promise<void>
   /** Libera recursos (pool do Postgres, exporters...) depois que o servidor HTTP fechou. */
   close(): Promise<void>
 }

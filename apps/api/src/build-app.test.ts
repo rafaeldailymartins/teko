@@ -21,6 +21,26 @@ describe('fastifyTrustProxy', () => {
 })
 
 describe('buildApp', () => {
+  it('carrega os SDKs sob demanda antes de abrir a porta só com o guarda do event loop', async () => {
+    const env = parseEnv({ APP_ENV: 'ci', WEB_ORIGIN: 'https://tekoia-staging.vercel.app' })
+    for (const eventLoopDelayGuard of [true, false]) {
+      const container = createContainer(env)
+      let warmed = 0
+      const app = await buildApp({
+        container: {
+          ...container,
+          warmUp: async () => {
+            warmed += 1
+          },
+        },
+        http: { ...createHttpOptions(env), eventLoopDelayGuard },
+      })
+      // Fora da Vercel (guarda ligado) carrega tudo no boot; na Vercel fica para o primeiro uso.
+      expect(warmed).toBe(eventLoopDelayGuard ? 1 : 0)
+      await app.close()
+    }
+  })
+
   it('registra o rate limit só quando há store compartilhado', async () => {
     const env = parseEnv({ APP_ENV: 'ci', WEB_ORIGIN: 'https://tekoia-staging.vercel.app' })
     const app = await buildApp({

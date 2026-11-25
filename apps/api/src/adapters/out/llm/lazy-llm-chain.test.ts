@@ -35,7 +35,7 @@ const REQUEST: LlmRequest = {
   signal: new AbortController().signal,
 }
 
-async function collect(events: AsyncIterable<LlmEvent>): Promise<LlmEvent[]> {
+async function collect(events: AsyncIterable<LlmEvent> | readonly LlmEvent[]): Promise<LlmEvent[]> {
   const out: LlmEvent[] = []
   for await (const event of events) {
     out.push(event)
@@ -76,6 +76,15 @@ describe('createLazyLlmChain', () => {
     expect(primary[0]).toEqual({ type: 'text', text: 'gemini-3.5-flash-lite' })
     expect(real.createLlmChain).toHaveBeenCalledTimes(1)
     expect(real.createLlmChain).toHaveBeenCalledWith(CONFIG)
+  })
+
+  it('o preload de qualquer modelo carrega a cadeia inteira uma vez', async () => {
+    const chain = createLazyLlmChain(CONFIG)
+
+    await Promise.all(chain.map((model) => model.preload()))
+    await collect(chain[1]?.stream(REQUEST) ?? [])
+
+    expect(real.createLlmChain).toHaveBeenCalledTimes(1)
   })
 
   it('o erro do modelo real chega a quem consome o stream', async () => {

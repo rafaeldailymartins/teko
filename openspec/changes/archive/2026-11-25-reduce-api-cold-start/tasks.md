@@ -18,6 +18,9 @@
 - [x] 2.5 Regra `cold-start-sdks-only-by-dynamic-import` (verificar: `pnpm lint:deps`, e um import
   estático de teste reprovado)
 
+- [x] 2.6 `Container.warmUp` aguardado pelo `buildApp` com o guarda do event loop (fora da Vercel)
+  (verificar: `build-app.test.ts` e a integração `auth-email.test.ts`)
+
 ## 3. Synthetic Monitoring
 
 - [x] 3.1 `/healthz` de produção a cada 60 min, o de staging desligado (verificar:

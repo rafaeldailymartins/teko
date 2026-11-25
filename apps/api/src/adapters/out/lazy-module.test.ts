@@ -1,5 +1,14 @@
 import { describe, expect, it, vi } from 'vitest'
-import { lazyModule } from './lazy-module.ts'
+import { isPreloadable, lazyModule } from './lazy-module.ts'
+
+describe('isPreloadable', () => {
+  it('reconhece só quem tem preload como função', () => {
+    expect(isPreloadable({ preload: async () => {} })).toBe(true)
+    expect(isPreloadable({ preload: true })).toBe(false)
+    expect(isPreloadable({})).toBe(false)
+    expect(isPreloadable(null)).toBe(false)
+  })
+})
 
 describe('lazyModule', () => {
   it('não carrega nada até a primeira chamada e carrega uma vez só', async () => {
