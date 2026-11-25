@@ -176,7 +176,7 @@ export const REQUIRED_ALERTS: Readonly<Record<string, string>> = {
   'teko-ops-job-stale': 'falha do weekly-maintenance ou do vercel-usage',
   'teko-rag-refusal-anomaly': 'taxa de recusa fora do normal',
   'teko-rag-lexical-only': 'taxa de lexical_only fora do normal',
-  'teko-synthetic-failed': 'check do Synthetic Monitoring falhando em todas as execuções de 20 min',
+  'teko-synthetic-failed': 'check do Synthetic Monitoring falhando em todas as execuções de 65 min',
 }
 
 /** Teto de execuções mensais dos checks: metade das 100 mil do Grafana Cloud Free. */
@@ -391,6 +391,46 @@ function validateAlerts(alerts: AlertsSpec, runbooks: RunbookIndex): string[] {
   return errors
 }
 
+/**
+ * As regras do Synthetic Monitoring olham uma janela (`[65m]`) das amostras de `probe_*`. Uma janela
+ * menor que a frequência de um check ligado deixa a série sem amostra entre duas execuções: o alerta
+ * dispararia e voltaria a Normal sozinho a cada execução. Cada janela da expressão precisa passar
+ * da frequência do check ligado mais lento, e o `rangeSeconds` da consulta precisa cobri-la.
+ */
+function validateSyntheticWindows(alerts: AlertsSpec, checks: ChecksSpec): string[] {
+  const enabled = checks.checks.filter((check) => check.enabled)
+  if (enabled.length === 0) return []
+  const slowest = enabled.reduce((a, b) => (b.frequency > a.frequency ? b : a))
+  const errors: string[] = []
+  for (const rule of alerts.rules.filter((item) => item.source === 'synthetic')) {
+    const where = `alerta ${rule.uid}`
+    for (const match of rule.expr.matchAll(/\[(\d+)m\]/gu)) {
+      const windowMs = Number(match[1]) * 60_000
+      if (windowMs <= slowest.frequency) {
+        errors.push(
+          `${where}: janela de ${match[1] ?? ''} min não passa da frequência do ${slowest.job} (${String(slowest.frequency / 60_000)} min)`,
+        )
+      }
+      if ((rule.rangeSeconds ?? 600) * 1000 < windowMs) {
+        errors.push(`${where}: rangeSeconds menor que a janela de ${match[1] ?? ''} min`)
+      }
+    }
+  }
+  return errors
+}
+
+/**
+ * Caminhos que a Vercel manda para a Function (o `API_PATH_PATTERN` de
+ * `scripts/build-vercel-output.ts`); o resto é estático, servido pela CDN.
+ */
+const FUNCTION_PATH = /^\/(?:api(?:\/.*)?|healthz)$/u
+
+/**
+ * Menor intervalo de um check que invoca a Function: cada execução acha a instância fria e paga um
+ * cold start inteiro em Active CPU da Vercel (4 h/mês no Hobby; mudança `reduce-api-cold-start`).
+ */
+export const FUNCTION_CHECK_MIN_FREQUENCY_MS = 3_600_000
+
 function validateChecks(checks: ChecksSpec): string[] {
   const errors: string[] = []
   let total = 0
@@ -405,6 +445,17 @@ function validateChecks(checks: ChecksSpec): string[] {
       errors.push(`${where}: timeout fora de 1..60 s ou maior que a frequência`)
     }
     if (check.probes.length === 0) errors.push(`${where}: sem sondas`)
+    if (
+      check.enabled &&
+      URL.canParse(check.target) &&
+      FUNCTION_PATH.test(new URL(check.target).pathname) &&
+      check.frequency < FUNCTION_CHECK_MIN_FREQUENCY_MS
+    ) {
+      const perDay = Math.round((check.probes.length * 86_400_000) / check.frequency)
+      errors.push(
+        `${where}: invoca a Function ${String(perDay)}x/dia; cada execução é um cold start em Active CPU (mínimo de 60 min)`,
+      )
+    }
     if (typeof check.enabled !== 'boolean')
       errors.push(`${where}: enabled precisa ser true ou false`)
     total += monthlyExecutions(check)
@@ -443,6 +494,7 @@ export function validate(
   errors.push(...validateDashboards(code.dashboards))
   errors.push(...validateAlerts(code.alerts, runbooks))
   errors.push(...validateChecks(code.checks))
+  errors.push(...validateSyntheticWindows(code.alerts, code.checks))
   for (const { file, text } of files) {
     if (containsEmail(text))
       errors.push(`${file}: e-mail no repositório (use GRAFANA_ALERT_EMAILS)`)

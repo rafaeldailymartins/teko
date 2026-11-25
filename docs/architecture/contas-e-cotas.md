@@ -33,22 +33,29 @@ Cotas mensais da conta, somando `tekoia` e `tekoia-staging`; o Hobby não compra
 Premissa de pior caso: tetos diários de perguntas e `stream_seconds` atingidos todo dia, 20 s de
 stream em média, cerca de 30k chamadas curtas e 150k requests de estático por mês.
 
-| Recurso              | Cota Hobby | Premissa                                                                                                           | Uso esperado/mês          |
-| -------------------- | ---------- | ------------------------------------------------------------------------------------------------------------------ | ------------------------- |
-| Provisioned Memory   | 360 GB-h   | streams (6.000 + 1.500) s/dia × 30 ≈ 62 h; chamadas curtas ≈ 2,5 h; `waitUntil` ≈ 1,5 h; cold starts e pings ≈ 2 h | cerca de 136 GB-h (38%)   |
-| Active CPU           | 4 h        | só com código rodando: streams, chamadas curtas, cold starts, pings                                                | cerca de 0,9 h (23%)      |
-| Invocações           | 1M         | chamadas curtas, streams e pings de 5 min nos dois projetos; o estático não invoca a Function                      | cerca de 60k (6%)         |
-| Fast Origin Transfer | 10 GB      | só CDN ↔ Function: cerca de 10 KB por stream e 5 KB por chamada curta                                              | cerca de 0,3 GB (3%)      |
-| Fast Data Transfer   | 100 GB     | estático (cerca de 3 GB) + respostas da API                                                                        | cerca de 3,3 GB (3%)      |
-| CDN Requests         | 1M         | estático (cerca de 150k) + API (cerca de 70k)                                                                      | cerca de 220k (22%)       |
-| Deployment storage   | 10 GB      | cerca de 25 MB por deployment retida (estático + Function), staging a cada push                                    | cerca de 1,5 GB (15%)     |
-| Spans de tracing     | 1M         | sem `@vercel/otel`; os spans de fetch param com o SDK de OTel no pacote; sobram os de infraestrutura               | a medir no `vercel-usage` |
-| Deploys              | 100/dia    | um por push no tronco e um por release                                                                             | < 10/dia                  |
+| Recurso              | Cota Hobby | Premissa                                                                                                           | Uso esperado/mês            |
+| -------------------- | ---------- | ------------------------------------------------------------------------------------------------------------------ | --------------------------- |
+| Provisioned Memory   | 360 GB-h   | streams (6.000 + 1.500) s/dia × 30 ≈ 62 h; chamadas curtas ≈ 2,5 h; `waitUntil` ≈ 1,5 h; cold starts e pings ≈ 2 h | cerca de 136 GB-h (38%)     |
+| Active CPU           | 4 h        | só com código rodando: streams, chamadas curtas, cold starts (até 2,6 s cada, medido), pings de hora em hora       | 0,9 h + 0,5 h do ping (35%) |
+| Invocações           | 1M         | chamadas curtas, streams e o ping de hora em hora da produção; o estático não invoca a Function                    | cerca de 45k (5%)           |
+| Fast Origin Transfer | 10 GB      | só CDN ↔ Function: cerca de 10 KB por stream e 5 KB por chamada curta                                              | cerca de 0,3 GB (3%)        |
+| Fast Data Transfer   | 100 GB     | estático (cerca de 3 GB) + respostas da API                                                                        | cerca de 3,3 GB (3%)        |
+| CDN Requests         | 1M         | estático (cerca de 150k) + API (cerca de 70k)                                                                      | cerca de 220k (22%)         |
+| Deployment storage   | 10 GB      | cerca de 25 MB por deployment retida (estático + Function), staging a cada push                                    | cerca de 1,5 GB (15%)       |
+| Spans de tracing     | 1M         | sem `@vercel/otel`; os spans de fetch param com o SDK de OTel no pacote; sobram os de infraestrutura               | a medir no `vercel-usage`   |
+| Deploys              | 100/dia    | um por push no tronco e um por release                                                                             | < 10/dia                    |
 
 - **Tráfego negado pelo WAF** (deny, challenge ou rate limit) não conta CDN Requests nem Fast Data
   Transfer, e não invoca a Function.
 - O recurso mais apertado é a memória provisionada: esperar o LLM não gasta CPU, mas mantém os
   2 GB da instância cobrando. O teto de `stream_seconds` limita isso na aplicação.
+- **Active CPU e cold starts:** cada invocação que acha a instância fria paga o boot inteiro da
+  Function (import do bundle, OTel, container e app). Em 2026-11-25 a conta foi desativada por
+  passar das 4 h sem usuários reais: os `/healthz` do Synthetic Monitoring a cada 5 min nos dois
+  projetos (576 cold starts por dia, 5,2 s de CPU cada na medição local) bastavam. O boot passou a
+  carregar sob demanda o que o `/healthz` não usa (2,6 s) e o único ping que invoca a Function é o
+  de produção, de hora em hora (mudança `reduce-api-cold-start`; conta no `design.md` dela e medição
+  com `scripts/measure-cold-start.ts`).
 - **Ao estourar:** sem ciclo de cobrança, "na maioria dos casos" o recurso fica bloqueado até
   passarem 30 dias, e a produção responde 503 `DEPLOYMENT_PAUSED`. **A retomada de um projeto
   pausado é manual** (`vercel project resume <projeto>` ou `POST /v1/projects/{id}/unpause`), e o
@@ -105,8 +112,8 @@ públicos: só documentos oficiais, snapshots do corpus e métricas, nunca dado 
   sinal primário, com breaker e fallback.
 - **Langfuse Hobby:** 50k units/mês; o sampler corta em 35k projetados.
 - **Grafana Cloud Free** (10k séries ativas, 50 GB de logs, 14 dias de retenção, 100k execuções
-  de Synthetic Monitoring): os checks usam 17.280 execuções por mês até a F7 e 20.160 com o da
-  landing ligado (check desligado não conta), e a validação de
+  de Synthetic Monitoring): os checks usam 3.600 execuções por mês (o `/healthz` de produção de
+  hora em hora e a landing a cada 15 min; check desligado não conta), e a validação de
   `infra/grafana/` reprova acima de 50 mil. **PostHog Free:** volumes estimados bem abaixo dos
   limites. Os dois conferidos à mão no runbook `quotas.md`.
 

@@ -1,10 +1,10 @@
 {
-  "$comment": "Checks do Synthetic Monitoring (corpo do POST /api/v1/check, com as sondas por nome; o grafana-apply.ts troca pelo ID). Cota do Free: 100 mil execuções/mês; conta = sondas x 43.200 / frequência em minutos, só dos checks ligados (ver README.md). O teko-landing-production fica com enabled false até o primeiro deploy do web de produção (F7): até lá /pt-BR/ responde 404, e o check só falharia e gastaria execuções; o deploy da F7 o liga. /healthz nunca toca o banco (get-health.ts). O domínio de produção dos dois projetos Vercel é público (Standard Protection), então nenhum check precisa do bypass.",
+  "$comment": "Checks do Synthetic Monitoring (corpo do POST /api/v1/check, com as sondas por nome; o grafana-apply.ts troca pelo ID). Cota do Free: 100 mil execuções/mês; conta = sondas x 43.200 / frequência em minutos, só dos checks ligados (ver README.md). Cada execução de /healthz invoca a Function e, com o intervalo longo, paga um cold start em Fluid Active CPU (4 h/mês no Hobby; incidente de 2026-11-25, mudança reduce-api-cold-start): o /healthz de produção roda de hora em hora, só para provar a Function viva, e o de staging fica desligado (o smoke de cada deploy o confere, e a pausa é da conta inteira, que a produção já vê). A landing é estática (CDN, sem Function): ela dá a disponibilidade da borda e o 503 de pausa a cada 15 min. /healthz nunca toca o banco (get-health.ts). O domínio de produção dos dois projetos Vercel é público (Standard Protection), então nenhum check precisa do bypass.",
   "checks": [
     {
       "job": "teko-healthz-production",
       "target": "https://tekoia.vercel.app/healthz",
-      "frequency": 300000,
+      "frequency": 3600000,
       "timeout": 10000,
       "probes": ["SaoPaulo"],
       "enabled": true,
@@ -23,10 +23,10 @@
     {
       "job": "teko-healthz-staging",
       "target": "https://tekoia-staging.vercel.app/healthz",
-      "frequency": 300000,
+      "frequency": 3600000,
       "timeout": 10000,
       "probes": ["SaoPaulo"],
-      "enabled": true,
+      "enabled": false,
       "basicMetricsOnly": true,
       "alertSensitivity": "none",
       "labels": [{ "name": "env", "value": "staging" }],
